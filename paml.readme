@@ -1,0 +1,37 @@
+paml.readme
+-----------
+
+PAML (for Phylogentic Analysis by Maximum Likelihood) contains three
+main programs for model fitting and phylogenetic tree reconstruction
+using nucleotide or amino-acid sequence data.  The programs were
+written in ANSI C and tested on UNIX systems, although DOS and
+PowerMac excutables are also supplied when available.  The UNIX
+commands for compiling the programs using the GNU gcc compiler and the
+SUN acc compiler are listed in two files named paml.gcc and paml.acc,
+respectively.  Type "source paml.gcc" or "source paml.acc" for
+compiling.  The document paml1_2.doc is prepared using Microsoft Word
+6.0 for the Mac (with Equation Editor 2.0), which is supposed to be
+compatible with Microsoft Word 6.0 for Windows.
+
+The package can be obtained from ftp.bio.indiana.edu (129.79.225.25)
+under the subdirectory Incoming/ or molbio/evolve by anonymous ftp
+(binary).  After getting the file paml1.2.tar.Z, you should use the
+following commands to decode it:
+             uncompress paml1.2.tar.Z
+             tar xf paml1.2.tar
+
+I used the following commands to archive and compress the files:
+             tar cf paml1.2.tar *
+             compress paml1.2.tar
+
+PAML is distributed free of charge for academic use only.  Comments
+and suggestions are appreciated.  If you hope to receive update
+notices, please give me your email number.
+
+Ziheng Yang
+
+Department of Integrative Biology      Email: ziheng@mws4.biol.berkeley.edu
+University of California               Phone: (510) 643 6299
+Berkeley, CA 94720-3140                Fax:   (510) 643 6264
+http://mw511.biol.berkeley.edu/ziheng/ziheng.html
+http://mw511.biol.berkeley.edu/ziheng/paml.html

@@ -1,0 +1,8 @@
+acc -c -fast tools.c eigen.c
+acc -o baseml -fast baseml.c tools.o eigen.o 
+acc -o basemlg -fast basemlg.c tools.o
+acc -o codeml -fast  codeml.c tools.o eigen.o
+acc -o pamp -fast pamp.c tools.o eigen.o
+acc -o mcmctree -fast mcmctree.c tools.o 
+acc -o listtree -fast listtree.c tools.o 
+acc -o rell -fast rell.c tools.o 

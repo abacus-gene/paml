@@ -1,0 +1,148 @@
+MCML.DOC
+-----------
+
+The program mcml examines the consistency (when the sequence is
+infinitely long) and the sampling error (with a finite sequence
+length) of the maximum-likelihood method for phylogenetic tree
+reconstruction, using nucleotide sequences.  It can also be used to
+calculate the probabilities of observing different site patters given
+a model of nucleotide substitution, a tree topology, and its branch
+lengths.  The (analysis) model used for data analysis can be any of
+JC69, K80, F81, F84, and HKY85, with either a constant rate assumed
+for all sites or discrete-gamma rates for sites.  The (true) model
+used for generating the data can be any of the above, plus the
+possibility of using the continuous gamma (dG=0).  The program
+calculates the probabilities of observing the (4^ns, with ns to be
+the number of species) possible site patterns under the true model,
+and then examines the consistency of a likelihood method assuming the
+analysis model (which may be wrong), and/or estimates the probability
+of recovering the true tree by Monte Carlo simulation.  The program
+can output the site-pattern probabilities in a file named pexp.out
+(choose outpexp=1), or read in these probabilities from a file named
+pexp.in (choose readpexp=1).
+
+The program was originally written for studying trees of 4 species
+(ns=4), and the assumed (unrooted) tree is ((12)34), with the five
+branch lengths ordered (middle_branch, t1, t2, t3, t4).  For analysis
+of 4-species trees, it is simple to change parameter values and branch
+lengths within the program, as described below, but if you choose to
+specify the tree structure and branch lengths, it may be better to use
+the same tree topology ((12)34).  To calculate the site-pattern
+probabilities with more than 4 species, use readatree=1, and
+outpexp=1, and specify the tree structure and branch lengths in a file
+named trees.mc.  The program cannot run simulations for more than 4
+species as I have not found a good way of recording results.
+Nevertheless, the consistency can be checked with ns>4, if you are
+happy to check the file rst to see which tree is the m.l. tree.
+
+I have not provided a control file for this program as there are so
+many variables that may need to be changed.  You may need to modify
+the source code before compiling and running the program.  There are 2
+places in the program that you may have to change.  The first is at
+the beginning of the main() function, where the values of many control
+variables specify how you want to run the program and what the true
+model (including the values of parameters and the tree topology and
+branch lengths) is.  These variables are as follows:
+
+	ns:  # of species in the data
+	readpexp: read the site-pattern probabilities from pexp.in (if =1)
+	outpexp:  output the site-pattern probs. into pexp.out (if =1)
+	readatree: read the tree structure and branch lengths from trees.mc
+	nr: # of simulations for each sequence length
+	modeltrue: true model for generating data (may override kapa and pai[])
+	dG: the discrete (=1) or continuous gamma (=0) model for rates
+	    at sites for the true model, effective only if alfa>0.  Four 
+            (ncatG=4) categories are used for the discrete gamma.
+            (the continuous gamma is never used for analysis), 
+	ipai: =0 use equal (1/4) base frequencies (for JC69 and K80)
+	      =1 use the set .1, .2, .3, and .4
+	nl: # of values for the sequence length to be used in simulation
+	ls[]: the sequence lengths (0 means infinity for consistency analysis)
+	kapa: the value of kapa to be assumed in the true model (K80,F84&HKY85)
+	alfa: gamma parameter; 0 means infinity (for constant rate at sites)
+
+The second place you may need to change is near the end of the main()
+function, and the relevant lines are included below.  These specify
+the model to be used for analysis.  See the description of the
+baseml.ctl option file in the paml document.
+
+  /*** the model for analysis, change the following 3 lines ***/
+            com.model=F84;
+            com.given_alfa=1;  com.alfa=0;
+            com.given_kapa=0;  com.kapa=kapa;
+
+
+NOTES
+
+Format of pexp.out-- If the site-pattern probabilities are
+calcualted outside the program, they should be put in a file named
+pexp.in.  This should have the same format as the file pexp.out,
+produced from this program.  The first two numbers in the file are ns,
+the number of species, and npattern, the number of site patterns
+(which should normally be 4**ns).  Then follow the site patterns and
+their frequencies.  I have chosen outpexp=1, and so if you run the
+program, it will generate the file pexp.out, which will tell you how
+to prepare pexp.in.  With readpexp=1, the specifications of the true
+model are irrelevant.
+
+How the program works-- The program is essentially designed for doing
+simulation with 4-species trees.  The multinomial probabilities for
+all possible site patterns are calculated from the true model, and
+random samples are then generated from the multinomial distribution.
+One simulated data set is represented by the site-pattern frequencies
+observed in the sample.  For each data set, the program estimates the
+branch lengths and other parameters in the model for each tree,
+maximizing the likelihood function by iteration.  In this way it
+identifies which tree has the highest likelihood.  In case the
+specified sequence length is 0 (ls[]), the program will use the
+site-pattern probabilities rather than the site-pattern frequencies in
+a simulated sample to do the same analysis; this allows the
+consistency to be examined (see, e.g., my Systematic Biology 1994
+paper).  Also with infinite (0) sequence length, only one "sample"
+will be analyzed.  The probabilities that each of the tree topologies
+is the m.l. tree in a simulated sample are estimated by generating
+many samples.  For four species, the four probabilities P0, P1, P2,
+and P3 are counted for the four tree topologies T0=(1234),
+T1=((12)34), T2=((13)24), and T3=((14)23) respectively.  P1 is the
+probability that the true tree is recovered.  If you only want to
+check the consistency, you can use one sequence length of zero, i.e.,
+nl=1, ls[]={0}.  The program collects results into the file mcml.out.
+
+More than 4 species-- To calculate the site-pattern probabilties for
+data of more than four species, you need to change the variable ns,
+specify readatree=1, and then modify the tree-structure file named
+trees.mc.  Below is an included example.  The tree has 6 species (this
+has to match the value of ns) and 9 branches.  The tree topology is
+represented by enumerating its branch lengths, which are represented
+by its two nodes (see the section on representation of tree topologies
+in the paml document).  Nodes 1, 2, ..., 6 (<=ns) refer to the extant
+species, while those >6 refer to ancesters.  The line below specifies
+the corresponding branch lengths.  The number of species is limited by
+the constant NS defined at the beginning of the program.  Note that
+this file only specifies the (true) tree topology and its branch
+lengths; the (true) model and its parameters are specified in the
+main() function of the program, as described before.
+
+	6 9
+	7 1   7 2   7 8   8 3   8 9   9 4   9 10  10 5   10 6
+	0.1   0.2   0.3   0.4   0.5   0.7   0.8   0.01   0.02
+
+Files involved in running this program (the last four are optional)--
+	mcml.c:   the source code, to be used together with paml
+	mcml.out: result file from running mcml
+	pexp.in:  file for inputing site-pattern probabilities
+	pexp.out: site-pattern probabilities are outputted in this
+	trees.mc: file for specifying the tree structure and branch lengths
+	rst:      mainly rubbish (records tree-search and branch length estimates)
+
+Getting started-- Compile and run the program with the following commands:
+
+	gcc -o mcml -O2 mcml.c tools.o
+	mcml
+
+The default options in mcml uses F84 as both the true and analysis
+models.  The program does a consistency analysis, and does 50
+simulations with a sequence length 250.  The site-pattern
+probabilities are outputted in the file pexp.out.
+
+				Good luck, Ziheng Yang
