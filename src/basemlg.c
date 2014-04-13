@@ -56,7 +56,7 @@ struct TREEB {
 struct TREEN {
    int father, nson, sons[NS], ibranch;
    double branch, age, label, *conP;
-   char fix_age;
+   char fossil;
 }  nodes[2*NS-1];
 
 static int nR=4, CijkIs0[64];

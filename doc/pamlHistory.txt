@@ -5,21 +5,183 @@ Please report bugs to Ziheng Yang at z.yang@ucl.ac.uk.
 
 
 
+Version 3.14, September 2004
 
 
-Version 3.14beta2, November 2003
+1. codonml (codeml for codons): 
 
-(1) baseml: Models TN93 and REV are wrong when used with Mgene = 3 or 4.
+(1a) NSsites models M1 (neutral), M2 (selection), and M8 (beta& ) have
+been changed.  The references are two manuscripts that are not yet
+published (Wong and Nielsen 2004; Yang, Wong, and Nielsen 2005).  The
+details are as in the following table.
+
+The old models M1 and M2 are noted to be rather unrealistic as they do
+not account for sites with 0 < < 1.  Thus in the new models 0 < 0 < 1
+is estimated from the data.  Also insisting on a class of sites with 0
+= 1 appears to help avoid false positives as sites under weak
+selection will be absorbed in this neutral class rather than being
+claimed to be under positive selection.  Under M8, the constraint s >
+1 is now automatically enforced to help avoid multiple local peaks and
+also to make the model a positive-selection model.  Note that the
+newer models replace the old ones, which are available in older
+versions of paml/codeml only.
+
+After the changes, the models are nested as follows: M0 (one ratio) <
+M1a (NearlyNeutral) < M2a (PositiveSelection) < M3 (discrete), and M7
+(beta) < M8 (beta& ), where "<" means the model on the left is a
+special case of the model on the right:.  Two LRTs can be constructed
+using those models.  The first one compares M1a against M2a, using a
+chi square with df 2, and the second one compares M7 against M8, using
+a chi square with d.f.  2.
+
+(1b) Similarly branch-site model A (Yang and Nielsen 2002) is changed.
+The old model assumes 0 = 0 and is unrealistic.  This is replaced by 0
+< 0 < 1, estimated from the data.  The new model is still called
+branch-site model A.  It can be compared with the new M1a
+(NearlyNeutral) to form a likelihood ratio test, with d.f.  2.  This
+is called test 1.  Another test, called test 2, uses a null model A
+but with 2 = 1 fixed (use fix_omega = 1 and omega = 1).  Test 2 is
+very conservative, but test 1 might mistake relaxed selective
+constraint on the foreground branch as positive selection.
+
+
+(1c) Similarly the clade model C ( see also Forsberg and Christiansen
+2003; Bielawski and Yang 2004) is changed as follows.  The new model C
+replaces 0 = 0 by 0 < 0 < 1 and has five parameters in the
+distribution: p0, p1, 0, 2, and 3.  The new model C can be compared
+with the new M1a (NearlyNeutral), with d.f.  3.
+
+(1d) The empirical Bayes procedure for calculating posterior
+probabilities of site classes under the site models, branch-site
+models, and clade models are called naïve empirical Bayes (NEB).  They
+are naïve because they use the MLEs of parameters without accounting
+for sampling errors in them.  This problem is now fixed using a
+procedure called Bayes empirical Bayes (BEB) (Yang, Wong, and Nielsen
+2005).  The BEB procedure is implemented for the site models M2a and
+M8, the (modified) branch-site model A, and the (modified) clade model
+C.  The old NEB calculation is kept in the output and the new BEB
+results follow the NEB result.  Perhaps I will remove the NEB
+calculation in later versions.
+
+
+baseml/codeml: rewrote likelihood clock and local clock models.
+Implemented models for combined analysis of multiple genes
+incorporating multiple calibration points (Yang and Yoder 2003).  The
+ad hoc rate smoothing procedure of Yang (2004) is implemented for
+nucleotide, amino acid, and codon substitution models, and the
+implementation also deals with missing species at some loci.  The
+option variable clock in the control files is now used differently
+from before.  See later in this documentation and also the readme and
+readme2 files in the folder examples/MouseLemurs/.
+
+baseml/codeml local clock models.  clock = 5 and 6 are added in
+3.14beta5.
+
+codeml: added branch-site models C and D (Bielawski and Yang in press).
+
+mcmctree: this program is disabled in this release.  The old program
+died and the new program is still under construction.
+
+The main body of this documentation may not be up to date. 
+
+
+
+Bug fixes and minor corrections
+
+
+baseml/codeml.  The output in the file rates under the gamma model
+lists inferred rate for each site.  The output is incorrect if the
+tree is large and scaling is used to avoid underflow.  The use of
+scaling is indicated by two lines of output on the monitor like the
+following:
+
+"2 node(s) used for scaling (Yang 2000 J Mol Evol 51:423-432):
+ 155 350".  
+
+The results are clearly wrong as the probabilities are much greater
+than 1, and the rates are many orders of magnitude too large, etc.
+Also under the same problematic condition the expected numbers of
+sites with certain site patterns in the file lnf are incorrect.  When
+scaling is not used, the results should be o.k. and look reasonable.
+This affects versions 3.13 and 3.14beta1-3.  This is fixed in version
+3.14.  Thanks for Nick Goldman for pointing out the error.
+
+yn00.  The program crashes for large datasets with many codons due to
+a memory allocation error.  This affects versions 3.13 and some
+versions of 3.14beta1.  The problem is fixed in version 3.14.
+
+aaml (codeml for amino acids).  Model REVaa_0 is broken due to lack of
+maintenance in versions 3.1, 3.11, 3,12, 3,13, and 3,14beta1-4.  It
+seems to be working in version 3.  This is fixed in 3.14beta5.  2
+April 2004.
+
+codonml (codeml for codons) in branch-site models (model = 2 NSsites =
+2 or 3) prior to 3.14beta3 have a scaling problem, which makes the
+length of the foreground branch to be incorrectly estimated.  Other
+branch lengths and substitution parameters, such as the parameters in
+the distribution, are corrected calculated, as well as the log
+likelihood values and the posterior probabilities.  27 March 2004
+
+pamp: The gamma parameter for variable rates among sites using the
+method of Yang & Kumar (1996) is not estimated correctly in 3.14beta1,
+beta2, beta3.  Versions 3.13d and earlier seem fine.
+
+codonml (codeml for codons) in version 3.14beta and 3.14beta1 does not
+work when fix_omega = 1 is used for branch models.  The results are
+incorrect.  Please use newer versions 3.14beta3 or later.  Also
+version 3.13 is fine.
+
+baseml: Models TN93 and REV are wrong when used with Mgene = 3 or 4.
 This seems correct in version 3.12 but went wrong in 3.13 and 3.14
 since I inserted TN92 between HKY85 and TN93.  Thanks for Lee Bofkin
 for reporting the error.
 
-(2) codonml (codeml for codons): When codon models are used to reconstruct
+codonml (codeml for codons): When codon models are used to reconstruct
 ancestral sequences (with RateAncestor = 1), the program lists
 synonymous and nonsynonymous changes at each site under the heading
 "Changes at sites (syn nonsyn)."  This listing is incorrect due to a
 bug in the program.  This bug affects versions 3.12, 3.13 and 3.14,
 and version 3.11 seems correct.  Thanks to Joe Bielawski.
+
+baseml/codeml: The SE's for divergence times under the clock models
+are calculated incorrectly.  This happens when you use clock = 1 or 2,
+supply fossil date to calculate absolute times, and request standard
+errors for times.  The estimates of times themselves are correct, but
+standard errors for times are wrong.  The SEs for times and for the
+rate under the TipDate model (clock = 3) are wrong as well.  The
+programs print out the variances after the +-, instead of their square
+roots.  This error was introduced in version 3.13.  Versions prior to
+3.13 are correct.  I posted an update 3.13d to fix this bug.
+
+evolver: the simulation program can now accept species names in the
+tree.  Note that the data file formats for evolver (MCbase.dat,
+MCcodon.dat, MCaa.dat) have changed and you might have to change your
+own data files.  Look at the files included in the package.
+
+The documentation in paml v3.13 from August 2002 - 12 December 2002
+had a mistake about the critical values for the newer test using a
+modified M8.  The critical values for the test are 2.71 at the 5%
+significance level and 5.41 at the 1% level, rather than 1.95 and 3.32
+as in the documentation.
+
+
+
+
+
+Version 3.14beta2, November 2003
+
+(1) baseml: Models TN93 and REV are wrong when used with Mgene = 3 or
+    4.  This seems correct in version 3.12 but went wrong in 3.13 and
+    3.14 since I inserted TN92 between HKY85 and TN93.  Thanks for Lee
+    Bofkin for reporting the error.
+
+(2) codonml (codeml for codons): When codon models are used to
+    reconstruct ancestral sequences (with RateAncestor = 1), the
+    program lists synonymous and nonsynonymous changes at each site
+    under the heading "Changes at sites (syn nonsyn)."  This listing
+    is incorrect due to a bug in the program.  This bug affects
+    versions 3.12, 3.13 and 3.14, and version 3.11 seems correct.
+    Thanks to Joe Bielawski.
 
 
 

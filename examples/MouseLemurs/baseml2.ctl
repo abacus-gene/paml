@@ -1,4 +1,4 @@
-      seqfile = MouseLemurs.nuc
+      seqfile = MouseLemurs123.nuc
      treefile = MouseLemurs.trees
 
       outfile = mlb       * main result file
@@ -9,12 +9,13 @@
                     * 5:T92, 6:TN93, 7:REV, 8:UNREST, 9:REVu; 10:UNRESTu
         Mgene = 0   * 0:rates, 1:separate; 2:diff pi, 3:diff kapa, 4:all diff
 
-        clock = 3   * 0:no clock, 1:clock; 2:local clock; 3:CombinedAnalysis
-    fix_kappa = 0   * 0: estimate kappa; 1: fix kappa at value below
-        kappa = 2.3   * initial or fixed kappa
-
-    fix_alpha = 0   * 0: estimate alpha; 1: fix alpha at value below
-        alpha = 0.5  * initial or fixed alpha, 0:infinity (constant rate)
+        ndata = 3   * number of data sets or locis
+        clock = 6   * 0:no clock, 1:clock; 2:local clock; 3:CombinedAnalysis
+    fix_kappa = 1   * 0: estimate kappa; 1: fix kappa at value below
+        kappa = 3.76303 3.18589 17.68357 * initial or fixed kappa
+ 
+    fix_alpha = 1   * 0: estimate alpha; 1: fix alpha at value below
+        alpha = 0.29169  0.16392  1.24726  * initial or fixed alpha, 0:infinity (constant rate)
        Malpha = 0   * 1: different alpha's for genes, 0: one alpha
         ncatG = 5  * # of categories in the dG, AdG, or nparK models of rates
 

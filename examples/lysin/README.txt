@@ -68,7 +68,7 @@ into 133a, you will get the following output in RasMol.txt for that
 site:
 
 	select 133a
-       	         color [250, 35, 35]
+        color [250, 35, 35]
 
 After codeml has generated RasMol.txt, you read the structure file
 1LIS.PDB into RasMol.  Choose "Display-Cartoon".  Then in the

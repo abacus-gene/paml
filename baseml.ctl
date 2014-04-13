@@ -12,6 +12,8 @@
         
         Mgene = 0   * 0:rates, 1:separate; 2:diff pi, 3:diff kapa, 4:all diff
 
+*        ndata = 5
+        clock = 0   * 0:no clock, 1:clock; 2:local clock; 3:CombinedAnalysis
     fix_kappa = 0   * 0: estimate kappa; 1: fix kappa at value below
         kappa = 5  * initial or fixed kappa
 
@@ -21,14 +23,12 @@
         ncatG = 5   * # of categories in the dG, AdG, or nparK models of rates
         nparK = 0   * rate-class models. 1:rK, 2:rK&fK, 3:rK&MK(1/K), 4:rK&MK 
 
-        clock = 0   * 0:no clock, 1:clock; 2:local clock; 3:CombinedAnalysis
         nhomo = 0   * 0 & 1: homogeneous, 2: kappa for branches, 3: N1, 4: N2
         getSE = 0   * 0: don't want them, 1: want S.E.s of estimates
  RateAncestor = 1   * (0,1,2): rates (alpha>0) or ancestral states
 
    Small_Diff = 7e-6
     cleandata = 1  * remove sites with ambiguity data (1:yes, 0:no)?
-*        ndata = 5
 *        icode = 0  * (with RateAncestor=1. try "GC" in data,model=4,Mgene=4)
 *  fix_blength = -1  * 0: ignore, -1: random, 1: initial, 2: fixed
         method = 0  * 0: simultaneous; 1: one branch at a time

@@ -10,7 +10,7 @@ char BASEs[]="TCAGUYRMKSWHBVDN?-";
 char nBASEs[]={1,1,1,1, 1,2,2,2,2,2,2, 3,3,3,3, 4,4,4};
 char *EquateNUC[]={"T","C","A","G", "T", "TC","AG","CA","TG","CG","TA",
      "TCA","TCG","CAG","TAG", "TCAG","TCAG","TCAG"};
-char AAs[] = "ARNDCQEGHILKMFPSTWYV*-?";
+char AAs[] = "ARNDCQEGHILKMFPSTWYV*-?x";
 char AA3Str[]=
      {"AlaArgAsnAspCysGlnGluGlyHisIleLeuLysMetPheProSerThrTrpTyrVal***"};
 char BINs[] ="TC";
@@ -75,7 +75,7 @@ int GeneticCode[][64] =
         5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8,
         9, 9, 9, 9,10,10,10,10,11,11,11,11,12,12,12,12,
        13,13,13,13,14,14,14,14,15,15,15,15,16,16,16,16} /* 11:Ziheng's regular code */
-     } ;                                         /* GeneticCode[icode][#codon] */
+     };                                         /* GeneticCode[icode][#codon] */
 
 
 
@@ -117,13 +117,13 @@ int dnamaker (char z[], int ls, double pi[])
 /* sequences z[] are coded 0,1,2,3
 */
    int i, j;
-   double p[4], r;
+   double p[4], r, small=1e-5;
 
    xtoy(pi, p, 4);
    for (i=1; i<4; i++) p[i]+=p[i-1];
-   if (fabs(p[3]-1) > 1e-5) error2("sum pi != 1..");
-   for (i=0; i<ls; i++) {
-      for(j=0,r=rndu();j<4;j++) if(r<p[j]) break;
+   if(fabs(p[3]-1)>small) error2("sum pi != 1..");
+   for(i=0; i<ls; i++) {
+      for(j=0,r=rndu(); j<4; j++) if(r<p[j]) break;
       z[i]=(char)j;
    }
    return (0);
@@ -297,8 +297,10 @@ int difcodonNG (char codon1[], char codon2[], double *SynSite,double *AsynSite,
          }
       }
       iaa[i]=GeneticCode[icode][iy[i]];
-      if(iaa[i]==-1) 
+      if(iaa[i]==-1) {
          printf("\nNG86: stop codon %s.\n",getcodon(str,iy[i]));
+         exit(-1);
+      }
       for(j=0; j<3; j++) 
          FOR (k,4) {
             if (k==b[i][j]) continue;
@@ -406,6 +408,22 @@ int PMatUVRoot (double P[], double t, int n, double U[], double V[],
 #endif
 
    return (0);
+}
+
+
+int PMatQRev(double Q[], double pi[], double t, int n, double space[])
+{
+/* This calculates P(t) = exp(Q*t), where Q is the rate matrix for a 
+   time-reversible Markov process.
+
+   Q[] or P[] has the rate matrix as input, and P(t) in return.
+   space[n*n*2+n*2]
+*/
+   double *U=space, *V=U+n*n, *Root=V+n*n, *spacesqrtpi=Root+n;
+
+   eigenQREV(Q, pi, n, Root, U, V, spacesqrtpi);
+   PMatUVRoot(Q, t, n, U, V, Root);
+   return(0);
 }
 
 
@@ -630,8 +648,9 @@ int Codon2AA(char codon[3], char aa[3], int icode, int *iaa)
       if(naa==0)  { iaa0=*iaa; naa++; }
       else if (*iaa!=iaa0)  naa=2;
    }
-   if(naa==0)
-      { printf("stop codon %c%c%c\n",codon[0],codon[1],codon[2]); *iaa=20; }
+   if(naa==0) {
+      printf("stop codon %c%c%c\n",codon[0],codon[1],codon[2]); *iaa=20;
+   }
    else if(naa==2)  *iaa=20; 
    else             *iaa=iaa0;
    strncpy(aa, AA3Str+*iaa*3, 3);
@@ -676,8 +695,8 @@ int printcu (FILE *fout, double fcodon[], int icode)
    noodle = strc(4*(10+2+wc)-2,word[1]);
    fprintf(fout, "\n%s\n", noodle);
    for(i=0; i<4; i++,FPN(fout)) {
-      FOR (j,4)  {
-         FOR (k,4)  {
+      FOR(j,4)  {
+         FOR(k,4)  {
             it=i*16+k*4+j;   
             iaa=GeneticCode[icode][it];
             if(iaa==-1) iaa=20;
@@ -695,7 +714,6 @@ int printcu (FILE *fout, double fcodon[], int icode)
       }
       fputs (noodle, fout);
    }
-
    return(0);
 }
 
@@ -750,7 +768,7 @@ int QtoPi (double Q[], double pi[], int n, double *space)
          T[i*(n+1)+j] =  Q[j*n+i];     /* transpose */
       T[i*(n+1)+n] = 0.;
    }
-   matinv( T, n, n+1, pi);
+   matinv(T, n, n+1, pi);
    for(i=0;i<n;i++) pi[i] = T[i*(n+1)+n];
    return (0);
 }
@@ -770,7 +788,7 @@ int PtoPi (double P[], double pi[], int n, double *space)
          T[i*(n+1)+j] = P[j*n+i]-(double)(i==j);     /* transpose */
       T[i*(n+1)+n] = 0;
    }
-   matinv( T, n, n+1, pi);
+   matinv(T, n, n+1, pi);
    for(i=0;i<n;i++) pi[i] = T[i*(n+1)+n];
    return (0);
 }
@@ -856,6 +874,7 @@ int printsma(FILE*fout, char*spname[], char*z[],
    FPN(fout);
    return(0);
 }
+
 
 
 /* ***************************
@@ -1042,7 +1061,8 @@ static unsigned int w_rndu=123456757;
 
 void SetSeed (unsigned int seed)
 {
-   if(sizeof(int)-4) puts("oh-oh, we are in trouble.  int not 32-bit?");
+   if(sizeof(int)-4) 
+      puts("oh-oh, we are in trouble.  int not 32-bit?");
    z_rndu=170*(seed%178)+137;
    w_rndu = seed*127773;
 }
@@ -1092,7 +1112,7 @@ double reflect(double x, double a, double b)
    double x0=x, small=1e-12, verysmall=1e-17;
 
    if(b-a<small)
-      printf("improper range x0=%.20e (%.20e, %.20e)\n", x0,a,b);
+      printf("\nimproper range x0=%.6g (%.6g, %.6g)\n", x0,a,b);
    /* small *= min2(0.5, fabs(a+b)/2); */
    small=0;
    for ( ; ; rounds++) {
@@ -1304,7 +1324,7 @@ int MultiNomial (int n, int ncat, double prob[], int nobs[], double space[])
    to speed up the process when ncat is large.
 */
    int i, j, crude=(ncat>20), ncrude, lcrude[200];
-   double r, *pcdf=(space==NULL?prob:space), small=1e-6;
+   double r, *pcdf=(space==NULL?prob:space), small=1e-5;
 
    ncrude=max2(5,ncat/20); ncrude=min2(200,ncrude);
    FOR(i,ncat) nobs[i]=0;
@@ -1312,7 +1332,8 @@ int MultiNomial (int n, int ncat, double prob[], int nobs[], double space[])
       xtoy(prob, pcdf, ncat);
       for(i=1; i<ncat; i++) pcdf[i]+=pcdf[i-1];
    }
-   if (fabs(pcdf[ncat-1]-1) > small) error2("sum P!=1 in MultiNomial");
+   if (fabs(pcdf[ncat-1]-1) > small) 
+      error2("sum P!=1 in MultiNomial");
    if (crude) {
       for(j=1,lcrude[0]=i=0; j<ncrude; j++)  {
          while (pcdf[i]<(double)j/ncrude) i++;
@@ -1368,7 +1389,7 @@ double CDFNormal (double x)
 /* Hill ID  (1973)  The normal integral.  Applied Statistics, 22:424-427.
    Algorithm AS 66.   (error < ?)
    adapted by Z. Yang, March 1994.  Hill's routine does not look good, and I
-   haven't consulted
+   haven't consulted the following reference.
       Adams AG  (1969)  Algorithm 39.  Areas under the normal curve.
       Computer J. 12: 197-198.
 */
@@ -1611,8 +1632,6 @@ int getab_gamma(double *a, double* b, double xmodetiles[3])
    return(0);
 }
 
-
-extern int LASTROUND;
 
 int DiscreteGamma (double freqK[], double rK[], 
     double alpha, double beta, int K, int median)
@@ -2031,14 +2050,219 @@ double InverseCDF(double(*cdf)(double x,double par[]),
 {
 /* Use x for initial value if in range
 */
+   int noisy0=noisy;
    double sdiff,step=min2(0.05,(xb[1]-xb[0])/100), e=1e-15;
 
+   noisy=0;
    prob_InverseCDF=p;  par_InverseCDF=par; cdf_InverseCDF=cdf;
    if(x<=xb[0]||x>=xb[1]) x=.5;
    LineSearch(diff_InverseCDF, &sdiff, &x, xb, step, e);
+   noisy=noisy0;
+
    return(x);
 }
 
+
+
+
+int GaussLegendreRule(double **x, double **w, int order)
+{
+/* this returns the Gauss-Legendre nodes and weights in x[] and w[].
+*/
+   int status=0;
+   static double x10[]={0.148874338981631210884826001130, 0.433395394129247190799265943166,
+                        0.679409568299024406234327365115, 0.865063366688984510732096688423,
+                        0.973906528517171720077964012084};
+   static double w10[]={0.295524224714752870173892994651, 0.269266719309996355091226921569,
+                        0.219086362515982043995534934228, 0.149451349150580593145776339658,
+                        0.066671344308688137593568809893};
+
+   static double x20[]={0.076526521133497333754640409399, 0.227785851141645078080496195369,
+                        0.373706088715419560672548177025, 0.510867001950827098004364050955,
+                        0.636053680726515025452836696226, 0.746331906460150792614305070356, 
+                        0.839116971822218823394529061702, 0.912234428251325905867752441203, 
+                        0.963971927277913791267666131197, 0.993128599185094924786122388471};
+   static double w20[]={0.152753387130725850698084331955, 0.149172986472603746787828737002, 
+                        0.142096109318382051329298325067, 0.131688638449176626898494499748, 
+                        0.118194531961518417312377377711, 0.101930119817240435036750135480, 
+                        0.083276741576704748724758143222, 0.062672048334109063569506535187, 
+                        0.040601429800386941331039952275, 0.017614007139152118311861962352};
+
+   static double x32[]={0.048307665687738316234812570441, 0.144471961582796493485186373599, 
+                        0.239287362252137074544603209166, 0.331868602282127649779916805730, 
+                        0.421351276130635345364119436172, 0.506899908932229390023747474378, 
+                        0.587715757240762329040745476402, 0.663044266930215200975115168663,
+                        0.732182118740289680387426665091, 0.794483795967942406963097298970, 
+                        0.849367613732569970133693004968, 0.896321155766052123965307243719, 
+                        0.934906075937739689170919134835, 0.964762255587506430773811928118, 
+                        0.985611511545268335400175044631, 0.997263861849481563544981128665};
+   static double w32[]={0.0965400885147278005667648300636, 0.0956387200792748594190820022041, 
+                        0.0938443990808045656391802376681, 0.0911738786957638847128685771116, 
+                        0.0876520930044038111427714627518, 0.0833119242269467552221990746043, 
+                        0.0781938957870703064717409188283, 0.0723457941088485062253993564785, 
+                        0.0658222227763618468376500637069, 0.0586840934785355471452836373002, 
+                        0.0509980592623761761961632446895, 0.0428358980222266806568786466061, 
+                        0.0342738629130214331026877322524, 0.0253920653092620594557525897892, 
+                        0.0162743947309056706051705622064, 0.0070186100094700966004070637389};
+
+   static double x64[]={0.024350292663424432508955842854, 0.072993121787799039449542941940, 
+                        0.121462819296120554470376463492, 0.169644420423992818037313629748, 
+                        0.217423643740007084149648748989, 0.264687162208767416373964172510, 
+                        0.311322871990210956157512698560, 0.357220158337668115950442615046, 
+                        0.402270157963991603695766771260, 0.446366017253464087984947714759, 
+                        0.489403145707052957478526307022, 0.531279464019894545658013903544, 
+                        0.571895646202634034283878116659, 0.611155355172393250248852971019, 
+                        0.648965471254657339857761231993, 0.685236313054233242563558371031,  
+                        0.719881850171610826848940217832, 0.752819907260531896611863774886, 
+                        0.783972358943341407610220525214, 0.813265315122797559741923338086, 
+                        0.840629296252580362751691544696, 0.865999398154092819760783385070, 
+                        0.889315445995114105853404038273, 0.910522137078502805756380668008, 
+                        0.929569172131939575821490154559, 0.946411374858402816062481491347, 
+                        0.961008799652053718918614121897, 0.973326827789910963741853507352, 
+                        0.983336253884625956931299302157, 0.991013371476744320739382383443, 
+                        0.996340116771955279346924500676, 0.999305041735772139456905624346};
+   static double w64[]={0.0486909570091397203833653907347, 0.0485754674415034269347990667840, 
+                        0.0483447622348029571697695271580, 0.0479993885964583077281261798713,
+                        0.0475401657148303086622822069442, 0.0469681828162100173253262857546, 
+                        0.0462847965813144172959532492323, 0.0454916279274181444797709969713, 
+                        0.0445905581637565630601347100309, 0.0435837245293234533768278609737, 
+                        0.0424735151236535890073397679088, 0.0412625632426235286101562974736, 
+                        0.0399537411327203413866569261283, 0.0385501531786156291289624969468, 
+                        0.0370551285402400460404151018096, 0.0354722132568823838106931467152, 
+                        0.0338051618371416093915654821107, 0.0320579283548515535854675043479, 
+                        0.0302346570724024788679740598195, 0.0283396726142594832275113052002, 
+                        0.0263774697150546586716917926252, 0.0243527025687108733381775504091, 
+                        0.0222701738083832541592983303842, 0.0201348231535302093723403167285, 
+                        0.0179517157756973430850453020011, 0.0157260304760247193219659952975, 
+                        0.0134630478967186425980607666860, 0.0111681394601311288185904930192, 
+                        0.0088467598263639477230309146597, 0.0065044579689783628561173604000, 
+                        0.0041470332605624676352875357286, 0.0017832807216964329472960791450};
+
+   if(order==10)
+      { *x=x10;  *w=w10; }
+   else if(order==20)
+      { *x=x20;  *w=w20; }
+   else if(order==32)
+      { *x=x32;  *w=w32; }
+   else if(order==64)
+      { *x=x64;  *w=w64; }
+   else {
+      puts("use 10, 20, 32 or 64 nodes for legendre.");
+      status=-1;
+   }
+   return(status);
+}
+
+
+
+double NIntegrateGaussLegendre(double(*fun)(double x), double a, double b, int order)
+{
+/* this approximates the integral Nintegrate[fun[x], {x,a,b}].
+*/
+   int i,j;
+   double *x, *w, s, t[2];
+
+   GaussLegendreRule(&x, &w, order);
+
+   for(j=0,s=0; j<order/2; j++) {
+      t[0]=(a+b)/2 + (b-a)/2*x[j];
+      t[1]=(a+b)/2 - (b-a)/2*x[j];
+      for(i=0; i<2; i++)
+         s+=w[j]*fun(t[i]);
+   }
+   return s*=(b-a)/2;
+}
+
+
+int GaussLaguerreRule(double **x, double **w, int order)
+{
+/* this returns the Gauss-Laguerre nodes and weights in x[] and w[].
+*/
+   int status=0;
+   static double x5[]={0.263560319718140910203061943361E+00,
+                       0.141340305910651679221840798019E+01, 
+                       0.359642577104072208122318658878E+01, 
+                       0.708581000585883755692212418111E+01, 
+                       0.126408008442757826594332193066E+02};
+   static double w5[]={0.521755610582808652475860928792E+00,
+                       0.398666811083175927454133348144E+00,
+                       0.759424496817075953876533114055E-01,
+                       0.361175867992204845446126257304E-02,
+                       0.233699723857762278911490845516E-04};
+
+   static double x10[]={0.137793470540492430830772505653E+00,
+	                   	0.729454549503170498160373121676E+00,
+	                   	0.180834290174031604823292007575E+01,
+	                   	0.340143369785489951448253222141E+01,
+	                   	0.555249614006380363241755848687E+01,
+                   		0.833015274676449670023876719727E+01,
+                   		0.118437858379000655649185389191E+02,
+                   		0.162792578313781020995326539358E+02,
+                   		0.219965858119807619512770901956E+02,
+		                	0.299206970122738915599087933408E+02};
+   static double w10[]={0.308441115765020141547470834678E+00,
+	                   	0.401119929155273551515780309913E+00,
+	                   	0.218068287611809421588648523475E+00,
+	                   	0.620874560986777473929021293135E-01,
+	                   	0.950151697518110055383907219417E-02,
+                   		0.753008388587538775455964353676E-03,
+                   		0.282592334959956556742256382685E-04,
+                   		0.424931398496268637258657665975E-06,
+                   		0.183956482397963078092153522436E-08,
+		                	0.991182721960900855837754728324E-12};
+
+   static double x20[]={0.705398896919887533666890045842E-01,
+                        0.372126818001611443794241388761E+00,
+                        0.916582102483273564667716277074E+00,
+                        0.170730653102834388068768966741E+01,
+	                   	0.274919925530943212964503046049E+01,
+	                   	0.404892531385088692237495336913E+01,
+	                   	0.561517497086161651410453988565E+01,
+	                   	0.745901745367106330976886021837E+01,
+                   		0.959439286958109677247367273428E+01,
+                   		0.120388025469643163096234092989E+02,
+                   		0.148142934426307399785126797100E+02,
+                   		0.179488955205193760173657909926E+02,
+		                	0.214787882402850109757351703696E+02,
+	                   	0.254517027931869055035186774846E+02,
+	                   	0.299325546317006120067136561352E+02,
+	                   	0.350134342404790000062849359067E+02,
+	                   	0.408330570567285710620295677078E+02,
+                   		0.476199940473465021399416271529E+02,
+                   		0.558107957500638988907507734445E+02,
+                        0.665244165256157538186403187915E+02};
+   static double w20[]={0.168746801851113862149223899689E+00,
+	                     0.291254362006068281716795323812E+00,
+	                   	0.266686102867001288549520868998E+00,
+	                   	0.166002453269506840031469127816E+00,
+	                   	0.748260646687923705400624639615E-01,
+	                   	0.249644173092832210728227383234E-01,
+                   		0.620255084457223684744754785395E-02,
+                   		0.114496238647690824203955356969E-02,
+                   		0.155741773027811974779809513214E-03,
+                   		0.154014408652249156893806714048E-04,
+		                	0.108648636651798235147970004439E-05,
+	                   	0.533012090955671475092780244305E-07,
+	                   	0.175798117905058200357787637840E-08,
+	                   	0.372550240251232087262924585338E-10,
+	                   	0.476752925157819052449488071613E-12,
+                   		0.337284424336243841236506064991E-14,
+                   		0.115501433950039883096396247181E-16,
+                   		0.153952214058234355346383319667E-19,
+                   		0.528644272556915782880273587683E-23,
+		                	0.165645661249902329590781908529E-27};
+   if(order==5)
+      { *x=x5;  *w=w5; }
+   else if(order==10)
+      { *x=x10;  *w=w10; }
+   else if(order==20)
+      { *x=x20;  *w=w20; }
+   else {
+      puts("use 10, 20, 32 or 64 nodes for legendre.");
+      status=-1;
+   }
+   return(status);
+}
 
 int ScatterPlot (int n, int nseries, int yLorR[], double x[], double y[],
     int nrow, int ncol, int ForE)
@@ -2119,6 +2343,62 @@ int ScatterPlot (int n, int nseries, int yLorR[], double x[], double y[],
    return(0);
 }
 
+void rainbowRGB (double temperature, int *R, int *G, int *B)
+{
+/* This returns the RGB values, each between 0 and 255, for given temperature 
+   value in the range (0, 1) in the rainbow.  
+   Curve fitting from the following data:
+
+    T        R       G       B
+    0        14      1       22
+    0.1      56      25      57
+    0.2      82      82      130
+    0.3      93      120     60
+    0.4      82      155     137
+    0.5      68      185     156
+    0.6      114     207     114
+    0.7      223     228     70
+    0.8      243     216     88
+    0.9      251     47      37
+    1        177     8       0
+
+*/
+   double T=temperature, maxT=1;
+
+   if(T>maxT) error2("temperature rescaling needed.");
+   *R = (int)fabs( -5157.3*T*T*T*T + 9681.4*T*T*T - 5491.9*T*T + 1137.7*T + 6.2168 );
+   *G = (int)fabs( -1181.4*T*T*T + 964.8*T*T + 203.66*T + 1.2028 );
+   *B = (int)fabs( 92.463*T*T*T - 595.92*T*T + 481.11*T + 21.769 );
+
+   if(*R>255) *R=255;
+   if(*G>255) *G=255;
+   if(*B>255) *B=255;
+}
+
+
+void GetIndexTernary(int *ix, int *iy, double *x, double *y, int itriangle, int K)
+{
+/*  This gives the indices (ix, iy) and the coordinates (x, y, 1-x-y) for 
+    the itriangle-th triangle, with itriangle from 0, 1, ..., KK-1.  
+    The ternary graph (0-1 on each axis) is partitioned into K*K equal-sized 
+    triangles.  
+    In the first row (ix=0), there is one triangle (iy=0);
+    In the second row (ix=1), there are 3 triangles (iy=0,1,2);
+    In the i-th row (ix=i), there are 2*i+1 triangles (iy=0,1,...,2*i).
+
+    x rises when ix goes up, but y decreases when iy increases.  (x,y) is the 
+    centroid in the ij-th small triangle.
+    
+    x and y each takes on 2*K-1 possible values.
+*/
+    *ix = (int)sqrt((double)itriangle);
+    *iy = itriangle - square(*ix);
+
+    *x = (1 + (*iy/2)*3 + (*iy%2))/(3.*K);
+    *y = (1 + (K-1- *ix)*3 + (*iy%2))/(3.*K);
+}
+
+
 
 long factorial(int n)
 {
@@ -2185,7 +2465,7 @@ int matIout (FILE *fout, int x[], int n, int m)
 {
    int i,j;
    for (i=0,FPN(fout); i<n; i++,FPN(fout)) 
-      FOR(j,m) fprintf(fout,"%6d", x[i*m+j]);
+      FOR(j,m) fprintf(fout,"  %4d", x[i*m+j]);
    return (0);
 }
 
@@ -2231,6 +2511,7 @@ int matinv (double x[], int n, int m, double space[])
 {
 /* x[n*m]  ... m>=n
    space[n].  This puts the fabs(|x|) into space[0].  Check and calculate |x|.
+   Det may have the wrong sign.  Check and fix.
 */
    register int i,j,k;
    int *irow=(int*) space;
@@ -2271,7 +2552,7 @@ int matinv (double x[], int n, int m, double space[])
       }
    }
    space[0]=det;
-   return (0);
+   return(0);
 }
 
 
@@ -2282,11 +2563,13 @@ int matexp (double Q[], double t, int n, int TimeSquare, double space[])
           TimeSquare is the number of times the matrix is squared and should 
           be from 5 to 31.
    Output: Q[] has the transition probability matrix, that is P(Qt).
+   space[n*n]: required working space.
 
       P(t) = (I + Qt/m + (Qt/m)^2/2)^m, with m = 2^TimeSquare.
 
    T[it=0] is the current matrix, and T[it=1] is the squared result matrix,
    used to avoid copying matrices.
+   Use an even TimeSquare to avoid one round of matrix copying.
 */
    int it, i;
    double *T[2];
@@ -2405,37 +2688,33 @@ int CholeskyInverse (double L[], int n)
 }
 
 
-
-
-int getpi_sqrt (double pi[], double pi_sqrt[], int n, int *npi0)
-{
-   int j;
-   for(j=0,*npi0=0; j<n; j++)
-      if(pi[j]) pi_sqrt[(*npi0)++]=sqrt(pi[j]);
-   *npi0 = n - *npi0;
-   return(0);
-}
-
-int eigenQREV (double Q[], double pi[], double pi_sqrt[], int n, int npi0,
-               double Root[], double U[], double V[])
+int eigenQREV (double Q[], double pi[], int n, 
+               double Root[], double U[], double V[], double spacesqrtpi[])
 {
 /* 
    This finds the eigen solution of the rate matrix Q for a time-reversible 
    Markov process, using the algorithm for a real symmetric matrix.
    Rate matrix Q = S * diag{pi} = U * diag{Root} * V, 
    where S is symmetrical, all elements of pi are positive, and U*V = I.
-   pi_sqrt[n-npi0] has to be calculated before calling this routine.
+   space[n] is for storing sqrt(pi).
 
    [U 0] [Q_0 0] [U^-1 0]    [Root  0]
    [0 I] [0   0] [0    I]  = [0     0]
 
    Ziheng Yang, 25 December 2001 (ref is CME/eigenQ.pdf)
 */
-   int i,j, inew,jnew, nnew=n-npi0, status;
+   int i,j, inew, jnew, nnew, status;
+   double *pi_sqrt=spacesqrtpi, small=1e-100;
+
+   for(j=0,nnew=0; j<n; j++)
+      if(pi[j]>small)
+         pi_sqrt[nnew++]=sqrt(pi[j]);
 
    /* store in U the symmetrical matrix S = sqrt(D) * Q * sqrt(-D) */
-   if(pi_sqrt==NULL)  error2("pi_sqrt should be calculated before");
-   if(npi0==0) {
+
+printf("");
+
+   if(nnew==n) {
       for(i=0; i<n; i++)
          for(j=0,U[i*n+i] = Q[i*n+i]; j<i; j++)
             U[i*n+j] = U[j*n+i] = (Q[i*n+j] * pi_sqrt[i]/pi_sqrt[j]);
@@ -2445,9 +2724,9 @@ int eigenQREV (double Q[], double pi[], double pi_sqrt[], int n, int npi0,
    }
    else {
       for(i=0,inew=0; i<n; i++) {
-         if(pi[i]) {
+         if(pi[i]>small) {
             for(j=0,jnew=0; j<i; j++) 
-               if(pi[j]) {
+               if(pi[j]>small) {
                   U[inew*nnew+jnew] = U[jnew*nnew+inew] 
                                     = Q[i*n+j] * pi_sqrt[inew]/pi_sqrt[jnew];
                   jnew++;
@@ -2459,11 +2738,11 @@ int eigenQREV (double Q[], double pi[], double pi_sqrt[], int n, int npi0,
       status=eigenRealSym(U, nnew, Root, V);
 
       for(i=n-1,inew=nnew-1; i>=0; i--)   /* construct Root */
-         Root[i] = (pi[i] ? Root[inew--] : 0);
+         Root[i] = (pi[i]>small ? Root[inew--] : 0);
       for(i=n-1,inew=nnew-1; i>=0; i--) {  /* construct V */
-         if(pi[i]) {
+         if(pi[i]>small) {
             for(j=n-1,jnew=nnew-1; j>=0; j--)
-               if(pi[j]) {
+               if(pi[j]>small) {
                   V[i*n+j] = U[jnew*nnew+inew]*pi_sqrt[jnew];
                   jnew--;
                }
@@ -2475,9 +2754,9 @@ int eigenQREV (double Q[], double pi[], double pi_sqrt[], int n, int npi0,
             for(j=0; j<n; j++)  V[i*n+j] = (i==j);
       }
       for(i=n-1,inew=nnew-1; i>=0; i--) {  /* construct U */
-         if(pi[i]) {
+         if(pi[i]>small) {
             for(j=n-1,jnew=nnew-1;j>=0;j--)
-               if(pi[j]) {
+               if(pi[j]>small) {
                   U[i*n+j] = U[inew*nnew+jnew]/pi_sqrt[inew];
                   jnew--;
                }
@@ -2860,7 +3139,7 @@ int density1d (FILE* fout, double y[], int n, int nbin, double minx,
             if(d<SQRT5) {
                nused++;
                lambda[k] += 1-0.2*d*d;  /* based on Epanechnikov kernel */
-               //lambda[k] += Epanechnikov(d)/(n*h);
+               /* lambda[k] += Epanechnikov(d)/(n*h); */
             }
             else if(nused==0)
                iL=i;
@@ -3033,7 +3312,7 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int nrho)
 
    if(nf2d>MAXNF2D) error2("I don't want to do that many!");
    FOR(i,nf2d) {
-      printf("pair #1 (e.g., type  1 3  to use variables #1 and #3)? ");
+      printf("pair #%d (e.g., type  1 3  to use variables #1 and #3)? ",i+1);
       scanf("%d%d", &ivar_f2d[i][0], &ivar_f2d[i][1]);
       ivar_f2d[i][0]--; ivar_f2d[i][1]--;
    }
@@ -3799,14 +4078,14 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
    ix[i] specifies the i-th free parameter
 
 */
-   int i,j, i1,i2,it, maxround=1000, fail=0, *xmark, *ix, nfree;
+   int i,j, i1,i2,it, maxround=10000, fail=0, *xmark, *ix, nfree;
    int Ngoodtimes=2, goodtimes=0;
    double small=1.e-30, sizep0=0;     /* small value for checking |w|=0 */
    double f0, *g0, *g, *p, *x0, *y, *s, *z, *H, *C, *tv;
    double w,v, alpha, am, h, maxstep=8;
 
 
-// e_branches=0.1;
+/* e_branches=0.1; */
 
    if(n==0) return(0);
    g0=space;   g=g0+n;  p=g+n;   x0=p+n;
@@ -3831,7 +4110,7 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
    SIZEp=999; 
    if (noisy>2) {
       printf ("\nIterating by ming2\nInitial: fx= %12.6f\nx=",f0);
-      FOR(i,n) printf("%9.5f",x[i]);   FPN(F0);
+      FOR(i,n) printf(" %8.5f",x[i]);   FPN(F0);
    }
 
    if (dfun)  (*dfun) (x0, &f0, g0, n);
@@ -3879,7 +4158,7 @@ else                      e_branches=max2(e,1e-6);
          fail=0;
          FOR(i,n)  x[i]=x0[i]+alpha*p[i];
          if (fout) {
-            fprintf (fout, "\n%3d %7.4f %13.6f  x: ", Iround+1, SIZEp, *f);
+            fprintf (fout, "\n%3d %7.4f %13.6f  x: ", Iround+1,SIZEp,*f);
             FOR (i,n) fprintf (fout, "%8.5f  ", x[i]);
             fflush (fout);
          }
@@ -3887,7 +4166,7 @@ else                      e_branches=max2(e,1e-6);
 
          if(Iround==0 || SIZEp<sizep0 || (SIZEp<.001 && sizep0<.001)) goodtimes++;
          else  goodtimes=0;
-         if((n==1||goodtimes>=Ngoodtimes) && SIZEp<(e>1e-5?.05:.01) && (f0- *f<2)
+         if((n==1||goodtimes>=Ngoodtimes) && SIZEp<(e>1e-5?.05:.001) && (f0- *f<0.1)
             && H_end(x0,x,f0,*f,e,e,n))
             break;
       }

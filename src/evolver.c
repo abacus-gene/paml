@@ -3,14 +3,16 @@
 
      cc -fast -o evolver evolver.c tools.o -lm
      cl -Ot -O2 evolver.c tools.c
+     cl -Ot -O2 -DCodonNSsites -FeevolverNSsites.exe evolver.c tools.c
+
      evolver
 */
 
 /* Do not define both CodonNSSites & CodonNSbranches */
 
 /*
-#define CodonNSsites     1
-#define CodonNSbranches  1
+#define CodonNSsites        1
+#define CodonNSbranches     1
 */
 
 #include "paml.h"
@@ -23,10 +25,10 @@
 
 struct CommonInfo {
    char *z[2*NS-1], spname[NS][LSPNAME+1], daafile[96], cleandata;
-   int ns,ls,npatt,*fpatt,np,ntime,ncode,clock,rooted,model,icode;
-   int seqtype, *pose, ncatG, npi0;
-   double kappa, omega, alpha, pi[64],*rates, *conP, daa[20*20], pi_sqrt[NCODE];
-   double freqK[NCATG],rK[NCATG];
+   int ns, ls, npatt, *fpatt, np, ntime, ncode, clock, rooted, model, icode;
+   int seqtype, *pose, ncatG;
+   double kappa, omega, alpha, pi[64],*rates, *conP, daa[20*20];
+   double freqK[NCATG], rK[NCATG];
 }  com;
 struct TREEB {
    int nbranch, nnode, root, branches[NBRANCH][2];
@@ -34,7 +36,7 @@ struct TREEB {
 struct TREEN {
    int father, nson, sons[NS], ibranch;
    double branch, age, omega, label, *conP;
-   char *nodeStr;
+   char *nodeStr, fossil;
 }  *nodes;
 
 extern char BASEs[];
@@ -47,8 +49,8 @@ int LASTROUND=0; /* not used */
 #include "treesub.c"
 #include "treespace.c"
 
-void TreeDistances (FILE* fout);
-void Simulate (char*ctlf);
+void TreeDistances(FILE* fout);
+void Simulate(char*ctlf);
 void MakeSeq(char*z, int ls);
 int EigenQbase(double rates[], double pi[], 
     double Root[],double U[],double V[],double Q[]);
@@ -67,7 +69,7 @@ enum {Poisson, EqualInput, Empirical, Empirical_F} AAModels;
 char *aamodels[]={"Poisson", "EqualInput", "Empirical", "Empirical_F"};
 
 
-double PMat[NCODE*NCODE],U[NCODE*NCODE],V[NCODE*NCODE],Root[NCODE];
+double PMat[NCODE*NCODE], U[NCODE*NCODE], V[NCODE*NCODE], Root[NCODE];
 static double Qfactor=-1, Qrates[5];  /* Qrates[] hold kappa's for nucleotides */
 
 
@@ -90,6 +92,7 @@ int main (int argc, char*argv[])
    }
    else {
       for(; ;) {
+         fflush(fout);
          printf("\n\t(1) Get random UNROOTED trees?\n"); 
          printf("\t(2) Get random ROOTED trees?\n"); 
          printf("\t(3) List all UNROOTED trees into file trees?\n");
@@ -100,10 +103,10 @@ int main (int argc, char*argv[])
          printf("\t(8) Calculate identical bi-partitions between trees?\n");
          printf("\t(0) Quit?\n");
 #if defined (CodonNSbranches)
-         option=6;  MCctlf="MCcodonNSbranches.dat";
+         option=6;  MCctlf = (argc==3 ? argv[2] : "MCcodonNSbranches.dat");
 #elif defined (CodonNSsites)
-         option=6;  MCctlf="MCcodonNSsites.dat";
-#else 
+         option=6;  MCctlf = (argc==3 ? argv[2] : "MCcodonNSsites.dat");
+#else
 
          /* option=9; */
          
@@ -193,6 +196,7 @@ void TreeDistances(FILE* fout)
    scanf ("%s", treef);
    ftree=gfopen (treef,"r");
    fscanf (ftree, "%d%d", &com.ns, &ntree);
+   printf("%2d sequences %2d trees.\n", com.ns, ntree);
    i=(com.ns*2-1)*sizeof(struct TREEN);
    if((nodes=(struct TREEN*)malloc(i))==NULL) error2("oom");
 
@@ -283,7 +287,7 @@ int EigenQbase(double rates[], double pi[],
 /* Construct the rate matrix Q[] for nucleotide model REV.
 */
    int i,j,k;
-   double mr;
+   double mr, space[4];
 
    zero (Q, 16);
    for (i=0,k=0; i<3; i++) for (j=i+1; j<4; j++)
@@ -293,21 +297,21 @@ int EigenQbase(double rates[], double pi[],
       { Q[i*4+i]=0; Q[i*4+i]=-sum(Q+i*4, 4); mr-=pi[i]*Q[i*4+i]; }
    abyx (1/mr, Q, 16);
 
-   eigenQREV(Q, com.pi, com.pi_sqrt, 4, com.npi0, Root, U, V);
+   eigenQREV(Q, com.pi, 4, Root, U, V, space);
    return (0);
 }
 
 
 static double freqK_NS=-1;
 
-int EigenQcodon (int getstats, double kappa,double omega,double pi[],
+int EigenQcodon (int getstats, double kappa, double omega, double pi[],
     double Root[], double U[], double V[], double Q[])
 {
 /* Construct the rate matrix Q[].
    64 codons are used, and stop codons have 0 freqs.
 */
    int n=com.ncode, i,j,k, c[2],ndiff,pos=0,from[3],to[3];
-   double mr;
+   double mr, space[64];
    
    FOR (i,n*n) Q[i]=0;
    for (i=0; i<n; i++) FOR (j,i) {
@@ -332,7 +336,7 @@ int EigenQcodon (int getstats, double kappa,double omega,double pi[],
    else {
       if(com.ncatG==0) FOR(i,n*n) Q[i]*=1/mr;
       else             FOR(i,n*n) Q[i]*=Qfactor;  /* NSsites models */
-      eigenQREV(Q, com.pi, com.pi_sqrt, n, com.npi0, Root, U, V);
+      eigenQREV(Q, com.pi, n, Root, U, V, space);
    }
 
    return (0);
@@ -340,12 +344,12 @@ int EigenQcodon (int getstats, double kappa,double omega,double pi[],
 
 
 
-int EigenQaa (double pi[],double Root[], double U[], double V[],double Q[])
+int EigenQaa (double pi[], double Root[], double U[], double V[], double Q[])
 {
 /* Construct the rate matrix Q[]
 */
    int n=20, i,j;
-   double mr;
+   double mr, space[20];
 
    FOR (i,n*n) Q[i]=0;
    switch (com.model) {
@@ -360,7 +364,7 @@ int EigenQaa (double pi[],double Root[], double U[], double V[],double Q[])
       Q[i*n+i]=0; Q[i*n+i]=-sum(Q+i*n,n);  mr-=com.pi[i]*Q[i*n+i]; 
    }
 
-   eigenQREV(Q, com.pi, com.pi_sqrt, n, com.npi0, Root, U, V);
+   eigenQREV(Q, com.pi, n, Root, U, V, space);
    FOR(i,n)  Root[i]=Root[i]/mr;
 
    return (0);
@@ -407,16 +411,50 @@ void MakeSeq(char*z, int ls)
 {
 /* makes a base, amino acid, or codon sequence using com.pi[].  
 */
-   int j,h, n=com.ncode;
-   double p[64],r, small=4e-6;
+   int i,j,h, n=com.ncode, ch, n31=(com.seqtype==1?3:1), lst;
+   double p[64],r, small=1e-5;
+   char *pch=(com.seqtype==2?AAs:BASEs);
+   char rootseqf[]="RootSeq.txt", codon[4]="   ";
+   FILE *fseq=(FILE*)fopen(rootseqf,"r");
+   static int times=0;
 
-   FOR(j,n) p[j]=com.pi[j];
-   for (j=1; j<n; j++) p[j]+=p[j-1];
-   if (fabs(p[n-1]-1) > small)
-      { printf("\nsum pi = %.6f != 1!\n",p[n-1]); exit(-1); }
-   for (h=0; h<com.ls; h++) {
-      for(j=0,r=rndu();j<n-1;j++) if(r<p[j]) break;
-      z[h]=(char)j;
+   if(fseq) {
+      if(times++==0) printf("\nReading sequence at the root from file.\n");
+      if(com.rates && com.ncatG>1) 
+         error2("sequence for root doesn't work for site-class models");
+      for(lst=0; ; ) {
+         for(i=0; i<n31; i++) {
+            while((ch=fgetc(fseq)) !=EOF && !isalpha(ch)) ;
+            if(ch==EOF) error2("EOF when reading root sequence.");
+            if(isalpha(ch))
+               codon[i]=(char)(ch=CodeChara((char)ch, com.seqtype));
+         }
+         if(com.seqtype==1) ch=codon[0]*16+codon[1]*4+codon[2];
+         if(ch<0 || ch>n-1) 
+            printf("error when reading site %d\n", lst+1);
+         if(com.seqtype==1 && com.pi[ch]==0)
+            printf("you seem to have a stop codon in the root sequence\n");
+
+         z[lst++]=(char)ch;
+         if(lst==com.ls) break;
+      }
+      fclose(fseq);
+/*
+      printf("\n|");
+      FOR(i,com.ls)
+         printf("%c",pch[z[i]]);
+      printf("|\n");
+*/
+   }
+   else {
+      FOR(j,n) p[j]=com.pi[j];
+      for (j=1; j<n; j++) p[j]+=p[j-1];
+      if(fabs(p[n-1]-1) > small)
+         { printf("\nsum pi = %.6f != 1!\n",p[n-1]); exit(-1); }
+      for(h=0; h<com.ls; h++) {
+         for(j=0,r=rndu();j<n-1;j++) if(r<p[j]) break;
+         z[h]=(char)j;
+      }
    }
 }
 
@@ -441,7 +479,7 @@ void Evolve1 (int inode)
          if (h==0 || (com.rates && com.rates[h]!=com.rates[h-1])) {
             r=(com.rates?com.rates[h]:1);
             switch(com.seqtype) {
-	         case (BASEseq):
+            case (BASEseq):
                if(com.model<=TN93)
                   PMatTN93(PMat, t*Qfactor*r*Qrates[0], 
                                  t*Qfactor*r*Qrates[1], t*Qfactor*r, com.pi);
@@ -480,9 +518,9 @@ void Simulate (char*ctlf)
    generated.
    space[com.ls] is used to hold site marks.
 */
-   int verbose=1;
+   int verbose=0;
    char *ancf="ancestral.seq", *sitesf="siterates";
-   enum {PAML,PAUP};
+   enum {PAML=0,PAUP};
    FILE *fin, *fseq, *ftree=NULL, *fanc=NULL, *fsites=NULL;
    char *paupstart="paupstart",*paupblock="paupblock",*paupend="paupend";
    char *siterate=NULL;  /* used if ncatG>1 */
@@ -580,14 +618,11 @@ void Simulate (char*ctlf)
    }
    else if(com.seqtype==CODONseq) {
 #if (defined CodonNSsites)
-      fscanf(fin,"%d",&com.ncatG);
-      fgets(line, lline, fin);
+      fscanf(fin,"%d",&com.ncatG);   fgets(line, lline, fin);
       if(com.ncatG>NCATG) error2("ncatG>NCATG");
-      FOR(i,com.ncatG) fscanf(fin,"%lf",&com.freqK[i]);
-      fgets(line, lline, fin);
-      FOR(i,com.ncatG) fscanf(fin,"%lf",&com.rK[i]);
-      fgets(line, lline, fin);
-      printf("\n\ndN/dS for site classes (K=%d)\np: ",com.ncatG);
+      FOR(i,com.ncatG) fscanf(fin,"%lf",&com.freqK[i]);  fgets(line, lline, fin);
+      FOR(i,com.ncatG) fscanf(fin,"%lf",&com.rK[i]);     fgets(line, lline, fin);
+      printf("\n\ndN/dS for site classes (K=%d)\np: ", com.ncatG);
       FOR(i,com.ncatG) printf("%9.5f",com.freqK[i]);
       printf("\nw: ");
       FOR(i,com.ncatG) printf("%9.5f",com.rK[i]);  FPN(F0);
@@ -629,9 +664,6 @@ void Simulate (char*ctlf)
          FOR(k,com.ncode) fscanf(fin,"%lf",&com.pi[k]);
    else if(com.model==0 || (com.seqtype==BASEseq && com.model<=K80)) 
       fillxc(com.pi,1./com.ncode,com.ncode);
-   for(j=0,com.npi0=0; j<com.ncode; j++)
-      if(com.pi[j]) com.pi_sqrt[com.npi0++]=sqrt(com.pi[j]);
-   com.npi0=com.ncode-com.npi0;
 
    printf("sum pi = 1 = %.6f:", sum(com.pi,com.ncode));
    matout2(F0,com.pi,1,com.ncode,7,4);
@@ -683,7 +715,7 @@ void Simulate (char*ctlf)
 
       if(com.alpha || com.ncatG>1) {
          fsites=(FILE*)gfopen(sitesf,"w");
-         if(com.seqtype==1) fputs("\nList of sites for last omega\nomega's",fsites);
+         if(com.seqtype==1) fputs("\nList of sites with omega>1\nomega's",fsites);
          else               fputs("\nRates for sites",fsites);
          if(com.seqtype==CODONseq && com.ncatG>1) {
             matout(fsites,com.rK, 1,com.ncatG);
@@ -703,8 +735,6 @@ void Simulate (char*ctlf)
          OutaTreeN(F0,0,1);  puts(";");
       }
       MakeSeq(com.z[tree.root],com.ls);
-
-/* printf("\a\a"); FOR(i,com.ls) com.z[tree.root][i]=(int)(rndu()*4); */
 
       if (com.alpha)
          Rates4Sites (com.rates,com.alpha,com.ncatG,com.ls, 0,space);
@@ -747,10 +777,14 @@ void Simulate (char*ctlf)
          }
          if(fsites) {
             if(com.seqtype==CODONseq && com.ncatG>1) {
-               for(h=0,j=0; h<com.ls; h++)  if(siterate[h]==com.ncatG-1) j++;
+               if(com.rK[com.ncatG-1]<=1)  
+                  j=0;
+               else 
+                  for(h=0,j=0; h<com.ls; h++)  
+                     if(com.rK[siterate[h]]>1) j++;
                fprintf(fsites,"\n[replicate %d: %2d]\n",ir+1,j);
-               FOR(h,com.ls)
-                  { if(siterate[h]==com.ncatG-1) fprintf(fsites,"%4d ",h+1);}
+               if(j) FOR(h,com.ls)
+                  { if(com.rK[siterate[h]]>1) fprintf(fsites,"%4d ",h+1);}
             }
             else {
                fprintf(fsites,"\n[replicate %d]\n",ir+1);
@@ -875,9 +909,7 @@ void CladeProbabilities (char treefile[])
          p+=4;
       }
    }
-   IncludeNodeLabel=3;
-   FPN(F0);  OutaTreeN(F0, 1, 0);  FPN(F0); 
-   IncludeNodeLabel=0;
+   FPN(F0);  OutaTreeN(F0,1,6);  FPN(F0);
 
    for(i=0;i<tree.nnode;i++) free(nodes[i].nodeStr);
    free(nodes); free(partition);  free(Pclade);

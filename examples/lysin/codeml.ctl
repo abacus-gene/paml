@@ -2,7 +2,7 @@
      treefile = lysin.trees
 
       outfile = mlc          * main result file name
-        noisy = 3   * 0,1,2,3,9: how much rubbish on the screen
+        noisy = 9   * 0,1,2,3,9: how much rubbish on the screen
       verbose = 1   * 1: detailed output, 0: concise output
       runmode = 0   * 0: user tree;  1: semi-automatic;  2: automatic
                     * 3: StepwiseAddition; (4,5):PerturbationNNI; -2: pairwise

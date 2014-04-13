@@ -5,11 +5,10 @@
 </head>
 
 <body link="#0000FF" vlink="#800080" bgcolor="#FFFFFF">
-<h2 align="center">Phylogenetic Analysis by Maximum Likelihood (PAML)<br>
-  Version 3.13, August 2002</h2>
+<h2 align="center">Phylogenetic Analysis by Maximum Likelihood (PAML)</h2>
 
-<p align="center"><a href="http://abacus.gene.ucl.ac.uk/"><b>Ziheng
-Yang</b></a> (<a href="mailto:z.yang@ucl.ac.uk">z.yang@ucl.ac.uk</a>)</p>
+<p align="center"><a href="http://abacus.gene.ucl.ac.uk/"> <b>Ziheng
+Yang</b></a> </p>
 
 
 
@@ -19,22 +18,24 @@ Yang</b></a> (<a href="mailto:z.yang@ucl.ac.uk">z.yang@ucl.ac.uk</a>)</p>
 
 <ul>
     <li><a href="#introduction">Introduction </a></li>
-    <li><blink><font size="5"><a href="speed.pdf">How fast is my new computer?</a></font></blink></li>
+    <li><a href="speed.pdf">How fast is my new computer?</a></li>
     <li><a href="#download">Downloading and Compiling PAML</a> </li>
     <li><a href="#running">Running Programs in PAML </a></li>
-    <li><a href="#history">History and Bug Fixes</a> </li>
+    <li>To ask questions, go to <a href="http://www.rannala.org/gsf/"><em>Genetics 
+    Software Forum</em></a> 
     <li><a href="pamlDOC.pdf">PAML Manual (pamlDOC.pdf)</a>
-    <li><a href="pamlFAQs.html">PAML FAQs</a>
-    </li>
+    <li><a href="pamlFAQs.pdf">PAML FAQs (pamlFAQs.pdf)</a>
+    <li><a href="#resources">PAML Resources on the web </a>
+    <li><a href="#bugs">Questions and Bug Reports</a> </li>
 </ul>
 
 
 <p>
-<h2><a name="introduction">Introduction</a></h2>
-<p>PAML is a program package for phylogenetic analyses of DNA or protein sequences 
-  using maximum likelihood. It is maintained and distributed for academic use 
-  free of charge by Ziheng Yang. ANSI C source codes as well as PowerMAC and Windows 
-  95/NT executables are provided. </p>
+<h2><a name="introduction">Introduction</a></h2> <p>PAML is a program
+package for phylogenetic analyses of DNA or protein sequences using
+maximum likelihood. It is maintained and distributed for academic use
+free of charge by Ziheng Yang. ANSI C source codes are distributed for
+UNIX/Linux/MAC OS X, and executables are provided for MS Windows. </p>
 
 <p>This document is about downloading and compiling PAML and getting
 started. See the manual (<a href="pamlDOC.pdf">pamlDOC.pdf</a>) for
@@ -188,63 +189,87 @@ packages. </p>
 
 The downloading ftp site is <a
 href="ftp://abacus.gene.ucl.ac.uk/pub/paml/">ftp://abacus.gene.ucl.ac.uk/pub/paml/</a>.
-Windows and Mac executables are provided, as well as C source codes
-for UNIX systems.  The source codes in those archives are exactly the
-same, so you get any archive to compile yourself.
-<p>
+Some network setup does not allow you to visit an anonymous ftp site,
+so you may have to speak to your system administrator.
+
+The archive, named something like paml*.*.tar.gz, is for all
+platforms.  It includes excutables for MS Windows, and has source
+files that you can compile for Mac OSX and unix/linux.
 
 
-<p><b>Windows 95/98/NT/2000/XP. </b> Download the win32 archive
-(paml*.*.win32.exe.  The self-extracting archive has all the files for
-the package (source codes, example data files, control files,
-documentation, and executables).  You can run it and it will explode
-into a directory with all the files.  Programs in the package (the
-<code>.EXE</code> files) are simple Win32 Console applications, and do
-not support mice or menues.  Open a "command prompt" box and type the
-name of the program rather than double-clicking the program name from
-Windows Explorer.
+<p><b>Windows 9x/NT/2000/XP. </b> Download the archive.  Unpack it
+into a folder, using Winzip, say.  The Windows executables are in the
+folder WinEXE/.  The programs are simple Win32 Console applications,
+and do not support mice or menu.  Open a "command prompt" box (Start -
+Programs - Accessories - Command Prompt).  Run the program by typing
+its name rather.  Avoid double-clicking the program names from Windows
+Explorer.  You may have to specify the full path, as follows
+(depending on where you put the paml folder on your hard disk):<p>
 
-<p><b>UNIX, linux, MAC OS X or other systems</b>. Download the UNIX archive (paml*.*.tar.gz 
-  or paml*.*.tar.Z) and save it on the disk. Then unpack it into a folder. You 
-  either 
-<blockquote> 
-  <p><code> gzip -d paml*.*.tar.gz </code></p>
-</blockquote>
-<p>or</p>
-<blockquote> 
-  <p><code>uncompress paml*.*.tar.Z </code></p>
-</blockquote>
-<p>Then </p>
 <blockquote>
-  <p><code>tar xf paml*.*.tar</code> </p>
+<code> 
+        /paml3.14/winEXE/codeml<br>
+	../../paml3.14/winEXE/codeml<br>
+</code>
 </blockquote>
 <p>
-<p> Change directory (cd) to src/. Type make to compile. You might have to open 
-  and edit the file Makefile (or copy from Makefile.UNIX) before you compile. 
-  For example, you can change cc to gcc and -fast to -O3 or -O4. Read readme.txt 
-  in the same folder for compiling instructions. 
-<p>MAC OS X. You should open a command terminal (Applications-Utilities-Terminal) 
-  and then compile and run the programs from the terminal. You cd to the paml 
-  folder and then look at the readme.txt or Makefile or Makefile.UNIX files. To 
-  compile the programs you either type the command make or copy the commands in 
-  te readme file. You will need the Mac Developer Toolkit installed on your MAC, 
-  otherwise you will get a &quot;Command not found&quot; error with either cc 
-  or make. You can go to the Apple web site to download and install the Toolkit 
-  (http://developer.apple.com/tools/index.html). There are some more notes about 
-  running programs on MAC OS X or UNIX at the FAQ page.
-<p>For linux administrators, a spec file <a href="paml.spec">paml.spec</a> for 
-  the linux installer rpm has been kindly prepared by Hunter Matthews &lt;thm@duke.edu&gt;. 
-<p><b>PowerMacs (PPC or G3 prior to OS X). </b>
-Download the compressed self-extracting archive for the PowerMac.
-  There is usually a time lag before the Mac version is made
-  available.  When you run the PowerMac programs, a command-line
-  window will pop up. You can then type in the name of the control
-  file. You can also hit Enter to use the default control file names
-  (<code>baseml.ctl</code> for <code>baseml</code> and
-  <code>basemlg</code>, <code>codeml.ctl</code> for
-  <code>codeml</code>). The sequence data files and tree structure
-  files do not have fixed names and can be specified in the control
-  files. Thanks to Andrew Rambaut for preparing the archive.</p>
+
+
+
+
+<p><b>UNIX, linux, MAC OS X or other systems</b>.  Save the archive on the
+  disk.  Unpack it into a folder, as follows<p>
+
+<blockquote>
+  <p><code> gzip -d paml3.14.tar.gz </code>
+</blockquote>
+<p>
+
+
+Then cd to the paml folder (you have to remember where you saved the
+files) and again cd to the src/ folder and compile the programs.<p>
+
+<blockquote><code>
+     cd  src <br>
+     make -f Makefile <br>
+     ls -lF  <br>
+     rm *.o  <br>
+     mv baseml basemlg codeml pamp evolver yn00 chi2 ..  <br>
+     cd ..  <br>
+     baseml <br>
+     codeml <br>
+     evolver <br>
+</code></blockquote>
+
+You might have to open and edit the file Makefile before compiling
+using make.  For example, you can change cc to gcc and -fast to -O3 or
+-O4.  Also see readme.txt in the same folder for compiling
+instructions.  You might want to mv the executables into the bin/
+folder on your accounts rather than the paml main folder.  And
+finally, if your current folder is not on your search path, you will
+have to add ./ in front fo the executable file name; that is, use
+./codeml instead of codeml to run codeml.
+
+<p><i>MAC OS X</i>. You should open a command terminal
+  (Applications-Utilities-Terminal) and then compile and run the
+  programs from the terminal.  You cd to the paml folder and then look
+  at the readme.txt or Makefile or Makefile.UNIX files.  See above.
+  You will need the Mac Developer Toolkit, which is not included in a
+  standard installation of OS X and you will get a &quot;Command not
+  found&quot; error with either cc or make.  So you should go to the
+  Apple web site to download and install the Toolkit
+  (http://developer.apple.com/tools/index.html). There are some more
+  notes about running programs on MAC OS X or UNIX at the FAQ page.
+  <p>For linux administrators, a spec file <a
+  href="paml.spec">paml.spec</a> for the linux installer rpm has been
+  kindly prepared by Hunter Matthews.
+
+
+<p><b>PowerMacs (PPC or G3 prior to OS X). </b> Since OS X is now
+common, I have stopped distributing executables for MACs running OS 9
+or earlier.  MAC executables for two old versions, 3.0a and 3.0c, are
+still in the OldVersions/ folder at the ftp site.
+
 
 <h2><a name="running">Running Programs in PAML </a></h2>
 
@@ -311,39 +336,61 @@ programs from a command prompt by </p>
 can do this on a Windows machine too, but it is better if you
 open a command box and run the program from there. 
 
-<h2><a name="history">History and Bug Fixes </a></h2>
+
+
+<h1><a name="resources">PAML Resources on the web</a> </h1>
+<ul>
+    <li><a href="http://www.rannala.org/phpBB2/">PAML discussion group</a>
+    <li><a href="http://apt.bea.ki.se">Redhat linux rpm </a>in the Biorpms repository
+    <li><a href="pamlResources/readme.txt">A C program for summarizing codeml results for sites under positive selection </a>
+</ul>
+
+<h2>Resources for UNIX (Mac OSX) and DOS/Windows </h2>
+
+You need to know a few basics UNIX or DOS commands and know how to run
+a program from the command line.  I listed a few in the documentation
+included in the package.  There are many little books that teach you
+the basics of UNIX, with titles like "UNIX basics", "Teach yourself
+UNIX or linux in 24 hours", etc.  Get one of those from the local
+bookstore.  There are also a lot of resources on the web.  Search for "UNIX basics", for example.  <p>
+
+<a href="http://workshop.molecularevolution.org/resources/computing.php">Linux
+Tutorial from Workshop on Molecular Evolution, Woods Hole</a>
+
+
+<h2><a name="bugs">Questions and Bug Reports</a></h2>
 
 <p><a href="pamlHistory.txt">Update history and bug fixes </a>
 collected here. </p>
 
-<p>Due to the amount of emails I receive about the programs, I will not reply 
-  to some emails if I believe the answers are readily available from the documentation 
-  (pamlDOC.pdf), the web site, the FAQ page and/or the examples included in the 
-  package. Questions of this nature include &quot;how do I specify such and such 
-  options to do such and such analysis&quot;, &quot;can you tell me how maximum 
-  likelihood works&quot;, and &quot;my supervisor wants results by this afternoon. 
-  Can you do the analysis for me?&quot;</p>
-<p> I will try to reply to reports of bugs and problems or if the answers are 
-  not easily available from those sources. When you have a problem, try to identify 
-  where the problem lies. Most of programs in paml read your control file and 
-  sequence file before doing any calculation. You can ask questions such as &quot;Does 
-  the program read the sequences correctly?&quot;, &quot;Does it read my tree 
-  file correctly&quot;. Problems at this stage can mostly be solved by your editing 
-  the files.</p>
+<p>Please try to solve your problems by reading the manual
+  (pamlDOC.pdf) and the paml FAQ page. Try to identify where the
+  problem lies. You should be able to tell from the screen output
+  whether the program reads the sequence and tree files correctly and
+  to correct mistakes in those files.  
 
-<p><b>When reporting problems, please mention the version number of
-the package you use (for example, 3.0c for UNIX) and include a copy of
-the control file (</b><code><b>baseml.ctl</b></code><b> or
-</b><code><b>codeml.ctl</b></code><b>).  Please let me know exactly
-what happened and when, and inlcude screen output generated by the
-program, especially the last few lines on the screen.  I would also
-like to know the number of sequences and the sequence length in case
-the problem has to do with the size of the data set.</b> 
-<p> Try to provide enough information for me to understand and reproduce the problem. 
-  The most frustrating email I get says "PAML does not work on my data. Can you 
-  help?", without any explanation about what the problem is. <p> <p>
+<p>If you can't find answers to your questions in those resources, you
+  can post your question at the <em>Genetics Software Forum</em> (<a
+  href="http://www.rannala.org/gsf/">http://www.rannala.org/gsf/</a>),
+  set up by Dr Bruce Rannala.  This was set up to hopefully reduce the
+  amount of time I have to spend in answering user questions.
 
-The nice buttons below do not work.  So don't click on them.<p>
+<p>When reporting problems, please mention the version number, what you
+  did and what happened.  In particular copy any error message on the
+  screen into the message.  Please use an informative
+  &quot;Subject:&quot; field such as "paml/baseml: oom".
+
+<p><b>Try not to send messages to me.  I will try to read and answer
+  questions at the discussion site at least once a week.  Messages
+  sent to my mail box will be delayed by 2 weeks before I try to
+  reply, and I will ignore some messages if the answers are readily
+  available from the documentations.  Sorry for the inadequate support
+  but I receive more messages than I can answer. </b>
+
+<p>
+
+<p>Some of the nice buttons work. Enjoy clicking on them.</p>
+<p>
 
 <table width="100%" border="0" cellpadding="2">
   <tr> 
@@ -400,12 +447,12 @@ The nice buttons below do not work.  So don't click on them.<p>
     </embed> 
   </object></p>
 
-<p>
 
-Counter since 8 March 2002. </p>
-
-
-<!--Begin Ultimate Counter code--><center>
+<p>Counter since 8 March 2002. 
+  <!--Begin Ultimate Counter code-->
+</p>
+<p></p>
+<center>
 <a target="_top" href="http://www.UltimateCounter.com/link.cgi?id=495833">
 <img src = "http://www.UltimateCounter.com/count/count.cgi?495833">
 </a></center><!--End Ultimate Counter code--> 

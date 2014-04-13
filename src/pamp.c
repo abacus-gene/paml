@@ -37,8 +37,7 @@ struct CommonInfo {
    double *fpatt, *conP;
    /* not used */
    double lmax,pi[NCODE], kappa,alpha,rou, rgene[NGENE],piG[NGENE][NCODE];
-   int npi0, readpattf;
-   double pi_sqrt[NCODE];
+   int readpattf;
 }  com;
 struct TREEB {
    int nbranch, nnode, root, branches[NBRANCH][2];
@@ -47,6 +46,7 @@ struct TREEB {
 struct TREEN {
    int father, nson, sons[NS], ibranch;
    double branch, age, label, *conP;
+   char fossil;
 }  *nodes;
 
 
@@ -522,8 +522,8 @@ double DistanceREV (double Ft[], int n,double alpha,double Root[],double U[],
    output: Q(in Ft), t, Root, U, V, and cond
    space[n*n*2]
 */
-   int i,j, npi0=0;
-   double *Q=Ft, *T1=space, *T2=space+n*n, t, pi_sqrt[20]={0}, small=0.1/com.ls;
+   int i,j;
+   double *Q=Ft, *T1=space, *T2=space+n*n, t, pi_sqrt[20], small=0.1/com.ls;
    
    for (i=0,t=0; i<n; i++) FOR (j,n) if (i-j) t+=Q[i*n+j];
    if (t<small)  { *cond=1; zero(Q,n*n); return (0); }
@@ -533,12 +533,11 @@ double DistanceREV (double Ft[], int n,double alpha,double Root[],double U[],
 
    for(i=0;i<n;i++) {
       pi[i]=sum(Q+i*n, n);
-      pi_sqrt[i]=sqrt(pi[i]);
-      if(pi[i]<small) npi0++;
-      else            abyx(1/pi[i], Q+i*n, n); 
+      if(pi[i]>small) 
+         abyx(1/pi[i], Q+i*n, n); 
    }
 
-   eigenQREV(Q, pi, pi_sqrt, n, npi0, Root, U, V);
+   eigenQREV(Q, pi, n, Root, U, V, pi_sqrt);
    FOR (i,n) {
       if (Root[i]<=0)  {
          printf ("  Root %d:%10.4f", i+1, Root[i]); 

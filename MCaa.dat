@@ -1,7 +1,7 @@
 0           * 0:paml format (mc.paml); 1:paup format (mc.paup)
 13147       * random number seed (odd number)
 
-5 10000 5   * <# seqs>  <# nucleotide sites>  <# replicates>
+5 10000 5   * <# seqs>  <# sites>  <# replicates>
 
 -1
 (((Human:0.06135, Chimpanzee:0.07636):0.03287, Gorilla:0.08197):0.11219, Orangutan:0.28339, Gibbon:0.42389);
@@ -22,7 +22,7 @@ Notes for using the option in evolver to simulate amino acid sequences.
 Change values of parameters, but do not delete them.  It is o.k. to add 
 empty lines, but do not break down the same line into two or more lines.
 
-  model = 0 (poisson), 1 (proportional), 2 (empirical), 3(empirical_F)
+  model = 0 (poisson), 1 (proportional), 2 (empirical), 3 (empirical_F)
   Use 0 for alpha to have the same rate for all sites.
   Use 0 for <#categories for discrete gamma> to use the continuous gamma
   <aa substitution rate file> can be dayhoff.dat, jones.dat, and so on.

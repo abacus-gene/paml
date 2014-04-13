@@ -1,7 +1,7 @@
 /* paml.h 
 */
 
-#if !defined (PAML_H)
+#if (!defined PAML_H)
 #define PAML_H
 
 #include <stdio.h>
@@ -76,9 +76,14 @@ double probBetaBinomial (int n, int k, double p, double q);
 long factorial(int n);
 double Binomial(double n, int k, double *scale);
 
+int GaussLegendreRule(double **x, double **w, int order);
+int GaussLaguerreRule(double **x, double **w, int order);
+double NIntegrateGaussLegendre(double(*fun)(double x), double a, double b, int order);
+
 int ScatterPlot (int n, int nseries, int yLorR[], double x[], double y[],
     int nrow, int ncol, int ForE);
 void rainbowRGB (double temperature, int *R, int *G, int *B);
+void GetIndexTernary(int *ix, int *iy, double *x, double *y, int itriangle, int K);
 
 int CodeChara (char b, int seqtype);
 int dnamaker (char z[], int ls, double pi[]);
@@ -112,13 +117,12 @@ int PMatT92 (double P[], double t, double kappa, double pGC);
 int PMatTN93 (double P[], double a1t, double a2t, double bt, double pi[]);
 int PMatUVRoot (double P[],double t,int n,double U[],double V[],double Root[]);
 int PMatCijk (double PMat[], double t);
+int PMatQRev(double P[], double pi[], double t, int n, double space[]);
 int EvolveHKY85 (char source[], char target[], int ls, double t, 
     double rates[], double pi[], double kapa, int isHKY85);
 double DistanceIJ (int is, int js, int model, double alpha, double *kappa);
 int DistanceMatNuc (FILE *fout, FILE*f2base, int model, double alpha);
-int getpi_sqrt (double pi[], double pi_sqrt[], int n, int *npi0);
-int EigenQREVbase (FILE* fout, double kappa[], 
-                   double pi[], double pi_sqrt[], int npi0,
+int EigenQREVbase (FILE* fout, double kappa[], double pi[], 
                    int *nR, double Root[], double Cijk[]);
 
 int BootstrapSeq (char* seqfilename);
@@ -149,7 +153,7 @@ char *strc (int n, char c);
 int printdouble(FILE*fout, double a);
 void strcase (char *str, int direction);
 void error2(char * message);
-int  sort1 (double x[], int n, int rank[], int descending, int space[]);
+int  sort1(double x[], int n, int rank[], int descending, int space[]);
 FILE *gfopen(char *filename, char *mode);
 int  appendfile(FILE*fout, char*filename);
 
@@ -176,11 +180,9 @@ int matinv (double x[], int n, int m, double space[]);
 int matexp (double Q[], double t, int n, int TimeSquare, double space[]);
 int matsqrt (double A[], int n, double work[]);
 int CholeskyDecomp (double A[], int n, double L[]);
-int eigenQREV (double Q[], double pi[], double pi_sqrt[], int n, int npi0,
-             double Root[], double U[], double V[]);
+int eigenQREV (double Q[], double pi[], int n, 
+               double Root[], double U[], double V[], double spacesqrtpi[]);
 int eigenRealSym(double A[], int n, double Root[], double work[]);
-int eigen (int job, double A[], int n, double rr[], double ri[],
-          double vr[], double vi[], double w[]);
 
 int MeanVar (double x[], int n, double *mean, double *var);
 int variance (double x[], int n, int nx, double mx[], double vx[]);
@@ -236,7 +238,7 @@ void BranchToNode (void);
 void ClearNode (int inode);
 int ReadaTreeN (FILE *ftree, int *haslength, int *haslabel, int copyname, int popline);
 int ReadaTreeB (FILE *ftree, int popline);
-int OutaTreeN (FILE *fout, int spnames, int branchlen);
+int OutaTreeN (FILE *fout, int spnames, int printopt);
 int OutaTreeB (FILE *fout);
 int DeRoot (void);
 int GetSubTreeN (int keep[], int space[]);
@@ -301,6 +303,16 @@ int Rates4Sites (double rates[],double alfa,int ncatG,int ls, int cdf,
 void Evolve (int inode);
 void EvolveJC (int inode);
 
+
+/* dating using complex data */
+int ReadTreeSeqs(FILE*fout);
+int UseLocus (int locus, int copyconP, int setmodel, int setSeqName);
+int GetGtree(int locus);
+void printGtree(int printBlength);
+void copySptree(void);
+void printSptree(void);
+
+
 #define  BASEseq     0
 #define  CODONseq    1
 #define  AAseq       2
@@ -310,9 +322,9 @@ void EvolveJC (int inode);
 #define FAST_RANDOM_NUMBER
 
 
-#define RELEASE      1
+#define RELEASE      0
 
-#define VerStr "paml 3.14beta, July 2003"
+#define VerStr "paml 3.14, January 2004"
 
 
 /*

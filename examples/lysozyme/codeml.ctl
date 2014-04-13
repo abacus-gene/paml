@@ -13,13 +13,13 @@
                     * models for codons:
                         * 0:one, 1:b, 2:2 or more dN/dS ratios for branches
 
-      NSsites = 0   * dN/dS among sites. 0:no variation, 1:neutral, 2:positive
+      NSsites = 2   * dN/dS among sites. 0:no variation, 1:neutral, 2:positive
         icode = 0   * 0:standard genetic code; 1:mammalian mt; 2-10:see below
 
     fix_kappa = 0   * 1: kappa fixed, 0: kappa to be estimated
-        kappa = 2   * initial or fixed kappa
+        kappa = 4.54006   * initial or fixed kappa
     fix_omega = 0   * 1: omega or omega_1 fixed, 0: estimate 
-        omega = 1   * initial or fixed omega, for codons or codon-transltd AAs
+        omega = 0.80663   * initial or fixed omega, for codons or codon-transltd AAs
 
     fix_alpha = 1   * 0: estimate gamma shape parameter; 1: fix it at alpha
         alpha = .0  * initial or fixed alpha, 0:infinity (constant rate)
@@ -28,9 +28,10 @@
 
         clock = 0   * 0: no clock, unrooted tree, 1: clock, rooted tree
         getSE = 0   * 0: don't want them, 1: want S.E.s of estimates
- RateAncestor = 0   * (1/0): rates (alpha>0) or ancestral states (alpha=0)
-       method = 0   * 0: simultaneous; 1: one branch at a time
+ RateAncestor = 1   * (1/0): rates (alpha>0) or ancestral states (alpha=0)
 
+  fix_blength = 1  * 0: ignore, -1: random, 1: initial, 2: fixed
+       method = 0   * 0: simultaneous; 1: one branch at a time
 
 * Specifications for duplicating results for the small data set in table 1
 * of Yang (1998 MBE 15:568-573).

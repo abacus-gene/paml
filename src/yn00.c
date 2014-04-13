@@ -5,10 +5,12 @@
    Copyright, 1998, Ziheng Yang
 
                  cc -o yn00 -fast yn00.c tools.o -lm
-                     yn00 <SequenceFileName>
+                 cl -O2 yn00.c tools.o
+                 yn00 <SequenceFileName>
 
   Codon sequences are encoded as 0,1,...,63, and matrices P(t) and Q
-  etc. have size 64x64.  This is different from codeml.c.
+  etc. have size 64x64.  This is different from codeml.c.  
+  Care should be taken when moving routines between yn00 and codeml.
 
   Routines in the two files should not be mixed.
 */
@@ -44,11 +46,10 @@ void SimulateData2s64(FILE* fout, double f3x4_0[], double space[]);
 struct common_info {
    char *z[NS], *spname[NS], seqf[96],outf[96];
    int ns,ls,npatt,codonf,icode,ncode,getSE,*pose,verbose, seqtype, cleandata;
-   int fcommon,kcommon, iteration, ndata, npi0, print;
+   int fcommon,kcommon, iteration, ndata, print;
    double *fpatt, pi[NCODE], f3x4s[NS][12], kappa, omega;
    int ngene,posG[NGENE+1],lgene[NGENE],fix_rgene, model, readpattf;
    double rgene[NGENE],piG[NGENE][NCODE], alpha;
-   double pi_sqrt[NCODE];
 }  com;
 
 
@@ -74,14 +75,16 @@ int main(int argc, char *argv[])
 {
    char dsf[32]="2YN.dS",dnf[32]="2YN.dN",tf[32]="2YN.t";
    FILE *fout, *fseq, *fds,*fdn,*ft;
-   char ctlf[96]="yn00.ctl";
-   int n=com.ncode, is,js, j,k, idata, wname=20, sspace;
+   char ctlf[96]="yn00.ctl", timestr[64];
+   int    n=com.ncode, is,js, j,k, idata, wname=20, sspace;
    double t=0.4, dS=0.1,dN=0.1, S,N, SEdS, SEdN, f3x4[12], *space=NULL;
+   int compressdata=0;
 
    /* ConsistencyMC(); */
 
    printf("YN00 in %s\n",  VerStr);
-   if (argc>1)  strcpy(ctlf, argv[1]); 
+   starttime();
+  if (argc>1)  strcpy(ctlf, argv[1]); 
    com.seqtype=1;  com.cleandata=1; com.ndata=1;  com.print=0;
    noisy=1; com.icode=0;  com.fcommon=0;  com.kcommon=1;
    GetOptions (ctlf);
@@ -95,8 +98,6 @@ int main(int argc, char *argv[])
       printf ("\n\nSequence file %s not found!\n", com.seqf);
       exit(-1);
    }
-   k=max2(64*64,com.ls/3)*sizeof(double);
-   if ((com.fpatt=(double*)malloc(k))==NULL)  error2("oom fpatt");
    for (idata=0; idata<com.ndata; idata++) {
       if (com.ndata>1) {
          printf("\nData set %d\n", idata+1);
@@ -110,12 +111,18 @@ int main(int argc, char *argv[])
       if ((space=(double*)realloc(space,sspace))==NULL) error2("oom space");
 
       com.kappa=4.6;  com.omega=1;
+      EncodeSeqCodon();
 
-      EncodeSeqCodon();   /* ls changed to ls/3 in this */
-      com.npatt=com.ls;  FOR(k,com.ls) com.fpatt[k]=1;
-
+      if(compressdata)
+         PatternWeight(fout); 
+      else {
+         com.npatt=com.ls;  
+         k = max2(64*64,com.ls)*sizeof(double);
+         if ((com.fpatt=(double*)realloc(com.fpatt,k))==NULL) error2("oom fpatt");
+         FOR(k,com.ls) com.fpatt[k]=1;
+      }
       fprintf (fout,"YN00 %15s", com.seqf);
-      Statistics(fout, space); 
+      Statistics(fout, space);
       DistanceMatNG86(fout,0);  fflush(fout);
 
       if(noisy) puts("\nEstimation by the method of Yang & Nielsen (2000):");
@@ -157,7 +164,7 @@ int main(int argc, char *argv[])
       }       /* for (is) */
       FPN(fds); FPN(fdn); FPN(ft);
       fflush(frst);
-      FPN(F0);
+      if(noisy) printf("\nTime used: %s\n", printtime(timestr));
    }
    return (0);
 }
@@ -300,7 +307,7 @@ int EncodeSeqCodon(void)
       }
    }
    if (indel) error2("indel?");
-   FOR(is,com.ns) com.z[is]=(char*)realloc(com.z[is], (com.ls+1)*sizeof(char));
+   FOR(is,com.ns) com.z[is]=(char*)realloc(com.z[is], com.ls*sizeof(char));
    return(0);
 }
 
@@ -329,7 +336,7 @@ int Statistics(FILE *fout, double space[])
          FOR (j,3) {
             fprintf (fout, "\nposition %2d:", j+1);
             FOR(h,4) fprintf (fout,"%5c:%7.5f", BASEs[h], com.f3x4s[is][j*4+h]);
-	 }
+         }
       }
    }
    if(fout) {
@@ -371,10 +378,6 @@ int GetFreqs(int is1, int is2, double f3x4[], double pi[])
    }
    FOR(j,n) pi[j]/=(1-fstop);
    if (fabs(1-sum(pi,n))>1e-6) error2("err GetFreqs()");
-
-   for(j=0,com.npi0=0; j<n; j++)
-      if(com.pi[j]) com.pi_sqrt[com.npi0++]=sqrt(com.pi[j]);
-   com.npi0=n-com.npi0;
 
    return (0);
 }
@@ -543,7 +546,8 @@ int CountSites(char z[],double pi[],double*Stot,double*Ntot,double fbS[],double 
    for (h=0; h<com.npatt; h++)  {
       c[0]=z[h]; b[0]=c[0]/16; b[1]=(c[0]%16)/4; b[2]=c[0]%4;
       aa[0]=GeneticCode[com.icode][c[0]];
-      if (aa[0]==-1) error2("stop codon");
+      if (aa[0]==-1) 
+         error2("stop codon");
       for (j=0,S=N=0; j<3; j++) {
          FOR (k,4) {    /* b[j] changes to k */
             if (k==b[j]) continue;
@@ -571,7 +575,7 @@ int GetPMatCodon(double P[],double t, double kappa, double omega, double space[]
 /* Get PMat=exp(Q*t) for weighting pathways
 */
    int nterms=100, n=NCODE, i,j,k, c[2],ndiff,pos=0,from[3],to[3];
-   double *Q=P, *U=space+n*n, *V=U+n*n, *Root=V+n*n, mr;
+   double *Q=P, *U=space+n*n, *V=U+n*n, *Root=V+n*n, mr, spacesqrt[NCODE];
 
    FOR (i,n*n) Q[i]=0;
    for (i=0; i<n; i++) FOR (j,i) {
@@ -592,14 +596,15 @@ int GetPMatCodon(double P[],double t, double kappa, double omega, double space[]
       Q[i*n+i]=-sum(Q+i*n,n); mr-=com.pi[i]*Q[i*n+i]; 
    }
 
-   eigenQREV(Q, com.pi, com.pi_sqrt, n, com.npi0, Root, U, V);
+   eigenQREV(Q, com.pi, n, Root, U, V, spacesqrt);
    FOR(i,n) Root[i]/=mr;
    PMatUVRoot(P,t,n,U,V,Root);
 
-
+/*
 testTransP(PMat, n);
 fprintf(frub,"\nP(%.5f)", t);
 matout (frub,PMat,n,n); fflush(frub);
+*/
    return (0);
 }
 

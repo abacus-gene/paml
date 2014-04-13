@@ -7,6 +7,20 @@ duplicate the results for the small data set in table 1 of Yang
 (1998).  Also look at the tree file about specifying the branches of
 interest, for which positive selection is tested.
 
+To fix a particular w to 1, arrange the labels so the concerned branch
+is the last and then use
+
+       model = 2
+   fix_omega = 1
+       omega = 1
+
+For example, the tree
+
+ ((1,2) #2, ((3,4) #1, 5), (6,7) );     / * table 1E&J */
+
+fits a model with w0 (background), w1, and w2.  Then the above
+specification will force w2 = 1 to be fixed.
+
 Usage:
 
 	codeml lysozymeSmall.ctl
@@ -47,4 +61,4 @@ Yang, Z., and R. Nielsen, 2002 Codon-substitution models for detecting molecular
 
 Ziheng Yang
 
-11 September 2001, last modified on 20 August 2002
+11 September 2001, last modified on 4 February 2004

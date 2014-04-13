@@ -24,7 +24,7 @@ or
    ../../codeml 
 
 
-Reference
+References
 
 Nielsen, R., and Z. Yang. 1998. Likelihood models for detecting
 positively selected amino acid sites and applications to the HIV-1

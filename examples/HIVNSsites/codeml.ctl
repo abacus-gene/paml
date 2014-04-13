@@ -1,4 +1,4 @@
-      seqfile = HIVenvSweden.paup    * sequence data file name
+      seqfile = HIVenvSweden.txt    * sequence data file name
      treefile = HIVenvSweden.trees   * tree structure file name
 
       outfile = mlc          * main result file name
@@ -12,9 +12,9 @@
        aaDist = 0   * 0:equal, +:geometric; -:linear, {1-5:G1974,Miyata,c,p,v}
         model = 0
 
-      NSsites = 9 0
-                    * 0:one w;1:neutral;2:positive; 3:discrete;4:freqs;
-                    * 5:gamma;6:2gamma;7:beta;8:beta&w;9:beta&gamma;10:3normal
+      NSsites = 0 1 2 3 7 8
+                    * 0:one w; 1:NearlyNeutral; 2:PositiveSelection; 3:discrete;
+                    * 4:freqs; 5:gamma;6:2gamma;7:beta;8:beta&w;9:beta&gamma;10:3normal
         icode = 0   * 0:standard genetic code; 1:mammalian mt; 2-10:see below
         Mgene = 0   * 0:rates, 1:separate; 2:pi, 3:kappa, 4:all
 
@@ -30,3 +30,4 @@
 
    Small_Diff = .45e-6
     cleandata = 1  * remove sites with ambiguity data (1:yes, 0:no)?
+  fix_blength = 0  * 0: ignore, -1: random, 1: initial, 2: fixed

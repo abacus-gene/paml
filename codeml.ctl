@@ -10,7 +10,7 @@
       seqtype = 2  * 1:codons; 2:AAs; 3:codons-->AAs
     CodonFreq = 2  * 0:1/61 each, 1:F1X4, 2:F3X4, 3:codon table
        aaDist = 0  * 0:equal, +:geometric; -:linear, 1-6:G1974,Miyata,c,p,v,a
-   aaRatefile = wag.dat * only used for aa seqs with model=empirical(_F)
+   aaRatefile = jones.dat  * only used for aa seqs with model=empirical(_F)
                    * dayhoff.dat, jones.dat, wag.dat, mtmam.dat, or your own
 
         model = 2
@@ -30,6 +30,8 @@
                    * codon: 0:rates, 1:separate; 2:diff pi, 3:diff kapa, 4:all diff
                    * AA: 0:rates, 1:separate
 
+*        ndata = 10
+        clock = 0   * 0:no clock, 1:clock; 2:local clock; 3:CombinedAnalysis
     fix_kappa = 0  * 1: kappa fixed, 0: kappa to be estimated
         kappa = 2  * initial or fixed kappa
     fix_omega = 0  * 1: omega or omega_1 fixed, 0: estimate 
@@ -40,13 +42,11 @@
        Malpha = 0  * different alphas for genes
         ncatG = 8  * # of categories in dG of NSsites models
 
-        clock = 0   * 0:no clock, 1:clock; 2:local clock; 3:CombinedAnalysis
         getSE = 0  * 0: don't want them, 1: want S.E.s of estimates
  RateAncestor = 1  * (0,1,2): rates (alpha>0) or ancestral states (1 or 2)
 
    Small_Diff = .5e-6
-*    cleandata = 0  * remove sites with ambiguity data (1:yes, 0:no)?
-*        ndata = 10
+    cleandata = 1  * remove sites with ambiguity data (1:yes, 0:no)?
 *  fix_blength = -1  * 0: ignore, -1: random, 1: initial, 2: fixed
         method = 0   * 0: simultaneous; 1: one branch at a time
 
