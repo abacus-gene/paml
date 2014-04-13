@@ -10,7 +10,7 @@
     CodonFreq = 2
    aaRatefile = jones.dat
         model = 0
-      NSsites = 0 1 2
+      NSsites = 0 1 2 7 8
         icode = 0
         Mgene = 0  * for codons:
                      * 0:rates, 1:separate; 2:diff pi, 3:diff k&w, 4:all diff

@@ -26,7 +26,7 @@
 
 #include "paml.h"
 
-#define NS            7400
+#define NS            7000
 #define NBRANCH       (NS*2-2)
 #define MAXNSONS      100
 #define LSPNAME       50
@@ -80,7 +80,7 @@ void Rell2MLtree(int argc, char *argv[]);
 
 
 char *MCctlf0[]={"MCbase.dat","MCcodon.dat","MCaa.dat"};
-char *seqf[2]={"mc.paml", "mc.nex"};
+char *seqf[3]={"mc.paml", "mc.paml", "mc.nex"};
 
 enum {JC69, K80, F81, F84, HKY85, T92, TN93, REV} BaseModels;
 char *basemodels[]={"JC69","K80","F81","F84","HKY85","T92","TN93","REV"};
@@ -145,15 +145,18 @@ int main (int argc, char*argv[])
          MCctlf = (argc==3 ? argv[2] : "MCcodonNSbranchsites.dat");
 #else
 
-         option = 11;
+         option = 4;
          scanf("%d", &option);
 #endif
          if(option==0) exit(0);
          if(option>=5 && option<=7) break;
-         if(option<5)  { printf ("No. of species: ");   scanf ("%d", &com.ns); }
+         if(option<5)  { 
+            printf ("No. of species: ");
+            scanf ("%d", &com.ns);
+         }
          if(com.ns>NS) error2 ("Too many species.  Raise NS.");
          if((space=(double*)malloc(10000*sizeof(double)))==NULL) error2("oom");
-         rooted=!(option%2);
+         rooted = !(option%2);
          if (option<3) {
             printf("\nnumber of trees & random number seed? ");
             scanf("%d%d",&ntree,&i);  
@@ -163,8 +166,9 @@ int main (int argc, char*argv[])
          }
          if(option<=4) {
             if(com.ns<3) error2("no need to do this?");
-            i=(com.ns*2-1)*sizeof(struct TREEN);
-            if((nodes=(struct TREEN*)malloc(i))==NULL) error2("oom");
+            i = (com.ns*2-1)*sizeof(struct TREEN);
+            if((nodes=(struct TREEN*)malloc(i)) == NULL) 
+               error2("oom");
          }
          switch (option) {
          case(1):
@@ -188,7 +192,7 @@ int main (int argc, char*argv[])
             break;
          case(3):
          case(4): 
-            ListTrees(fout,com.ns,rooted);
+            ListTrees(fout, com.ns, rooted);
             break;
          case(8):  TreeDistances(fout);  break;
 
@@ -197,7 +201,7 @@ int main (int argc, char*argv[])
          case(9):  CladeProbabilities("/papers/BPPJC3sB/Karol.trees");    break;
          */
          case(10): between_f_and_x();    break;
-         case(11): LabelClades(fout);        break;
+         case(11): LabelClades(fout);    break;
          default:  exit(0);
          }
       }
@@ -267,7 +271,8 @@ void LabelClades(FILE *fout)
       scanf("%s", key);
       if(strcmp(endstr, key) == 0)
          break;
-      for(i=0; i<com.ns; i++) chosen[i] = '\0';
+      for(i=0; i<com.ns; i++) 
+         chosen[i] = '\0';
 
 
       k = strlen(key);
@@ -539,7 +544,7 @@ int EigenQcodon (int getstats, double kappa, double omega, double pi[],
    int n=com.ncode, i,j,k, c[2],ndiff,pos=0,from[3],to[3];
    double mr, space[64];
    
-   FOR (i,n*n) Q[i]=0;
+   for(i=0; i<n*n; i++) Q[i] = 0;
    for (i=0; i<n; i++) FOR (j,i) {
       from[0]=i/16; from[1]=(i/4)%4; from[2]=i%4;
       to[0]=j/16;   to[1]=(j/4)%4;   to[2]=j%4;
@@ -552,9 +557,11 @@ int EigenQcodon (int getstats, double kappa, double omega, double pi[],
       if(c[0]!=c[1])  Q[i*n+j]*=omega;
       Q[j*n+i]=Q[i*n+j];
    }
-   FOR(i,n) FOR(j,n) Q[i*n+j]*=com.pi[j];
+   for(i=0; i<n; i++) for(j=0; j<n; j++)
+      Q[i*n+j] *= com.pi[j];
    for(i=0,mr=0;i<n;i++) { 
-      Q[i*n+i]=-sum(Q+i*n,n); mr-=pi[i]*Q[i*n+i]; 
+      Q[i*n+i] = -sum(Q+i*n,n);
+      mr -= pi[i]*Q[i*n+i]; 
    }
 
    if(getstats)
@@ -657,26 +664,26 @@ void MakeSeq(char*z, int ls)
             if(isalpha(ch))
                codon[i]=(char)(ch=CodeChara((char)ch, com.seqtype));
          }
-         if(com.seqtype==1) ch=codon[0]*16+codon[1]*4+codon[2];
+         if(com.seqtype==1) ch = codon[0]*16 + codon[1]*4 + codon[2];
          if(ch<0 || ch>n-1) 
             printf("error when reading site %d\n", lst+1);
          if(com.seqtype==1 && com.pi[ch]==0)
             printf("you seem to have a stop codon in the root sequence\n");
 
-         z[lst++]=(char)ch;
+         z[lst++] = (char)ch;
          if(lst==com.ls) break;
       }
       fclose(fseq);
    }
    else {
-      FOR(j,n) p[j]=com.pi[j];
-      for (j=1; j<n; j++) p[j]+=p[j-1];
+      for(j=0; j<n; j++)  p[j] = com.pi[j];
+      for(j=1; j<n; j++)  p[j] += p[j-1];
       if(fabs(p[n-1]-1) > small)
-         { printf("\nsum pi = %.6f != 1!\n",p[n-1]); exit(-1); }
+         { printf("\nsum pi = %.6f != 1!\n", p[n-1]); exit(-1); }
       for(h=0; h<com.ls; h++) {
          for(j=0,r=rndu();j<n-1;j++) 
             if(r<p[j]) break;
-         z[h]=(char)j;
+         z[h] = (char)j;
       }
    }
 }
@@ -702,13 +709,13 @@ void Evolve1 (int inode)
       if(com.seqtype==1 && com.model && com.NSsites) { /* branch-site models */
          Qfactor=com.QfactorBS[ison];
          for(h=0; h<com.ls; h++) 
-            com.siterates[h]=com.omegaBS[ison*com.ncatG+com.siteID[h]];
+            com.siterates[h] = com.omegaBS[ison*com.ncatG+com.siteID[h]];
       }
 
       for(h=0; h<com.ls; h++) {
          /* decide whether to recalcualte PMat[]. */
          if (h==0 || (com.siterates && com.siterates[h]!=com.siterates[h-1])) {
-            rw=(com.siterates?com.siterates[h]:1);
+            rw = (com.siterates?com.siterates[h]:1);
 
             switch(com.seqtype) {
             case (BASEseq):
@@ -722,22 +729,24 @@ void Evolve1 (int inode)
             case (CODONseq): /* Watch out for NSsites model */
                if(com.model || com.NSsites) { /* no need to update UVRoot if M0 */
                   if(com.model && com.NSsites==0) /* branch */
-                     rw=nodes[ison].omega;  /* should be equal to com.rK[nodes[].label] */
+                     rw = nodes[ison].omega;  /* should be equal to com.rK[nodes[].label] */
 
                   EigenQcodon(0, com.kappa, rw, com.pi, Root,U,V, PMat);
                }
-               PMatUVRoot(PMat,t,com.ncode,U,V,Root); 
+               PMatUVRoot(PMat, t, com.ncode, U, V, Root); 
                break;
 
             case (AAseq):
-               PMatUVRoot(PMat, t*rw, com.ncode, U,V,Root);
+               PMatUVRoot(PMat, t*rw, com.ncode, U, V, Root);
                break;
             }
-            for(i=0; i<n; i++) for(j=1;j<n;j++)  PMat[i*n+j] += PMat[i*n+j-1];
+            for(i=0; i<n; i++)
+               for(j=1;j<n;j++)
+                  PMat[i*n+j] += PMat[i*n+j-1];
          }
          for(j=0,from=com.z[ison][h],rw=rndu(); j<n-1; j++)
-            if(rw<PMat[from*n+j]) break;
-         com.z[ison][h]=j;
+            if(rw < PMat[from*n+j]) break;
+         com.z[ison][h] = j;
       }
 
       if(com.ls>longseq) printf("\r   nodes %2d -> %2d, evolving . .   ", inode+1, ison+1);
@@ -749,6 +758,117 @@ void Evolve1 (int inode)
 }
 
 
+int PatternWeightSimple (int CollapsJC)
+{
+/* This is modified from PatternWeight() and collaps sites into patterns, 
+   for nucleotide, amino acid, or codon sequences.
+   This relies on \0 being the end of the string so that sequences should not be 
+   encoded before this routine is called.
+   com.pose[i] has labels for genes as input and maps sites to patterns in return.
+   com.fpatt, a vector of doubles, wastes space as site pattern counts are integers.
+   Sequences z[ns*ls] are copied into patterns zt[ls*lpatt], and bsearch is used 
+   twice to avoid excessive copying, to count npatt first & to generate fpatt etc.
+*/
+   int maxnpatt=com.ls, h, ip,l,u, j, k, same;
+   /* int n31 = (com.seqtype==CODONseq ? 3 : 1); */
+   int n31 = 1;
+   int lpatt = com.ns*n31+1;   /* extra 0 used for easy debugging, can be voided */
+   int *p2s;  /* point patterns to sites in zt */
+   char *zt, *p;
+   double nc = (com.seqtype == 1 ? 64 : com.ncode) + !com.cleandata+1;
+   int debug=0;
+   char DS[]="DS";
+
+   /* (A) Collect and sort patterns.  Get com.npatt.
+      Move sequences com.z[ns][ls] into sites zt[ls*lpatt].  
+      Use p2s to map patterns to sites in zt to avoid copying.
+   */
+
+   if((com.seqtype==1 && com.ns<5) || (com.seqtype!=1 && com.ns<7))
+      maxnpatt = (int)(pow(nc, (double)com.ns) + 0.5);
+   if(maxnpatt>com.ls) maxnpatt = com.ls;
+   p2s  = (int*)malloc(maxnpatt*sizeof(int));
+   zt = (char*)malloc((com.ns+1)*com.ls*n31*sizeof(char));
+   if(p2s==NULL || zt==NULL)  error2("oom p2s or zt");
+   memset(zt, 0, (com.ns+1)*com.ls*n31*sizeof(char));
+   for(j=0; j<com.ns; j++) 
+      for(h=0; h<com.ls; h++) 
+         for(k=0; k<n31; k++)
+            zt[h*lpatt+j*n31+k] = com.z[j][h*n31+k];
+
+   com.npatt = l = u = ip = 0;
+   for(h=0; h<com.ls; h++) {
+      if(debug) printf("\nh %3d %s", h, zt+h*lpatt);
+      /* bsearch in existing patterns.  Knuth 1998 Vol3 Ed2 p.410 
+         ip is the loc for match or insertion.  [l,u] is the search interval.
+      */
+      same = 0;
+      if(h != 0) {  /* not 1st pattern? */
+         for(l=0, u=com.npatt-1; ; ) {
+            if(u<l) break;
+            ip = (l+u)/2;
+            k = strcmp(zt+h*lpatt, zt+p2s[ip]*lpatt);
+            if(k<0)        u = ip - 1;
+            else if(k>0)   l = ip + 1;
+            else         { same = 1;  break; }
+         }
+      }
+      if(!same) {
+         if(com.npatt>maxnpatt) 
+            error2("npatt > maxnpatt");
+         if(l > ip) ip++;        /* last comparison in bsearch had k > 0. */
+         /* Insert new pattern at ip.  This is the expensive step. */
+
+         if(ip<com.npatt)
+            memmove(p2s+ip+1, p2s+ip, (com.npatt-ip)*sizeof(int));
+
+         /*
+         for(j=com.npatt; j>ip; j--) 
+            p2s[j] = p2s[j-1];
+         */
+         p2s[ip] = h;
+         com.npatt ++;
+      }
+
+      if(debug) {
+         printf(": %3d (%c ilu %3d%3d%3d) ", com.npatt, DS[same], ip, l, u);
+         for(j=0; j<com.npatt; j++)
+            printf(" %s", zt+p2s[j]*lpatt);
+      }
+
+   }     /* for (h)  */
+
+   /* (B) count pattern frequencies */
+   com.fpatt = (double*)realloc(com.fpatt, com.npatt*sizeof(double));
+   if(com.fpatt==NULL) error2("oom fpatt");
+   for(ip=0; ip<com.npatt; ip++) com.fpatt[ip] = 0;
+   for(h=0; h<com.ls; h++) {
+      for(same=0, l=0, u=com.npatt-1; ; ) {
+         if(u<l) break;
+         ip = (l+u)/2;
+         k = strcmp(zt+h*lpatt, zt+p2s[ip]*lpatt);
+         if(k<0)        u = ip - 1;
+         else if(k>0)   l = ip + 1;
+         else         { same = 1;  break; }
+      }
+      if(!same)
+         error2("ghost pattern?");
+      com.fpatt[ip]++;
+   }     /* for (h)  */
+
+   for(j=0; j<com.ns; j++) {
+      /* 
+      com.z[j] = (char*)realloc(com.z[j], com.npatt*n31*sizeof(char)); 
+      */
+      for(ip=0,p=com.z[j]; ip<com.npatt; ip++) 
+         for(k=0; k<n31; k++)
+            *p++ = zt[p2s[ip]*lpatt+j*n31+k];
+   }
+   free(p2s);  free(zt);
+
+   return (0);
+}
+
 
 void Simulate (char*ctlf)
 {
@@ -758,8 +878,8 @@ void Simulate (char*ctlf)
    When com.alpha or com.ncatG>1, sites are randomized after sequences are 
    generated.
    space[com.ls] is used to hold site marks.
-   format (0: paml; 1: paup nex)
-*/
+   format (0: paml sites; 1: paml patterns; 2: paup nex)
+ */
    char *ancf="ancestral.txt", *siteIDf="siterates.txt";
    FILE *fin, *fseq, *ftree=NULL, *fanc=NULL, *fsiteID=NULL;
    char *paupstart="paupstart",*paupblock="paupblock",*paupend="paupend";
@@ -778,7 +898,7 @@ void Simulate (char*ctlf)
    fin=(FILE*)gfopen(ctlf,"r");
    fscanf(fin, "%d", &format);  fgets(line, lline, fin);
    printf("\nSimulated data will go into %s.\n", seqf[format]);
-   if(format) printf("%s, %s, & %s will be appended if existent.\n",
+   if(format==2) printf("%s, %s, & %s will be appended if existent.\n",
                        paupstart,paupblock,paupend);
 
    fscanf (fin, "%d", &i);
@@ -790,7 +910,7 @@ void Simulate (char*ctlf)
    if((nodes=(struct TREEN*)malloc(i))==NULL) error2("oom");
 
    if(com.ns>NS) error2("too many seqs?");
-   printf ("\n%d seqs, %d sites, %d replicate(s)\n", com.ns,com.ls,nr);
+   printf ("\n%d seqs, %d sites, %d replicate(s)\n", com.ns, com.ls, nr);
    k=(com.ns*com.ls* (com.seqtype==CODONseq?4:1) *nr)/1000+1;
    printf ("Seq file will be about %dK bytes.\n",k);
    for(i=0; i<com.ns; i++)          /* default spname */
@@ -846,6 +966,8 @@ void Simulate (char*ctlf)
          error2("kappa should be 1 for this model");
    }
    else if(com.seqtype==CODONseq) {
+      for(i=0; i<64; i++) 
+         getcodon(CODONs[i], i);
       if(com.model==0 && com.NSsites) {  /* site model */
          fscanf(fin,"%d",&com.ncatG);   fgets(line, lline, fin);
          if(com.ncatG>NCATG) error2("ncatG>NCATG");
@@ -864,10 +986,11 @@ void Simulate (char*ctlf)
 
          if((com.omegaBS=(double*)malloc((com.ncatG+2)*tree.nnode*sizeof(double)))==NULL)
             error2("oom");
-         com.QfactorBS=com.omegaBS+com.ncatG*tree.nnode;
-         blengthBS=com.QfactorBS+tree.nnode;
+         com.QfactorBS = com.omegaBS + com.ncatG*tree.nnode;
+         blengthBS = com.QfactorBS + tree.nnode;
 
-         for(i=0; i<tree.nnode; i++)  blengthBS[i]=nodes[i].branch;
+         for(i=0; i<tree.nnode; i++)
+            blengthBS[i] = nodes[i].branch;
          for(k=0; k<com.ncatG; k++) {
             ReadTreeN(fin, &i, &j, 0, 1);
             if(i) error2("do not include branch lengths except in the first tree.");
@@ -889,7 +1012,8 @@ void Simulate (char*ctlf)
          fscanf(fin,"%lf",&com.omega);
          fgets(line, lline, fin);
          printf("omega = %9.5f\n",com.omega);
-         FOR(i,tree.nbranch) nodes[tree.branches[i][1]].omega=com.omega;
+         for(i=0; i<tree.nbranch; i++) 
+            nodes[tree.branches[i][1]].omega = com.omega;
       }
 
       fscanf(fin,"%lf",&com.kappa);   fgets(line, lline, fin);
@@ -901,7 +1025,10 @@ void Simulate (char*ctlf)
       fgets(line, lline, fin);
       if(com.alpha) 
         printf("Gamma rates, alpha =%.4f (K=%d)\n",com.alpha,com.ncatG);
-      else { com.ncatG=0; puts("Rates are constant over sites."); }
+      else { 
+         com.ncatG=0; 
+         puts("Rates are constant over sites."); 
+      }
    }
    if(com.alpha || com.ncatG) { /* this is used for codon NSsites as well. */
       k=com.ls;
@@ -926,7 +1053,7 @@ void Simulate (char*ctlf)
       fillxc(com.pi,1./com.ncode,com.ncode);
 
    printf("sum pi = 1 = %.6f:", sum(com.pi,com.ncode));
-   matout2(F0,com.pi,1,com.ncode,7,4);
+   matout2(F0, com.pi, 1, com.ncode, 7, 4);
    if(com.seqtype==BASEseq) {
       if(com.model<REV) {
          T=com.pi[0]; C=com.pi[1]; A=com.pi[2]; G=com.pi[3]; Y=T+C; R=A+G;
@@ -935,7 +1062,7 @@ void Simulate (char*ctlf)
             Qrates[0]=1+Qrates[0]/Y;   /* kappa1 */
          }
          else if (com.model<=HKY85) Qrates[1]=Qrates[0];
-         Qfactor=1/(2*T*C*Qrates[0] + 2*A*G*Qrates[1] + 2*Y*R);
+         Qfactor = 1/(2*T*C*Qrates[0] + 2*A*G*Qrates[1] + 2*Y*R);
       }
       else
          if(com.model==REV) EigenQbase(Qrates, com.pi, Root,U,V,PMat);
@@ -964,14 +1091,15 @@ void Simulate (char*ctlf)
       }
    }
    if(com.seqtype==CODONseq && com.ncatG<=1 && com.model==0)
-      EigenQcodon(0, com.kappa,com.omega,com.pi, Root,U,V, PMat);
+      EigenQcodon(0, com.kappa,com.omega, com.pi, Root, U, V, PMat);
    else if(com.seqtype==AAseq)
-      EigenQaa(com.pi,Root, U, V,PMat);
+      EigenQaa(com.pi, Root, U, V,PMat);
 
    puts("\nAll parameters are read.  Ready to simulate\n");
-   FOR(j,com.ns*2-1) com.z[j]=(char*)malloc(com.ls*sizeof(char));
-   sspace=max2(sspace, com.ls*(int)sizeof(double));
-   space=(double*)malloc(sspace);
+   for(j=0; j<com.ns*2-1; j++)
+      com.z[j] = (char*)malloc(com.ls*sizeof(char));
+   sspace = max2(sspace, com.ls*(int)sizeof(double));
+   space  = (double*)malloc(sspace);
    if(com.alpha || com.ncatG) tmpseq=(char*)space;
    if (com.z[com.ns*2-1-1]==NULL) error2("oom for seqs");
    if (space==NULL) {
@@ -980,9 +1108,9 @@ void Simulate (char*ctlf)
    }
 
    fseq = gfopen(seqf[format],"w");
-   if(format) appendfile(fseq,paupstart);
+   if(format==2) appendfile(fseq,paupstart);
    
-   fanc=(FILE*)gfopen(ancf,"w");
+   fanc = (FILE*)gfopen(ancf,"w");
    if(fixtree) {
       fputs("\nAncestral sequences generated during simulation ",fanc);
       fprintf(fanc,"(check against %s)\n",seqf[format]);
@@ -1002,13 +1130,15 @@ void Simulate (char*ctlf)
    for (ir=0; ir<nr; ir++) {
       if (!fixtree) {    /* right now tree is fixed */
          RandomLHistory (rooted, space);
-         if (rooted && com.ns<10) j=GetIofLHistory ();
+         if (rooted && com.ns<10) j = GetIofLHistory ();
          BranchLengthBD (1, birth, death, sample, mut);
          if(com.ns<20) { 
-            printf ("\ntree used: "); OutTreeN(F0,1,1);  FPN(F0); 
+            printf ("\ntree used: "); 
+            OutTreeN(F0,1,1);
+            FPN(F0); 
          }
       }
-      MakeSeq(com.z[tree.root],com.ls);
+      MakeSeq(com.z[tree.root], com.ls);
 
       if (com.alpha)
          Rates4Sites(com.siterates,com.alpha,com.ncatG,com.ls, 0,space);
@@ -1028,73 +1158,82 @@ void Simulate (char*ctlf)
 
       /* randomize sites for site-class model */
       if(com.siterates && com.ncatG>1) {
+         if(format==1 && ir==0) 
+            puts("\nrequested site pattern counts as output for site-class model.\n");
          randorder(siteorder, com.ls, (int*)space);
-         FOR(j,tree.nnode) {
+         for(j=0; j<tree.nnode; j++) {
             memcpy(tmpseq,com.z[j],com.ls*sizeof(char));
-            FOR(h,com.ls) com.z[j][h]=tmpseq[siteorder[h]];
+            for(h=0; h<com.ls; h++) com.z[j][h]=tmpseq[siteorder[h]];
          }
          if(com.alpha || com.ncatG>1) {
             memcpy(space,com.siterates,com.ls*sizeof(double));
-            FOR(h,com.ls) com.siterates[h]=space[siteorder[h]];
+            for(h=0; h<com.ls; h++) com.siterates[h]=space[siteorder[h]];
          }
          if(com.siteID) {
             memcpy((char*)space,com.siteID,com.ls*sizeof(char));
-            FOR(h,com.ls) com.siteID[h]=*((char*)space+siteorder[h]);
+            for(h=0; h<com.ls; h++) com.siteID[h]=*((char*)space+siteorder[h]);
          }
       }
 
       /* print sequences*/
-      if(format) fprintf(fseq,"\n\n[Replicate # %d]\n", ir+1);
+      if(format==1) {
+         for(i=0; i<com.ns; i++) for(h=0; h<com.ls; h++) com.z[i][h] ++;
+         PatternWeightSimple(0);
+         for(i=0; i<com.ns; i++) for(h=0; h<com.npatt; h++) com.z[i][h] --;
+      }
+      if(format==2) fprintf(fseq,"\n\n[Replicate # %d]\n", ir+1);
       printSeqs(fseq, NULL, NULL, format); /* printsma not usable as it codes into 0,1,...,60. */
-      if(format && !fixtree) {
+      if(format==2 && !fixtree) {
          fprintf(fseq,"\nbegin tree;\n   tree true_tree = [&U] "); 
          OutTreeN(fseq,1,1); fputs(";\n",fseq);
          fprintf(fseq,"end;\n\n");
       }
-      if(format) appendfile(fseq,paupblock);
+      if(format==2) appendfile(fseq,paupblock);
 
       /* print ancestral seqs, rates for sites. */
-      j=(com.seqtype==CODONseq?3*com.ls:com.ls);
-      fprintf(fanc,"[replicate %d]\n",ir+1);
+      if(format!=1) {
+         j = (com.seqtype==CODONseq?3*com.ls:com.ls);
+         fprintf(fanc,"[replicate %d]\n",ir+1);
 
-      if(!fixtree) {
-         if(!format)
-            { OutTreeN(fanc,1,1); FPN(fanc); FPN(fanc); }
-      }
-      else {
-         fprintf(fanc,"%6d %6d\n",tree.nnode-com.ns,j);
-         for(j=com.ns; j<tree.nnode; j++,FPN(fanc)) {
-            fprintf(fanc,"node%-26d  ", j+1);
-            print1seq(fanc,com.z[j],com.ls,1, NULL);
+         if(!fixtree) {
+            if(format<2)
+               { OutTreeN(fanc,1,1); FPN(fanc); FPN(fanc); }
          }
-         FPN(fanc);
+         else {
+            fprintf(fanc,"%6d %6d\n",tree.nnode-com.ns,j);
+            for(j=com.ns; j<tree.nnode; j++,FPN(fanc)) {
+               fprintf(fanc,"node%-26d  ", j+1);
+               print1seq(fanc, com.z[j], com.ls, NULL);
+            }
+            FPN(fanc);
 
-         if(fsiteID) {
-            if(com.seqtype==CODONseq && com.NSsites && com.model==0) { /* site model */
-               k=0;
-               if(com.rK[com.ncatG-1]>1)
-                  FOR(h,com.ls) if(com.rK[com.siteID[h]]>1) k++;
-               fprintf(fsiteID, "\n[replicate %d: %2d]\n",ir+1, k);
-               if(k)  for(h=0,k=0; h<com.ls; h++) {
-                  if(com.rK[com.siteID[h]]>1) { 
-                     fprintf(fsiteID,"%4d ",h+1); 
-                     if(++k%15==0) FPN(fsiteID);
+            if(fsiteID) {
+               if(com.seqtype==CODONseq && com.NSsites && com.model==0) { /* site model */
+                  k=0;
+                  if(com.rK[com.ncatG-1]>1)
+                     FOR(h,com.ls) if(com.rK[com.siteID[h]]>1) k++;
+                  fprintf(fsiteID, "\n[replicate %d: %2d]\n",ir+1, k);
+                  if(k)  for(h=0,k=0; h<com.ls; h++) {
+                     if(com.rK[com.siteID[h]]>1) { 
+                        fprintf(fsiteID,"%4d ",h+1); 
+                        if(++k%15==0) FPN(fsiteID);
+                     }
+                  }
+                  FPN(fsiteID);
+               }
+               else if(com.seqtype==CODONseq && com.NSsites && com.model) { /* branchsite */
+                  fprintf(fsiteID, "\n[replicate %d]\n",ir+1);
+                  for(h=0; h<com.ls; h++) {
+                     fprintf(fsiteID," %4d ", com.siteID[h]+1);
+                     if(h==com.ls-1 || (h+1)%15==0) FPN(fsiteID);
                   }
                }
-               FPN(fsiteID);
-            }
-            else if(com.seqtype==CODONseq && com.NSsites && com.model) { /* branchsite */
-               fprintf(fsiteID, "\n[replicate %d]\n",ir+1);
-               for(h=0; h<com.ls; h++) {
-                  fprintf(fsiteID," %4d ", com.siteID[h]+1);
-                  if(h==com.ls-1 || (h+1)%15==0) FPN(fsiteID);
-               }
-            }
-            else {       /* gamma rates */
-               fprintf(fsiteID,"\n[replicate %d]\n",ir+1);
-               for(h=0; h<com.ls; h++) {
-                  fprintf(fsiteID,"%7.4f ",com.siterates[h]);
-                  if(h==com.ls-1 || (h+1)%10==0) FPN(fsiteID);
+               else {       /* gamma rates */
+                  fprintf(fsiteID,"\n[replicate %d]\n",ir+1);
+                  for(h=0; h<com.ls; h++) {
+                     fprintf(fsiteID,"%7.4f ",com.siterates[h]);
+                     if(h==com.ls-1 || (h+1)%10==0) FPN(fsiteID);
+                  }
                }
             }
          }
@@ -1102,7 +1241,7 @@ void Simulate (char*ctlf)
 
       printf ("\rdid data set %d %s", ir+1, (com.ls>100000||nr<100? "\n" : ""));
    }   /* for (ir) */
-   if(format) appendfile(fseq,paupend);
+   if(format==2) appendfile(fseq,paupend);
 
    fclose(fseq);  if(!fixtree) fclose(fanc);  
    if(com.alpha || com.NSsites) fclose(fsiteID);
@@ -1117,7 +1256,7 @@ void Simulate (char*ctlf)
       if(com.siteID) free(com.siteID);  com.siteID=NULL;
    }
    if(com.seqtype==1 && com.model && com.NSsites) free(com.omegaBS); 
-   com.omegaBS=NULL;
+   com.omegaBS = NULL;
 
    exit (0);
 }

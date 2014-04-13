@@ -19,34 +19,21 @@ LIBS = -lm # -lM
 
 all : $(PRGS)
 
-baseml : baseml.o tools.o
-	$(CC) $(CFLAGS) -o $@ baseml.o tools.o $(LIBS)
-basemlg : basemlg.o tools.o
-	$(CC) $(CFLAGS) -o $@ basemlg.o tools.o $(LIBS)
-codeml : codeml.o tools.o
-	$(CC) $(CFLAGS) -o $@ codeml.o tools.o $(LIBS)
-evolver : evolver.o tools.o 
-	$(CC) $(CFLAGS) -o $@ evolver.o tools.o $(LIBS)
-pamp : pamp.o tools.o 
-	$(CC) $(CFLAGS) -o $@ pamp.o tools.o $(LIBS)
-mcmctree : mcmctree.o tools.o
-	$(CC) $(CFLAGS) -o $@ mcmctree.o tools.o $(LIBS)
-yn00: yn00.c tools.o
-	$(CC) $(CFLAGS) -o $@ yn00.c tools.o $(LIBS)
+baseml : baseml.c tools.c
+	$(CC) $(CFLAGS) -o $@ baseml.c tools.c $(LIBS)
+basemlg : basemlg.c tools.c
+	$(CC) $(CFLAGS) -o $@ basemlg.c tools.c $(LIBS)
+codeml : codeml.c tools.c
+	$(CC) $(CFLAGS) -o $@ codeml.c tools.c $(LIBS)
+evolver : evolver.c tools.c 
+	$(CC) $(CFLAGS) -o $@ evolver.c tools.c $(LIBS)
+pamp : pamp.c tools.c 
+	$(CC) $(CFLAGS) -o $@ pamp.c tools.c $(LIBS)
+mcmctree : mcmctree.c tools.c
+	$(CC) $(CFLAGS) -o $@ mcmctree.c tools.c $(LIBS)
+	$(CC) $(CFLAGS) -o mcmctreeHH -DHardHard mcmctree.c tools.c $(LIBS)
+	$(CC) $(CFLAGS) -o mcmctreeHS -DHardSoft mcmctree.c tools.c $(LIBS)
+yn00: yn00.c tools.c
+	$(CC) $(CFLAGS) -o $@ yn00.c tools.c $(LIBS)
 chi2 : chi2.c
 	$(CC) $(CFLAGS) -o $@ chi2.c $(LIBS)
-
-tools.o : paml.h tools.c
-	$(CC) $(CFLAGS) -c tools.c
-baseml.o : paml.h baseml.c treesub.c treespace.c
-	$(CC) $(CFLAGS) -c baseml.c
-basemlg.o : paml.h basemlg.c treesub.c
-	$(CC) $(CFLAGS) -c basemlg.c
-codeml.o : paml.h codeml.c treesub.c treespace.c
-	$(CC) $(CFLAGS) -c codeml.c
-evolver.o: evolver.c treesub.c treespace.c
-	$(CC) $(CFLAGS) -c evolver.c
-pamp.o : paml.h pamp.c treesub.c treespace.c
-	$(CC) $(CFLAGS) -c pamp.c
-mcmctree.o : paml.h mcmctree.c treesub.c treespace.c
-	$(CC) $(CFLAGS) -c mcmctree.c

@@ -14,7 +14,7 @@
     fix_kappa = 1   * 0: estimate kappa; 1: fix kappa at value below
         kappa = 3.76303 3.18589 17.68357 * initial or fixed kappa
  
-    fix_alpha = 1   * 0: estimate alpha; 1: fix alpha at value below
+    fix_alpha = 0   * 0: estimate alpha; 1: fix alpha at value below
         alpha = 0.29169  0.16392  1.24726  * initial or fixed alpha, 0:infinity (constant rate)
        Malpha = 0   * 1: different alpha's for genes, 0: one alpha
         ncatG = 5  * # of categories in the dG, AdG, or nparK models of rates

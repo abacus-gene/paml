@@ -20,13 +20,16 @@
 #define F0 stdout
 #define min2(a,b) ((a)<(b)?(a):(b))
 #define max2(a,b) ((a)>(b)?(a):(b))
+#define swap2(a,b,y) { y=a; a=b; b=y; }
 #define Pi  3.1415926535897932384626433832795
 
 #define beep putchar('\a')
 #define spaceming2(n) ((n)*((n)*2+9+2)*sizeof(double))
 
 int ReadSeq (FILE *fout, FILE *fseq, int cleandata);
-void EncodeSeqs (int length);
+int ScanFastaFile(FILE *f, int *ns, int *ls, int *aligned);
+void EncodeSeqs (void);
+void SetMapAmbiguity(void);
 void ReadPatternFreq (FILE* fout, char* fpattf);
 int Initialize (FILE *fout);
 int MoveCodonSeq (int ns, int ls, char *z[]);
@@ -47,7 +50,7 @@ double rndNormal(void);
 double rnd2NormalSym (double m);
 double rndCauchy (void);
 double rndt4 (void);
-double rndgamma(double s);
+double rndgamma(double alpha);
 double rndbeta(double p, double q);
 int rndpoisson(double m);
 int rndNegBinomial(double shape, double mean);
@@ -108,7 +111,7 @@ int f_mono_di (FILE *fout, char z[], int ls, int iring,
     double fb1[], double fb2[], double CondP[]);
 int PickExtreme (FILE *fout, char z[], int ls,int iring,int lfrag,int ffrag[]);
 
-int print1seq (FILE*fout, char *z, int ls, int encoded, int pose[]);
+int print1seq (FILE*fout, char *z, int ls, int pose[]);
 void printSeqs(FILE *fout, int *pose, char keep[], int format);
 int printPatterns(FILE *fout);
 void printSeqsMgenes (void);
@@ -140,6 +143,8 @@ double DistanceIJ (int is, int js, int model, double alpha, double *kappa);
 int DistanceMatNuc (FILE *fout, FILE*f2base, int model, double alpha);
 int EigenQREVbase (FILE* fout, double kappa[], double pi[], 
                    int *nR, double Root[], double Cijk[]);
+int  DistanceMatNG86 (FILE *fout, FILE*fds, FILE*fdn, FILE*dt, double alpha);
+int  setmark_61_64 (void);
 
 int BootstrapSeq (char* seqfilename);
 int rell(FILE*flnf, FILE*fout, int ntree);
@@ -149,7 +154,6 @@ int lfunRates (FILE* fout, double x[], int np);
 int AncestralSeqs (FILE *fout, double x[]);
 void ListAncestSeq(FILE *fout, char *zanc);
 int ChangesSites(FILE*fout, int coding, char *zanc);
-int InitConditionalPNode (void);
 
 int NucListall(char b, int *nb, int ib[4]);
 char *getcodon(char codon[], int icodon);
@@ -303,6 +307,7 @@ int CollapsNode (int inode, double x[]);
 int MakeTreeIb (int ns, int Ib[], int rooted);
 int GetTreeI (int itree, int ns, int rooted);
 int NumberTrees (int ns, int rooted);
+int CountLHistories(void);
 int ListTrees (FILE* fout, int ns, int rooted);
 int GetIofTree (int rooted, int keeptree, double space[]);
 void ReRootTree (int newroot);
@@ -349,6 +354,6 @@ enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrAge=8, PrOmega=16} OutTreeOptions;
 
 #define PAML_RELEASE      0
 
-#define VerStr "paml version 4.3, August 2009"
+#define VerStr "paml version 4.4, January 2010"
 
 #endif

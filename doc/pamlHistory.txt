@@ -8,6 +8,60 @@ discussion site
 (http://www.ucl.ac.uk/discussions/viewforum.php?f=54&sid=577cc7a5ea677a16eef670fac7f51807).
 
 
+Version 4.4, February 2010
+
+I changed the way that the characters are coded in the programs, which
+means that essentially every program in the package is modified.  It
+is likely that some bugs are introduced during the process.  
+
+codeml.  The iteration algorithm specified by method = 1 when applied
+to amino acid model of gamma rates among sites (seqtype = 2, alpha >
+0, method = 1) is broken in versions 4.2-4.3b.  The bug causes the
+iteration to fail to converge, with messages like the following
+printed on the monitor: 
+"Warning rounding error? b=5 cycle=0 lnL=1718.5667685 != 1749.4724545".
+
+mcmctree.  If the gamma prior for rates has alpha < 1/3, the initial
+values are generated incorrectly.  This is now fixed.
+
+
+Version 4.3b, November 2009
+
+mcmctree.  A bug was introduced in version 4.2, which causes the
+program to ignore the minimum age constraint on the root age and uses
+the maximum bound specified by RootAge in the control file, if there
+is a calibration on the root and it is a minimum-age constraint.  If
+you have no calibration on the root, or if the calibration is an
+maximum bound, both minimum and maximum bound or gamma distribution,
+there is no problem.  The error affects versions 4.2 and 4.3, and
+version 4.1 is correct.  This is now fixed.  Thanks to Mathieu
+Groussin.
+
+evolver.  I have now added back the option of printing out the site
+pattern counts instead of the sequences (specified at the beginning of
+the control file such as MCbase.dat).  Use of pattern counts takes
+less disk space.  The option was removed in version 4.2b after the
+algorithm for collaspsing sites into patterns was rewritten.
+
+
+
+Version 4.3a, October 2009
+
+mcmctree.  A bug was introduced in version 4.3, which causes the root
+age to be proposed incorrectly.  The effect of the bug appears to be
+subtle and is hard to assess.  It means that the results from all
+three clock models (clock = 0, 1, 2) are incorrect.  Here is a bit more
+detail about the bug.  The internal maximum node age was set too high,
+and caused loss of significant digits in a smart reflection algorithm
+which reflects proposed values into the feasible interval.  This
+update fixes the bug.  Please use this version to reanalyze your data
+if you have used version 4.3.  Version 4.2 does not have this bug.
+
+mcmctree.  I now supplies compiling options so that you can use hard
+minimum hard maximum, or hard minimum soft maximum.  The executables
+are called mcmctreeHH and mcmctreeHS.  See the commands for compiling
+at the beginning of the file mcmctree.c.
+
 
 
 Version 4.3, August 2009
@@ -59,8 +113,6 @@ notes for 4.2a below).  The results are incorrect when there are
 exactly 7 branch types (for example when you run the free-ratios model
 on a 5-species tree) but are correct for other numbers of branch
 types.  I hope this is now finally fixed.
-
-
 
 
 
@@ -169,16 +221,16 @@ ancestral reconstruction under the same branch model.  This bug is
 fixed now.
 
 
-
 baseml and codeml (discrete-gamma model): My intention has been to use
 the mean and not the median to represent all rates in each category
 when the discrete-gamma model is implemented.  See Yang (1994
-J. Mol. Evol. 39:306-314) for the distinction.  However, some bugs
-caused a few recent versions to use the median instead.  As far as I
-can infer, baseml in version 3.15 used the median, but baseml in
-versions 3.14 and 4 are correct (used the mean).  codeml in version 4a
-& 4b used the median but earlier versions are correct.  I hope both
-baseml and codeml are correct from version 4c.
+J. Mol. Evol. 39:306-314) for the distinction.  However, a bug caused
+a few recent versions to use the median instead.  This affects baseml
+versions 3.14c and 3.15, while version 3.14b or earlier and version 4
+or later are correct.  codeml in version 4a & 4b were incorrect while
+other versions are correct.  I hope both baseml and codeml are correct
+from version 4c.
+
 
 baseml and codeml (branch and clade labels): The local clock models
 (clock = 2) in the two programs and also the branch or branch-site
@@ -281,7 +333,9 @@ lead to seriously biased results if the clock is violated.  Work is
 under way to relax the clock assumption.  
 
 yn00: Added three methods for estimating dS and dN: LWL85 (Li, Wu &
-Luo 1985), LPB93 (Li 1993; Pamilo and Bianchi 1993), and LWL85m (??).
+Luo 1985), LPB93 (Li 1993; Pamilo and Bianchi 1993), and LWL85m (Yang
+2006 Computaional Molecular Evolution, Oxford University Press.  Eqs.
+2.12 & 2.13).
 
 codonml.  Added example files for clade model C, in folder
 examples/CladeModelC.  Thanks for Joe Bielawski for preparing these.

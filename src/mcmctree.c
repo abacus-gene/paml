@@ -4,8 +4,9 @@
    
                    Ziheng YANG, December 2002
 
-   cc -o mcmctree -m64 -march=opteron -mtune=opteron -ansi -O3 -funroll-loops -fomit-frame-pointer -finline-functions mcmctree.c tools.c -lm
-   cc -o mcmctreeHB -DHardBounds -m64 -march=opteron -mtune=opteron -ansi -O3 -funroll-loops -fomit-frame-pointer -finline-functions mcmctree.c tools.c -lm
+   cc -o mcmctree -m64 -march=opteron -mtune=opteron -ansi -funsigned-char -O3 -funroll-loops -fomit-frame-pointer -finline-functions mcmctree.c tools.c -lm
+   cc -o mcmctreeHH -DHardHard -m64 -march=opteron -mtune=opteron -ansi -O3 -funroll-loops -fomit-frame-pointer -finline-functions mcmctree.c tools.c -lm
+   cc -o mcmctreeHS -DHardSoft -m64 -march=opteron -mtune=opteron -ansi -O3 -funroll-loops -fomit-frame-pointer -finline-functions mcmctree.c tools.c -lm
 
    cc -o mcmctree -march=pentiumpro -mcpu=pentiumpro -O4 -funroll-loops -fomit-frame-pointer -finline-functions mcmctree.c tools.c -lm
    cc -o mcmctree -march=athlon -mcpu=athlon -O4 -funroll-loops -fomit-frame-pointer -finline-functions mcmctree.c tools.c -lm
@@ -13,13 +14,15 @@
    cc -o infinitesites -DINFINITESITES -march=athlon -mcpu=athlon -Wall -O2 -funroll-loops -fomit-frame-pointer -finline-functions mcmctree.c tools.c -lm
 
    cl -O2 -W3 mcmctree.c tools.c
-   cl -DHardBounds -FemcmctreeHB.exe -O2 mcmctree.c tools.c
+   cl -DHardHard -FemcmctreeHH.exe -O2 mcmctree.c tools.c
+   cl -DHardSoft -FemcmctreeHS.exe -O2 mcmctree.c tools.c
 
    mcmctree <ControlFileName>
 */
 
 /*
-#define HardBounds
+#define HardHard
+#define HardSoft
 */
 
 /*
@@ -63,7 +66,7 @@ int ConditionalPNode(int inode, int igene, double x[]);
 double lnpData(double lnpDi[]);
 double lnpD_locus(int locus);
 double lnpD_locus_Approx(int locus);
-double lnptBD(void);
+double lnptNCgiventC(void);
 double lnptC(void);
 int SetupPriorTimesFossilErrors(void);
 double lnpriorTimes(void);
@@ -101,7 +104,7 @@ struct CommonInfo {
    double pi[NCODE];
    int curconP;                    /* curconP = 0 or 1 */
    size_t sconP;
-   double *conPin[2], *conP0, space[10000];  /* fixed space unsafe */
+   double *conPin[2], space[10000];  /* fixed space unsafe */
    int conPSiteClass, NnodeScale;
    char *nodeScale;    /* nScale[ns-1] for interior nodes */
    double *nodeScaleF;       /* nScaleF[npatt] for scale factors */
@@ -142,7 +145,8 @@ struct SPECIESTREE {
 
 struct DATA { /* locus-specific data and tree information */
    int ns[NGENE], ls[NGENE], npatt[NGENE], ngene, lgene[NGENE];
-   int root[NGENE+1], conP_offset[NGENE], BlengthMethod;
+   int root[NGENE+1], conP_offset[NGENE];
+   int priortime, priorrate;
    char *z[NGENE][NS], cleandata[NGENE];
    double *fpatt[NGENE], lnpT, lnpR, lnpDi[NGENE];
    double pi[NGENE][NCODE];
@@ -172,7 +176,6 @@ int LASTROUND=0, BayesEB, debug=0, testlnL=0, NPMat=0; /* no use for this */
 enum {LOWER_F=1, UPPER_F, BOUND_F, GAMMA_F, SKEWN_F, SKEWT_F, S2N_F} FOSSIL_FLAGS;
 char *fossils[]={" ", "L", "U", "B", "G", "SN", "ST", "S2N"};
 int npfossils[]={ 0,   3,   1,   2,   2,   3,    4,     7};
-enum {ARITHMETIC, GEOMETRIC, BROWNIAN} BLengthMethods;
 char *clockstr[]={"", "Global clock", "Independent rates", "Autocorrelated rates"};
 
 
@@ -185,6 +188,9 @@ int main (int argc, char *argv[])
    char ctlf[] = "mcmctree.ctl";
    int i,j,k;
    FILE  *fout, *fseed = (FILE*)gfopen("SeedUsed", "w");
+
+   data.priortime = 0;  /* 0: BDS;        1: beta */
+   data.priorrate = 0;  /* 0: LogNormal;  1: gamma */
 
    noisy=3;
    com.alpha=0.;     com.ncatG=1;
@@ -211,21 +217,23 @@ int main (int argc, char *argv[])
    fprintf(fseed, "%d\n", com.seed);  fclose(fseed);
 
    ReadTreeSeqs(fout);
+   SetMapAmbiguity();
    ProcessFossilInfo();
 
    if(mcmc.usedata==1) {
       if(com.seqtype!=0) error2("usedata = 1 for nucleotides only");
       if(com.alpha==0)
-         com.plfun=lfun;
+         com.plfun = lfun;
       else {
          if (com.ncatG<2 || com.ncatG>NCATG) error2("ncatG");
-         com.plfun=lfundG;
+         com.plfun = lfundG;
       }
       if (com.model>HKY85)  error2("Only HKY or simpler models are allowed.");
       if (com.model==JC69 || com.model==F81) { com.fix_kappa=1; com.kappa=1; }
    }
    else if (mcmc.usedata==2) {
-      com.model = 0;  com.alpha = 0;
+      com.model = 0;
+      com.alpha = 0;
    }
    else if(mcmc.usedata==3) {
       GenerateBlengthGH("out.BV");
@@ -233,7 +241,9 @@ int main (int argc, char *argv[])
    }
 
    /* Do we want RootAge constraint at the root? */
-   if(sptree.nodes[sptree.root].fossil<=LOWER_F) {
+   if(sptree.RootAge[1]<=0 && sptree.nodes[sptree.root].fossil<=LOWER_F)
+      error2("set RootAge in control file when there is no upper bound on root");
+   if(data.fossilerrorbeta[0]==0 && !sptree.nodes[sptree.root].fossil) {
       if(sptree.RootAge[1] <= 0) 
          error2("set RootAge in control file when there is no upper bound on root");
 
@@ -336,10 +346,6 @@ int GetMem (void)
 /* This allocates memory for conditional probabilities (conP).  
    gnodes[locus] is not allocated here but in GetGtree().
 
-   conP0 is the space for the tips.  Only one copy is needed as the conditional 
-   probabilities for tips are fixed according to the data and never change.  
-   Space for conP0 is allocated for a locus only if the locus has unclean 
-   (ambiguity) data, that is, if(data.cleandata[locus]==0).
    Conditional probabilities for internal nodes are com.conPin[2], allocated 
    according to data.ns[locus] and data.npatt[locus] at all loci.  Two copies 
    of the space are allocated, hence the [2].  The copy used for the current 
@@ -350,44 +356,37 @@ int GetMem (void)
    Memory arrangement if(com.conPSiteClass=1):
    ncode*npatt for each node, by node, by iclass, by locus
 */
-   /* sconP0: tips; sconP: internal nodes */
    int locus,j,k, s1,sG=1, sfhK=0, g=data.ngene;
-   size_t sconP0;
-   double *conP0, *conP, *rates;
+   double *conP, *rates;
 
-   /* get mem for conP (internal nodes), and conP0 (tips) */
+   /* get mem for conP (internal nodes) */
    if(mcmc.usedata==1) {
       if(!com.fix_alpha && mcmc.saveconP) {
          com.conPSiteClass=1;  sG=com.ncatG;
       }
-      data.conP_offset[0]=0;
-      for(locus=0,com.sconP=sconP0=0; locus<g; locus++) {
+      data.conP_offset[0] = 0;
+      for(locus=0,com.sconP=0; locus<g; locus++) {
          s1= com.ncode * data.npatt[locus];
          com.sconP += sG*s1*(data.ns[locus]-1)*sizeof(double);
-         if(!data.cleandata[locus])
-            sconP0 += s1*data.ns[locus]*sizeof(double);
          if(locus<g-1)
-            data.conP_offset[locus+1]=data.conP_offset[locus]+sG*s1*(data.ns[locus]-1);
+            data.conP_offset[locus+1] = data.conP_offset[locus] + sG*s1*(data.ns[locus]-1);
       }
 
-      if((com.conPin[0]=(double*)malloc(2*com.sconP+sconP0))==NULL) 
+      if((com.conPin[0]=(double*)malloc(2*com.sconP))==NULL) 
          error2("oom conP");
 
-      com.conPin[1]        = com.conPin[0]+com.sconP/sizeof(double);
-      if(sconP0) com.conP0 = com.conPin[1]+com.sconP/sizeof(double);
-      printf("\n%d bytes for conP, %d bytes for conP0\n", 2*com.sconP,sconP0);
+      com.conPin[1] = com.conPin[0] + com.sconP/sizeof(double);
+      printf("\n%u bytes for conP\n", 2*com.sconP);
 
       /* set gnodes[locus][].conP for tips and internal nodes */
-      com.curconP=0; conP0=com.conP0;
+      com.curconP = 0;
       for(locus=0; locus<g; locus++) {
-         conP=com.conPin[0]+data.conP_offset[locus];
+         conP = com.conPin[0] + data.conP_offset[locus];
          for(j=data.ns[locus]; j<data.ns[locus]*2-1; j++,conP+=com.ncode*data.npatt[locus])
             gnodes[locus][j].conP = conP;
          if(!data.cleandata[locus]) {
-            for(j=0; j<data.ns[locus]; j++,conP0+=com.ncode*data.npatt[locus])
-               gnodes[locus][j].conP = conP0;
+            /* Is this call to UseLocus still needed?  Ziheng 28/12/2009 */
             UseLocus(locus, 0, mcmc.usedata, 0);
-            InitConditionalPNode ();
          }
       }
 
@@ -414,7 +413,7 @@ int GetMem (void)
    }
 
    if(com.clock>1) {  /* space for rates */
-      s1=(sptree.nspecies*2-1)*g*sizeof(double);
+      s1 = (sptree.nspecies*2-1)*g*sizeof(double);
       if(noisy) printf("%d bytes for rates.\n", s1);
       if((rates=(double*)malloc(s1))==NULL) error2("oom for rates");
       for(j=0; j<sptree.nspecies*2-1; j++) 
@@ -459,19 +458,16 @@ int UseLocus (int locus, int copyconP, int setModel, int setSeqName)
    correct space so that this routine can be used by all the proposal steps, 
    some of which operates on one locus and some change all loci.
 
-   The conP for tips always point to com.conP0 (when com.cleandata=0), and are 
-   not changed here.
-
    Try to replace this with UseLocus() for B&C.
 */
-   int i, s1=com.ncode*data.npatt[locus], sG=(com.conPSiteClass?com.ncatG:1);
+   int i, s1 = com.ncode*data.npatt[locus], sG = (com.conPSiteClass?com.ncatG:1);
    double *conPt=com.conPin[!com.curconP]+data.conP_offset[locus];
 
    com.ns = data.ns[locus]; 
    com.ls = data.ls[locus];
    tree.root = data.root[locus]; 
    tree.nnode = 2*com.ns-1;
-   nodes=gnodes[locus];
+   nodes = gnodes[locus];
    if(copyconP && mcmc.usedata==1) { /* this preserves the old conP. */
       memcpy(conPt, gnodes[locus][com.ns].conP, sG*s1*(com.ns-1)*sizeof(double));
       for(i=com.ns; i<tree.nnode; i++)
@@ -482,7 +478,8 @@ int UseLocus (int locus, int copyconP, int setModel, int setSeqName)
       com.cleandata = data.cleandata[locus];
       for(i=0; i<com.ns; i++) 
          com.z[i] = data.z[locus][i];
-      com.npatt = com.posG[1]=data.npatt[locus];  com.posG[0] = 0;
+      com.npatt = com.posG[1] = data.npatt[locus];
+      com.posG[0] = 0;
       com.fpatt = data.fpatt[locus];
 
       /* The following is model-dependent */
@@ -550,7 +547,7 @@ void switchconPin(void)
    com.curconP =! com.curconP;
    
    for(locus=0; locus<data.ngene; locus++) {
-      conP=com.conPin[com.curconP]+data.conP_offset[locus];
+      conP = com.conPin[com.curconP] + data.conP_offset[locus];
       for(i=data.ns[locus]; i<data.ns[locus]*2-1; i++,conP+=com.ncode*data.npatt[locus])
          gnodes[locus][i].conP = conP;
    }
@@ -621,18 +618,28 @@ int ConditionalPNode (int inode, int igene, double x[])
 
       GetPMatBranch2(PMat, t);
 
-      if(com.cleandata && nodes[ison].nson<1) /* tip */
+      if (nodes[ison].nson<1 && com.cleandata) {        /* tip && clean */
          for(h=0; h<com.npatt; h++) 
-            for(j=0;j<n;j++) 
+            for(j=0; j<n; j++)
                nodes[inode].conP[h*n+j] *= PMat[j*n+com.z[ison][h]];
-      else {
+      }
+      else if (nodes[ison].nson<1 && !com.cleandata) {  /* tip & unclean */
          for(h=0; h<com.npatt; h++) 
-            for(j=0;j<n;j++)  {
-               for(k=0,t=0; k<n; k++)    /* t is used as temp */
-                  t += PMat[j*n+k]*nodes[ison].conP[h*n+k];  /* expensive line! */
-               nodes[inode].conP[h*n+j]*=t;
+            for(j=0; j<n; j++) {
+               for(k=0,t=0; k<nChara[com.z[ison][h]]; k++)
+                  t += PMat[j*n+CharaMap[com.z[ison][h]][k]];
+               nodes[inode].conP[h*n+j] *= t;
             }
       }
+      else {
+         for(h=0; h<com.npatt; h++) 
+            for(j=0; j<n; j++) {
+               for(k=0,t=0; k<n; k++)
+                  t += PMat[j*n+k]*nodes[ison].conP[h*n+k];
+               nodes[inode].conP[h*n+j] *= t;
+            }
+      }
+   
    }  /*  for (ison)  */
 
    /* node scaling.  Is this coded?  Please check.  */
@@ -900,6 +907,7 @@ int GenerateBlengthGH (char infile[])
 
       if(com.seqtype) sprintf(line, "codeml %s", ctlf);
       else            sprintf(line, "baseml %s", ctlf);
+      printf("running %s\n", line);
       system(line);
 
       appendfile(fBGH, "rst2");
@@ -912,12 +920,12 @@ int GenerateBlengthGH (char infile[])
 
 int GetOptions (char *ctlf)
 {
-   int iopt,i, nopt=28, lline=4096;
-   char line[4096],*pline, opt[20], *comment="*#";
+   int iopt,i, nopt=27, lline=4096;
+   char line[4096],*pline, opt[32], *comment="*#";
    char *optstr[] = {"seed", "seqfile","treefile", "outfile", "mcmcfile", 
         "seqtype", "aaRatefile", "icode", "usedata", "ndata", "model", "clock", 
         "RootAge", "fossilerror", "alpha", "ncatG", "cleandata", 
-        "BlengthMethod", "BDparas", "kappa_gamma", "alpha_gamma", 
+        "BDparas", "kappa_gamma", "alpha_gamma", 
         "rgene_gamma", "sigma2_gamma", "print", "burnin", "sampfreq", 
         "nsample", "finetune"};
    double t=1, *eps=mcmc.finetune;
@@ -963,23 +971,22 @@ int GetOptions (char *ctlf)
                   case (14): com.alpha=t;           break;
                   case (15): com.ncatG=(int)t;      break;
                   case (16): com.cleandata=(int)t;  break;
-                  case (17): data.BlengthMethod=(int)t;  break;
-                  case (18): 
+                  case (17): 
                      sscanf(pline+1,"%lf%lf%lf", &data.birth,&data.death,&data.sampling);
                      break;
-                  case (19): 
+                  case (18): 
                      sscanf(pline+1,"%lf%lf", data.kappagamma, data.kappagamma+1); break;
-                  case (20): 
+                  case (19): 
                      sscanf(pline+1,"%lf%lf", data.alphagamma, data.alphagamma+1); break;
-                  case (21): 
+                  case (20): 
                      sscanf(pline+1,"%lf%lf", data.rgenegamma, data.rgenegamma+1); break;
-                  case (22): 
+                  case (21): 
                      sscanf(pline+1,"%lf%lf", data.sigma2gamma, data.sigma2gamma+1); break;
-                  case (23): mcmc.print=(int)t;     break;
-                  case (24): mcmc.burnin=(int)t;    break;
-                  case (25): mcmc.sampfreq=(int)t;  break;
-                  case (26): mcmc.nsample=(int)t;   break;
-                  case (27):
+                  case (22): mcmc.print=(int)t;     break;
+                  case (23): mcmc.burnin=(int)t;    break;
+                  case (24): mcmc.sampfreq=(int)t;  break;
+                  case (25): mcmc.nsample=(int)t;   break;
+                  case (26):
                      sscanf(pline+1,"%lf%lf%lf%lf%lf%lf", eps,eps+1,eps+2,eps+3,eps+4,eps+5);
                      break;
                }
@@ -1422,7 +1429,7 @@ int GetInitials ()
    place.
 */
    int np=0, i,j, g=data.ngene;
-   double maxlower=0; /* rought age for root */
+   double maxlower=0; /* rough age for root */
    double a_r=data.rgenegamma[0], b_r=data.rgenegamma[1], a,b, smallr=1e-3;
    double *p, d;
 
@@ -1479,7 +1486,8 @@ int GetInitials ()
    /* initial mu (mean rates) for genes */
    np = sptree.nspecies-1 + g;
    for(i=0; i<g; i++)
-      data.rgene[i] = smallr+rndgamma(a_r)/b_r;   /* mu */
+      data.rgene[i] = smallr + rndgamma(a_r)/b_r;   /* mu */
+
    if(com.clock>1) {               /* sigma2, rates for nodes or branches */
       np += g + g*(sptree.nnode-1);
 
@@ -1601,53 +1609,71 @@ int collectx (FILE* fout, double x[])
 }
 
 
-#define P0t_BD(expmlt) (rho*(lambda-mu)/(rho*lambda +(lambda*(1-rho)-mu)*expmlt))
+#define P0t_BDS(expmlt) (rho*(lambda-mu)/(rho*lambda +(lambda*(1-rho)-mu)*expmlt))
 
-double PDFkernelBD(double t, double t1, double vt1, double lambda, double mu, double rho)
+double lnPDFkernelBDS (double t, double t1, double vt1, double lambda, double mu, double rho)
 {
-/* this calculates the kernel density from the birth-death process with 
-   species sampling.
+/* this calculates the log of the pdf of the BDS kernel.
 */
-   double pdf, expmlt, small=1e-20;
+   double lnp, mlt=(mu-lambda)*t, expmlt, small=1e-20;
 
-   if(fabs(lambda-mu)<small)
-      pdf = (1+rho*lambda*t1)/(t1*square(1+rho*lambda*t));
+   if(fabs(mlt)<small)
+      lnp = log( (1 + rho*lambda*t1)/(t1*square(1 + rho*lambda*t)) );
    else {
-      expmlt=exp((mu-lambda)*t);
-      pdf = P0t_BD(expmlt);
-      pdf = pdf*pdf * lambda/(vt1*rho) * expmlt;
+      expmlt = exp(mlt);
+      lnp = P0t_BDS(expmlt);
+      lnp = log( lnp*lnp * lambda/(vt1*rho) * expmlt );
    }
-   return(pdf);
+   return(lnp);
 }
 
-double CDFkernelBD(double t, double t1, double vt1, double lambda, double mu, double rho)
+double CDFkernelBDS (double t, double t1, double vt1, double lambda, double mu, double rho)
 {
-/* this calculates the CDF for the kernel density from the birth-death process with 
-   species sampling.
+/* this calculates the CDF for the kernel density from the BDS model
 */
    double cdf, expmlt, small=1e-20;
 
-   if(fabs(lambda-mu)<small)
-      cdf = (1+rho*lambda*t1)*t/(t1*(1+rho*lambda*t));
+   if(fabs(lambda - mu)<small)
+      cdf = (1 + rho*lambda*t1)*t/(t1*(1 + rho*lambda*t));
    else {
-      expmlt=exp((mu-lambda)*t);
-      cdf = rho*lambda/vt1 * (1-expmlt)/(rho*lambda +(lambda*(1-rho)-mu)*expmlt);
+      expmlt = exp((mu - lambda)*t);
+      if(expmlt < 1e10)
+         cdf = rho*lambda/vt1 * (1 - expmlt)/(rho*lambda + (lambda*(1 - rho) - mu)*expmlt);
+      else {
+         expmlt = 1/expmlt;
+         cdf = rho*lambda/vt1 * (expmlt - 1)/(rho*lambda*expmlt +(lambda*(1 - rho) - mu));
+      }
    }
    return(cdf);
 }
 
 
-
-double lnptBD (void)
+double lnPDFkernelBeta (double t, double t1, double p, double q)
 {
-/* This calculates f_BD(t-C|tC), the conditional probability of other times given 
-   the calibration times, that is, the first term in equation 3 in Yang & Rannala 
-   (2006).  This is called by lnpriorTimes().  
+/* This calculates the PDF for the beta kernel.
+   The normalizing constant is calculated outside this routine.
+*/
+   double lnp, x=t/t1;
+
+   if(x<0 || x>1) error2("t outside of range (0, t1)");
+   lnp = (p - 1)*log(x) + (q - 1)*log(1 - x);
+   lnp -= log(t1);
+   return(lnp);
+}
+
+
+double lnptNCgiventC (void)
+{
+/* This calculates f_BDS(tNC|tC), the conditional probability of no-calibration 
+   node ages given calibration node ages, that is, the first term in equation 3 
+   in Yang & Rannala (2006).  This is called by lnpriorTimes().  
+
+   The beta kernel is added on 5 October 2009, specified by data.priortime=1.
 
    The routine uses sptree.nodes[].pfossil, sptree.nodes[].fossil,
    and lamdba, mu, rho from the birth-death process with species sampling 
    (data.birth, data.death, data.sampling).     
-   The routine sorts the node ages in the species tree and then uses the 
+   It sorts the node ages in the species tree and then uses the 
    birth-death prior conditional on the calibration points.  
    t[0] is t1 in Yang & Rannala (2006).
 
@@ -1662,33 +1688,47 @@ double lnptBD (void)
    int  i,j,k, n1=sptree.nspecies-1, rankprev, nfossil=0;
    int  ranktc[MaxNFossils]; /* ranks of calibration nodes */
    double t[NS-1], tc[MaxNFossils], t1=sptree.nodes[sptree.root].age;
-   double lnpt, Scale, expmlt=1, vt1, P0t1, cdf, cdfprev, small=1e-20;
+   double lnpt=0, expmlt=1, vt1, P0t1, cdf, cdfprev, small=1e-20;
    double lambda=data.birth, mu=data.death, rho=data.sampling;
+   double p=data.birth, q=data.death, lnbeta=0;
    int debug=0;
 
-   /* (A) Calculate f_BD(t_{_C)}, joint of the non-calibration times */
-   /* vt1 is needed only if (lambda != mu) */
-   if(fabs(lambda-mu)>small) {
-      expmlt= exp((mu-lambda)*t1);
-      P0t1  = P0t_BD(expmlt);
-      vt1   = 1-P0t1/rho*expmlt;
+   /* (A) Calculate f(tNC), joint of the non-calibration node ages.
+          The root age is excluded, so the loop starts from j = 1.
+          In the calculation of (eq.9)/(eq.11), (s - 2)! cancels out, as does 
+          the densities g(t_i_1) etc. in eq.11.  After cancellation, only the 
+          densities of the non-calibration node ages remain in eq.9.
+   */
+   if(data.priortime==0) {  /* BDS kernel */
+      /* vt1 is needed only if (lambda != mu) */
+      if(fabs(lambda-mu)>small) {
+         expmlt= exp((mu - lambda)*t1);
+         P0t1  = P0t_BDS(expmlt);
+         vt1   = 1 - P0t1/rho*expmlt;
+      }
+      else {
+         P0t1 = rho/(1+rho*mu*t1);
+         vt1  = mu*t1*P0t1;
+      }
+
+      for(j=1,lnpt=0; j<n1; j++) {
+         k = sptree.nspecies+j;
+         if(!sptree.nodes[k].usefossil)   /* non-calibration node age */
+            lnpt += lnPDFkernelBDS(sptree.nodes[k].age, t1, vt1, lambda, mu, rho);
+      }
    }
-   else {
-      P0t1 = rho/(1+rho*mu*t1);
-      vt1  = mu*t1*P0t1;
+   else {                   /* beta kernel */
+      lnbeta = LnGamma(p) + LnGamma(q) - LnGamma(p+q);
+      for(j=1,lnpt=0; j<n1; j++) {
+         k = sptree.nspecies+j;
+         if(!sptree.nodes[k].usefossil)   /* non-calibration node age */
+            lnpt += lnPDFkernelBeta(sptree.nodes[k].age, t1, p, q) + lnbeta;
+      }
    }
 
-   /* root (j=0) is excluded from the ranking. */
-   for(j=1,lnpt=1,Scale=0; j<n1; j++) {
-      k = sptree.nspecies+j;
-      if(!sptree.nodes[k].usefossil)
-         lnpt *= PDFkernelBD(sptree.nodes[k].age, t1, vt1, lambda, mu, rho);
-      if(j%50==0) { Scale += log(lnpt); lnpt=1; }
-   }
-   lnpt = Scale + log(lnpt);
-
-   /* (B) Calculate f_BD(t_C), marginal for calibration nodes.  This goes through the 
-      calibration nodes in the order of their ages, with tc[] sorted beforehand.
+   /* (B) Divide by f(tC), marginal of calibration node ages (eq.9/eq.11).  
+      This goes through the calibration nodes in the order of their ages, 
+      with sorted node ages stored in tc[].
    */
    for(j=sptree.nspecies; j<sptree.nnode; j++) {
       t[j-sptree.nspecies] = sptree.nodes[j].age;
@@ -1719,16 +1759,23 @@ double lnptBD (void)
 
    for(i=0,rankprev=0,cdfprev=0; i<nfossil+1; i++) {
       if(i < nfossil) {
-         cdf = CDFkernelBD(tc[i], t1, vt1, lambda, mu, rho);
-         k = ranktc[i]-rankprev-1;
+         if(data.priortime==0)   /* BDS kernel */
+            cdf = CDFkernelBDS(tc[i], t1, vt1, lambda, mu, rho);
+         else                    /* beta kernel */
+            cdf = CDFBeta(tc[i]/t1, p, q, lnbeta);
+
+         k = ranktc[i] - rankprev - 1;
       }
       else {
          cdf = 1;
-         k = n1-rankprev-1;
+         k = n1 - rankprev - 1;
       }
-      if(k > 0)
-         lnpt += LnGamma(k+1.0) - k*log(cdf-cdfprev);
-      rankprev=ranktc[i];  cdfprev=cdf;
+      if(k > 0) {
+         if(cdf <= cdfprev) error2("cdf diff<0 in lnptNCgiventC");
+         lnpt += LnGamma(k+1.0) - k*log(cdf - cdfprev);
+      }
+      rankprev = ranktc[i];
+      cdfprev = cdf;
    }
    if(debug==1) printf("\npdf = %.12f\n", exp(lnpt));
 
@@ -1736,8 +1783,10 @@ double lnptBD (void)
 }
 
 
-#ifdef HardBounds
+#if   (defined(HardHard))
    double tailL=1e-300, tailR=1e-300;
+#elif (defined(HardSoft))
+   double tailL=1e-300, tailR=0.025;
 #else
    double tailL=0.025,  tailR=0.025;
 #endif
@@ -2045,7 +2094,7 @@ double lnpriorTimes (void)
    double lnpt=0, scaleF=-1e300, y;
 
    if(data.fossilerrorbeta[0]==0)  /* no fossil errors in model */
-      lnpt = lnptC() + lnptBD();
+      lnpt = lnptC() + lnptNCgiventC();
    else {  /* cycle through combinations of indicators, excluding that of all 0s. */
       for(i=0; i<ncomFerr; i++) {
          it = i;
@@ -2058,7 +2107,7 @@ double lnpriorTimes (void)
          }
 
          y = nused*log(1-pE)+(sptree.nfossil-nused)*log(pE)-ln1pE
-           - log(sptree.CcomFossilErr[i]) + lnptC() + lnptBD();
+           - log(sptree.CcomFossilErr[i]) + lnptC() + lnptNCgiventC();
 
          if(y < scaleF + 100)
             lnpt += exp(y-scaleF);
@@ -2083,6 +2132,10 @@ int getPfossilerr (double postEFossil[], double nround)
    double pt, pEf[MaxNFossils]={0}, scaleF=-1e300, y;
    char Ef[MaxNFossils];  /* indicators of fossil errors */
 
+
+   if(data.priortime==1) 
+      error2("beta kernel for prior time not implemented for model of fossil errors.");
+
    for(i=0,pt=0; i<ncomFerr; i++) {
       it = i;
       for(is=sptree.nspecies, k=0, nused=0; is<sptree.nnode; is++) {
@@ -2096,7 +2149,7 @@ int getPfossilerr (double postEFossil[], double nround)
       if(k != nf) error2("k == nf?");
 
       y = nused*log(1-pE)+(nf-nused)*log(pE)-ln1pE
-        - log(sptree.CcomFossilErr[i]) + lnptC() + lnptBD();
+        - log(sptree.CcomFossilErr[i]) + lnptC() + lnptNCgiventC();
 
       if(y < scaleF + 200) {
          pt += y = exp(y-scaleF);
@@ -2183,9 +2236,9 @@ double UpdateTimes (double *lnL, double finetune)
       tson[0] = sptree.nodes[sons[0]].age;
       tson[1] = sptree.nodes[sons[1]].age;
       y = max2(tson[0], tson[1]);
-      yb[0] = (y>0 ? log(y) : -1e100);
+      yb[0] = (y>0 ? log(y) : -99);
       if(is != sptree.root)  yb[1] = log(sptree.nodes[dad].age);
-      else                   yb[1] = 1e100;
+      else                   yb[1] = 99;
 
       y = log(t);
       ynew = y + finetune*rnd2NormalSym(m2NormalSym);
@@ -2262,9 +2315,9 @@ double UpdateTimesClock23 (double *lnL, double finetune)
       tson[1] = sptree.nodes[sons[1]].age;
       dad = sptree.nodes[is].father;
       tb[0] = max2(tson[0], tson[1]);
-      yb[0] = (tb[0]>0 ? log(tb[0]) : -1e100);
+      yb[0] = (tb[0]>0 ? log(tb[0]) : -99);
       if(is != sptree.root)  yb[1] = log(tb[1] = sptree.nodes[dad].age);
-      else                   yb[1] = 1e100;
+      else                   yb[1] = 99;
 
       y = log(t);
       ynew = y + finetune*rnd2NormalSym(m2NormalSym);
@@ -2370,8 +2423,24 @@ double lnpriorRates (void)
    int i, inode, dad=-1, g=data.ngene, s=sptree.nspecies, sons[2], root=sptree.root;
    double lnpR=-log(2*Pi)/2.0*(2*s-2)*g, t,tA,t1,t2,Tinv[4], detT;
    double zz, r=-1, rA,r1,r2, y1,y2;
+   double alpha, beta;
 
-   if(com.clock==2) {
+   if(data.priorrate==1 && com.clock==3)
+      error2("gamma prior for rates for clock3 not implemented yet.");
+   else if(data.priorrate==1 && com.clock==2) {   /* gamma rate prior, clock2 */
+      lnpR = 0;
+      for(i=0; i<g; i++) {
+         alpha = data.rgene[i]*data.rgene[i]/data.sigma2[i];
+         beta  = data.rgene[i]/data.sigma2[i];
+         lnpR += (alpha*log(beta) - LnGamma(alpha)) * (2*s-2);
+         for(inode=0; inode<sptree.nnode; inode++) {
+            if(inode==root) continue;
+            r = sptree.nodes[inode].rates[i];
+            lnpR += -beta*r + (alpha-1)*log(r);
+         }
+      }
+   }
+   else if(data.priorrate ==0 && com.clock==2) {  /* LN rate prior, clock2 */
       for(i=0; i<g; i++)
          lnpR -= log(data.sigma2[i])/2.*(2*s-2);
       for(inode=0; inode<sptree.nnode; inode++) {
@@ -2383,7 +2452,7 @@ double lnpriorRates (void)
          }
       }
    }
-   else { /* clock=3 */
+   else if(data.priorrate ==0 && com.clock==3) {  /* LN rate prior, clock3 */
       for(inode=0; inode<sptree.nnode; inode++) {
          if(sptree.nodes[inode].nson==0) continue; /* skip the tips */
          dad = sptree.nodes[inode].father;
@@ -2422,7 +2491,7 @@ double UpdateRates (double *lnL, double finetune)
 */
    int locus, inode, j, g=data.ngene;
    double naccept=0, lnpRnew, lnpDinew, lnacceptance, lnLd, rold;
-   double yb[2]={-1e100,1e100},y,ynew;
+   double yb[2]={-99,99},y,ynew;
 
    if(com.clock==1)
       return UpdateRatesClock(lnL, finetune);
@@ -2485,7 +2554,7 @@ double UpdateRatesClock (double *lnL, double finetune)
 */
    int locus, j, g=data.ngene;
    double naccept=0, lnLd, lnpDinew, lnacceptance;
-   double yb[2]={-1e100,1e100},y,ynew, rold;
+   double yb[2]={-99,99},y,ynew, rold;
 
    if(debug==3) puts("\nUpdateRatesClock");
    if(mcmc.saveconP) FOR(j,sptree.nspecies*2-1) com.oldconP[j]=0;
@@ -2535,7 +2604,7 @@ double UpdateParameters (double *lnL, double finetune)
 */
    int locus, j, ip, np=!com.fix_kappa+!com.fix_alpha;
    double naccept=0, lnLd,lnpDinew, lnacceptance, c=1;
-   double yb[2]={-1e100,1e100},y,ynew, pold, pnew, *gammaprior;
+   double yb[2]={-99,99},y,ynew, pold, pnew, *gammaprior;
 
    if(np==0) return(0);
    if(debug==4) puts("\nUpdateParameters");
@@ -2603,7 +2672,7 @@ double UpdateParaRates (double finetune, double space[])
    int i, ip, g=data.ngene;
    char *parastr[2]={"mu", "sigma2"};
    double lnacceptance, lnpRnew, naccept=0;
-   double yb[2]={-1e100,1e100},y,ynew, pold, pnew, *gammaprior;
+   double yb[2]={-99,99},y,ynew, pold, pnew, *gammaprior;
 
    if(com.clock==1) return(0);
    if(debug==5) puts("\nUpdateParaRates (rgene & sigma2)");
@@ -2828,7 +2897,7 @@ int DescriptiveStatisticsSimple (FILE *fout, char infile[], int nbin, int nrho)
 int MCMC (FILE* fout)
 {
    FILE *fmcmcout = NULL;
-   int nsteps=4+(mcmc.usedata>0)+(data.fossilerrorbeta[0]>0), nxpr[2]={6,2};
+   int nsteps=4+(com.clock>1)+(data.fossilerrorbeta[0]>0), nxpr[2]={6,2};
    int i,j,k, ir, g=data.ngene;
    double Paccept[6]={0}, lnL=0, nround=0, *x, *mx, *vx, *px, postEFossil[MaxNFossils]={0};
    char timestr[36];
@@ -2933,6 +3002,7 @@ int MCMC (FILE* fout)
          Paccept[3] = (Paccept[3]*(nround-1) + UpdateParameters(&lnL, mcmc.finetune[3]))/nround;
       if(com.clock>1)
          Paccept[4] = (Paccept[4]*(nround-1) + UpdateParaRates(mcmc.finetune[4],com.space))/nround;
+
       if(data.fossilerrorbeta[0])
          Paccept[5] = (Paccept[5]*(nround-1) + UpdatePFossilErrors(mcmc.finetune[5]))/nround;
 
@@ -3019,6 +3089,8 @@ int MCMC (FILE* fout)
 
    free(x);
    FreeMem();
+   printf("\ntime prior: %s\n", data.priortime?"beta":"BDS");
+   printf("rate prior: %s\n", data.priorrate?"gamma":"LN");
    printf("\nTime used: %s\n", printtime(timestr));
    return(0);
 }

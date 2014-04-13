@@ -7,37 +7,21 @@ LIBS = #-lm -lM
 
 all : $(PRGS)
  
-baseml : baseml.obj tools.obj
-  $(CC) $(CFLAGS) baseml.obj tools.obj $(LIBS)
-basemlg : basemlg.obj tools.obj
-  $(CC) $(CFLAGS) basemlg.obj tools.obj $(LIBS)
-codeml : codeml.obj tools.obj
-  $(CC) $(CFLAGS) codeml.obj tools.obj $(LIBS)
-evolver : evolver.obj tools.obj
-  $(CC) $(CFLAGS) evolver.obj tools.obj $(LIBS)
-mcmctree : mcmctree.obj tools.obj
-  $(CC) $(CFLAGS) mcmctree.obj tools.obj $(LIBS)
-pamp : pamp.obj tools.obj 
-  $(CC) $(CFLAGS) pamp.obj tools.obj $(LIBS)
-yn00 : yn00.obj tools.obj
-  $(CC) $(CFLAGS) yn00.obj tools.obj $(LIBS)
+baseml : baseml.c tools.c
+  $(CC) $(CFLAGS) baseml.c tools.c $(LIBS)
+basemlg : basemlg.c tools.c
+  $(CC) $(CFLAGS) basemlg.c tools.c $(LIBS)
+codeml : codeml.c tools.c
+  $(CC) $(CFLAGS) codeml.c tools.c $(LIBS)
+evolver : evolver.c tools.c
+  $(CC) $(CFLAGS) evolver.c tools.c $(LIBS)
+mcmctree : mcmctree.c tools.c
+  $(CC) $(CFLAGS) mcmctree.c tools.c $(LIBS)
+  $(CC) $(CFLAGS) -FemcmctreeHH.exe -DHardHard mcmctree.c tools.c $(LIBS)
+  $(CC) $(CFLAGS) -FemcmctreeHS.exe -DHardSoft mcmctree.c tools.c $(LIBS)
+pamp : pamp.c tools.c 
+  $(CC) $(CFLAGS) pamp.c tools.c $(LIBS)
+yn00 : yn00.c tools.c
+  $(CC) $(CFLAGS) yn00.c tools.c $(LIBS)
 chi2 : chi2.c
   $(CC) $(CFLAGS) chi2.c $(LIBS)
-
-
-tools.obj : paml.h tools.c
-  $(CC) $(CFLAGS) -c tools.c
-baseml.obj : paml.h baseml.c treesub.c treespace.c
-  $(CC) $(CFLAGS) -c baseml.c
-basemlg.obj : paml.h basemlg.c treesub.c
-  $(CC) $(CFLAGS) -c basemlg.c
-codeml.obj : paml.h codeml.c treesub.c treespace.c
-  $(CC) $(CFLAGS) -c codeml.c
-evolver.obj: evolver.c treesub.c treespace.c
-  $(CC) $(CFLAGS) -c evolver.c
-mcmctree.obj : paml.h mcmctree.c treesub.c treespace.c
-  $(CC) $(CFLAGS) -c mcmctree.c
-pamp.obj : paml.h pamp.c treesub.c treespace.c
-  $(CC) $(CFLAGS) -c pamp.c
-yn00.obj : paml.h yn00.c 
-  $(CC) $(CFLAGS) -c yn00.c

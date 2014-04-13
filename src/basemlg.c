@@ -120,7 +120,7 @@ int main (int argc, char *argv[])
    ancestor=(int*)malloc(com.ns*(com.ns-1)/2*sizeof(int));
    if (SeqDistance==NULL||ancestor==NULL) error2("oom");
 
-   Initialize (fout);
+   InitializeBaseAA(fout);
    if (com.model==JC69) PatternWeightJC69like(fout);
 
    DistanceMatNuc (fout, fpair[0], com.model, com.alpha);
@@ -737,7 +737,7 @@ int lfunG_dd (double x[], double *lnL, double dl[], double ddl[], int np)
 int GetOptions (char *ctlf)
 {
    int i, nopt=27, lline=255;
-   char line[255], *pline, opt[20], *comment="*#";
+   char line[255], *pline, opt[32], *comment="*#";
    char *optstr[]={"seqfile","outfile","treefile", "noisy",
         "cleandata", "ndata", "verbose","runmode",
         "clock","fix_rgene","Mgene","nhomo","getSE","RateAncestor",

@@ -15,7 +15,7 @@
                     * 5:gamma;6:2gamma;7:beta;8:beta&w;9:beta&gamma;
                     * 10:beta&1+gamma; 11:beta&1>normal; 12:0&2normal; 13:3normal
         icode = 0   * 0:standard genetic code; 1:mammalian mt; 2-10:see below
-        Mgene = 2   * codonml: 0:rates, 1:separate; 2:diff pi, 3:diff kapa, 4:all diff
+        Mgene = 0   * codonml: 0:rates, 1:separate; 2:diff pi, 3:diff kapa, 4:all diff
 
     fix_kappa = 0   * 1: kappa fixed, 0: kappa to be estimated
         kappa = 1.6   * initial or fixed kappa

@@ -80,12 +80,56 @@ int NumberofTrees (int ns, int rooted)
 */
 
 
+int CountLHistories (void)
+{
+/* This counts the number of labeled histories for a given rooted tree.
+*/
+   int i,k, nLH, nLR[NS-1][2], change, *sons, j;
+   double y=0;
+
+   for(i=com.ns; i<tree.nnode; i++) 
+     if(nodes[i].nson!=2) error2("this works for rooted trees only");
+   for(i=com.ns; i<tree.nnode; i++) 
+      nLR[i-com.ns][0] = nLR[i-com.ns][1] = -1;
+   for(k=0; k<com.ns; k++) {
+      for(i=com.ns,change=0; i<tree.nnode; i++) {
+         sons = nodes[i].sons;
+         for(j=0; j<2; j++) {
+            if(nLR[i-com.ns][j] != -1) continue;
+            if(sons[j] < com.ns) {
+               nLR[i-com.ns][j] = 0;
+               change = 1;
+            }
+            else if(nLR[sons[j]-com.ns][0] != -1 && nLR[sons[j]-com.ns][1] != -1) {
+               nLR[i-com.ns][j] = nLR[sons[j]-com.ns][0] + nLR[sons[j]-com.ns][1] + 1;
+               change = 1;
+            }
+         }
+      }
+      if(!change) break;
+   }
+   for(i=0,nLH=1; i<tree.nnode-com.ns; i++) {
+      /*
+      printf("\nnode %2d (%2d %2d): %2d %2d ", i+com.ns, nodes[i+com.ns].sons[0], nodes[i+com.ns].sons[1], nLR[i][0], nLR[i][1]);
+      */
+      if(nLR[i][0]==-1 || nLR[i][1]==-1)
+         error2("nLR = -1");
+      if(nLR[i][0] && nLR[i][1]) {
+         nLH *= (int)Binomial((double)(nLR[i][0]+nLR[i][1]), min2(nLR[i][0], nLR[i][1]), &y);
+         if(y) error2("y!=0 not considered");
+      }
+   }
+   return(nLH);   
+}
+
+
+
 int ListTrees (FILE* fout, int ns, int rooted)
 {
 /* list trees by adding species, works fine with large ns
 */
    int NTrees, NTreeRoot=3;
-   int i, Ib[NS-2], ns1=ns+rooted, nM=ns1-3,finish;
+   int i, Ib[NS-2], ns1=ns+rooted, nM=ns1-3, finish;
 
    if(com.ns<=12) {
       printf ("%20s%20s%20s\n", "Taxa", "Unrooted trees", "Rooted trees");
@@ -103,16 +147,22 @@ int ListTrees (FILE* fout, int ns, int rooted)
    for (NTrees=0; ; ) {
       MakeTreeIb(ns, Ib, rooted);
       OutTreeN(fout, (com.ns<=26), 0);
-      fprintf(fout, " [%7d]\n", NTrees++);
+
+      if(rooted) fprintf(fout, " [%7d %6d LHs]\n", NTrees++, CountLHistories());
+      else fprintf(fout, " [%7d]\n", NTrees++);
 
       for (i=nM-1,Ib[nM-1]++,finish=0; i>=0; i--) {
          if (Ib[i]<2*i+3) break;
-         if (i==0) { finish=1; break; }
+         if (i==0) { 
+            finish=1; 
+            break;
+         }
          Ib[i]=0; Ib[i-1]++; 
       }
       if (finish) break;
    }
    FPN(fout);
+
    return (0);
 }
 
@@ -330,58 +380,6 @@ int GetIofLHistory (void)
    return (index);
 }
 
-int CountLHistory(char LHistories[], double space[])
-{
-/* counts the number of labeled histories corresponding to the same
-   rooted tree topology.
-   AA[level][] records all possible node numbers at level level and 
-   depends on the value of AA[level-1][iA[level-1]]. 
-   nA[] is the number of possibilities at each level, and iA[] indexes 
-   node numbers along a path.  When level=nlevel-1, a path is formed.
-   ipn is the node selected in the previous level and its sons are added 
-   to the possilities for current level.
-   LHistories[][com.ns-1] stores the orderings for each labeled history.
-*/
-   int level,nlevel, i,j;
-   int *AA=(int*)space, ns1=com.ns-1, nA[NS-1], iA[NS-1], nLH, ipn;
-   
-   nlevel=tree.nnode-com.ns;
-   if (com.ns-1!=tree.nnode-com.ns)  error2 ("binary tree?");
-   FOR (i,com.ns-1) iA[i]=0;
-/*
-printf ("nlevel %2d\troot %2d\n", nlevel, tree.root+1);
-*/
-   nA[0]=1;  ipn=AA[0*ns1+0]=tree.root;
-   for (level=1,nLH=0; ; level++) {
-      nA[level]=0;
-       /* inherate possiblities of level-1 */
-      for (i=0,ipn=AA[(level-1)*ns1+iA[level-1]]; i<nA[level-1]; i++)
-         if (i!=iA[level-1])  AA[level*ns1+nA[level]++]=AA[(level-1)*ns1+i];
-      for (i=0; i<nodes[ipn].nson; i++) /* add new possibilities to level */
-         { j=nodes[ipn].sons[i];  if (j>com.ns-1) AA[level*ns1+nA[level]++]=j; }
-
-      if (level==nlevel-1)  {           /* last level */
-         FOR (iA[nlevel-1], nA[nlevel-1])  {
-            FOR (j,nlevel)  LHistories[nLH*(com.ns-1)+j]=(char)AA[j*ns1+iA[j]];
-            nLH++;
-/*
-printf ("\n%30s %3d: ", "path", nLH);
-FOR (j, nlevel)  printf("%4d",AA[j*ns1+iA[j]]+1);
-*/
-         }
-         for (level=nlevel-2; level>=0; level--) {
-            if (++iA[level]<nA[level]) break;
-            iA[level]=0;
-         }
-         if (level==-1) break;
-      }
-/*
-printf("\nlevel %2d (ipn=%2d)(%2d/%2d):",level+1,ipn+1,iA[level]+1,nA[level]);
-for (i=0; i<nA[level]; i++) printf ("%3d", AA[level*ns1+i]+1);
-*/
-   }
-   return (nLH);
-}
 
 int ReorderNodes (char LHistory[])
 {

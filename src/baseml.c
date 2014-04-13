@@ -10,7 +10,7 @@
 
 #include "paml.h"
 
-#define NS            7400
+#define NS            5000
 #define NBRANCH       (NS*2-2)
 #define NNODE         (NS*2-1)
 #define MAXNSONS      100
@@ -53,18 +53,18 @@ int GroupDistances();
 
 
 struct CommonInfo {
-   char *z[NS], *spname[NS], seqf[256],outf[256],treef[256], cleandata;
+   unsigned char *z[NS], *spname[NS], seqf[256],outf[256],treef[256], cleandata;
    char oldconP[NNODE];  /* update conP for nodes to save computation (0 yes; 1 no) */
-   int seqtype, ns,ls,ngene,posG[NGENE+1],lgene[NGENE], *pose,npatt, readpattern;
-   int np,ntime,nrgene,nrate,nalpha,npi,nhomo,ncatG,ncode,Mgene;
-   size_t sspace,sconP;
+   int seqtype, ns, ls, ngene, posG[NGENE+1], lgene[NGENE], *pose, npatt, readpattern;
+   int np, ntime, nrgene, nrate, nalpha, npi, nhomo, ncatG, ncode, Mgene;
+   size_t sspace, sconP;
    int fix_kappa, fix_rgene, fix_alpha, fix_rho, nparK, fix_blength;
    int clock, model, getSE, runmode, print,verbose, ndata, bootstrap;
    int icode,coding, method;
    int nbtype;
    double *fpatt, kappa, alpha, rho, rgene[NGENE], pi[4],piG[NGENE][4];
    double freqK[NCATG], rK[NCATG], MK[NCATG*NCATG];
-   double (*plfun)(double x[],int np), *conP, *conP0, *fhK, *space;
+   double (*plfun)(double x[],int np), *conP, *fhK, *space;
    int conPSiteClass;        /* is conP memory allocated for each class? */
    int NnodeScale;
    char *nodeScale;          /* nScale[ns-1] for interior nodes */
@@ -137,11 +137,10 @@ int main (int argc, char *argv[])
    char *Mgenestr[]={"diff. rate", "separate data", "diff. rate & pi", 
                      "diff. rate & kappa", "diff. rate & pi & kappa"};
    int getdistance=1, i, idata, seed;
-   size_t sconP0=0, s2=0;
+   size_t s2=0;
 
    starttimer();
    seed = 4*(int)time(NULL)+1;
-   seed = 1;
    SetSeed(seed);
 
    com.ndata = 1;
@@ -199,6 +198,7 @@ int main (int argc, char *argv[])
       }
       if(idata)  GetOptions(ctlf); /* com.cleandata is read from here again. */
       ReadSeq ((com.verbose?fout:NULL), fseq, com.cleandata);
+      SetMapAmbiguity();
       if (com.rho && com.readpattern) error2("rho doesn't work with readpattern.");
       if(com.ndata==1) fclose(fseq);
       i=(com.ns*2-1)*sizeof(struct TREEN);
@@ -214,11 +214,11 @@ int main (int argc, char *argv[])
       if(com.nalpha && (!com.alpha || com.ngene==1 || com.fix_alpha))
          error2("Malpha");
       if(com.nalpha>1 && com.rho) error2("Malpha or rho");
-      if(com.alpha==0)  com.nalpha=0;
-      else              com.nalpha=(com.nalpha?com.ngene:!com.fix_alpha);
-      if(com.Mgene==1)  com.nalpha=!com.fix_alpha;
+      if(com.alpha==0)  com.nalpha = 0;
+      else              com.nalpha = (com.nalpha?com.ngene:!com.fix_alpha);
+      if(com.Mgene==1)  com.nalpha = !com.fix_alpha;
 
-      if(com.ngene==1) com.Mgene=0;
+      if(com.ngene==1) com.Mgene = 0;
       if((com.nhomo==1 && com.ngene>1) || (com.Mgene>1 && com.nhomo>=1))
          error2("nhomo does not work with Mgene options");
 
@@ -241,23 +241,19 @@ int main (int argc, char *argv[])
       if (com.nparK) fprintf(fout,"\nnparK:%4d  K:%4d\n",com.nparK,com.ncatG);
 
       if(getdistance) {
-         i=com.ns*(com.ns-1)/2;
-         SeqDistance=(double*)realloc(SeqDistance,i*sizeof(double));
-         ancestor=(int*)realloc(ancestor, i*sizeof(int));
+         i = com.ns*(com.ns-1)/2;
+         SeqDistance = (double*)realloc(SeqDistance,i*sizeof(double));
+         ancestor = (int*)realloc(ancestor, i*sizeof(int));
          if(SeqDistance==NULL||ancestor==NULL) error2("oom distance&ancestor");
       }
-      Initialize(fout);
-      if (com.Mgene==3) FOR (i,com.ngene) xtoy(com.pi,com.piG[i],4);
+      InitializeBaseAA(fout);
+      if (com.Mgene==3) 
+         for(i=0; i<com.ngene; i++) xtoy(com.pi,com.piG[i],4);
 
       if (com.model==JC69 && !com.readpattern && !com.print) 
          PatternWeightJC69like(fout);
 
-      if(!com.cleandata) {
-         sconP0 = com.ns*com.ncode*com.npatt*sizeof(double);
-         if((com.conP0 = (double*)malloc(sconP0))==NULL) 
-            error2("oom conP0");
-      }
-      com.sconP = (com.ns-1)*com.ncode*com.npatt*sizeof(double);
+      com.sconP = (size_t)(com.ns-1)*com.ncode*com.npatt*sizeof(double);
       if((com.conP = (double*)realloc(com.conP,com.sconP))==NULL) 
          error2("oom conP");
       if (com.alpha || com.nparK) {
@@ -267,12 +263,13 @@ int main (int argc, char *argv[])
 
       printf ("\n%9ld bytes for distance ",
          com.ns*(com.ns-1)/2*(sizeof(double)+sizeof(int)));
-      printf("\n%9lu bytes for conP0\n%9lu bytes for conP1\n",sconP0,com.sconP);
-      printf("%9lu bytes for fhK\n%9lu bytes for space\n",s2,com.sspace);
+      printf("\n%9lu bytes for conP\n", com.sconP);
+      printf("%9lu bytes for fhK\n%9lu bytes for space\n", s2, com.sspace);
 
       /* FOR(i,com.ns*2-1) xtoy(com.pi,nodes[i].pi, 4);  check this? */
 
-      if(getdistance) DistanceMatNuc(fout,fpair[0],com.model,com.alpha);
+      if(getdistance) 
+         DistanceMatNuc(fout,fpair[0],com.model,com.alpha);
 
       if (com.Mgene==1)        MultipleGenes (fout, fpair, com.space);
       else if (com.runmode==0) Forestry (fout);
@@ -323,8 +320,6 @@ int Forestry (FILE *fout)
    }
    flnf=gfopen("lnf","w+");
    fprintf(flnf,"%6d %6d %6d\n", ntree, com.ls, com.npatt);
-
-   if(!com.cleandata) InitConditionalPNode();
 
    for(itree=0; ntree==-1||itree<ntree; itree++,iteration=1) {
       if(ReadTreeN(ftree,&haslength,&i,0,1)) 
@@ -589,14 +584,14 @@ void DetailOutput (FILE *fout, double x[], double var[])
    
    if(com.nhomo==1) {
       if(com.nrate) fprintf (fout, "kappa under %s:", models[com.model]);
-      FOR(i,com.nrate) fprintf (fout, " %8.5f", x[k++]);  FPN(fout);
-      fprintf (fout, "Base frequencies: ");
-      FOR (j,4) fprintf (fout, " %8.5f", com.pi[j]);
+      for(i=0; i<com.nrate; i++) fprintf (fout, " %8.5f", x[k++]);  FPN(fout);
+      fprintf (fout, "Base frequencies:\n");
+      for(j=0; j<4; j++) fprintf (fout, " %8.5f", com.pi[j]);
       k += n31pi;
    }
    else if(com.nhomo>=3) {
       fprintf (fout, "kappa under %s (in order of branches):", models[com.model]);
-      FOR(i,com.nrate) fprintf(fout," %8.5f", x[k++]);  FPN(fout);
+      for(i=0; i<com.nrate; i++) fprintf(fout," %8.5f", x[k++]);  FPN(fout);
       SetParameters(x);
       if(com.alpha==0) {
          if((oldfreq=(double*)malloc(tree.nnode*4*sizeof(double)))==NULL) 
@@ -604,13 +599,13 @@ void DetailOutput (FILE *fout, double x[], double var[])
          OldDistributions (tree.root, oldfreq);
       }
       fputs("\n(frequency parameters for branches)  [frequencies at nodes] (see Yang & Roberts 1995 fig 1)\n\n",fout);
-      for(i=0;i<tree.nnode;i++,FPN(fout)) {
+      for(i=0; i<tree.nnode; i++,FPN(fout)) {
          fprintf (fout, "Node #%d  (", i+1);
-         FOR (j,4) fprintf (fout, " %7.5f ", nodes[i].pi[j]);
+         for(j=0; j<4; j++) fprintf (fout, " %7.5f ", nodes[i].pi[j]);
          fprintf(fout,")");
          if(com.alpha==0) {
             fprintf(fout,"  [");
-            FOR(j,4) fprintf(fout," %7.5f",oldfreq[i*4+j]);
+            for(j=0; j<4; j++) fprintf(fout," %7.5f",oldfreq[i*4+j]);
             fprintf(fout," ]");
          }
       }
@@ -624,12 +619,14 @@ void DetailOutput (FILE *fout, double x[], double var[])
 
       if (com.nhomo==2) {
          fprintf (fout, "\nbranch         t    kappa      TS     TV\n");
-         FOR (i,tree.nbranch) {
-            if (com.model==F84)  { k1=1+x[k+i]/R; k2=1+x[k+i]/R; }
-            else                   k1=k2=x[k+i];
-            S=2*p[0]*p[1]*k1+2*p[2]*p[3]*k2; V=2*Y*R;  Qfactor=1/(S+V);
+         for(i=0; i<tree.nbranch; i++) {
+            if (com.model==F84)  { k1 = 1+x[k+i]/R;  k2 = 1+x[k+i]/R; }
+            else                   k1 = k2=x[k+i];
+            S = 2*p[0]*p[1]*k1+2*p[2]*p[3]*k2; 
+            V = 2*Y*R;
+            Qfactor = 1/(S+V);
             /* t=(com.clock ? nodes[tree.branches[i][1]].branch : x[i]); */
-            t=nodes[tree.branches[i][1]].branch; 
+            t = nodes[tree.branches[i][1]].branch; 
             fprintf(fout,"%2d..%-2d %9.5f %8.5f %9.5f %8.5f\n",
                tree.branches[i][0]+1,tree.branches[i][1]+1, t,x[k+i],
                t*S/(S+V), t*V/(S+V));
@@ -637,7 +634,7 @@ void DetailOutput (FILE *fout, double x[], double var[])
       }
       /* Mgene = 0:rates, 1:separate; 2:diff pi, 3:diff kapa, 4:all diff*/
       else if (com.Mgene>=2) {
-         FOR (i,com.ngene) {
+         for(i=0; i<com.ngene; i++) {
             fprintf (fout, "\nGene #%d: ", i+1);
             p = (com.Mgene==3 ? com.pi : com.piG[i]);
             Qrate = (com.Mgene==2 ? x+k : x+k+i*nr[com.model]);
@@ -654,7 +651,7 @@ void DetailOutput (FILE *fout, double x[], double var[])
          if (com.model<REV) FOR (i,com.nrate) fprintf (fout, " %8.5f", x[k++]);
          else k+=com.nrate;
       }
-      FPN (fout);
+      FPN(fout);
    }
 
    if (com.Mgene<2) {
@@ -664,7 +661,7 @@ void DetailOutput (FILE *fout, double x[], double var[])
          QUNREST (fout, PMat, x+com.ntime+com.nrgene, com.pi);
    }
 
-   FOR(j,com.nalpha) {
+   for(j=0; j<com.nalpha; j++) {
       if (!com.fix_alpha)  
          fprintf(fout,"\nalpha (gamma, K=%d) = %8.5f", com.ncatG,(com.alpha=x[k++]));
       if(com.nalpha>1) 
@@ -675,7 +672,7 @@ void DetailOutput (FILE *fout, double x[], double var[])
    }
    if (!com.fix_rho) {
       fprintf (fout, "rho for the auto-discrete-gamma model: %9.5f",x[k]);
-      FPN (fout);
+      FPN(fout);
    }
    if (com.nparK>=1 && com.nalpha<=1) {
       fprintf(fout, "\nrate:");  FOR(i,com.ncatG) fprintf(fout," %8.5f",com.rK[i]);
@@ -687,7 +684,7 @@ void DetailOutput (FILE *fout, double x[], double var[])
       for(i=0;i<com.ncatG;i++,FPN(fout))  FOR(j,com.ncatG) 
          fprintf (fout, " %8.5f", com.MK[i*com.ncatG+j]);
    }
-   FPN (fout);
+   FPN(fout);
 }
 
 int GetStepMatrix(char*line)
@@ -728,21 +725,21 @@ int GetStepMatrix(char*line)
 
 int GetOptions (char *ctlf)
 {
-   int iopt, i, j, nopt=29, lline=4096; 
-   char line[4096], *pline, opt[20], *comment="*#";
+   int iopt, i, j, nopt=30, lline=4096; 
+   char line[4096], *pline, opt[32], *comment="*#";
    char *optstr[]={"seqfile","outfile","treefile","noisy", "cleandata", 
         "verbose","runmode", "method", "clock","fix_rgene","Mgene","nhomo",
         "getSE","RateAncestor", "model","fix_kappa","kappa",
         "fix_alpha","alpha","Malpha","ncatG", "fix_rho","rho",
-        "nparK", "ndata", "bootstrap", "Small_Diff","icode", "fix_blength"};
+        "nparK", "ndata", "bootstrap", "Small_Diff","icode", "fix_blength", "seqtype"};
    double t;
    FILE *fctl;
    int ng=-1, markgenes[NGENE];
 
-   fctl=gfopen(ctlf,"r");
+   fctl = gfopen(ctlf,"r");
    if(noisy) printf ("Reading options from %s..\n", ctlf);
-   for (;;) {
-      if (fgets (line, lline, fctl) == NULL) break;
+   for ( ; ; ) {
+      if (fgets(line, lline, fctl) == NULL) break;
       for (i=0,t=0,pline=line; i<lline&&line[i]; i++)
          if (isalnum(line[i]))  { t=1; break; }
          else if (strchr(comment,line[i])) break;
@@ -780,9 +777,9 @@ int GetOptions (char *ctlf)
                      ng = splitline (++pline, markgenes);
                      for(j=0; j<min2(ng,com.ndata); j++) 
                         if(!sscanf(pline+markgenes[j],"%lf",&data.kappa[j])) break;
-
-matout(F0, data.kappa, 1, min2(ng,com.ndata));
-
+                        /* 
+                        matout(F0, data.kappa, 1, min2(ng,com.ndata));
+                        */
                   }
                   break;
                case (17): com.fix_alpha=(int)t;   break;
@@ -792,8 +789,9 @@ matout(F0, data.kappa, 1, min2(ng,com.ndata));
                      ng = splitline (++pline, markgenes);
                      for(j=0; j<min2(ng,com.ndata); j++) 
                         if(!sscanf(pline+markgenes[j],"%lf",&data.alpha[j])) break;
-
-matout(F0, data.alpha, 1, min2(ng,com.ndata));
+                        /*
+                        matout(F0, data.alpha, 1, min2(ng,com.ndata));
+                        */
                   }
                   break;
                case (19): com.nalpha=(int)t;      break;
@@ -806,6 +804,7 @@ matout(F0, data.alpha, 1, min2(ng,com.ndata));
                case (26): Small_Diff=t;           break;
                case (27): com.icode=(int)t; com.coding=1; break;
                case (28): com.fix_blength=(int)t; break;
+               case (29): com.seqtype=(int)t;     break;
             }
             break;
          }
@@ -819,6 +818,7 @@ matout(F0, data.alpha, 1, min2(ng,com.ndata));
       printf("Using parameters from the control file.");
 
 
+   if(com.seqtype!=0) error2("seqtype = 0?");
    if (com.fix_alpha==1 && com.alpha==0) {
       if (!com.fix_rho || com.rho) error2("fix rho to 0 if alpha=0.");
    }
@@ -891,7 +891,7 @@ int GetInitials (double x[], int *fromfile)
    SetParameters().  Needs more careful thinking.
 */
    int i,j,k, K=com.ncatG, n31pi=(com.model==T92?1:3);
-   size_t sconP_new=(tree.nnode-com.ns)*com.ncode*com.npatt*com.ncatG*sizeof(double);
+   size_t sconP_new=(size_t)(tree.nnode-com.ns)*com.ncode*com.npatt*com.ncatG*sizeof(double);
    double t=-1;
 
    NFunCall=NPMatUVRoot=NEigenQ=0;
@@ -907,7 +907,7 @@ int GetInitials (double x[], int *fromfile)
    if(com.clock && com.fix_blength==-1) com.fix_blength=0;
 
    if(com.method && com.fix_blength!=2 && com.plfun==lfundG) {
-      com.conPSiteClass=1;
+      com.conPSiteClass = 1;
       if(com.sconP < sconP_new) {
          com.sconP = sconP_new;
          printf("\n%9lu bytes for conP1, adjusted\n",com.sconP);
@@ -1014,7 +1014,7 @@ int SetParameters(double x[])
    if(com.clock>=5) return(0);
    if(com.fix_blength<2) SetBranch(x);
 
-   FOR(i, com.nrgene) com.rgene[i+1]=x[com.ntime+i];
+   for(i=0; i<com.nrgene; i++) com.rgene[i+1]=x[com.ntime+i];
    if(com.clock && com.clock<5 && AbsoluteRate) 
       com.rgene[0]=x[0]; /* so that rgene are absolute rates */
 
@@ -1023,7 +1023,7 @@ int SetParameters(double x[])
        if (com.model==TN93) k2=x[com.ntime+com.nrgene+1];
    }
    if (com.nhomo==1) {
-      k=com.ntime+com.nrgene+com.nrate;
+      k = com.ntime+com.nrgene+com.nrate;
       if(com.model==T92)
          { com.pi[0]=com.pi[2]=(1-x[k])/2;  com.pi[1]=com.pi[3]=x[k]/2; }
       else {
@@ -1230,18 +1230,28 @@ int ConditionalPNode (int inode, int igene, double x[])
       }
       GetPMatBranch(PMat, x, t, ison);
 
-      if (com.cleandata && nodes[ison].nson<1)  /* tip */
+      if (nodes[ison].nson<1 && com.cleandata) {        /* tip && clean */
          for(h=pos0; h<pos1; h++)
-            FOR(j,n)
-               nodes[inode].conP[h*n+j]*=PMat[j*n+com.z[ison][h]];
-      else {
+            for(j=0; j<n; j++)
+               nodes[inode].conP[h*n+j] *= PMat[j*n+com.z[ison][h]];
+      }
+      else if (nodes[ison].nson<1 && !com.cleandata) {  /* tip & unclean */
          for(h=pos0; h<pos1; h++)
-            FOR(j,n) {
-               for(k=0,t=0; k<n; k++)
-                  t+=PMat[j*n+k]*nodes[ison].conP[h*n+k];
-               nodes[inode].conP[h*n+j]*=t;
+            for(j=0; j<n; j++) {
+               for(k=0,t=0; k<nChara[com.z[ison][h]]; k++)
+                  t += PMat[j*n+CharaMap[com.z[ison][h]][k]];
+               nodes[inode].conP[h*n+j] *= t;
             }
       }
+      else {
+         for(h=pos0; h<pos1; h++)
+            for(j=0; j<n; j++) {
+               for(k=0,t=0; k<n; k++)
+                  t += PMat[j*n+k]*nodes[ison].conP[h*n+k];
+               nodes[inode].conP[h*n+j] *= t;
+            }
+      }
+
    }        /*  for (ison)  */
    if(com.NnodeScale && com.nodeScale[inode])  NodeScale(inode, pos0, pos1);
    return (0);

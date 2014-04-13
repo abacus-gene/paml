@@ -74,6 +74,7 @@ int main (int argc, char *argv[])
 
    com.nhomo=1;  com.print=1;
    noisy=2;  com.ncatG=8;   com.clock=0; com.cleandata=1;
+   starttimer();
    GetOptions(ctlf);
    if(argc>1) { strcpy(ctlf, argv[1]); printf("\nctlfile set to %s.\n",ctlf);}
 
@@ -82,6 +83,7 @@ int main (int argc, char *argv[])
    if ((fout=fopen (com.outf, "w"))==NULL) error2("outfile creation err.");
    if((fseq=fopen (com.seqf,"r"))==NULL)  error2("No sequence file!");
    ReadSeq (NULL, fseq, com.cleandata);
+   SetMapAmbiguity();
    i=(com.ns*2-1)*sizeof(struct TREEN);
    if((nodes=(struct TREEN*)malloc(i))==NULL) error2("oom");
 
@@ -100,7 +102,7 @@ int main (int argc, char *argv[])
    Ft = (double*) malloc(s3);
    if (space==NULL || Ft==NULL)  error2 ("oom space");
 
-   Initialize (fout);
+   InitializeBaseAA (fout);
    if (com.ngene>1) error2 ("option G not allowed yet");
 
 /*
@@ -145,7 +147,7 @@ int main (int argc, char *argv[])
 int GetOptions (char *ctlf)
 {
    int iopt, nopt=6, i, lline=4096, t;
-   char line[4096], *pline, opt[20], *comment="*#";
+   char line[4096], *pline, opt[32], *comment="*#";
    char *optstr[] = {"seqfile","outfile","treefile", "seqtype", "ncatG", "nhomo"};
    FILE  *fctl=gfopen (ctlf, "r");
 
@@ -510,7 +512,7 @@ int PathwayMP1 (FILE *fout, int *maxchange, int NSiteChange[],
       for(j=0;j<tree.nnode;j++,FPN(fout)) {
          if(j<com.ns) fprintf(fout,"%-20s", com.spname[j]);
          else         fprintf(fout,"node #%-14d", j+1);
-         print1seq (fout, zz[j], (com.readpattern?com.npatt:com.ls), 1, com.pose);
+         print1seq (fout, zz[j], (com.readpattern?com.npatt:com.ls), com.pose);
       }
       free(pnode);
    }

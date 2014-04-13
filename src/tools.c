@@ -6,14 +6,13 @@
              sequences 
 *************************/
 
-char BASEs[]="TCAGUYRMKSWHBVDN?-";
-char nBASEs[]={1,1,1,1, 1,2,2,2,2,2,2, 3,3,3,3, 4,4,4};
-char *EquateNUC[]={"T","C","A","G", "T", "TC","AG","CA","TG","CG","TA",
+char BASEs[]="TCAGUYRMKSWHBVD-N?";
+char *EquateBASE[]={"T","C","A","G", "T", "TC","AG","CA","TG","CG","TA",
      "TCA","TCG","CAG","TAG", "TCAG","TCAG","TCAG"};
-char AAs[] = "ARNDCQEGHILKMFPSTWYV*-?X";
-char AA3Str[]=
-     {"AlaArgAsnAspCysGlnGluGlyHisIleLeuLysMetPheProSerThrTrpTyrVal***"};
-char BINs[] ="TC";
+char CODONs[256][4], AAs[] = "ARNDCQEGHILKMFPSTWYV-*?X";
+char nChara[256], CharaMap[256][64];
+char AA3Str[]= {"AlaArgAsnAspCysGlnGluGlyHisIleLeuLysMetPheProSerThrTrpTyrVal***"};
+char BINs[] = "TC";
 int GeneticCode[][64] = 
      {{13,13,10,10,15,15,15,15,18,18,-1,-1, 4, 4,-1,17,
        10,10,10,10,14,14,14,14, 8, 8, 5, 5, 1, 1, 1, 1,
@@ -102,6 +101,9 @@ int PopEmptyLines (FILE* fseq, int lline, char line[])
       if (p==NULL) return(-1);
       while (*p) 
          if (*p==eqdel[0] || *p==eqdel[1] || *p==eqdel[2] || isalpha(*p)) 
+/*
+         if (*p==eqdel[0] || *p==eqdel[1] || *p==eqdel[2] || isalnum(*p)) 
+*/
             return(0);
          else p++;
    }
@@ -133,7 +135,8 @@ int CodeChara (char b, int seqtype)
          case 'G':              return(3);
       }
    else
-      FOR(i,n) if (b==pch[i]) return (i);
+      for(i=0; i<n; i++)
+		  if (b==pch[i]) return (i);
    if(noisy>=9) printf ("\nwarning: strange character '%c' ", b);
    return (-1);
 }
@@ -311,9 +314,9 @@ int difcodonNG (char codon1[], char codon2[], double *SynSite,double *AsynSite,
 
    for (i=0,*SynSite=0,nstop=0; i<2; i++) {
       for (j=0; j<3; j++)   {
-         if (transfed) b[i][j]=(i?codon1[j]:codon2[j]);
-         else          b[i][j]=(int)CodeChara((char)(i?codon1[j]:codon2[j]),0);
-         iy[i]+=by[j]*b[i][j];
+         if (transfed) b[i][j] = (i?codon1[j]:codon2[j]);
+         else          b[i][j] = (int)CodeChara((char)(i?codon1[j]:codon2[j]),0);
+         iy[i] += by[j]*b[i][j];
          if(b[i][j]<0||b[i][j]>3) { 
             if(noisy>=9) 
                printf("\nwarning ambiguity in difcodonNG: %s %s", codon1,codon2);
@@ -323,69 +326,84 @@ int difcodonNG (char codon1[], char codon2[], double *SynSite,double *AsynSite,
             return((int)(*SynDif + *AsynDif));
          }
       }
-      iaa[i]=GeneticCode[icode][iy[i]];
+      iaa[i] = GeneticCode[icode][iy[i]];
       if(iaa[i]==-1) {
          printf("\nNG86: stop codon %s.\n",getcodon(str,iy[i]));
          exit(-1);
       }
       for(j=0; j<3; j++) 
-         FOR (k,4) {
+         for(k=0; k<4; k++) {
             if (k==b[i][j]) continue;
-            i1=GeneticCode[icode][iy[i] + (k-b[i][j])*by[j]];
-            if (i1==-1)            nstop++;
-            else if (i1==iaa[i])  (*SynSite)++;
+            i1 = GeneticCode[icode][ iy[i] + (k-b[i][j])*by[j] ];
+            if (i1==-1)
+               nstop++;
+            else if (i1==iaa[i])
+               (*SynSite)++;
          }
    }
-   *SynSite*=3/18.;     /*  2 codons, 2*9 possibilities. */
-   *AsynSite=3*(1-nstop/18.) - *SynSite;
+   *SynSite  *= 3/18.;     /*  2 codons, 2*9 possibilities. */
+   *AsynSite =  3*(1-nstop/18.) - *SynSite;
 
 #if 0    /* MEGA 1.1  */
    *AsynSite = 3 - *SynSite;
 #endif
 
    ndiff=0;  *SynDif=*AsynDif=0;
-   FOR (k,3) dmark[k]=-1;
-   FOR (k,3) if (b[0][k]-b[1][k]) dmark[ndiff++]=k;
+   for(k=0; k<3; k++) dmark[k]=-1;
+   for(k=0; k<3; k++) 
+      if (b[0][k]-b[1][k]) dmark[ndiff++]=k;
    if (ndiff==0) return(0);
-   npath=1;  nstop=0;   if(ndiff>1) npath=(ndiff==2)?2:6 ;
+   npath=1;
+   nstop=0;
+   if(ndiff>1) 
+      npath = (ndiff==2 ? 2 : 6);
    if (ndiff==1) { 
       if (iaa[0]==iaa[1]) (*SynDif)++;
       else                (*AsynDif)++;
    }
    else {   /* ndiff=2 or 3 */
-      FOR (k, npath)     {
-         FOR (i1,3)  step[i1]=-1;
-             if (ndiff==2) 
-                 { step[0]=dmark[k];   step[1]=dmark[1-k];  }
-              else {
-                 step[0]=k/2;   step[1]=k%2;
-                 if (step[0]<=step[1]) step[1]++;
-                 step[2]=3-step[0]-step[1];
-              }
-              FOR (i1,3) bt1[i1]=bt2[i1]=b[0][i1];
-              sdpath=ndpath=0;       /* mutations for each path */
-              FOR (i1, ndiff) {      /* mutation steps for each path */
-                 bt2[step[i1]] = b[1][step[i1]];
-                 for (i2=0,ic[0]=ic[1]=0; i2<3; i2++) {
-                    ic[0]+=bt1[i2]*by[i2];
-                    ic[1]+=bt2[i2]*by[i2];
-                 }
-                 FOR (i2,2) iaa[i2]=GeneticCode[icode][ic[i2]];
-                 if (iaa[1]==-1)  { nstop++;  sdpath=ndpath=0; break; }
-                 if (iaa[0]==iaa[1])  sdpath++;
-                 else                 ndpath++;
-                 FOR (i2,3) bt1[i2]=bt2[i2];
+      for(k=0; k<npath; k++) {
+         for(i1=0; i1<3; i1++) 
+            step[i1]=-1;
+         if (ndiff==2) {
+            step[0]=dmark[k];
+            step[1]=dmark[1-k];
          }
-         *SynDif+=(double)sdpath;    *AsynDif+=(double)ndpath;
+         else {
+            step[0]=k/2;   step[1]=k%2;
+            if (step[0]<=step[1]) step[1]++;
+            step[2]=3-step[0]-step[1];
+         }
+              
+         for(i1=0; i1<3; i1++)
+            bt1[i1] = bt2[i1] = b[0][i1];
+         sdpath=ndpath=0;       /* mutations for each path */
+         for(i1=0; i1<ndiff; i1++) {      /* mutation steps for each path */
+            bt2[step[i1]] = b[1][step[i1]];
+            for (i2=0,ic[0]=ic[1]=0; i2<3; i2++) {
+               ic[0]+=bt1[i2]*by[i2];
+               ic[1]+=bt2[i2]*by[i2];
+            }
+            for(i2=0; i2<2; i2++) iaa[i2]=GeneticCode[icode][ic[i2]]; 
+            if (iaa[1]==-1) {
+               nstop++;  sdpath=ndpath=0; break; 
+            }
+            if (iaa[0]==iaa[1])  sdpath++; 
+            else                 ndpath++;
+            for(i2=0; i2<3; i2++)
+               bt1[i2] = bt2[i2];
+         }
+         *SynDif  += (double)sdpath;
+         *AsynDif += (double)ndpath;
       }
-   } 
+   }
    if (npath==nstop) {
       puts ("NG86: All paths are through stop codons..");
       if (ndiff==2) { *SynDif=0; *AsynDif=2; }
       else          { *SynDif=1; *AsynDif=2; }
    }
    else {
-      *SynDif/=(double)(npath-nstop);  *AsynDif/=(double)(npath-nstop);
+      *SynDif /= (double)(npath-nstop);  *AsynDif /= (double)(npath-nstop);
    }
    return (ndiff);
 }
@@ -408,8 +426,8 @@ int difcodonLWL85 (char codon1[], char codon2[], double sites[3], double sdiff[3
    /* check the two codons and code them */
    for (i=0; i<2; i++) {
       for (j=0,c[i]=0; j<3; j++)   {
-         if (transfed) b[i][j]=(i?codon1[j]:codon2[j]);
-         else          b[i][j]=(int)CodeChara((char)(i?codon1[j]:codon2[j]),0);
+         if (transfed) b[i][j] = (i?codon1[j]:codon2[j]);
+         else          b[i][j] = (int)CodeChara((char)(i?codon1[j]:codon2[j]),0);
          c[i]+=b[i][j]*by[j];
          if(b[i][j]<0||b[i][j]>3) { 
             if(noisy>=9) 
@@ -678,14 +696,14 @@ int Rates4Sites (double rates[],double alpha,int ncatG,int ls, int cdf,
 char *getcodon (char codon[], int icodon)
 {
 /* id : (0,63) */
-   if (icodon<0||icodon>63) {
+   if (icodon<0 || icodon>63) {
       printf("\ncodon %d\n", icodon);
       error2("getcodon.");
    }
-   codon[0]=BASEs[icodon/16]; 
-   codon[1]=BASEs[(icodon%16)/4];
-   codon[2]=BASEs[icodon%4];
-   codon[3]=0;
+   codon[0] = BASEs[icodon/16]; 
+   codon[1] = BASEs[(icodon%16)/4];
+   codon[2] = BASEs[icodon%4];
+   codon[3] = 0;
    return (codon);
 }
 
@@ -704,15 +722,18 @@ int NucListall(char b, int *nb, int ib[4])
    nb is number of bases and ib (0,1,2,3) list all of them.
    Data are complete if (nb==1).
 */
-   int j,k;
+   int j, k;
 
-   k=strchr(BASEs,b)-BASEs;
+   k = strchr(BASEs,(int)b) - BASEs;
    if(k<0)
       { printf("NucListall: strange character %c\n",b); return(-1);}
-   if(k<4) { *nb=1; ib[0]=k; }
+   if(k<4) {
+      *nb = 1; ib[0] = k;
+   }
    else {
-      *nb=nBASEs[k];
-      FOR(j,*nb) ib[j]=strchr(BASEs,EquateNUC[k][j])-BASEs;
+      *nb = strlen(EquateBASE[k]);
+      for(j=0; j< *nb; j++)
+         ib[j] = strchr(BASEs,EquateBASE[k][j]) - BASEs;
    }
    return(0);
 }
@@ -731,16 +752,21 @@ int Codon2AA(char codon[3], char aa[3], int icode, int *iaa)
 */
    int nb[3],ib[3][4], ic, i, i0,i1,i2, iaa0=-1,naa=0;
 
-   for(i=0;i<3;i++)  NucListall(codon[i], &nb[i], ib[i]);
-   FOR(i0,nb[0])  FOR(i1,nb[1])  FOR(i2,nb[2]) {
-      ic=ib[0][i0]*16+ib[1][i1]*4+ib[2][i2];         
-      *iaa=GeneticCode[icode][ic];
-      if(*iaa==-1) continue;
-      if(naa==0)  { iaa0=*iaa; naa++; }
-      else if (*iaa!=iaa0)  naa=2;
-   }
+   for(i=0; i<3; i++) 
+      NucListall(codon[i], &nb[i], ib[i]);
+   for(i0=0; i0<nb[0]; i0++)  
+      for(i1=0; i1<nb[1]; i1++)
+         for(i2=0; i2<nb[2]; i2++) {
+            ic = ib[0][i0]*16 + ib[1][i1]*4 + ib[2][i2];         
+            *iaa = GeneticCode[icode][ic];
+            if(*iaa==-1) continue;
+            if(naa==0)  { iaa0=*iaa; naa++; }
+            else if (*iaa!=iaa0)  naa=2;
+         }
+
    if(naa==0) {
-      printf("stop codon %c%c%c\n",codon[0],codon[1],codon[2]); *iaa=20;
+      printf("stop codon %c%c%c\n",codon[0],codon[1],codon[2]);
+      *iaa=20;
    }
    else if(naa==2)  *iaa=20; 
    else             *iaa=iaa0;
@@ -758,9 +784,9 @@ int DNA2protein(char dna[], char protein[], int lc, int icode)
    char aa3[4];
 
    for(h=0; h<lc; h++) {
-      k=Codon2AA(dna+h*3,aa3,icode,&iaa);
+      k = Codon2AA(dna+h*3,aa3,icode,&iaa);
       if(k==-1) printf(" stop codon at %d out of %d\n",h+1,lc);
-      protein[h]=AAs[iaa];
+      protein[h] = AAs[iaa];
    }
    return(0);
 }
@@ -782,17 +808,18 @@ int printcu (FILE *fout, double fcodon[], int icode)
 
    if (fcodon) { zero(faa,21);  zero(fb3x4,12); }
    else     wc=0;
-   FOR (i,4) strcpy(ss3[i],"\0\0\0");
+   for(i=0; i<4; i++) strcpy(ss3[i],"\0\0\0");
    noodle = strc(4*(10+2+wc)-2,word[1]);
    fprintf(fout, "\n%s\n", noodle);
    for(i=0; i<4; i++,FPN(fout)) {
-      FOR(j,4)  {
-         FOR(k,4)  {
-            it=i*16+k*4+j;   
-            iaa=GeneticCode[icode][it];
-            if(iaa==-1) iaa=20;
+      for(j=0; j<4; j++)  {
+         for(k=0; k<4; k++)  {
+            it = i*16+k*4+j;   
+            iaa = GeneticCode[icode][it];
+            if(iaa==-1) iaa = 20;
             getcodon(codon, it);  getAAstr(aa3,iaa);
-            if (!strcmp(ss3[k],aa3) && j>0)   fprintf(fout, "     ");
+            if (!strcmp(ss3[k],aa3) && j>0)
+               fprintf(fout, "     ");
             else  { 
                fprintf(fout, "%s %c", aa3,(iaa<20?AAs[iaa]:'*'));
                strcpy(ss3[k], aa3);
@@ -816,24 +843,26 @@ int printcums (FILE *fout, int ns, double fcodons[], int icode)
 
    ngroup=(ns-1)/neach+1;
    for(igroup=0; igroup<ngroup; igroup++,FPN(fout)) {
-      if (igroup==ngroup-1) neach=ns-neach0*igroup;
+      if (igroup==ngroup-1) 
+         neach = ns - neach0*igroup;
       noodle = strc(4*(10+wc*neach)-2, word[1]);
-      strcat (noodle, "\n");
+      strcat(noodle, "\n");
       fputs(noodle, fout);
-      FOR (i,4) strcpy (ss3[i],"   ");
-      FOR (i,4) {
-         FOR (j,4)  {
-            FOR (k,4)  {
+      for(i=0; i<4; i++) strcpy (ss3[i],"   ");
+      for(i=0; i<4; i++) {
+         for(j=0; j<4; j++) {
+            for(k=0; k<4; k++) {
                it = i*16+k*4+j;   
-               iaa=GeneticCode[icode][it]; 
-               if(iaa==-1) iaa=20;
-               getcodon(codon, it);  getAAstr(aa3,iaa);
-               if ( ! strcmp(ss3[k], aa3) && j>0)   fprintf(fout, "   ");
+               iaa = GeneticCode[icode][it]; 
+               if(iaa==-1) iaa = 20;
+               getcodon(codon, it);
+               getAAstr(aa3,iaa);
+               if ( !strcmp(ss3[k], aa3) && j>0)   fprintf(fout, "   ");
                else  { fprintf(fout, "%s", aa3); strcpy(ss3[k], aa3);  }
 
                fprintf(fout, " %s", codon);
-               FOR (i1,neach) fprintf(fout, " %*.*f",
-                       wc-1, wd, fcodons[(igroup*neach0+i1)*64+it] );
+               for(i1=0; i1<neach; i1++) 
+                  fprintf(fout, " %*.*f", wc-1, wd, fcodons[(igroup*neach0+i1)*64+it] );
                if (k<3) fprintf(fout, " %c ", word[0]);
             }
             FPN (fout);
@@ -900,6 +929,37 @@ int PtoX (double P1[], double P2[], double pi[], double X[])
 }
 
 
+int ScanFastaFile (FILE *f, int *ns, int *ls, int *aligned)
+{
+/* This scans a fasta alignment file to get com.ns & com.ls.
+   Returns -1 if the sequences are not aligned and have different lengths.
+*/
+   int len=0, ch, starter='>';
+   char name[200];
+
+   for (*aligned=1,*ns=-1,*ls=0; ; ) {
+      ch = fgetc(f);
+      if(ch == starter || ch == EOF) {
+         if(*ns >= 0) {  /* process end of the sequence */
+            if(*ns>1 && len!= *ls)  *aligned = 0;
+            if(len> *ls)            *ls = len;
+         }
+         (*ns)++;      /* next sequence */
+         if(ch == EOF) break;
+         fscanf(f, "%s", name);
+         len = 0;
+      }
+      else if(isgraph(ch)) {
+         if(*ns == -1)
+            error2("seq file error: use '>' in fasta format.");
+         len++;
+      }
+   }
+   rewind(f);
+   return(0);
+}
+
+
 int printaSeq (FILE *fout, char z[], int ls, int lline, int gap)
 {
    int i;
@@ -941,21 +1001,16 @@ int printsma (FILE*fout, char*spname[], char*z[], int ns, int l, int lline, int 
       for(i=0; i<ns; i++)  {
          if(spname) fprintf(fout,"%-*s  ", lspname,spname[i]);
          for (h=igroup*lline,lt=0,igap=0; lt<lline && h<l; h++,lt++) {
-            hp=(pose?pose[h]:h);
-#ifdef CODEML
-            if(com.seqtype==1 && com.cleandata && transformed) {
-               ic=FROM61[com.z[i][hp]];
-               codon[0]=BASEs[is/16]; 
-               codon[1]=BASEs[(ic%16)/4]; 
-               codon[2]=BASEs[ic%4];
-               fprintf(fout," %s", codon);
+            hp = (pose ? pose[h] : h);
+            if(seqtype==CODONseq && transformed) {
+               fprintf(fout," %s", CODONs[z[i][hp]]);
                continue;
             }
-#endif
-            b0=(int)z[0][hp];
-            b=(int)z[i][hp];  
+            b0 = (int)z[0][hp];
+            b  = (int)z[i][hp];  
             if(transformed) {
-               b0=pch[b0]; b=pch[b];
+               b0 = pch[b0];
+               b = pch[b];
             }
             if(i&&simple && b==b0 && b!=indel && b!=ambi)  b=equal;
             fputc(b, fout);
@@ -1178,38 +1233,40 @@ int f_and_x(double x[], double f[], int n, int fromf, int LastItem)
    return(0);
 }
 
-static unsigned int z_rndu=137;
-static unsigned int w_rndu=123456757;
+static unsigned int z_rndu=1237;
+static int          w_rndu=1237;
 
 void SetSeed (unsigned int seed)
 {
    if(sizeof(int) != 4) 
-      puts("oh-oh, we are in trouble.  int not 32-bit?");
-   z_rndu=170*(seed%178)+137;
-   w_rndu = seed*127773;
+      error2("oh-oh, we are in trouble.  int not 32-bit?");
+   z_rndu = seed;
+   w_rndu = abs(seed);
 }
 
 
 #ifdef FAST_RANDOM_NUMBER
+
 double rndu (void)
 {
-/* From Ripley (1987, page 46). 32-bit integer assumed */
-   w_rndu = w_rndu*69069+1;
-   return ldexp((double)w_rndu, -32);
+/* 32-bit integer assumed.
+   From Ripley (1987) p. 46 or table 2.4 line 2. 
+   This may return 0, which can be a problem.
+*/
+   z_rndu = z_rndu*69069 + 1;
+   if(z_rndu==0)  z_rndu = 13;
+   return z_rndu/4294967295.0;
 }
 
-
-void rndu_vector (double r[], int n)
+double rndu2 (void)
 {
-/* From Ripley (1987, page 46). 32-bit integer assumed */
-   int i;
-
-   for(i=0; i<n; i++) {
-      w_rndu = w_rndu*69069+1;
-      r[i] = ldexp((double)w_rndu, -32);
-   }
+/* 32-bit integer assumed.
+   From Ripley (1987) table 2.4 line 4. 
+*/
+   w_rndu = abs(w_rndu*16807)%2147483647;
+   if(w_rndu==0)  w_rndu = 13;
+   return w_rndu/2147483647.0;
 }
-
 
 #else 
 
@@ -1229,9 +1286,9 @@ double rndu (void)
    y_rndu = 172*(y_rndu%176) - 35*(y_rndu/176);
    z_rndu = 170*(z_rndu%178) - 63*(z_rndu/178);
 /*
-   if (x_rndu<0) x_rndu+=30269;
-   if (y_rndu<0) y_rndu+=30307;
-   if (z_rndu<0) z_rndu+=30323;
+   if (x_rndu<0) x_rndu += 30269;
+   if (y_rndu<0) y_rndu += 30307;
+   if (z_rndu<0) z_rndu += 30323;
 */
   r = x_rndu/30269.0 + y_rndu/30307.0 + z_rndu/30323.0;
   return (r-(int)r);
@@ -1391,13 +1448,12 @@ double rndgamma (double a)
    ACM Transactions on Mathematical Software, 26 (3): 363-372.
    This is not entirely safe and is noted to produce zero when a is small (0.001).
  */
-   double x, v, u;
-   double d = a - 1.0/3.0;
-   double c = (1.0/3.0) / sqrt(d);
+   double a0=a, c, d, u, v, x;
 
-   if (a < 1) {   /*  get rid of this recursion  */
-      return rndgamma(a+1) * pow(rndu(), 1/a);
-   }
+   if(a<1) a ++;
+
+   d = a - 1.0/3.0;
+   c = (1.0/3.0) / sqrt(d);
 
    for ( ; ; ) {
       do {
@@ -1415,6 +1471,9 @@ double rndgamma (double a)
          break;
    }
    v *= d;
+
+   if(a0 < 1) 
+      v *= pow(rndu(), 1/a0);
    if(v==0) 
       printf("\nrndgamma returning 0.\n");
    return v;
@@ -1508,7 +1567,7 @@ int MultiNomial2 (int n, int ncat, double prob[], int nobs[], double space[])
    double r, *pcdf=(space==NULL?prob:space), small=1e-5;
 
    ncrude=max2(5,ncat/20); ncrude=min2(200,ncrude);
-   FOR(i,ncat) nobs[i]=0;
+   for(i=0; i<ncat; i++) nobs[i]=0;
    if (space) {
       xtoy(prob, pcdf, ncat);
       for(i=1; i<ncat; i++) pcdf[i]+=pcdf[i-1];
@@ -1521,7 +1580,7 @@ int MultiNomial2 (int n, int ncat, double prob[], int nobs[], double space[])
          lcrude[j]=i-1;
       }
    }
-   FOR(i,n) {
+   for(i=0; i<n; i++) {
       r=rndu();
       j=0;
       if (crude) {
@@ -1714,15 +1773,16 @@ double LnGamma (double x)
    double f=0, fneg=0, z, lng;
    int nx=(int)x;
 
-   if((double)nx==x && nx>1 && nx<=11)
+   if((double)nx==x && nx>=0 && nx<=11)
       lng = log((double)factorial(nx-1));
    else {
       if(x<=0) {
          printf("LnGamma(%.6f) not implemented", x);
          if((int)x-x==0) { puts("lnGamma undefined"); return(-1); }
          for (fneg=1; x<0; x++) fneg /= x;
-         if(fneg<0) error2("strange!! check lngamma");
-         fneg=log(fneg);
+         if(fneg<0) 
+            error2("strange!! check lngamma");
+         fneg = log(fneg);
       }
       if (x<7) {
          f = 1;
@@ -1872,7 +1932,7 @@ l3:
 l4:
    q=ch;   p1=.5*ch;
    if ((t=IncompleteGamma (p1, xx, g))<0)
-      error2 ("\nIncompleteGamma");
+      error2("\nIncompleteGamma");
    p2=p-t;
    t=p2*exp(xx*aa+g+p1-c*log(ch));   
    b=t/ch;  a=0.5*t-b*c;
@@ -1903,18 +1963,18 @@ int DiscreteGamma (double freqK[], double rK[], double alpha, double beta, int K
       for (i=0; i<K-1; i++) /* cutting points, Eq. 9 */
          freqK[i]=QuantileGamma((i+1.0)/K, alpha, beta);
       for (i=0; i<K-1; i++) /* Eq. 10 */
-         freqK[i]=IncompleteGamma(freqK[i]*beta, alpha+1, lnga1);
+         freqK[i] = IncompleteGamma(freqK[i]*beta, alpha+1, lnga1);
 
       rK[0] = freqK[0]*factor;
       rK[K-1] = (1-freqK[K-2])*factor;
       for (i=1; i<K-1; i++)  rK[i] = (freqK[i]-freqK[i-1])*factor;
    }
    else {
-      for(i=0; i<K; i++) rK[i]=QuantileGamma((i*2.+1)/(2.*K), alpha, beta);
-      for(i=0,t=0; i<K; i++) t+=rK[i];
-      for(i=0; i<K; i++) rK[i]*=factor/t;
+      for(i=0; i<K; i++) rK[i] = QuantileGamma((i*2.+1)/(2.*K), alpha, beta);
+      for(i=0,t=0; i<K; i++) t += rK[i];
+      for(i=0; i<K; i++) rK[i] *= factor/t;
    }
-   for (i=0; i<K; i++) freqK[i]=1.0/K;
+   for (i=0; i<K; i++) freqK[i] = 1.0/K;
 
    return (0);
 }
@@ -2428,7 +2488,7 @@ double probBetaBinomial (int n, int k, double p, double q)
 }
 
 
-double PDFBeta(double x, double p, double q)
+double PDFBeta (double x, double p, double q)
 {
 /* Returns pdf of beta(p,q)
 */
@@ -2438,12 +2498,12 @@ double PDFBeta(double x, double p, double q)
       error2("bad x in PDFbeta");
 
    y = (p-1)*log(x) + (q-1)*log(1-x);
-   y-= LnGamma(p)+LnGamma(q)-LnGamma(p+q);
+   y-= LnGamma(p) + LnGamma(q) - LnGamma(p+q);
 
    return(exp(y));
 }
 
-double CDFBeta(double x, double pin, double qin, double lnbeta)
+double CDFBeta (double x, double pin, double qin, double lnbeta)
 {
 /* Returns distribution function of the standard form of the beta distribution, 
    that is, the incomplete beta ratio I_x(p,q).
@@ -2486,7 +2546,7 @@ double CDFBeta(double x, double pin, double qin, double lnbeta)
       q = pin;
    }
 
-   if(lnbeta==0) lnbeta=LnGamma(p)+LnGamma(q)-LnGamma(p+q);
+   if(lnbeta==0) lnbeta = LnGamma(p) + LnGamma(q) - LnGamma(p+q);
 
    if ((p + q) * y / (p + 1) < eps) {  /* tail approximation */
       ans = 0;
@@ -2719,9 +2779,9 @@ int GaussLegendreRule(double **x, double **w, int npoints)
    static double w4[]  = {0.6521451548625461426269361, 0.3478548451374538573730639};
 
    static double x8[]  = {0.1834346424956498049394761, 0.5255324099163289858177390, 
-                         0.7966664774136267395915539, 0.9602898564975362316835609};
+                          0.7966664774136267395915539, 0.9602898564975362316835609};
    static double w8[]  = {0.3626837833783619829651504, 0.3137066458778872873379622, 
-                         0.2223810344533744705443560, 0.1012285362903762591525314};
+                          0.2223810344533744705443560, 0.1012285362903762591525314};
 
    static double x16[] = {0.0950125098376374401853193, 0.2816035507792589132304605, 
                           0.4580167776572273863424194, 0.6178762444026437484466718, 
@@ -3778,17 +3838,29 @@ double NIntegrateGaussLegendre (double(*fun)(double x), double a, double b, int 
 /* this approximates the integral Nintegrate[fun[x], {x,a,b}].
    npoints is 10, 20, 32 or 64 nodes for legendre.");
 */
-   int i,j;
-   double *x=NULL, *w=NULL, s, t[2];
+   int j;
+   double *x=NULL, *w=NULL, s=0, t[2];
 
    GaussLegendreRule(&x, &w, npoints);
 
+   /* this goes through the natural order from a to b */
+   for(j=npoints/2-1; j>=0; j--) {
+      t[1] = (a+b)/2 - (b-a)/2*x[j];
+      s += w[j]*fun(t[1]);
+   }
+   for(j=0; j<npoints/2; j++) {
+      t[0] = (a+b)/2 + (b-a)/2*x[j];
+      s += w[j]*fun(t[0]);
+   }
+
+/*
    for(j=0,s=0; j<npoints/2; j++) {
-      t[0]=(a+b)/2 + (b-a)/2*x[j];
-      t[1]=(a+b)/2 - (b-a)/2*x[j];
+      t[0] = (a+b)/2 + (b-a)/2*x[j];
+      t[1] = (a+b)/2 - (b-a)/2*x[j];
       for(i=0; i<2; i++)
          s += w[j]*fun(t[i]);
    }
+*/
    return s *= (b-a)/2;
 }
 
@@ -4031,7 +4103,7 @@ long factorial (int n)
 
 double Binomial (double n, int k, double *scale)
 {
-/* calculates n choose k. n is any real number, and k is integer.
+/* calculates (n choose k), where n is any real number, and k is integer.
    If(*scale!=0) the result should be c+exp(*scale).
 */
    double c=1,i,large=1e99;
@@ -4338,7 +4410,7 @@ int eigenQREV (double Q[], double pi[], int n,
 
    for(j=0,nnew=0; j<n; j++)
       if(pi[j]>small)
-         pi_sqrt[nnew++]=sqrt(pi[j]);
+         pi_sqrt[nnew++] = sqrt(pi[j]);
 
    /* store in U the symmetrical matrix S = sqrt(D) * Q * sqrt(-D) */
 
@@ -4348,8 +4420,8 @@ int eigenQREV (double Q[], double pi[], int n,
             U[i*n+j] = U[j*n+i] = (Q[i*n+j] * pi_sqrt[i]/pi_sqrt[j]);
 
       status=eigenRealSym(U, n, Root, V);
-      for(i=0;i<n;i++) for(j=0;j<n;j++)  V[i*n+j] = U[j*n+i] * pi_sqrt[j];
-      for(i=0;i<n;i++) for(j=0;j<n;j++)  U[i*n+j] /= pi_sqrt[i];
+      for(i=0; i<n; i++) for(j=0; j<n; j++)  V[i*n+j] = U[j*n+i] * pi_sqrt[j];
+      for(i=0; i<n; i++) for(j=0; j<n; j++)  U[i*n+j] /= pi_sqrt[i];
    }
    else {
       for(i=0,inew=0; i<n; i++) {
@@ -4616,9 +4688,9 @@ int MeanVar (double x[], int n, double *m, double *v)
 {
    int i;
 
-   for (i=0,*m=0; i<n; i++) *m=(*m*i+x[i])/(i+1.);
-   for (i=0,*v=0; i<n; i++) *v+=square(x[i]- *m);
-   if (n>1) *v/=(n-1.);
+   for (i=0,*m=0; i<n; i++) *m  = (*m*i + x[i])/(i + 1.);
+   for (i=0,*v=0; i<n; i++) *v += square(x[i] -  *m);
+   if (n>1) *v /= (n-1.);
    return(0);
 }
 
@@ -4629,14 +4701,18 @@ int variance (double x[], int n, int nx, double mx[], double vx[])
    int i, j, k;
 
    for(i=0; i<nx; i++)  mx[i]=0;
-   for(i=0; i<nx; i++) for(k=0; k<nx; k++)
-      mx[i]=(mx[i]*k+x[i*n+k])/(k+1.);
+   for(i=0; i<nx; i++) {
+      for(k=0; k<n; k++) {
+         mx[i] = (mx[i]*k + x[i*n+k])/(k + 1.);
+      }
+   }
    for(i=0; i<nx*nx; i++) 
-      vx[i]=0;
-   for (i=0; i<nx; i++)  for (j=i; j<nx; j++) {
-       for(k=0; k<nx; k++) 
-          vx[i*nx+j]+=(x[i*n+k]-mx[i])*(x[j*n+k]-mx[j]);
-       vx[j*nx+i] = (vx[i*nx+j]/=(n-1.));
+      vx[i] = 0;
+   for (i=0; i<nx; i++) 
+      for (j=i; j<nx; j++) {
+         for(k=0; k<n; k++) 
+            vx[i*nx+j] += (x[i*n+k] - mx[i]) * (x[j*n+k] - mx[j]);
+       vx[j*nx+i] = (vx[i*nx+j] /= (n - 1.));
    }
    return(0);
 }
@@ -4985,17 +5061,19 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int nrho, int pr
       for(i=0; i<p; i++) sscanf(line+ifields[i], "%s", varstr[i]);
 
    x = (double*)malloc((p*13+p*p + p*nrho)*sizeof(double));
-   if (x==NULL) { puts("did not get enough space."); exit(-1); }
+   if (x==NULL) error2("oom DescriptiveStatistics.");
    for(j=0;j<p*13+p*p + p*nrho; j++) x[j]=0;
    mean=x+p; median=mean+p; minx=median+p; maxx=minx+p; 
    x005=maxx+p; x995=x005+p; x025=x995+p; x975=x025+p; x25=x975+p; x75=x25+p;
    var=x75+p;   gap=var+p*p; rho=gap+p;
    Tint=rho+p*nrho;
 
+   /*
    if(p>1) {
       printf("\nGreat offer!  I can smooth a few 2-D densities for free.  How many do you want? ");
       scanf("%d", &nf2d);
    }
+   */
 
    if(nf2d>MAXNF2D) error2("I don't want to do that many!");
    for(i=0; i<nf2d; i++) {
@@ -5830,7 +5908,7 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
    y=x0+n;     s=y+n;   z=s+n;   H=z+n;  C=H+n*n, tv=C+n*n;
    xmark=(int*)(tv+2*n);  ix=xmark+n;
 
-   FOR (i,n)  { xmark[i]=0; ix[i]=i; }
+   for(i=0; i<n; i++)  { xmark[i]=0; ix[i]=i; }
    for(i=0,nfree=0;i<n;i++) {
       if(x[i]<=xb[i][0]) { x[i]=xb[i][0]; xmark[i]=-1; continue; }
       if(x[i]>=xb[i][1]) { x[i]=xb[i][1]; xmark[i]= 1; continue; }
@@ -5864,7 +5942,8 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
 
       for (i=0,zero(p,n); i<nfree; i++)  FOR (j,nfree)
          p[ix[i]] -= H[i*nfree+j]*g0[ix[j]];
-      sizep0=SIZEp; SIZEp=norm(p,n);      /* check this */
+      sizep0 = SIZEp; 
+      SIZEp  = norm(p,n);      /* check this */
 
       for (i=0,am=maxstep; i<n; i++) {  /* max step length */
          if (p[i]>0 && (xb[i][1]-x0[i])/p[i]<am) am=(xb[i][1]-x0[i])/p[i];
@@ -5910,13 +5989,13 @@ for(i=0; i<n; i++) fprintf(frst,"%9.5f", x[i]); fprintf(frst, "%6d",AlwaysCenter
 for(i=0; i<n; i++) fprintf(frst,"%9.2f", g[i]); FPN(frst);
 */
       /* modify the working set */
-      FOR (i, n) {         /* add constraints, reduce H */
+      for(i=0; i<n; i++) {         /* add constraints, reduce H */
          if (xmark[i]) continue;
          if (fabs(x[i]-xb[i][0])<1e-6 && -g[i]<0)  xmark[i]=-1;
          else if (fabs(x[i]-xb[i][1])<1e-6 && -g[i]>0)  xmark[i]=1;
          if (xmark[i]==0) continue;
          xtoy (H, C, nfree*nfree);
-         FOR (it, nfree) if (ix[it]==i) break;
+         for(it=0; it<nfree; it++) if (ix[it]==i) break;
          for (i1=it; i1<nfree-1; i1++) ix[i1]=ix[i1+1];
          for (i1=0,nfree--; i1<nfree; i1++) FOR (i2,nfree)
             H[i1*nfree+i2]=C[(i1+(i1>=it))*(nfree+1) + i2+(i2>=it)];
@@ -5970,7 +6049,6 @@ for(i=0; i<n; i++) fprintf(frst,"%9.2f", g[i]); FPN(frst);
       FOR (i,nfree)  FOR (j,nfree)
          H[i*nfree+j] += ((1+w/v)*s[i]*s[j]-z[i]*s[j]-s[i]*z[j])/v;
 #endif
-
 
    }    /* for (Iround,maxround)  */
 
