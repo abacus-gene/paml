@@ -46,7 +46,7 @@ struct TREEB {
 struct TREEN {
    int father, nson, sons[MAXNSONS], ibranch;
    double branch, age, label, *conP;
-   char fossil;
+   char *nodeStr, fossil;
 }  *nodes;
 
 
@@ -117,9 +117,9 @@ int main (int argc, char *argv[])
       printf ("\nTREE # %2d\n", itree+1);
       fprintf (fout,"\nTREE # %2d\n", itree+1);
 
-      if (ReadaTreeN (ftree, &i,&j, 0, 1)) error2 ("err tree..");
-      OutaTreeN (F0, 0, 0);    FPN (F0); 
-      OutaTreeN (fout, 0, 0);  FPN (fout);
+      if (ReadTreeN (ftree, &i,&j, 0, 1)) error2 ("err tree..");
+      OutTreeN (F0, 0, 0);    FPN (F0); 
+      OutTreeN (fout, 0, 0);  FPN (fout);
 
       for (i=0,maxchange=0; i<NCATCHANGE; i++) NSiteChange[i]=0;
 
@@ -337,7 +337,7 @@ int PatternMP (FILE *fout, double Ft[])
       branch[k]=nodes[tree.branches[k][1]].branch=
          DistanceREV(Q, n, 0, Root, U, V, pi, space, &j);
    }
-   OutaTreeB (fout);  FPN (fout);
+   OutTreeB (fout);  FPN (fout);
    FOR (i, tree.nbranch) fprintf(fout,"%9.5f", branch[i]);
    fprintf (fout,"\ntree length: %9.5f\n", sum(branch,tree.nbranch));
 
@@ -614,7 +614,7 @@ if (Q[k*n+k]>0) { printf ("%d %d %.5f\n", i+1, j+1, Q[k*n+k]); }
    if (tree.nbranch) {
       fillxc (branch, 0.1, tree.nbranch);
       LSDistance (&t, branch, testx);
-      OutaTreeB (fout);  FPN (fout);
+      OutTreeB (fout);  FPN (fout);
       FOR (i,tree.nbranch) fprintf(fout,"%9.5f", branch[i]);
       PMatBranch (Ft, com.ncode, branch, Root, U, V, space);
    }

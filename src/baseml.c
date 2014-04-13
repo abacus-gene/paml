@@ -3,19 +3,19 @@
                  combined with phylogenetic tree estimation.
                     Copyright, Ziheng YANG, July 1992 onwards
 
-                         cc -c -fast tools.c
-                  cc -o baseml -fast baseml.c tools.o -lm
+                  cc -o baseml -fast baseml.c tools.c -lm
+                  cl -O2 baseml.c tools.c
                           baseml <ControlFileName>
 */
 
 #include "paml.h"
 
-#define NS            1000
+#define NS            6000
 #define NBRANCH       (NS*2-2)
 #define NNODE         (NS*2-1)
 #define MAXNSONS      100
 #define NGENE         500
-#define LSPNAME       30
+#define LSPNAME       50
 #define NCODE         4
 #define NCATG         40
 
@@ -77,21 +77,20 @@ struct TREEB {
 struct TREEN {
    int father, nson, sons[MAXNSONS], ibranch, ipop;
    double branch, age, kappa, pi[4], *conP, label;
-   char fossil;
+   char *nodeStr, fossil;
 }  *nodes, **gnodes, nodes_t[2*NS-1];
 
 
 /* for sptree.nodes[].fossil: lower, upper, bounds, gamma, inverse-gamma */
-enum {LOWER_F=1, UPPER_F, BOUND_F, GAMMA_F, IGAMMA_F} FOSSIL_FLAGS;
-char *fossils[]={" ", "L", "U", "B", "G", "IG"}; 
-enum {GAMMA, IGAMMA} DISTRIBUTIONS;
+enum {LOWER_F=1, UPPER_F, BOUND_F} FOSSIL_FLAGS;
+char *fossils[]={" ", "L", "U", "B"}; 
 
 struct SPECIESTREE {
    int nbranch, nnode, root, nspecies, nfossil;
    struct TREESPN {
-      char name[LSPNAME+1], fossil;  /* fossil: 0, 1, 2, 3 */
+      char name[LSPNAME+1], fossil, usefossil;  /* fossil: 0, 1, 2, 3 */
       int father, nson, sons[2];
-      double age, tfossil[2];   /* lower and upper bounds or alpha & beta */
+      double age, pfossil[2];   /* lower and upper bounds or alpha & beta */
       double *lnrates;          /* log rates for loci */
    } nodes[2*NS-1];
 }  sptree;
@@ -112,7 +111,7 @@ int nR=4, LASTROUND, BayesEB;
 double PMat[16], Cijk[64], Root[4];
 int StepMatrix[16];
 
-FILE *frub, *flnf, *frst, *frst1, *finitials=NULL;
+FILE *frub, *flnf, *frst, *frst1, *frst2=NULL, *finitials=NULL;
 char *ratef="rates";
 char *models[]={"JC69","K80","F81","F84","HKY85","T92","TN93","REV","UNREST", "REVu","UNRESTu"};
 enum {JC69, K80, F81, F84, HKY85, T92, TN93, REV, UNREST, REVu, UNRESTu} MODELS;
@@ -121,8 +120,6 @@ enum {GlobalClock=1, LocalClock, ClockCombined} ClockModels;
 
 double _rateSite=1; /* rate for a site */
 int N_PMatUVRoot=0;
-
-#define DGammaMean 1
 
 
 #define BASEML 1
@@ -138,32 +135,33 @@ int main (int argc, char *argv[])
                      "diff. rate & kappa", "diff. rate & pi & kappa"};
    int getdistance=1, i, sconP0=0,s2=0, idata, seed;
 
-   starttime();
+   starttimer();
    seed = 4*(int)time(NULL)+1;
    SetSeed(seed);
 
-   com.ndata=1;
-   com.cleandata=0;  noisy=0;  com.runmode=0;
+   com.ndata = 1;
+   com.cleandata = 0;  noisy = 0;  com.runmode = 0;
 
-   com.clock=0;
-   com.fix_rgene=0;  /* 0: estimate rate factors for genes */
-   com.nhomo=0;
-   com.getSE=0;      /* 1: want S.E.s of estimates;  0: don't want them */
+   com.clock = 0;
+   com.fix_rgene = 0;  /* 0: estimate rate factors for genes */
+   com.nhomo = 0;
+   com.getSE = 0;      /* 1: want S.E.s of estimates;  0: don't want them */
 
-   com.seqtype=0;   com.model=0;
-   com.fix_kappa=0; com.kappa=5;
-   com.fix_alpha=1; com.alpha=0.;  com.ncatG=4;    /* alpha=0 := inf */
-   com.fix_rho=1;   com.rho=0;     com.nparK=0;
-   com.ncode=4;     com.icode=0;
-   com.print=0;     com.verbose=1;  com.fix_blength=0;
-   com.method=0;    com.space=NULL;
+   com.seqtype = 0;   com.model = 0;
+   com.fix_kappa = 0; com.kappa = 5;
+   com.fix_alpha = 1; com.alpha = 0.;  com.ncatG = 4;    /* alpha=0 := inf */
+   com.fix_rho = 1;   com.rho = 0;     com.nparK = 0;
+   com.ncode = 4;     com.icode = 0;
+   com.print = 0;     com.verbose = 1;  com.fix_blength = 0;
+   com.method = 0;    com.space = NULL;
 
    printf("BASEML in %s\n",  VerStr);
    frub=gfopen("rub","w");  frst=gfopen(rstf,"w"); frst1=gfopen("rst1","w");
 
    if (argc>1)  strcpy(ctlf, argv[1]); 
    GetOptions(ctlf);
-   if(com.runmode!=-2) finitials=fopen("in.baseml","r");
+   if(com.runmode != -2) finitials=fopen("in.baseml","r");
+   if(com.getSE == 2)    frst2 = fopen("rst2","w");
 
    fprintf(frst, "Supplemental results for BASEML\n\nseqf:  %s\ntreef: %s\n",
       com.seqf, com.treef);
@@ -175,8 +173,8 @@ int main (int argc, char *argv[])
    fpair[0]=(FILE*)gfopen(pairfs[0],"w");
 
    /* for stepwise addition, com.sspace should be calculated using com.ns. */
-   com.sspace=1000000*sizeof(double);
-   if((com.space=(double*)malloc(com.sspace))==NULL) 
+   com.sspace = 1000000*sizeof(double);
+   if((com.space = (double*)malloc(com.sspace)) == NULL) 
       error2("oom space");
 
    if(com.clock==5 || com.clock==6)
@@ -243,7 +241,7 @@ int main (int argc, char *argv[])
          ancestor=(int*)realloc(ancestor, i*sizeof(int));
          if(SeqDistance==NULL||ancestor==NULL) error2("oom distance&ancestor");
       }
-      Initialize (fout);
+      Initialize(fout);
       if (com.Mgene==3) FOR (i,com.ngene) xtoy(com.pi,com.piG[i],4);
 
       if (com.model==JC69 && !com.readpattern && !com.print) 
@@ -276,15 +274,18 @@ int main (int argc, char *argv[])
       else if (com.runmode>=4) Perturbation(fout, (com.runmode==4), com.space);
 
       FPN(frst);  if((idata+1)%10==0) fflush(frst);
+      if(com.ndata>1 && com.runmode) {
+         fprintf(frst1, "\t"); 
+         OutTreeN(frst1, 1, 0);
+      }
+      FPN(frst1); fflush(frst1);
       free(nodes);
       printf("\nTime used: %s\n", printtime(timestr));
-
-      FPN(frst1); fflush(frst1);
 
    }   /* for(idata) */
    if(com.ndata>1 && fseq) fclose(fseq);
    free(com.space);
-   fclose(fout); fclose(frst);   fclose(fpair[0]);
+   fclose(fout);  fclose(frst);   fclose(fpair[0]);
    if(finitials) { fclose(finitials);  finitials=NULL; }
 
    return (0);
@@ -296,6 +297,7 @@ int main (int argc, char *argv[])
 */
 
 FILE *ftree;
+void PrintBestTree(FILE *fout, FILE *ftree, int btree);
 
 
 int Forestry (FILE *fout)
@@ -303,7 +305,7 @@ int Forestry (FILE *fout)
    static int times=0;
    int status=0, inbasemlg=0, i,j=0, itree=0,ntree, np,np0,iteration=1;
    int pauptree=0, btree=0, haslength;
-   double x[NP], xcom[NP-NBRANCH], lnL,lnL0=0,lnLbest=0,e=1e-8, nchange=-1;
+   double x[NP], xcom[NP-NBRANCH], lnL,lnL0=0,lnLbest=0, e=1e-8, nchange=-1;
    double xb[NP][2], tl=0, *var=NULL;
    FILE *finbasemlg=NULL, *frate=NULL;
 
@@ -319,16 +321,13 @@ int Forestry (FILE *fout)
    if(!com.cleandata) InitConditionalPNode();
 
    for(itree=0; ntree==-1||itree<ntree; itree++,iteration=1) {
-      if(ReadaTreeN(ftree,&haslength,&i,0,1)) 
+      if(ReadTreeN(ftree,&haslength,&i,0,1)) 
          { puts("\nend of tree file."); break; }
-
       if(noisy) printf("\nTREE # %2d: ", itree+1);
-
       fprintf (fout,"\nTREE # %2d:  ", itree+1);
       fprintf (frub,"\n\nTREE # %2d\n", itree+1);
       if(com.print) fprintf (frst,"\n\nTREE # %2d\n", itree+1);
       fprintf (flnf,"\n\n%2d\n", itree+1);
-
 
       LASTROUND=0;
       if (com.fix_blength==2 && !haslength) error2("no branch lengths in tree");
@@ -337,7 +336,8 @@ int Forestry (FILE *fout)
          if(com.clock) puts("\nBranch lengths in tree are ignored");
          else {
             if(com.fix_blength==2) puts("\nBranch lengths in tree are fixed.");
-            else if(com.fix_blength==1) puts("\nBranch lengths in tree used as initials.");
+            else if(com.fix_blength==1) 
+               puts("\nBranch lengths in tree used as initials.");
             if(com.fix_blength==1) {
                FOR(i,tree.nnode) 
                   if((x[nodes[i].ibranch]=nodes[i].branch)<0) 
@@ -346,15 +346,17 @@ int Forestry (FILE *fout)
          }
       }
 
-      if(com.cleandata) nchange=MPScore (com.space);
+      if(com.cleandata) 
+         nchange=MPScore (com.space);
       if(noisy&&com.ns<99) 
-         { OutaTreeN(F0,0,0); printf(" MP score: %.2f\n",nchange);}
-      OutaTreeN(fout,0,0);  fprintf(fout,"  MP score: %.2f",nchange);
+         { OutTreeN(F0,0,0); printf(" MP score: %.2f\n",nchange);}
+      OutTreeN(fout,0,0);  fprintf(fout,"  MP score: %.2f",nchange);
       if(!com.clock && com.model<=REV && com.nhomo<=2 
          && nodes[tree.root].nson<=2 && com.ns>2){
          puts("\nThis is a rooted tree, without clock.  Check.");
          if(com.verbose) fputs("\nThis is a rooted tree.  Please check!",fout);
       }
+
       fflush(fout);  fflush(flnf);
 
       GetInitials(x, &i);
@@ -375,7 +377,7 @@ int Forestry (FILE *fout)
 
       if(noisy) {
          printf("\nntime & nrate & np:%6d%6d%6d\n",com.ntime,com.nrate,com.np);
-         if(noisy>2 && com.ns<50) { OutaTreeB(F0); FPN(F0); matout(F0,x,1,np); }
+         if(noisy>2 && com.ns<50) { OutTreeB(F0); FPN(F0); matout(F0,x,1,np); }
          printf("\nlnL0 = %12.6f\n",-lnL);
 
 /*
@@ -401,11 +403,13 @@ int Forestry (FILE *fout)
       }
 
       if (itree==0) { lnL0=lnLbest=lnL; btree=0; }
-      else if (lnL<lnLbest) { lnLbest=lnL;  btree=itree; }
+      else if (lnL<lnLbest) {
+         lnLbest=lnL;  btree=itree; 
+      }
       if (noisy) printf ("Out...\nlnL  = %12.6f\n", -lnL);
       fprintf(fout,"\nlnL(ntime:%3d  np:%3d):%14.6f%+12.6f\n",
           com.ntime,np,-lnL,-lnL+lnL0);
-      if(com.fix_blength<2) { OutaTreeB (fout);  FPN (fout); }
+      if(com.fix_blength<2) { OutTreeB (fout);  FPN (fout); }
       if(LASTROUND==0) {
          LASTROUND=1;
          if((com.npi && com.model!=T92) || com.nparK>=2) TransformxBack(x);
@@ -415,47 +419,73 @@ int Forestry (FILE *fout)
             if(i!=tree.root && nodes[i].nson && !nodes[i].fossil) 
                x[j++]=nodes[i].age;
       }
+
 /*
 for(i=0;i<np;i++) fprintf(frst1,"\t%.5f",x[i]); 
-fprintf(frst1,"\t%.4f\t%d",-lnL,com.npatt);  FPN(frst1);
-fflush(frst1);
+fprintf(frst1,"\t%.4f",-lnL);
 */
-      FOR(i,np) fprintf(fout," %8.5f",x[i]);  FPN(fout); fflush(fout);
+
+      for(i=0; i<np; i++) 
+         fprintf(fout," %8.5f",x[i]);  
+      FPN(fout); fflush(fout);
       if(inbasemlg) matout(finbasemlg,x,1,np);
 
-
       if (com.getSE) {
-         if(np>100) puts("Calculating SE's");
-         if(com.sspace<np*(np+1)*(int)sizeof(double)) {
-            com.sspace=np*(np+1)*sizeof(double);
-            if((com.space=(double*)realloc(com.space,com.sspace))==NULL)
-               error2("oom space for SE");
+         if(com.method==0) {
+            puts("Calculating SE's");
+            if(com.sspace<np*(np+1)*(int)sizeof(double)) {
+               com.sspace=np*(np+1)*sizeof(double);
+               if((com.space=(double*)realloc(com.space,com.sspace))==NULL)
+                  error2("oom space for SE");
+            }
+            var = com.space+np;   
+            Hessian(np,x,lnL,com.space,var,com.plfun,var+np*np);
+            lnL = com.plfun (x,np);
          }
-         var=com.space+np;
-         Hessian (np,x,lnL,com.space,var,com.plfun,var+np*np);
-         matinv(var,np,np,var+np*np);
-         fprintf(fout,"SEs for parameters:\n");
-         FOR(i,np) fprintf(fout," %8.5f",(var[i*np+i]>0.?sqrt(var[i*np+i]):-1));
-         FPN(fout);
-         if (com.getSE==2) matout2(fout, var, np, np, 15, 10);
 
+         if(com.getSE>=2 && nodes[tree.root].nson==3) {  /* g & H */
+            fprintf(frst2,"\n %d\n\n", com.ns);  OutTreeN(frst2, 1, 1);
+            fprintf(frst2,"\n\n");
 /*
-for(i=0; i<com.ntime; i++) fprintf(frst1," %9.5f", x[i]);
-for(i=0; i<com.ntime; i++) fprintf(frst1," %9.5f", sqrt(var[i*np+i]));
+            for(i=0; i<com.ntime; i++) 
+               com.space[i]=0;
 */
-/*
-         gradient (np, x, lnL, com.space, com.plfun, com.space+np, 1);
-         FOR(i,np) FOR(j,np) var[i*np+j]=com.space[i]*com.space[j];
-         matinv (var, np, np, var+np*np);
-         fprintf(fout,"SEs for parameters:\n");
-         FOR(i,np) fprintf(fout," %8.5f",(var[i*np+i]>0.?sqrt(var[i*np+i]):-1));
-         FPN(fout);
-         if (com.getSE==2) matout2(fout, var, np, np, 15, 10);
-*/
+            fprintf(frst2, "");
+            for(i=0; i<com.ntime; i++) fprintf(frst2," %9.6f", x[i]);  fprintf(frst2, "\n\n");
+            for(i=0; i<com.ntime; i++) fprintf(frst2," %9.6f", 0.0);   fprintf(frst2, "\n\n");
+
+            if(com.method==0) {
+               fprintf(frst2, "\nHessianMatrix:\n\n");
+               for(i=0; i<com.ntime; i++,FPN(frst2))
+                  for(j=0; j<com.ntime; j++) 
+                     fprintf(frst2," %9.3f", var[i*np+j]);
+            }
+            else {
+               fprintf(frst2, "\nHessianDiagonal:\n\n");
+               for(i=0; i<com.ntime; i++) 
+                  fprintf(frst2, " %9.3f", varb_minbranches[i]);
+               FPN(frst2);
+            }
+         }
+
+         if(com.method == 0) {
+            matinv(var,np,np,var+np*np);
+            fprintf(fout,"SEs for parameters:\n");
+            for(i=0;i<np;i++) 
+               fprintf(fout," %8.5f",(var[i*np+i]>0.?sqrt(var[i*np+i]):-1));
+            FPN(fout);
+            if(com.getSE==2) {
+               matout2(fout, var, np, np, 15, 10);
+               fprintf(fout, "\ncorrelation\n");
+               for(i=0;i<np;i++) 
+                  for(j=0;j<np;j++) 
+                     fprintf(fout," %8.5f",var[i*np+j]/sqrt(var[i*np+i]*var[j*np+j]));
+            }
+
+         }
       }
 
       /* if(com.clock) SetBranch(x); */
-
       /* GroupDistances(); */
 
       if(com.nbtype>1)
@@ -470,15 +500,16 @@ for(i=0; i<com.ntime; i++) fprintf(frst1," %9.5f", sqrt(var[i*np+i]));
             if(i!=tree.root) tl+=nodes[i].branch;
          fprintf(fout,"\ntree length = %9.5f%s\n",tl,com.ngene>1?" (1st gene)":"");
       }
-      FPN(fout); OutaTreeN(fout,1,0); FPN(fout);
-      FPN(fout); OutaTreeN(fout,1,1); FPN(fout);
+      FPN(fout); OutTreeN(fout,1,0); FPN(fout);
+      FPN(fout); OutTreeN(fout,1,1); FPN(fout);
 
       if(TipDate) {  /* scale back the times in nodes[].branch */
          for(i=0;i<tree.nnode;i++)  nodes[i].branch/=ScaleTimes_TipDate;
       }
 
-      if(com.np-com.ntime||com.clock)  DetailOutput(fout,x,var);
-      if (status) {
+      if(com.np-com.ntime || com.clock)
+         DetailOutput(fout,x,var);
+      if(status) {
          printf ("convergence?\n");  fprintf (fout,"check convergence..\n");
       }
       if (itree==0)
@@ -490,31 +521,53 @@ for(i=0; i<com.ntime; i++) fprintf(frst1," %9.5f", sqrt(var[i*np+i]));
       fprintf(fout,"\n\n# of lfun calls:%10d\n", NFunCall);
 */
 
+
+      if(com.coding && com.Mgene!=1 && !AbsoluteRate) {
+         fputs("\nTree with branch lengths for codon models:\n",fout);
+         FOR(i,tree.nnode) nodes[i].branch *= (1+com.rgene[1]+com.rgene[2]);
+         FPN(fout); OutTreeN(fout,1,1); FPN(fout);
+         FOR(i,tree.nnode) nodes[i].branch /= (1+com.rgene[1]+com.rgene[2]);
+      }
+
       com.print-=9;  com.plfun(x, np);  com.print+=9;
       if (com.print) {
-         if (com.plfun!=lfun)  lfunRates(frate, x, np);
+         if (com.plfun != lfun)
+            lfunRates(frate, x, np);
 
          /** think about more-general models **/
          if (com.nhomo==0 && com.nparK==0 && com.model<=REV && com.rho==0
             /* && com.clock<=1 */)  /* clock to be fixed */
             AncestralSeqs(frst, x);
       }
-
-      if(com.coding && com.Mgene>1 && !AbsoluteRate) {
-         fputs("\nTree with branch lengths for codon models:\n",fout);
-         FOR(i,tree.nnode) nodes[i].branch*=(1+com.rgene[1]+com.rgene[2]);
-         FPN(fout); OutaTreeN(fout,1,1); FPN(fout);
-      }
-
    }         /* for (itree) */
+
+   if(ntree>1) {
+      fprintf(frst1, "\t%d\t", btree+1);
+      PrintBestTree(frst1, ftree, btree);
+   }
    if(finbasemlg) fclose(finbasemlg);   if (frate) fclose(frate);
    fclose(ftree); 
 
    if(ntree==-1)  ntree=itree;
-   if(ntree>1) { rewind(flnf);  rell(flnf,fout,ntree); }
+   if(ntree>1) { rewind(flnf);  rell(flnf,fout,ntree); }   
    fclose(flnf);
 
    return(0);
+}
+
+
+void PrintBestTree(FILE *fout, FILE *ftree, int btree)
+{
+   int itree, ntree, i,j;
+
+   rewind(ftree);
+   GetTreeFileType(ftree,&ntree,&i,0);
+   for(itree=0; ntree==-1||itree<ntree; itree++) {
+      if(ReadTreeN(ftree,&i,&j,0,1)) 
+         { puts("\nend of tree file."); break; }
+      if(itree==btree)
+         OutTreeN(fout, 1, 0);
+   }
 }
 
 
@@ -710,7 +763,7 @@ int GetOptions (char *ctlf)
    int ng=-1, markgenes[NGENE];
 
    fctl=gfopen(ctlf,"r");
-   printf ("Reading options from %s..\n", ctlf);
+   if(noisy) printf ("Reading options from %s..\n", ctlf);
    for (;;) {
       if (fgets (line, lline, fctl) == NULL) break;
       for (i=0,t=0,pline=line; i<lline&&line[i]; i++)
@@ -1185,14 +1238,14 @@ int ConditionalPNode (int inode, int igene, double x[])
          ConditionalPNode (nodes[inode].sons[i], igene, x);
    if(inode<com.ns) 
       for(h=pos0*n; h<pos1*n; h++) nodes[inode].conP[h]=0; /* young ancestor */
-   else 
+   else
       for(h=pos0*n; h<pos1*n; h++) nodes[inode].conP[h]=1;
    if (com.cleandata && inode<com.ns) /* young ancestor */
       for(h=pos0;h<pos1;h++) nodes[inode].conP[h*n+com.z[inode][h]]=1;
 
-   FOR (i, nodes[inode].nson) {
-      ison=nodes[inode].sons[i];
-      t=nodes[ison].branch*_rateSite;
+   for (i=0; i<nodes[inode].nson; i++) {
+      ison = nodes[inode].sons[i];
+      t = nodes[ison].branch*_rateSite;
 
       if(com.clock<5) {
          if(com.clock)  t *= GetBranchRate(igene,(int)nodes[ison].label,x,NULL);

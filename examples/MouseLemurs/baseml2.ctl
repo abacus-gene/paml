@@ -10,7 +10,7 @@
         Mgene = 0   * 0:rates, 1:separate; 2:diff pi, 3:diff kapa, 4:all diff
 
         ndata = 3   * number of data sets or locis
-        clock = 5   * 0:no clock, 1:clock; 2:local clock; 3:CombinedAnalysis
+        clock = 6   * 0:no clock, 1:clock; 2:local clock; 3:CombinedAnalysis
     fix_kappa = 1   * 0: estimate kappa; 1: fix kappa at value below
         kappa = 3.76303 3.18589 17.68357 * initial or fixed kappa
  

@@ -59,7 +59,7 @@ struct TREEB {
 struct TREEN {
    int father, nson, sons[MAXNSONS], ibranch;
    double branch, age, label, *conP;
-   char fossil;
+   char *nodeStr, fossil;
 }  nodes[2*NS-1];
 
 static int nR=4, CijkIs0[64];
@@ -95,7 +95,7 @@ int main (int argc, char *argv[])
    com.fix_alpha=0;   com.alpha=0.2;
    com.ncode=4;
 
-   starttime();
+   starttimer();
    SetSeed(4*(int)time(NULL)+1);
 
    printf("BASEMLG in %s\n",  VerStr);
@@ -154,13 +154,13 @@ int Forestry (FILE *fout, double space[])
       fprintf(frub,"\n\nTREE # %2d", itree+1);
       fprintf(frate,"\nTREE # %2d\n", itree+1);
 
-      if(ReadaTreeN(ftree,&haslength,&i,0,1))
+      if(ReadTreeN(ftree,&haslength,&i,0,1))
            { puts("err or end of tree file."); break; }
 
       com.ntime = com.clock ? tree.nnode-com.ns: tree.nbranch;
 
-      OutaTreeN (F0, 0, 0);   
-      OutaTreeN (fout, 0, 0);  
+      OutTreeN (F0, 0, 0);   
+      OutTreeN (fout, 0, 0);  
       fflush (fout);  fflush (flfh);
 
       i=(com.clock||com.model>HKY85 ? 2 : 2+!com.fix_alpha);
@@ -201,7 +201,7 @@ int Forestry (FILE *fout, double space[])
       if (i || j<np) { status=-1; fprintf (fout, "\n\ncheck convergence.."); }
       fprintf(fout,"\nlnL(np:%3d):%14.6f%+12.6f\n", com.np,
          -lnL[itree], -lnL[itree]+lnL[0]);
-      OutaTreeB (fout);  FPN (fout);
+      OutTreeB (fout);  FPN (fout);
 
       for(i=0; i<np; i++) fprintf (fout,"%9.5f", x[i]);   FPN (fout);
       if(iteration) 
@@ -209,7 +209,7 @@ int Forestry (FILE *fout, double space[])
             fprintf (fout,"%9.5f", var[i*np+i]>0.?sqrt(var[i*np+i]):0.);
 
       fprintf (fout, "\n\n# fun calls:%10d\n", NFunCall);
-      OutaTreeN(fout,1,1);  fputs(";\n", fout);
+      OutTreeN(fout,1,1);  fputs(";\n", fout);
       lfunG_print (x, np);
 /*
       RhoRate (x);
@@ -526,9 +526,9 @@ int lfunG_print (double x[], int np)
       FOR (i,com.ns) fprintf (flfh, "%c", BASEs[com.z[i][h]]);
 
    }    /* for (h) */
-   if (com.print>=2) 
-       fprintf (flfh,"\n\nVrh0:%12.6f\nmrh0:%12.6f\nRHO0:%12.6f\n", 
-                (vrh0-=mrh0*mrh0), mrh0, sqrt(vrh0*alpha));
+   vrh0 -= mrh0*mrh0;
+   if (com.print>=2)
+      fprintf (flfh,"\n\nVrh0:%12.6f\nmrh0:%12.6f\nrho0:%12.6f\n", vrh0, mrh0, sqrt(vrh0*alpha));
 
    fputs("\n Site Freq  Data     Nexp.    Rates\n\n",frate);
  
@@ -540,7 +540,6 @@ int lfunG_print (double x[], int np)
    }
    fprintf(frate, "\nlnL = %12.6f", -lnL);
    if(com.ngene==1) {
-      vrh0-=mrh0*mrh0;
       fprintf(frate, "\nVr0:%12.6f   mrh0:%12.6f", vrh0, mrh0);
       fprintf(frate, "\nApproximate corr(r,r^) =%12.6f\n",sqrt(vrh0*alpha));
    }

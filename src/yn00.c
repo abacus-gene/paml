@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
    /* ConsistencyMC(); */
 
    printf("YN00 in %s\n",  VerStr);
-   starttime();
+   starttimer();
    if (argc>1)  strcpy(ctlf, argv[1]); 
    com.seqtype=1;  com.cleandata=1;  /* works for clean data only? */
    com.ndata=1;  com.print=0;

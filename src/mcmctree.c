@@ -1,41 +1,49 @@
 /* mcmctree.c 
 
-   Markov chain Monte Carlo on trees (Bayes phylogenetic analysis)
+   Markov chain Monte Carlo on trees (Bayesian phylogenetic analysis)
    
                    Ziheng YANG, December 2002
+
+   cc -o mcmctree -m64 -march=opteron -mtune=opteron -ansi -O3 -funroll-loops -fomit-frame-pointer -finline-functions mcmctree.c tools.c -lm
+   cc -o mcmctreeHB -DHardBounds -m64 -march=opteron -mtune=opteron -ansi -O3 -funroll-loops -fomit-frame-pointer -finline-functions mcmctree.c tools.c -lm
 
    cc -o mcmctree -march=pentiumpro -mcpu=pentiumpro -O4 -funroll-loops -fomit-frame-pointer -finline-functions mcmctree.c tools.c -lm
    cc -o mcmctree -march=athlon -mcpu=athlon -O4 -funroll-loops -fomit-frame-pointer -finline-functions mcmctree.c tools.c -lm
 
    cc -o infinitesites -DINFINITESITES -march=athlon -mcpu=athlon -Wall -O2 -funroll-loops -fomit-frame-pointer -finline-functions mcmctree.c tools.c -lm
 
-           cc -o mcmctree -fast mcmctree.c tools.c -lm
-           cc -DHardBounds -o mcmctreeHB -fast mcmctree.c tools.c -lm
-
-               cl -O2 -W3 mcmctree.c tools.c
-                  mcmctree <ControlFileName>
+   cl -O2 -W3 mcmctree.c tools.c
+   cl -DHardBounds -FemcmctreeHB.exe -O2 mcmctree.c tools.c
+   
+   mcmctree <ControlFileName>
 */
 
 /*
 #define INFINITESITES
 */
 
+
 #include "paml.h"
 
-#define NS            100
+#define NS            1200
 #define NBRANCH      (NS*2-2)
 #define NNODE        (NS*2-1)
-#define MAXNSONS      2
+#define MAXNSONS      3
 #define NGENE         1000          /* used for gnodes[NGENE] */
-#define LSPNAME       30
+#define LSPNAME       50
 #define NCODE         4
 #define NCATG         50
+#define MaxNFossils   200
+
 
 extern int noisy, NFunCall;
 extern char BASEs[];
 
 int GetOptions(char *ctlf);
 int ReadTreeSeqs(FILE*fout);
+int ProcessFossilInfo();
+int ReadBlengthGH (char infile[]);
+int GenerateBlengthGH (char infile[]);
 int GetMem(void);
 void FreeMem(void);
 int UseLocus(int locus, int copycondP, int setmodel, int setSeqName);
@@ -44,48 +52,53 @@ void switchconPin(void);
 int SetPGene(int igene, int _pi, int _UVRoot, int _alpha, double xcom[]);
 int DownSptreeSetTime(int inode);
 void getSinvDetS(double space[]);
-int GetInitials(FILE*fout);
+int GetInitials(void);
 int GetGtree(int locus);
 void printGtree(int printBlength);
 int SetParameters(double x[]);
 int ConditionalPNode(int inode, int igene, double x[]);
 double lnpData(double lnpDi[]);
 double lnpD_locus(int locus);
-double lnptC_Fossil(void);
+double lnpD_locus_Approx(int locus);
+double lnptBD(void);
+double lnptC(void);
+int SetupPriorTimesFossilErrors(void);
 double lnpriorTimes(void);
 double lnpriorRates(void);
-double logPriorRatio(double xnew, double xold, double a, double b, int distribution);
+double logPriorRatioGamma(double xnew, double xold, double a, double b);
 void copySptree(void);
 void printSptree(void);
 double Infinitesites (void);
 double InfinitesitesClock (double *FixedDs);
+int collectx (FILE* fout, double x[]);
 int MCMC(FILE* fout);
 int LabelOldCondP(int spnode);
-double UpdateTimesOnly(double *lnL, double finetune);
 double UpdateTimes(double *lnL, double finetune);
+double UpdateTimesClock23(double *lnL, double finetune);
 double UpdateRates(double *lnL, double finetune);
 double UpdateRatesClock(double *lnL, double finetune);
 double UpdateParameters(double *lnL, double finetune);
 double UpdateParaRates(double finetune, double space[]);
 double mixing(double finetune);
-int DescriptiveStatistics2Delete (FILE *fout, char infile[], int nbin, int nrho);
+double UpdatePFossilErrors(double finetune);
+int getPfossilerr (double postEFossil[], double nround);
+int DescriptiveStatisticsSimple (FILE *fout, char infile[], int nbin, int nrho);
 
 struct CommonInfo {
-   char *z[NS], *spname[NS], seqf[256],outf[256],treef[256];
+   char *z[NS], *spname[NS], seqf[256],outf[256],treef[256],daafile[96];
    char oldconP[NNODE];       /* update conP for node? (0 yes; 1 no) */
    int seqtype, ns, ls, ngene, posG[2],lgene[1], *pose, npatt, readpattern;
    int np, ncode, ntime, nrate, nrgene, nalpha, npi, ncatG, print, seed;
    int cleandata, ndata;
    int model, clock, fix_kappa, fix_omega, fix_alpha, fix_rgene, Mgene;
+   int method, icode, codonf, aaDist, NSsites;
    double *fpatt, kappa, omega, alpha;
    double rgene[NGENE],piG[NGENE][NCODE];  /* not used */
    double (*plfun)(double x[],int np), freqK[NCATG], rK[NCATG], *conP, *fhK;
    double pi[NCODE];
    int    sconP, curconP;                    /* curconP = 0 or 1 */
-   double *conPin[2], *conP0, space[10000];  /* space used for S^-1 and |S| */
-   int conPSiteClass;         /* not used */
-
-   int NnodeScale;
+   double *conPin[2], *conP0, space[10000];  /* fixed space unsafe */
+   int conPSiteClass, NnodeScale;
    char *nodeScale;    /* nScale[ns-1] for interior nodes */
    double *nodeScaleF;       /* nScaleF[npatt] for scale factors */
 }  com;
@@ -96,7 +109,7 @@ struct TREEB {
 struct TREEN { /* ipop is node number in species tree */
    int father, nson, sons[2], ibranch, ipop;
    double branch, age, label, *conP;
-   char fossil;
+   char *nodeStr, fossil;
 }  *nodes, **gnodes, nodes_t[2*NS-1];
 
 /* nodes_t[] is working space.  nodes is a pointer and moves around.  
@@ -112,10 +125,11 @@ struct TREEN { /* ipop is node number in species tree */
 
 struct SPECIESTREE {
    int nbranch, nnode, root, nspecies, nfossil;
+   double RootAge[2], Pfossilerr, *CcomFossilErr;
    struct TREESPN {
-      char name[LSPNAME+1], fossil;  /* fossil: 0, 1, 2, 3 */
+      char name[LSPNAME+1], fossil, usefossil;  /* fossil: 0, 1(L), 2(U), 3(B), 4(G) */
       int father, nson, sons[2];
-      double age, tfossil[2];   /* lower and upper bounds or alpha & beta */
+      double age, pfossil[7];     /* parameters in fossil distribution */
       double *rates;              /* log rates for loci */
    } nodes[2*NS-1];
 }  sptree;
@@ -131,13 +145,14 @@ struct DATA { /* locus-specific data and tree information */
    double rgene[NGENE], kappa[NGENE], omega[NGENE], alpha[NGENE];
    double birth, death, sampling;
    double rgenegamma[2], kappagamma[2], omegagamma[2], alphagamma[2], sigma2gamma[2];
+   double fossilerrorbeta[2];
    double sigma2[NGENE];  /* sigma2[g] are the variances */
-   double *varb[NGENE];
+   double *blMLE[NGENE], *Gradient[NGENE], *Hessian[NGENE];
 }  data;
 
 struct MCMCPARAMETERS {
-   int burnin, nsample, sampfreq, usedata, saveconP, print;
-   double finetune[5];
+   int burnin, nsample, sampfreq, usedata, covb0, saveconP, print;
+   double finetune[6];
 }  mcmc; /* control parameters */
 
 
@@ -150,18 +165,20 @@ double _rateSite=1, OldAge=999;
 int LASTROUND=0, BayesEB, debug=0, testlnL=0, NPMat=0; /* no use for this */
 
 /* for sptree.nodes[].fossil: lower, upper, bounds, gamma, inverse-gamma */
-enum {LOWER_F=1, UPPER_F, BOUND_F, GAMMA_F, IGAMMA_F} FOSSIL_FLAGS;
-char *fossils[]={" ", "L", "U", "B", "G", "IG"}; 
-enum {GAMMA, IGAMMA} DISTRIBUTIONS;
+enum {LOWER_F=1, UPPER_F, BOUND_F, GAMMA_F, SKEWN_F, SKEWT_F, S2N_F} FOSSIL_FLAGS;
+char *fossils[]={" ", "L", "U", "B", "G", "SN", "ST", "S2N"};
+int npfossils[]={ 0,   1,   1,   2,   2,   3,    4,     7};
 enum {ARITHMETIC, GEOMETRIC, BROWNIAN} BLengthMethods;
 char *clockstr[]={"", "Global clock", "Independent rates", "Autocorrelated rates"};
 
 #define MCMCTREE  1
 #include "treesub.c"
 
+
 int main (int argc, char *argv[])
 {
-   char ctlf[]="mcmctree.ctl";
+   char ctlf[] = "mcmctree.ctl";
+   int i,j,k;
    FILE  *fout;
 
    noisy=3;
@@ -175,7 +192,7 @@ int main (int argc, char *argv[])
    data.birth=2;    data.death=1; data.sampling=0.05; 
    com.cleandata=0; mcmc.usedata=2;
 
-   starttime();
+   starttimer();
    GetOptions(ctlf);
    fout=gfopen(com.outf,"w");
 
@@ -183,13 +200,125 @@ int main (int argc, char *argv[])
    fprintf(fout, "\nseed = %d\n", com.seed);
 
    ReadTreeSeqs(fout);
+   ProcessFossilInfo();
 
+
+   if(mcmc.usedata==1) {
+      if(com.seqtype!=0) error2("usedata = 1 for nucleotides only");
+      if(com.alpha==0)
+         com.plfun=lfun;
+      else {
+         if (com.ncatG<2 || com.ncatG>NCATG) error2("ncatG");
+         com.plfun=lfundG;
+      }
+      if (com.model>HKY85)  error2("Only HKY or simpler models are allowed.");
+      if (com.model==JC69 || com.model==F81) { com.fix_kappa=1; com.kappa=1; }
+   }
+   else if (mcmc.usedata==2) {
+      com.model = 0;  com.alpha = 0;
+   }
+   else if(mcmc.usedata==3) {
+      GenerateBlengthGH("out.BV");
+      exit(0);
+   }
+
+   /* The error messages about RootAge are messy.  Tidy up. */
+   if(sptree.RootAge[1]<=0 && sptree.nodes[sptree.root].fossil<=LOWER_F)
+      error2("set RootAge in control file when there is no upper bound on root");
+
+   if(data.fossilerrorbeta[0]==0 && !sptree.nodes[sptree.root].fossil) {
+      if(sptree.RootAge[1] <= 0) 
+         error2("set RootAge in control file when there is no upper bound on root");
+
+      sptree.nodes[sptree.root].fossil = (sptree.RootAge[0]>0 ? BOUND_F : UPPER_F);
+      for(i=0; i<2; i++) 
+         sptree.nodes[sptree.root].pfossil[i] = sptree.RootAge[i];
+   }
+   printf("\nFossil calibration information read from the tree.\n");
+   for(i=sptree.nspecies; i<sptree.nspecies*2-1; i++) {
+      if((k=sptree.nodes[i].fossil) == 0) continue;
+      printf("Node %2d: %3s ( ", i+1, fossils[k]);
+      for(j=0; j<npfossils[k]; j++) {
+         printf("%6.4f", sptree.nodes[i].pfossil[j + (k==UPPER_F)]);
+         printf("%s", (j==npfossils[k]-1 ? " )\n" : ", "));
+      }
+   }
+   
 #if(defined INFINITESITES)
    Infinitesites();  
 #else
    MCMC(fout);
 #endif
-   return (0);
+   return(0);
+}
+
+
+
+int ProcessFossilInfo()
+{
+/* This processes fossil calibration information that has been read into 
+   nodes[].nodeStr.  It uses nodes[], before it is destroyed.
+
+   Possible confusions: 
+   Simple lower and upper bounds can be specified using <, >, or both < and > in 
+   the tree either with or without quotation marks.  These are read in ReadTreeN() 
+   and processed in ReadTreeSeqs().  
+   Other distributions such as G, SN, ST must be specified using the format 'G(alpha, beta)',
+   say, and are processed here.  Simple bounds can also be specified using the format 
+   'L(0.5)', 'U(1.0)', or 'B(0.5, 1.0)', in which case they are processed here.  
+   I kept this complexity, (i) to keep the option of using <, >, which is intuitive, 
+   (ii) for ReadTreeN to be able to read other node labels such as #, $, either with
+   or without ' '.
+*/
+   int i,j,k, nfossiltype=8;
+   char *pch;
+
+   for(i=sptree.nspecies; i<tree.nnode; i++) {
+      if(nodes[i].nodeStr == NULL) 
+         continue;
+      if(nodes[i].fossil) {
+         free(nodes[i].nodeStr);
+         continue;
+      }
+      for(j=1; j<nfossiltype+1; j++)
+         if((pch = strstr(nodes[i].nodeStr, fossils[j]))) break;
+      if(j == nfossiltype+1) 
+         printf("\nunrecognized fossil calibration: %s\n", nodes[i].nodeStr);
+
+      sptree.nodes[i].fossil = j;
+      pch = strchr(nodes[i].nodeStr, '(') + 1;
+
+      switch(j) {
+      case (LOWER_F): 
+         sscanf(pch, "%lf", &sptree.nodes[i].pfossil[0]);
+         break;
+      case (UPPER_F): 
+         sscanf(pch, "%lf", &sptree.nodes[i].pfossil[1]);
+         break;
+      case (BOUND_F): 
+      case (GAMMA_F): 
+         sscanf(pch, "%lf,%lf", &sptree.nodes[i].pfossil[0], &sptree.nodes[i].pfossil[1]);
+         break;
+      case (SKEWN_F):
+         sscanf(pch, "%lf,%lf,%lf", &sptree.nodes[i].pfossil[0], &sptree.nodes[i].pfossil[1], &sptree.nodes[i].pfossil[2]);
+         break;
+      case (SKEWT_F): 
+         sscanf(pch, "%lf,%lf,%lf,%lf", &sptree.nodes[i].pfossil[0], &sptree.nodes[i].pfossil[1], &sptree.nodes[i].pfossil[2], &sptree.nodes[i].pfossil[3]);
+         break;
+      case (S2N_F): 
+         sscanf(pch, "%lf,%lf,%lf,%lf,%lf,%lf,%lf", &sptree.nodes[i].pfossil[0], &sptree.nodes[i].pfossil[1],
+            &sptree.nodes[i].pfossil[2], &sptree.nodes[i].pfossil[3], &sptree.nodes[i].pfossil[4], 
+            &sptree.nodes[i].pfossil[5], &sptree.nodes[i].pfossil[6]);
+         break;
+      }
+
+      sptree.nfossil++;
+      sptree.nodes[i].usefossil = 1;
+      nodes[i].branch = nodes[i].label = 0;
+      free(nodes[i].nodeStr);
+   }
+
+   return(0);
 }
 
 int GetMem (void)
@@ -213,7 +342,7 @@ int GetMem (void)
 */
    /* sconP0: tips; sconP: internal nodes */
    int locus,j,k, sconP0, s1,sG=1, sfhK=0, g=data.ngene;
-   double *conP0, *conP, *rates, *varb;
+   double *conP0, *conP, *rates;
 
    /* get mem for conP (internal nodes), and conP0 (tips) */
    if(mcmc.usedata==1) {
@@ -259,14 +388,17 @@ int GetMem (void)
       }
 
    }
-   else if(mcmc.usedata==2) { /* using com.condP for com.varb */
-      for(locus=0,k=0; locus<data.ngene; locus++)  k+=2*data.ns[locus]-1;
-      if((varb=com.conPin[0]=(double*)malloc(k*sizeof(double)))==NULL)
+   else if(mcmc.usedata==2) { /* allocate data.Gradient & data.Hessian */
+      for(locus=0,k=0; locus<data.ngene; locus++)  
+         k += (2*data.ns[locus]-1)*(2*data.ns[locus]-1+2);
+      if((com.conPin[0]=(double*)malloc(k*sizeof(double)))==NULL)
          error2("oom varb");
-      for(j=0; j<k; j++)  varb[j]=-1;
+      for(j=0; j<k; j++)  com.conPin[0][j]=-1;
       for(locus=0,j=0; locus<data.ngene; locus++) {
-         data.varb[locus]=varb+j;
-         j+=2*data.ns[locus]-1;
+         data.blMLE[locus] = com.conPin[0]+j;
+         data.Gradient[locus] = com.conPin[0]+j+(2*data.ns[locus]-1);
+         data.Hessian[locus] = com.conPin[0]+j+(2*data.ns[locus]-1)*2;
+         j += (2*data.ns[locus]-1)*(2*data.ns[locus]-1+2);
       }
    }
 
@@ -297,7 +429,8 @@ void FreeMem (void)
    if(com.clock>1)
       free(sptree.nodes[0].rates);
 
-   if(mcmc.usedata==1 && com.alpha) free(com.fhK);
+   if(mcmc.usedata==1 && com.alpha)
+      free(com.fhK);
 }
 
 
@@ -323,8 +456,10 @@ int UseLocus (int locus, int copyconP, int setModel, int setSeqName)
    int i, s1=com.ncode*data.npatt[locus], sG=(com.conPSiteClass?com.ncatG:1);
    double *conPt=com.conPin[!com.curconP]+data.conP_offset[locus];
 
-   com.ns=data.ns[locus]; com.ls=data.ls[locus];
-   tree.root=data.root[locus]; tree.nnode=2*com.ns-1;
+   com.ns = data.ns[locus]; 
+   com.ls = data.ls[locus];
+   tree.root = data.root[locus]; 
+   tree.nnode = 2*com.ns-1;
    nodes=gnodes[locus];
    if(copyconP && mcmc.usedata==1) { /* this preserves the old conP. */
       memcpy(conPt, gnodes[locus][com.ns].conP, sG*s1*(com.ns-1)*sizeof(double));
@@ -333,31 +468,33 @@ int UseLocus (int locus, int copyconP, int setModel, int setSeqName)
    }
 
    if(setModel && mcmc.usedata==1) {
-      com.cleandata=data.cleandata[locus];
-      com.npatt=com.posG[1]=data.npatt[locus];  com.posG[0]=0;
-      com.fpatt=data.fpatt[locus];
-      for(i=0; i<com.ns; i++) com.z[i]=data.z[locus][i];
+      com.cleandata = data.cleandata[locus];
+      for(i=0; i<com.ns; i++) 
+         com.z[i] = data.z[locus][i];
+      com.npatt = com.posG[1]=data.npatt[locus];  com.posG[0] = 0;
+      com.fpatt = data.fpatt[locus];
 
       /* The following is model-dependent */
-      com.kappa=data.kappa[locus];
-      com.omega=data.omega[locus];
-      com.alpha=data.alpha[locus];
+      com.kappa = data.kappa[locus];
+      com.omega = data.omega[locus];
+      com.alpha = data.alpha[locus];
 
       xtoy(data.pi[locus], com.pi, com.ncode);
       if(com.model<=TN93)
          EigenTN93(com.model, com.kappa, com.kappa, com.pi, &nR, Root, Cijk);
 
       if(com.alpha)
-         DiscreteGamma (com.freqK,com.rK,com.alpha,com.alpha,com.ncatG,0);
+         DiscreteGamma (com.freqK,com.rK,com.alpha,com.alpha,com.ncatG,DGammaMean);
 /*
-      com.NnodeScale=data.NnodeScale[locus];
-      com.nodeScale=data.nodeScale[locus];
+      com.NnodeScale = data.NnodeScale[locus];
+      com.nodeScale = data.nodeScale[locus];
       nS = com.NnodeScale*com.npatt * (com.conPSiteClass?com.ncatG:1);
-      FOR(i,nS) com.nodeScaleF[i]=0;
+      for(i=0; i<nS; i++) 
+         com.nodeScaleF[i]=0;
 */
    }
    if(setSeqName)
-      FOR(i,com.ns) com.spname[i]=sptree.nodes[nodes[i].ipop].name;
+      for(i=0;i<com.ns;i++) com.spname[i] = sptree.nodes[nodes[i].ipop].name;
    return(0);
 }
 
@@ -399,7 +536,7 @@ void switchconPin(void)
    int i,locus;
    double *conP;
 
-   com.curconP=!com.curconP;
+   com.curconP =! com.curconP;
    
    for(locus=0; locus<data.ngene; locus++) {
       conP=com.conPin[com.curconP]+data.conP_offset[locus];
@@ -455,81 +592,44 @@ int ConditionalPNode (int inode, int igene, double x[])
    int n=com.ncode, i,j,k,h, ison;
    double t;
 
-   FOR(i,nodes[inode].nson) {
+   for(i=0;i<nodes[inode].nson;i++) {
       ison=nodes[inode].sons[i];
       if (nodes[ison].nson>0  && !com.oldconP[ison])
          ConditionalPNode(ison, igene, x);
    }
-   FOR(i,com.npatt*n) nodes[inode].conP[i]=1;
+   for(i=0;i<com.npatt*n;i++) nodes[inode].conP[i] = 1;
 
-   FOR(i, nodes[inode].nson) {
-      ison=nodes[inode].sons[i];
+   for(i=0; i<nodes[inode].nson; i++) {
+      ison = nodes[inode].sons[i];
 
-      t=nodes[ison].branch*_rateSite;
-      if(t<0) {
-         printf("\nb =%12.6f", nodes[ison].branch);
-         error2("blength<0");
+      t = nodes[ison].branch*_rateSite;
+      if(t < 0) {
+         printf("\nt =%12.6f ratesite = %.6f", nodes[ison].branch, _rateSite);
+         error2("blength < 0");
       }
 
       GetPMatBranch2(PMat, t);
 
       if(com.cleandata && nodes[ison].nson<1) /* tip */
          for(h=0; h<com.npatt; h++) 
-            FOR(j,n) 
-               nodes[inode].conP[h*n+j]*=PMat[j*n+com.z[ison][h]];
+            for(j=0;j<n;j++) 
+               nodes[inode].conP[h*n+j] *= PMat[j*n+com.z[ison][h]];
       else {
          for(h=0; h<com.npatt; h++) 
-            FOR(j,n) {
+            for(j=0;j<n;j++)  {
                for(k=0,t=0; k<n; k++)    /* t is used as temp */
-                  t+=PMat[j*n+k]*nodes[ison].conP[h*n+k];  /* expensive line! */
+                  t += PMat[j*n+k]*nodes[ison].conP[h*n+k];  /* expensive line! */
                nodes[inode].conP[h*n+j]*=t;
             }
       }
    }  /*  for (ison)  */
 
-   /* node scaling, not done yet */
-   if(com.NnodeScale && com.nodeScale[inode])  NodeScale(inode, 0, com.npatt);
+   /* node scaling.  Is this coded?  Please check.  */
+   if(com.NnodeScale && com.nodeScale[inode])
+      NodeScale(inode, 0, com.npatt);
    return (0);
 }
 
-
-double lnpD_locus_Normal (double varb[])
-{
-/* This calculates the likelihood using the normal approxiamtion (Thorne et al. 
-   1998).  The branch lengths estimated under no clock have been read into 
-   nodes[][].label and the variances are in data.varb[].  The branch lengths 
-   predicted from the rate-evolution model (that is, products of rates and 
-   times) are in nodes[].branch.  
-   The tree is rooted, and the two branch lengths around the root are summed up
-   and treated as one branch length.  This is different from funSS_AHRS(), which 
-   has the data branch lengths in nodes[].branch and calculate the predicted 
-   likelihood by multiplying nodes[].age and nodes[].label (which holds the 
-   rates).  Think about a redesign to avoid confusion.
-*/
-   int j, son0, son1;
-   double lnLb, b,be, v;
-
-   for(j=0,lnLb=0; j<tree.nnode; j++) {
-      son0=nodes[j].sons[0];
-      son1=nodes[j].sons[1];
-      if(j==son0 || j==son1) continue;  /* what does this mean? */
-      if(j==tree.root) {
-         b  = nodes[son0].label +nodes[son1].label;
-         be = nodes[son0].branch+nodes[son1].branch;
-         v=varb[nodes[tree.root].age-nodes[son0].age>1e-6?son0:son1];
-      }
-      else {
-         b  = nodes[j].label;
-         be = nodes[j].branch;
-         v = varb[j];
-      }
-      lnLb += -square(be-b)/(2*v) -log(v)/2;
-
-/* printf("n%-2d lnL=%12.6f\n", j+1,lnLb); */
-
-   }
-   return (lnLb);
-}
 
 double lnpD_locus (int locus)
 {
@@ -543,23 +643,20 @@ double lnpD_locus (int locus)
    double lnL=0, b,t;
 
    if (mcmc.usedata==0)  return(0);
-   if(com.clock==1) {
+   if(com.clock==1) {  /* clock */
       for(i=0; i<tree.nnode; i++)  /* age in gene tree */
-         nodes[i].age=sptree.nodes[nodes[i].ipop].age;
+         nodes[i].age = sptree.nodes[nodes[i].ipop].age;
       for(i=0; i<tree.nnode; i++) {
          if(i!=tree.root)
             nodes[i].branch = (nodes[nodes[i].father].age-nodes[i].age) * data.rgene[locus];
       }
    }
-   else {  /* independent & correlated rates */
+   else {              /* independent & correlated rates */
       for(i=0; i<tree.nnode; i++) {
          if(i==tree.root) continue;
          for(j=nodes[i].ipop,b=0; j!=nodes[nodes[i].father].ipop; j=dad) {
             dad = sptree.nodes[j].father;
             t = sptree.nodes[dad].age-sptree.nodes[j].age;
-
-if(t<0) error2("t<0");
-
             b += t * sptree.nodes[j].rates[locus];
          }
          nodes[i].branch=b;
@@ -568,7 +665,7 @@ if(t<0) error2("t<0");
    if(mcmc.usedata==1)
       lnL = -com.plfun(NULL, -1);
    else if(mcmc.usedata==2)
-      lnL = lnpD_locus_Normal(data.varb[locus]);
+      lnL = lnpD_locus_Approx(locus);
 
    return (lnL);
 }
@@ -586,27 +683,246 @@ double lnpData (double lnpDi[])
       FOR(j,sptree.nspecies*2-1) com.oldconP[j]=0;
    for(locus=0; locus<data.ngene; locus++) {
       UseLocus(locus,0, mcmc.usedata, 1);
-      y=lnpD_locus(locus);
+      y = lnpD_locus(locus);
 
       if(testlnL && fabs(lnpDi[locus]-y)>1e-5)
          printf("\tlnLi %.6f != %.6f at locus %d\n", lnpDi[locus],y,locus+1);
       lnpDi[locus]=y;
-      lnL+=y;
+      lnL += y;
    }
-
    return(lnL);
 }
 
 
+double lnpD_locus_Approx (int locus)
+{
+/* This calculates the likelihood using the normal approxiamtion (Thorne et al. 
+   1998).  The branch lengths on the unrooted tree estimated under no clock have 
+   been read into nodes[][].label and the gradient and Hessian are in data.
+   Gradient[] & data.Hessian[].  The branch lengths predicted from the rate-evolution 
+   model (that is, products of rates and times) are in nodes[].branch.  
+   The tree is rooted, and the two branch lengths around the root are summed up
+   and treated as one branch length.  This is different from funSS_AHRS(), which 
+   has the data branch lengths in nodes[].branch and calculate the predicted 
+   likelihood by multiplying nodes[].age and nodes[].label (which holds the 
+   rates).  Think about a redesign to avoid confusion.
+*/
+   int debug=0, i,j, ib, nb=tree.nnode-1-1;  /* don't use tree.nbranch, which is not up to date. */
+   int son0=nodes[tree.root].sons[0], son1=nodes[tree.root].sons[1];
+   double lnL, b[NS*2-1], *H=data.Hessian[locus];
+
+   /* construct branch lengths */
+   for(j=0; j<tree.nnode; j++) {
+      if(j==son0 || j==son1) continue;
+      ib = nodes[j].ibranch;
+      if(j==tree.root)
+         b[ib] = nodes[son0].branch+nodes[son1].branch - data.blMLE[locus][ib];
+      else
+         b[ib] = nodes[j].branch - data.blMLE[locus][ib];
+   }
+
+   if(debug) {
+      OutTreeN(F0,1,1);  FPN(F0);
+      matout(F0, b, 1, nb);
+      matout(F0, data.blMLE[locus], 1, nb);
+   }
+
+   if(mcmc.covb0==0) {  /* uses the Hessian matrix */
+      for(i=0,lnL=0; i<nb; i++) {
+         lnL -= b[i]*b[i]*H[i*nb+i]/2;
+         for(j=0; j<i; j++)
+            lnL -= b[i]*b[j]*H[i*nb+j];
+      }
+   }
+   else {               /* this uses the variances only */
+      for(i=0,lnL=0; i<nb; i++) {
+         lnL -= b[i]*b[i]*H[i]/2;
+      }
+   }
+   return (lnL);
+}
+
+
+int ReadBlengthGH (char infile[])
+{
+/* this reads the MLEs of branch lengths under no clock and their SEs, for 
+   approximate calculation of sequence likelihood.  The MLEs of branch lengths 
+   are stored in data.blMLE[locus] as well as nodes[].label, and the gradient 
+   and Hessian in data.Gradient[locsu][] and data.Hessian[locus][].
+
+   This also frees up memory for sequences.
+*/
+   FILE* fBGH = gfopen(infile,"r");
+   char line[100];
+   int locus, i,j, nb, son1,son2;
+   double small=1e-20, *H, *root;
+   int debug=0;
+
+   if(noisy) printf("\nReading branch lengths, Gradient & Hessian from %s.\n", infile);
+   j = (sptree.nspecies*2-2)*(sptree.nspecies*2-2 + 2);
+   if((H=(double*)malloc(j*sizeof(double))) == NULL) error2("oom H");
+
+   for(locus=0; locus<data.ngene; locus++) {
+      printf("\n\nLocus %d\n", locus+1);
+      UseLocus(locus, 0, 0, 1);
+      nodes=nodes_t;
+      fscanf(fBGH, "%d", &i);
+      if(i!=com.ns) error2("ns not correct in ReadBlengthGH()");
+      if(ReadTreeN(fBGH, &i, &j, 0, 1)) 
+         error2("error when reading gene tree");
+      if(i==0) error2("gene tree should have branch lengths for error checking");
+      if((nb=tree.nbranch) != com.ns*2-3) 
+         error2("nb = ns * 2 -3 ?");
+
+      if(debug) {
+         FPN(F0); OutTreeN(F0,1,1);  FPN(F0);
+         OutTreeB(F0);
+         for(i=0; i<tree.nnode; i++) {
+            printf("\nnode %2d: branch %2d (%9.5f) dad %2d  ", i+1, nodes[i].ibranch+1, nodes[i].branch, nodes[i].father+1);
+            for(j=0; j<nodes[i].nson; j++) printf(" %2d", nodes[i].sons[j]+1);
+         }
+      }
+
+      for(i=0; i<nb; i++)
+         fscanf(fBGH, "%lf", &data.blMLE[locus][i]);
+      for(i=0; i<nb; i++)
+         fscanf(fBGH, "%lf", &data.Gradient[locus][i]);
+
+      fscanf(fBGH, "%s", line);
+      if(strstr(line,"HessianMatrix"))         mcmc.covb0 = 0;
+      else if(strstr(line,"HessianDiagonal"))  mcmc.covb0 = 1;
+      else                                     error2("expecting Hessian in in.BV");
+      if(mcmc.covb0 == 0) {
+         for(i=0; i<nb; i++)
+            for(j=0; j<nb; j++)
+               if(fscanf(fBGH, "%lf", &data.Hessian[locus][i*nb+j]) != 1)
+                  error2("err when reading the hessian matrix in.BV");
+
+         for(i=0,root=H+nb*nb; i<nb*nb; i++)  H[i] = data.Hessian[locus][i];
+         eigenRealSym(H, nb, root, root+nb);
+         for(i=0; i<nb; i++) 
+            if(root[i]<0) break;
+         if(i<nb) {
+            printf("\nEigen values of H matrix\n");
+            matout (F0, root, 1, nb);
+         }
+      }
+      else {
+         for(i=0; i<nb; i++)
+            if (fscanf(fBGH, "%lf", &data.Hessian[locus][i]) != 1)
+               error2("err when reading the hessian diagonal in.BV");
+      }
+      UseLocus(locus, 0, 0, 1);
+      NodeToBranch();
+      son1 = nodes[tree.root].sons[0];
+      son2 = nodes[tree.root].sons[1];      
+      nodes[tree.root].ibranch = (nodes[son1].nson==0 ? 0 : nodes[son2].ibranch-1);
+      for(i=0; i<tree.nnode; i++) {
+         if(i==tree.root || i==son1 || i==son2) continue;
+         nodes[i].ibranch --;
+      }
+      nodes[son1].ibranch = nodes[son2].ibranch = -1;
+      for(i=0; i<tree.nnode; i++) 
+         nodes[i].branch = (nodes[i].ibranch==-1 ? 0 : data.blMLE[locus][nodes[i].ibranch]);
+
+      if(debug) {
+         FPN(F0);  FPN(F0);  OutTreeN(F0,1,1);
+         for(i=0; i<tree.nnode; i++) {
+            printf("\nnode %2d: branch %2d (%9.5f) dad %2d  ", i+1, nodes[i].ibranch+1, nodes[i].branch, nodes[i].father+1);
+            for(j=0; j<nodes[i].nson; j++) printf(" %2d", nodes[i].sons[j]+1);
+         }
+         FPN(F0);
+      }
+   }
+   free(H);
+   fclose(fBGH);
+   /* free up memory for sequences */
+   for(locus=0; locus<data.ngene; locus++) {
+      free(data.fpatt[locus]);
+      for(j=0;j<data.ns[locus]; j++)
+         free(data.z[locus][j]);
+   }
+
+   return(0);
+}
+
+
+int GenerateBlengthGH (char infile[])
+{
+/* This generates the sequence-alignment and tree files for calculating branch
+   lengths, gradient, and hessian.
+   This mimics Jeff Thorne's estbranches program.
+*/
+   FILE *fseq, *ftree, *fctl;
+   FILE *fBGH = gfopen(infile, "w");
+   char tmpseqf[32], tmptreef[32], ctlf[32];
+   char line[10000];
+   int i, locus;
+
+   mcmc.usedata = 1;
+   for(locus=0; locus<data.ngene; locus++) {
+      sprintf(tmpseqf, "tmp%d.txt", locus+1);
+      sprintf(tmptreef, "tmp%d.trees", locus+1);
+      sprintf(ctlf, "tmp%d.ctl", locus+1);
+      fseq  = gfopen(tmpseqf,"w");
+      ftree = gfopen(tmptreef,"w");
+      fctl  = gfopen(ctlf,"w");
+
+      UseLocus(locus, 0, 0, 1);
+      for(i=0; i<com.ns; i++) 
+         com.z[i] = data.z[locus][i];
+      com.npatt = com.posG[1]=data.npatt[locus];  com.posG[0] = 0;
+      com.fpatt = data.fpatt[locus];
+
+      DeRoot();
+      printPatterns(fseq);
+      fprintf(ftree, "  1\n\n");
+      OutTreeN(ftree, 1, 0);   FPN(ftree);
+
+      fprintf(fctl, "seqfile = %s\n", tmpseqf);
+      fprintf(fctl, "treefile = %s\n", tmptreef);
+      fprintf(fctl, "outfile = out\nnoisy = 3\n");
+      if(com.seqtype) {
+         fprintf(fctl, "seqtype = %d\n", com.seqtype);
+      }
+      fprintf(fctl, "model = %d\n", com.model);
+      if(com.seqtype==1) {
+         fprintf(fctl, "icode = %d\n", com.icode);
+         fprintf(fctl, "fix_kappa = 0\n kappa = 2\n");
+         fprintf(fctl, "fix_omega = 0\n omega = 0.5\n");
+      }
+      if(com.seqtype==2) {
+         fprintf(fctl, "aaRatefile = %s\n", com.daafile);
+      }
+      if(com.alpha) 
+         fprintf(fctl, "fix_alpha = 0\nalpha = 0.5\nncatG = %d\n", com.ncatG);
+      fprintf(fctl, "Small_Diff = 0.1e-6\ngetSE = 2\n");
+      fprintf(fctl, "method = %d\n", (com.alpha||com.ns<10 ? 0 : 1));
+
+      fclose(fseq);  fclose(ftree);  fclose(fctl);
+
+      if(com.seqtype) sprintf(line, "codeml %s", ctlf);
+      else            sprintf(line, "baseml %s", ctlf);
+      system(line);
+
+      appendfile(fBGH, "rst2");
+   }
+   fclose(fBGH);
+   return(0);
+}
+
+
+
 int GetOptions (char *ctlf)
 {
-   int i, nopt=22, lline=4096;
+   int i, nopt=27, lline=4096;
    char line[4096],*pline, opt[20], *comment="*#";
-   char *optstr[] = {"seed", "seqfile","outfile","treefile", "ndata", 
-        "model", "clock", 
-        "alpha", "ncatG", "usedata", "cleandata", "BlengthMethod", "BDparas", 
-        "kappa_gamma", "alpha_gamma", "rgene_gamma", "sigma2_gamma", 
-        "print", "burnin", "sampfreq", "nsample", "finetune"};
+   char *optstr[] = {"seed", "seqfile","treefile", "outfile","seqtype", 
+        "aaRatefile", "icode", "usedata", "ndata", "model", "clock", 
+        "RootAge", "fossilerror", "alpha", "ncatG", "cleandata", 
+        "BlengthMethod", "BDparas", "kappa_gamma", "alpha_gamma", 
+        "rgene_gamma", "sigma2_gamma", "print", "burnin", "sampfreq", 
+        "nsample", "finetune"};
    double t=1, *eps=mcmc.finetune;
    FILE  *fctl=gfopen (ctlf, "r");
 
@@ -629,40 +945,51 @@ int GetOptions (char *ctlf)
                   case ( 0):
                      com.seed=(int)t;
                      if(com.seed<=0) {
-                        com.seed=abs((2*(int)time(NULL)+1));
-//                        com.seed=abs((int)(2*time(NULL)+1));
+                        com.seed = abs((2*(int)time(NULL)+1));
                         printf("\nSeed used = %d\n", com.seed);
                      }
                      SetSeed(com.seed);
                      break;
                   case ( 1): sscanf(pline+1, "%s", com.seqf);    break;
-                  case ( 2): sscanf(pline+1, "%s", com.outf);    break;
-                  case ( 3): sscanf(pline+1, "%s", com.treef);   break;
-                  case ( 4): com.ndata=(int)t;      break;
-                  case ( 5): com.model=(int)t;      break;
-                  case ( 6): com.clock=(int)t;      break;
-                  case ( 7): com.alpha=t;           break;
-                  case ( 8): com.ncatG=(int)t;      break;
-                  case ( 9): mcmc.usedata=(int)t;   break;
-                  case (10): com.cleandata=(int)t;  break;
-                  case (11): data.BlengthMethod=(int)t;  break;
-                  case (12): 
+                  case ( 2): sscanf(pline+1, "%s", com.treef);   break;
+                  case ( 3): sscanf(pline+1, "%s", com.outf);    break;
+                  case ( 4): com.seqtype=(int)t;    break;
+                  case ( 5): sscanf(pline+2,"%s",com.daafile);   break;
+                  case ( 6): com.icode=(int)t;      break;
+                  case ( 7): mcmc.usedata=(int)t;   break;
+                  case ( 8): com.ndata=(int)t;      break;
+                  case ( 9): com.model=(int)t;      break;
+                  case (10): com.clock=(int)t;      break;
+                  case (11):
+                     if((pline=strchr(line,'>')) !=NULL)
+                        sscanf(pline+1, "%lf", &sptree.RootAge[0]);
+                     if((pline=strchr(line,'<')) !=NULL)
+                        sscanf(pline+1, "%lf", &sptree.RootAge[1]);
+                     break;
+                  case (12):
+                     sscanf(pline+1,"%lf%lf", data.fossilerrorbeta,data.fossilerrorbeta+1);
+                     break;
+                  case (13): com.alpha=t;           break;
+                  case (14): com.ncatG=(int)t;      break;
+                  case (15): com.cleandata=(int)t;  break;
+                  case (16): data.BlengthMethod=(int)t;  break;
+                  case (17): 
                      sscanf(pline+1,"%lf%lf%lf", &data.birth,&data.death,&data.sampling);
                      break;
-                  case (13): 
+                  case (18): 
                      sscanf(pline+1,"%lf%lf", data.kappagamma, data.kappagamma+1); break;
-                  case (14): 
+                  case (19): 
                      sscanf(pline+1,"%lf%lf", data.alphagamma, data.alphagamma+1); break;
-                  case (15): 
+                  case (20): 
                      sscanf(pline+1,"%lf%lf", data.rgenegamma, data.rgenegamma+1); break;
-                  case (16): 
+                  case (21): 
                      sscanf(pline+1,"%lf%lf", data.sigma2gamma, data.sigma2gamma+1); break;
-                  case (17): mcmc.print=(int)t;     break;
-                  case (18): mcmc.burnin=(int)t;    break;
-                  case (19): mcmc.sampfreq=(int)t;  break;
-                  case (20): mcmc.nsample=(int)t;   break;
-                  case (21):
-                     sscanf(pline+1,"%lf%lf%lf%lf%lf", eps,eps+1,eps+2,eps+3,eps+4);
+                  case (22): mcmc.print=(int)t;     break;
+                  case (23): mcmc.burnin=(int)t;    break;
+                  case (24): mcmc.sampfreq=(int)t;  break;
+                  case (25): mcmc.nsample=(int)t;   break;
+                  case (26):
+                     sscanf(pline+1,"%lf%lf%lf%lf%lf%lf", eps,eps+1,eps+2,eps+3,eps+4,eps+5);
                      break;
                }
                break;
@@ -679,42 +1006,15 @@ int GetOptions (char *ctlf)
 
    if(com.ndata>NGENE) error2("raise NGENE?");
    else if(com.ndata<=0) com.ndata=1;
-   if(com.seqtype==0 || com.seqtype==2) { com.fix_omega=1; com.omega=0; }
+   if(com.seqtype==0 || com.seqtype==2) 
+      { com.fix_omega=1; com.omega=0; }
+
+   if(com.seqtype==2) 
+      com.ncode = 20;
+
    if(com.alpha==0)  { com.fix_alpha=1; com.nalpha=0; }
    if(com.clock<1 || com.clock>3) error2("clock should be 1, 2, 3?");
-   if(mcmc.usedata==1) {
-      if(com.alpha==0)
-         com.plfun=lfun;
-      else {
-         if (com.ncatG<2 || com.ncatG>NCATG) error2("ncatG");
-         com.plfun=lfundG;
-      }
-      if(com.model>HKY85)  error2("model.");
-      if (com.model==JC69 || com.model==F81) { com.fix_kappa=1; com.kappa=1; }
-   }
 
-   return(0);
-}
-
-
-
-int DownSptreeSetTime (int inode)
-{
-/* This goes down the species tree, from the root to the tips, to specify the 
-   initial node ages.  If the age of inode is not set already, it will 
-   initialize it.
-   This is called by GetInitials().
-*/
-   int j,ison;
-
-   for (j=0; j<sptree.nodes[inode].nson; j++) {
-      ison=sptree.nodes[inode].sons[j];
-      if(sptree.nodes[ison].nson) {
-         if(sptree.nodes[ison].age == -1)
-            sptree.nodes[ison].age = sptree.nodes[inode].age*(.6+.4*rndu());
-         DownSptreeSetTime(ison);
-      }
-   }
    return(0);
 }
 
@@ -727,18 +1027,18 @@ double lnpInfinitesitesClock (double t0, double FixedDs[])
    Note that the posterior is one dimensional, and the variable used is root age.
 */
    int s=sptree.nspecies, g=data.ngene, i,j;
-   double ri, lnp;
+   double lnp;
    
    sptree.nodes[sptree.root].age=t0;
    for(j=s; j<sptree.nnode; j++) 
-      if(j!=sptree.root) 
+      if(j!=sptree.root)
          sptree.nodes[j].age = t0*FixedDs[j-s]/FixedDs[0];
 
    lnp = lnpriorTimes();
 
    for(i=0; i<g; i++) {
-      ri = (i==0 ? FixedDs[0]/t0 : FixedDs[s-1+i-1]/t0);
-      lnp += (data.rgenegamma[0]-1)*log(ri) - data.rgenegamma[1]*ri;
+      data.rgene[i] = (i==0 ? FixedDs[0]/t0 : FixedDs[s-1+i-1]/t0);
+      lnp += (data.rgenegamma[0]-1)*log(data.rgene[i]) - data.rgenegamma[1]*data.rgene[i];
    }
 
    lnp += (2-s)*log(FixedDs[0]) + (s-g-2)*log(t0);  /* Jacobi */
@@ -752,46 +1052,63 @@ double InfinitesitesClock (double *FixedDs)
    when there are infinite sites at each locus.  The clock is assumed, so that 
    the posterior is one-dimensional.
 */
-   int ir, nround=0, nsaved=0;
+   int i,j, ir, nround=0, nsaved=0;
    int s=sptree.nspecies, g=data.ngene;
-   double t0, t0new, mt0=0, naccept=0;
+   double t, tnew, naccept=0;
    double e=mcmc.finetune[0], lnp, lnpnew, lnacceptance, c, *x;
+   double tmean, t025,t975;
    char timestr[32];
 
    matout2(F0, FixedDs, 1, s-1+g-1, 8, 4);
    printf("\nRunning MCMC to get %d samples for t0 (root age)\n", mcmc.nsample);
-   t0=sptree.nodes[sptree.root].age;
-   lnp = lnpInfinitesitesClock(t0, FixedDs);
-   x=(double*)malloc(mcmc.nsample*sizeof(double));
+   t=sptree.nodes[sptree.root].age;
+   lnp = lnpInfinitesitesClock(t, FixedDs);
+   x=(double*)malloc(max2(mcmc.nsample,(s+g)*3)*sizeof(double));
    if(x==NULL) error2("oom x");
 
-   for(ir=-mcmc.burnin,mt0=0; ir<mcmc.nsample*mcmc.sampfreq; ir++) {
-      if(ir==0) { nround=0; naccept=0; mt0=0; }
-      lnacceptance = e*(rndu()-.5);  c=exp(lnacceptance);
-      t0new=t0*c;
-      lnpnew = lnpInfinitesitesClock(t0new, FixedDs);
-      lnacceptance+=lnpnew-lnp;
+   for(ir=-mcmc.burnin,tmean=0; ir<mcmc.nsample*mcmc.sampfreq; ir++) {
+      if(ir==0) { nround=0; naccept=0; tmean=0; }
+      lnacceptance = e*rnd2NormalSym(m2NormalSym);
+      c=exp(lnacceptance);
+      tnew = t*c;
+      lnpnew = lnpInfinitesitesClock(tnew, FixedDs);
+      lnacceptance += lnpnew-lnp;
 
       if(lnacceptance>=0 || rndu()<exp(lnacceptance)) {
-         t0=t0new; lnp=lnpnew;  naccept++;
+         t=tnew; lnp=lnpnew;  naccept++;
       }
       nround++;
-      mt0 = (mt0*(nround-1)+t0)/nround;
+      tmean = (tmean*(nround-1)+t)/nround;
 
       if(ir>=0 && (ir+1)%mcmc.sampfreq==0)
-         x[nsaved++]=t0;
+         x[nsaved++]=t;
 
       if((ir+1)%max2(mcmc.sampfreq, mcmc.sampfreq*mcmc.nsample/10000)==0)
-         printf("\r%3.0f%%  %7.2f mt0 = %9.6f", (ir+1.)/(mcmc.nsample*mcmc.sampfreq)*100, naccept/nround,mt0);
+         printf("\r%3.0f%%  %7.2f mean t0 = %9.6f", (ir+1.)/(mcmc.nsample*mcmc.sampfreq)*100, naccept/nround,tmean);
       if(mcmc.sampfreq*mcmc.nsample>20 && (ir+1)%(mcmc.sampfreq*mcmc.nsample/20)==0)
          printf(" %s\n", printtime(timestr));
    }
 
    qsort(x, (size_t)mcmc.nsample, sizeof(double), comparedouble);
-   printf("\nmean = %.5f  median = %.5f\n", mt0, x[(int)(mcmc.nsample*.5+.5)]);
-   printf("95%% CI: (%.4f, %.4f)\n", x[(int)(mcmc.nsample*.025+.5)], x[(int)(mcmc.nsample*.975+.5)]);
-   printf("90%% CI: (%.4f, %.4f)\n", x[(int)(mcmc.nsample*.05+.5)],  x[(int)(mcmc.nsample*.95+.5)]);
+   t025=x[(int)(mcmc.nsample*.025+.5)]; t975=x[(int)(mcmc.nsample*.975+.5)];
 
+   /* Below x[] is used to collect the posterior means and 95% CIs */
+   for(i=0; i<3; i++) {
+      t = (i==0 ? tmean : (i==1 ? t025 : t975));
+      lnpInfinitesitesClock(t, FixedDs);
+      for(j=s; j<sptree.nnode; j++)
+         x[i*(s+g)+(j-s)] = sptree.nodes[j].age;
+      for(j=0; j<g; j++) 
+         x[i*(s+g)+s-1+j]=data.rgene[j];
+   }
+   printf("\nmean & 95%% CI for times\n\n");
+   for(j=s; j<sptree.nnode; j++)
+      printf("Node %2d: %9.5f (%9.5f, %9.5f)\n", j+1,x[j-s],x[(s+g)+j-s],x[2*(s+g)+j-s]);
+   printf("\nmean & 95%% CI for rates\n\n");
+   for(j=0; j<g; j++)
+      printf("gene %2d: %9.5f (%9.5f, %9.5f)\n", j+1,x[s-1+j], x[2*(s+g)+s-1+j], x[(s+g)+s-1+j]);
+
+   printf("\nNote: the posterior has only one dimension.\n");
    free(x);
    exit(0);
 }
@@ -868,6 +1185,7 @@ double Infinitesites (void)
 */
    int root=sptree.root, *sons=sptree.nodes[root].sons;
    int lline=10000, locus, nround, ir, i,j,k, ip,np, s=sptree.nspecies,g=data.ngene;
+   int nxpr[2]={12,3};
    int MixingStep=1;
    char line[10000], timestr[36];
    double *e=mcmc.finetune, y, ynew, yb[2], naccept[4]={0};
@@ -877,10 +1195,10 @@ double Infinitesites (void)
    FILE *fdin=gfopen(FidedDf[com.clock>1],"r"), *fmcmcout=gfopen(mcmcout,"w");
 
    if(com.model!=0 || com.alpha!=0) error2("use JC69 for infinite data.");
-   
+
    printSptree();
    GetMem();
-   GetInitials(NULL);
+   GetInitials();
 
    printf("\nInfinite sites\n");
    printf("Fixed branch lengths from %s (s = %d  g = %d):\n\n", FidedDf[com.clock>1], s,g);
@@ -893,6 +1211,12 @@ double Infinitesites (void)
    if(i!=s) error2("wrong number of species in FixedDs.txt");
    fgets(line, lline, fdin);
 
+   if(data.fossilerrorbeta[0]) {
+      puts("model of fossil errors for infinite data not tested yet.");
+      getchar();
+      SetupPriorTimesFossilErrors();
+   }
+
    if(com.clock==1) { /* global clock: read FixedDs[] and close file. */
       for(i=0; i<s-1+g-1; i++) fscanf(fdin, "%lf", &FixedDs[i]);
       fclose(fdin);
@@ -901,8 +1225,8 @@ double Infinitesites (void)
    }
   
    for(locus=0,b=FixedDs,nodes=nodes_t; locus<g; locus++,b+=sptree.nnode) {
-      ReadaTreeN(fdin,&i,&i,1,1);
-      OutaTreeN(F0, 1, 1); FPN(F0);
+      ReadTreeN(fdin,&i,&i,1,1);
+      OutTreeN(F0, 1, 1); FPN(F0);
       if(tree.nnode!=sptree.nnode) 
          error2("use species tree for each locus!");
       b[root]=-1;
@@ -922,20 +1246,8 @@ double Infinitesites (void)
          printf(" %9.6f", FixedDs[locus*sptree.nnode+j]);
    }
 
-
-/*******************/
-/*
-printf("\aresetting times");
-{
-   int k;
-   double x0[]={1.00, 0.70, 0.20, 0.4, 0.10, 0.80, 0.30, 0.05};
-   for(i=sptree.nspecies,k=0; i<sptree.nnode; i++)
-      sptree.nodes[i].age=x0[k++];
-}
-*/
-
    for(i=0; i<g; i++) { /* reset r0 so that r0*t0<b0.  GetInitial is unsafe. */
-      y=FixedDs[i*sptree.nnode+sons[0]]/(sptree.nodes[root].age-sptree.nodes[sons[0]].age);
+      y = FixedDs[i*sptree.nnode+sons[0]]/(sptree.nodes[root].age-sptree.nodes[sons[0]].age);
       sptree.nodes[sons[0]].rates[i] = y*rndu();
    }
 
@@ -975,7 +1287,7 @@ printf("\aresetting times");
                   yb[0] = max2(yb[0], sptree.nodes[root].age-maxt0);
                }
             }
-            ynew=rnduab(y-e[0]/2,y+e[0]/2);
+            ynew = y + e[0]*rnd2NormalSym(m2NormalSym);
             ynew = sptree.nodes[s+ip].age = reflect(ynew,yb[0],yb[1]);
          }
          else if(ip-(s-1)<g) {    /* rate r0 for root son0 for loci (r0*t0<b0) */
@@ -985,20 +1297,22 @@ printf("\aresetting times");
             yb[0] = 0;
             yb[1] = FixedDs[(ip-(s-1))*sptree.nnode+sons[0]]/y;
             y = sptree.nodes[sons[0]].rates[ip-(s-1)];
-            ynew = rnduab(y-e[1]/2, y+e[1]/2);
+            ynew = y + e[1]*rnd2NormalSym(m2NormalSym);
             ynew = sptree.nodes[sons[0]].rates[ip-(s-1)] = reflect(ynew,yb[0],yb[1]);
          }
          else if (ip-(s-1+g)<g) { /* mu for loci */
-            lnacceptance = e[3]*(rndu()-.5);  c=exp(lnacceptance);
+            lnacceptance = e[3]*rnd2NormalSym(m2NormalSym);
+            c=exp(lnacceptance);
             y = data.rgene[ip-(s-1+g)];
             ynew = data.rgene[ip-(s-1+g)] *= c;
-            lnacceptance+=logPriorRatio(ynew, y, data.rgenegamma[0], data.rgenegamma[1], GAMMA);
+            lnacceptance+=logPriorRatioGamma(ynew, y, data.rgenegamma[0], data.rgenegamma[1]);
          }
          else {                   /* sigma2 for loci */
-            lnacceptance = e[3]*(rndu()-.5);  c=exp(lnacceptance);
+            lnacceptance = e[3]*rnd2NormalSym(m2NormalSym);
+            c=exp(lnacceptance);
             y = data.sigma2[ip-(s-1+g*2)];
             ynew = data.sigma2[ip-(s-1+g*2)] *= c;
-            lnacceptance+=logPriorRatio(ynew, y, data.sigma2gamma[0], data.sigma2gamma[1], GAMMA);
+            lnacceptance+=logPriorRatioGamma(ynew, y, data.sigma2gamma[0], data.sigma2gamma[1]);
          }
 
          lnLnew = lnpInfinitesites(FixedDs);
@@ -1023,14 +1337,15 @@ printf("\aresetting times");
       }
 
       if(MixingStep) {  /* this multiples times by c and divides r and mu by c. */
-         lnc=e[2]*(rndu()-.5);  c=exp(lnc);
+         lnc = e[2]*rnd2NormalSym(m2NormalSym);
+         c = exp(lnc);
          lnacceptance = (s-1-g-g)*(lnc);
          for(j=s; j<sptree.nnode; j++)  sptree.nodes[j].age*=c;
          for(i=0; i<g; i++)             sptree.nodes[sons[0]].rates[i] /= c;
          for(i=0; i<g; i++) {
             y = data.rgene[i]; 
             ynew = data.rgene[i] /= c;
-            lnacceptance+=logPriorRatio(ynew, y, data.rgenegamma[0], data.rgenegamma[1], GAMMA);
+            lnacceptance+=logPriorRatioGamma(ynew, y, data.rgenegamma[0], data.rgenegamma[1]);
          }
          lnLnew = lnpInfinitesites(FixedDs);
          lnacceptance += lnLnew-lnL;
@@ -1054,28 +1369,58 @@ printf("\aresetting times");
          printf("\r%3.0f%%", (ir+1.)/(mcmc.nsample*mcmc.sampfreq)*100.);
          printf(" %4.2f %4.2f %4.2f %4.2f  ", naccept[0]/((s-1)*nround),naccept[1]/(g*nround),naccept[2]/nround,naccept[3]/(g*2*nround));
 
-         /* finetune = .5  0.8  0.5  0.2 1.5  * times, rates, mixing, paras, RateParas */
-         for(i=0; i<np; i++) printf(" %5.3f", mx[i]);
+
+         if(np<nxpr[0]+nxpr[1]) { nxpr[0]=com.np; nxpr[1]=0; }
+         for(j=0; j<nxpr[0]; j++) printf(" %5.3f", mx[j]);
+         if(np>nxpr[0]+nxpr[1] && nxpr[1]) printf(" -");
+         for(j=0; j<nxpr[1]; j++) printf(" %5.3f", mx[com.np-nxpr[1]+j]);
          printf(" %5.2f", lnL);
 
          if(ir>0) {
-            for(i=0; i<np; i++) fprintf(fmcmcout, " %7.5f", x[i]);  FPN(fmcmcout);
+            fprintf(fmcmcout, "%d", ir+1);
+            for(i=0; i<np; i++) 
+               fprintf(fmcmcout, "\t%.5f", x[i]);  FPN(fmcmcout);
          }
       }
       if(mcmc.sampfreq*mcmc.nsample>20 && (ir+1)%(mcmc.sampfreq*mcmc.nsample/20)==0)
          printf(" %s\n", printtime(timestr));
    }
-
    free(FixedDs);
 
    printf("\nSummarizing MCMC results, time reset.\n");
-   DescriptiveStatistics2Delete(F0, mcmcout, 1, 1);
+   DescriptiveStatisticsSimple(NULL, mcmcout, 1, 1);
 
    exit(0);
 }
 
 
-int GetInitials(FILE*fout)
+int DownSptreeSetTime (int inode)
+{
+/* This goes down the species tree, from the root to the tips, to specify the 
+   initial node ages.  If the age of inode is not set already, it will 
+   initialize it.
+   This is called by GetInitials().
+*/
+   int j,ison, correctionnews=0;
+
+   for (j=0; j<sptree.nodes[inode].nson; j++) {
+      ison = sptree.nodes[inode].sons[j];
+      if(sptree.nodes[ison].nson) {   /* ison is not tip */
+         if(sptree.nodes[ison].age == -1) {
+            sptree.nodes[ison].age = sptree.nodes[inode].age *(.6+.4*rndu());
+            correctionnews ++;
+         }
+         else if (sptree.nodes[ison].age > sptree.nodes[inode].age) {
+            sptree.nodes[ison].age = sptree.nodes[inode].age *(0.95+0.5*rndu());
+            correctionnews ++;
+         }
+         correctionnews += DownSptreeSetTime(ison);
+      }
+   }
+   return(correctionnews);
+}
+
+int GetInitials ()
 {
 /* This sets the initial values for starting the MCMC, and returns np, the 
    number of parameters in the MCMC, to be collected in collectx().
@@ -1085,65 +1430,106 @@ int GetInitials(FILE*fout)
    possible, even though this means that the chain might start from a poor 
    place.
 */
-   int np=0, i,j, g=data.ngene, nroughtime=0;
-   double roughtime=0; /* rought age for root */
-   double a_r=data.rgenegamma[0], b_r=data.rgenegamma[1];
+   int np=0, i,j, g=data.ngene;
+   double maxlower=0; /* rought age for root */
+   double a_r=data.rgenegamma[0], b_r=data.rgenegamma[1], a,b, smallr=1e-5;
+   double *p, d;
 
    com.rgene[0]=-1;  /* com.rgene[] is not used.  -1 to force crash */
    puts("\ngetting initial values to start MCMC.");
 
    /* set up rough time unit by looking at the fossil info */
-   for(j=sptree.nspecies; j<sptree.nnode; j++)  sptree.nodes[j].age=-1;
-   for(j=sptree.nspecies; j<sptree.nnode; j++) {
-      if(!sptree.nodes[j].fossil) continue;
-      nroughtime++;
-      if(sptree.nodes[j].fossil==LOWER_F)
-         roughtime+=sptree.nodes[j].tfossil[0]*2;
-      else if(sptree.nodes[j].fossil==UPPER_F)
-         roughtime+=sptree.nodes[j].tfossil[1]/2;
-      else if(sptree.nodes[j].fossil==BOUND_F)
-         roughtime+=(sptree.nodes[j].tfossil[0]+sptree.nodes[j].tfossil[1])/2;
-      else if(sptree.nodes[j].fossil==GAMMA_F)
-         roughtime+=(sptree.nodes[j].tfossil[0]-1)/sptree.nodes[j].tfossil[1];
-   }
-   if(nroughtime==0) error2("need fossil calibrations in tree.");
-   roughtime/=nroughtime;
-   sptree.nodes[sptree.root].age = roughtime*(0.5+2*rndu());
-   DownSptreeSetTime(sptree.root);
+   for(j=sptree.nspecies; j<sptree.nnode; j++)  {
+      sptree.nodes[j].age = -1;
+      if(sptree.nodes[j].fossil == 0) continue;
+      p = sptree.nodes[j].pfossil;
 
-   /* initial times, mu (mean rates) for genes */
+      if(sptree.nodes[j].fossil == LOWER_F) {
+         sptree.nodes[j].age = p[0] * (1.1+0.2*rndu());
+         maxlower = max2(maxlower, p[0]);
+      }
+      else if(sptree.nodes[j].fossil == UPPER_F)
+         sptree.nodes[j].age = p[1] * (0.6+0.4*rndu());
+      else if(sptree.nodes[j].fossil == BOUND_F) {
+         sptree.nodes[j].age = (p[0]+p[1])/2*(0.7+rndu()*0.6);
+         maxlower = max2(maxlower, p[0]);
+      }
+      else if(sptree.nodes[j].fossil == GAMMA_F) {
+         sptree.nodes[j].age = p[0]/p[1]*(0.7+rndu()*0.6);
+         maxlower = max2(maxlower, InverseCDFGamma(0.025, p[0], p[1]));
+      }
+      else if(sptree.nodes[j].fossil == SKEWN_F || sptree.nodes[j].fossil == SKEWT_F) {
+         d = p[2]/sqrt(1+p[2]*p[2]);
+         a = p[0] + p[1]*d*sqrt(2/Pi);
+         sptree.nodes[j].age = a * (0.6+0.4*rndu());
+         maxlower = max2(maxlower, a*(1.2+2*rndu()));
+      }
+      else if(sptree.nodes[j].fossil == S2N_F) {
+         d = p[3]/sqrt(1+p[3]*p[3]);
+         a = (p[1] + p[2]*d*sqrt(2/Pi));   /* mean of SN 1 */
+         d = p[6]/sqrt(1+p[6]*p[6]);
+         b = (p[4] + p[5]*d*sqrt(2/Pi));   /* mean of SN 2 */
+         sptree.nodes[j].age = (p[0]*a + b) * (0.6+0.4*rndu());
+         maxlower = max2(maxlower, (p[0]*a + b)*(1.2+2*rndu()));
+      }
+   }
+
+   if(sptree.nodes[sptree.root].age == -1) {
+      maxlower = max2(maxlower, sptree.RootAge[0]);
+      sptree.nodes[sptree.root].age = min2(maxlower*1.5, sptree.RootAge[1]) * (.7+.6*rndu());
+   }
+   for(i=0; i<1000; i++) {
+      if(DownSptreeSetTime(sptree.root) == 0)
+         break;
+   }
+   if(i==1000) 
+      error2("Starting times are unfeasible!\nTry again.");
+
+   /* initial mu (mean rates) for genes */
    np = sptree.nspecies-1 + g;
    for(i=0; i<g; i++)
-      data.rgene[i] = .01+rndgamma(a_r)/b_r;   /* mu */
-
+      data.rgene[i] = smallr+rndgamma(a_r)/b_r;   /* mu */
    if(com.clock>1) {               /* sigma2, rates for nodes or branches */
       np += g + g*(sptree.nnode-1);
 
       /* sigma2 in lnrates among loci */
       for(i=0; i<g; i++)
-         data.sigma2[i] = rndgamma(data.sigma2gamma[0])/data.sigma2gamma[1];
-
+         data.sigma2[i] = rndgamma(data.sigma2gamma[0])/data.sigma2gamma[1]+smallr;
       /* rates at nodes */
       for(j=0; j<sptree.nnode; j++) {
          if(j==sptree.root) {
             for(i=0; i<g; i++)  sptree.nodes[j].rates[i] = -99;
          }
          else {
-            for(i=0; i<g; i++)  sptree.nodes[j].rates[i] = .01+rndgamma(a_r)/b_r;
+            for(i=0; i<g; i++) {
+               sptree.nodes[j].rates[i] = smallr+rndgamma(a_r)/b_r*(.6+.8*rndu());
+            }
          }
       }
    }
 
    /* set up substitution parameters */
-   for(i=0; i<g; i++) {
-      if(com.model>=K80 && !com.fix_kappa) { data.kappa[i] = 1+2*rndu();  np++; }
-      if(!com.fix_omega) {  data.omega[i] = .1+.2*rndu();  np++;  }
-      if(!com.fix_alpha) {  data.alpha[i] = .5+.2*rndu();  np++;  }
+   if(mcmc.usedata==1) {
+      for(i=0; i<g; i++)
+         if(com.model>=K80 && !com.fix_kappa) { 
+            data.kappa[i] = 1+2*rndu();  np++; 
+         }
+      for(i=0; i<g; i++)
+         if(!com.fix_alpha) {  
+            data.alpha[i] = .5+.2*rndu();  np++;  
+         }
    }
+
+   if((a=data.fossilerrorbeta[0]) != 0) {
+      b = data.fossilerrorbeta[1];
+      sptree.Pfossilerr = a/(a+b)*(0.4+0.6*rndu());
+      np ++;
+   }
+
    return(np);
 }
 
-int collectx (double x[])
+int collectx (FILE* fout, double x[])
 {
 /* this collects parameters into x[] for printing and summarizing.
    It returns the number of parameters.
@@ -1151,88 +1537,76 @@ int collectx (double x[])
      clock=1: times, rates for genes, kappa, alpha
      clock=0: times, rates or rates by node by gene, sigma2, rho_ij, kappa, alpha
 */
-   int printrates=1, i,j, np=0, g=data.ngene;
+   int i,j, np=0, g=data.ngene;
+   static int firsttime=1;
 
-   for(i=sptree.nspecies; i<sptree.nspecies*2-1; i++) 
+   if(firsttime && fout)  fprintf(fout, "Gen");
+   for(i=sptree.nspecies; i<sptree.nspecies*2-1; i++) {
+      if(firsttime && fout)  fprintf(fout, "\tt_n%d", i+1);
       x[np++] = sptree.nodes[i].age;
-   for(i=0; i<g; i++) x[np++] = data.rgene[i];
+   }
+   for(i=0; i<g; i++) {
+      if(firsttime && fout) {
+         if(g>1) fprintf(fout, "\tmu%d", i+1);
+         else    fprintf(fout, "\tmu");
+      }
+      x[np++] = data.rgene[i];
+   }
    if(com.clock>1) {
-      for(i=0; i<g; i++)
-         x[np++] = data.sigma2[i];
-      for(i=0; i<g; i++)
-         for(j=0; j<sptree.nnode; j++) {
-            if(j!=sptree.root) {
-               if(printrates)  x[np++] = sptree.nodes[j].rates[i];
-               else            x[np++] = log(sptree.nodes[j].rates[i]);
-            }
+      for(i=0; i<g; i++) {
+         if(firsttime && fout)  {
+            if(g>1)  fprintf(fout, "\tsigma2_%d", i+1);
+            else     fprintf(fout, "\tsigma2");
          }
+         x[np++] = data.sigma2[i];
+      }
+      for(i=0; i<g; i++) {
+         for(j=0; j<sptree.nnode; j++) {
+            if(j==sptree.root) continue;
+            if(firsttime && fout) {
+               if(g>1) fprintf(fout, "\tr_g%d_n%d", i+1, j+1);
+               else    fprintf(fout, "\tr_n%d", j+1);
+            }
+            x[np++] = sptree.nodes[j].rates[i];
+         }
+      }
    }
    if(mcmc.usedata==1) {
       if(!com.fix_kappa)
-         for(i=0; i<g; i++)
-            x[np++]=data.kappa[i];
-
-      if(!com.fix_omega)
-         for(i=0; i<g; i++)
-            x[np++]=data.omega[i];
+         for(i=0; i<g; i++) {
+            if(firsttime && fout) {
+               if(g>1) fprintf(fout, "\tkappa_%d", i+1);
+               else    fprintf(fout, "\tkappa");
+            }
+            x[np++] = data.kappa[i];
+         }
 
       if(!com.fix_alpha)
-         for(i=0; i<g; i++)
-            x[np++]=data.alpha[i];
+         for(i=0; i<g; i++) {
+            if(firsttime && fout) {
+               if(g>1) fprintf(fout, "\talpha_%d", i+1);
+               else    fprintf(fout, "\talpha");
+            }
+            x[np++] = data.alpha[i];
+         }
    }
+   if(data.fossilerrorbeta[0]) {
+      if(firsttime && fout)  fprintf(fout, "\tp_FossilErr");
+      x[np++] = sptree.Pfossilerr;
+   }
+
    if(np!=com.np) {
       printf("np in collectx is %d != %d\n", np, com.np);
-      if(!mcmc.usedata && (com.model || com.alpha)) printf("use JC69 for no data");
+      if(!mcmc.usedata && (com.model || com.alpha)) printf("\nUse JC69 for no data");
       error2("");
    }
+   if(firsttime && fout && mcmc.usedata) fprintf(fout, "\tlnL");
+   if(firsttime && fout) fprintf(fout, "\n");
+
+   firsttime=0;
    return(0);
 }
 
-
-double lnptC_Fossil(void)
-{
-/* This calculates the prior density of times at calibration nodes as specified 
-   by the fossil calibration information.  a=tL, b=tU.
-*/
-   int j, nfossil=0;
-#ifndef HardBounds
-   double tail=0.025,  thetaL=log(0.1)/log(0.9), t, lnpt=0, a,b,theta;
-#else
-   double tail=1e-299, thetaL=log(0.1)/log(0.9), t, lnpt=0, a,b,theta;
-#endif
-
-   if(sptree.nfossil==0) return(0);
-   for(j=sptree.nspecies; j<sptree.nnode; j++) {
-      if(!sptree.nodes[j].fossil) continue;
-      nfossil++;
-      t=sptree.nodes[j].age;
-      a=sptree.nodes[j].tfossil[0]; b=sptree.nodes[j].tfossil[1]; 
-      if(sptree.nodes[j].fossil==LOWER_F) {
-         if(t<a) lnpt += log(tail*thetaL/a) + (thetaL-1)*log(t/a);
-         else    lnpt += log(tail*thetaL/a);
-      }
-      else if(sptree.nodes[j].fossil==UPPER_F) {
-         theta = (1-tail)/(tail*b);
-         lnpt += (t<b ? log((1-tail)/b) : log(tail*theta)-theta*(t-b));
-      }
-      else if(sptree.nodes[j].fossil==BOUND_F) {
-         if(t<a) {
-            theta = (1-tail*2)*a/(tail*(b-a));
-            lnpt += log(tail*theta/a) + (theta-1)*log(t/a);
-         }
-         else if(t<b)
-            lnpt += log((1-tail*2)/(b-a));
-         else {
-            theta = (1-tail*2)/(tail*(b-a));
-            lnpt += log(tail*theta) - theta*(t-b);
-         }
-      }
-      else if(sptree.nodes[j].fossil==GAMMA_F) {
-         lnpt += a*log(b)-b*t+(a-1)*log(t)-LnGamma(a);
-      }
-   }
-   return(lnpt);
-}
 
 #define P0t_BD(expmlt) (rho*(lambda-mu)/(rho*lambda +(lambda*(1-rho)-mu)*expmlt))
 
@@ -1269,92 +1643,488 @@ double CDFkernelBD(double t, double t1, double vt1, double lambda, double mu, do
    return(cdf);
 }
 
-double lnpriorTimes (void)
+
+
+double lnptBD (void)
 {
-/* This calculates the prior density of node times in the master species tree:
-   sptree.nodes[].age.  It uses sptree.nodes[].tfossil, sptree.nodes[].fossil[],
+/* This calculates f_BD(t-C|tC), the conditional probability of other times given 
+   the calibration times, that is, the first term in equation 3 in Yang & Rannala 
+   (2006).  This is called by lnpriorTimes().  
+
+   The routine uses sptree.nodes[].pfossil, sptree.nodes[].fossil,
    and lamdba, mu, rho from the birth-death process with species sampling 
    (data.birth, data.death, data.sampling).     
    The routine sorts the node ages in the species tree and then uses the 
-   birth-death prior conditional on the calibration points.  t[0] is t1 in the 
-   paper.
+   birth-death prior conditional on the calibration points.  
+   t[0] is t1 in Yang & Rannala (2006).
 
-   rank[1]=3: means that age of node [ns+1] is the 3rd youngest.
-   nodesort[3]=1 means that the 3rd yougest age is node number ns+1.
-   Root (node ns) is excluded in the ranking.
+   rankt[3]=1 means that the 3rd yougest age is node number ns+1.  This is set up
+   for the calibration nodes only, = -1 for non-calibration nodes.  First we collect 
+   all times into t[] and sort them. Next we collect all calibration times into tc[]
+   and sort them.  Third, we find the ranks of calibration times in tc[], that is, 
+   i1, i2, ..., ic in YB06.
+
+   The term for root is not in this routine.  The root is excluded from the ranking.
 */
-   int  i,j,k, n1=sptree.nspecies-1, rank[NS-1], rankprev, nfossil;
-   int  nodesort[NS-1]; /* nodes with times sorted */
-   double t[NS-1], lnpt, Scale, expmlt=1, vt1, P0t1, cdf, cdfprev, small=1e-20;
-
+   int  i,j,k, n1=sptree.nspecies-1, rankprev, nfossil=0;
+   int  ranktc[MaxNFossils]; /* ranks of calibration nodes */
+   double t[NS-1], tc[MaxNFossils], t1=sptree.nodes[sptree.root].age;
+   double lnpt, Scale, expmlt=1, vt1, P0t1, cdf, cdfprev, small=1e-20;
    double lambda=data.birth, mu=data.death, rho=data.sampling;
+   int debug=0;
 
-   if(sptree.root!=sptree.nspecies) error2("node number for root fixed.");
-   for(j=sptree.nspecies; j<sptree.nnode; j++) 
-      { t[j-sptree.nspecies]=sptree.nodes[j].age; }
-
-   /* ranking the (n-2) node ages */
-   for(i=1,rank[0]=-1,nodesort[0]=-1;i<n1;i++) {
-      for(j=1,k=1;j<n1;j++)  if(j!=i && t[j]<=t[i]) k++;
-      rank[i]=k;
-      nodesort[k]=i;
-   }
-
-   if(debug==1) {
-      matout2(F0, t, 1, n1, 9, 5);
-      FOR(j,n1) printf("%9d", rank[j]);  FPN(F0);
-      FOR(j,n1) printf("%9d", nodesort[j]);  FPN(F0);
-   }
-
-   /* calculate vt1, needed only if (lambda!=mu) */
+   /* (A) Calculate f_BD(t_{_C)}, joint of the non-calibration times */
+   /* vt1 is needed only if (lambda != mu) */
    if(fabs(lambda-mu)>small) {
-      expmlt= exp((mu-lambda)*t[0]);
+      expmlt= exp((mu-lambda)*t1);
       P0t1  = P0t_BD(expmlt);
       vt1   = 1-P0t1/rho*expmlt;
    }
    else {
-      P0t1 = rho/(1+rho*mu*t[0]);
-      vt1  = mu*t[0]*P0t1;
+      P0t1 = rho/(1+rho*mu*t1);
+      vt1  = mu*t1*P0t1;
    }
-   /* calculate f_BD(t_{_C)}, joint of the remaining times */
+
+   /* root (j=0) is excluded from the ranking. */
    for(j=1,lnpt=1,Scale=0; j<n1; j++) {
-      if(!sptree.nodes[sptree.nspecies+j].fossil)
-         lnpt *= PDFkernelBD(t[j], t[0], vt1, lambda, mu, rho);
-      if(j%50==0) { Scale+=log(lnpt); lnpt=1; }
+      k = sptree.nspecies+j;
+      if(!sptree.nodes[k].usefossil)
+         lnpt *= PDFkernelBD(sptree.nodes[k].age, t1, vt1, lambda, mu, rho);
+      if(j%50==0) { Scale += log(lnpt); lnpt=1; }
    }
-   lnpt=Scale+log(lnpt);
+   lnpt = Scale + log(lnpt);
 
-   /* Now calculate f_BD(t_C), marginal for calibration nodes.
-      This goes through the nodes in the order of their ages, so that node j 
-      is the k-th youngest.
+   /* (B) Calculate f_BD(t_C), marginal for calibration nodes.  This goes through the 
+      calibration nodes in the order of their ages, with tc[] sorted beforehand.
    */
-   for(k=1,nfossil=0,rankprev=0,cdfprev=0; k<n1; k++) { 
-      if(!sptree.nodes[j=sptree.nspecies+nodesort[k]].fossil)
-         continue;
-      cdf = CDFkernelBD(t[nodesort[k]], t[0], vt1, lambda, mu, rho);
-      if(k-rankprev-1>0) {
-         lnpt -= (k-rankprev-1)*log(cdf-cdfprev);
-         lnpt += LnGamma((double)k-rankprev-1+1);
+   for(j=sptree.nspecies; j<sptree.nnode; j++) {
+      t[j-sptree.nspecies] = sptree.nodes[j].age;
+      if(j!=sptree.root && sptree.nodes[j].usefossil) 
+         tc[nfossil++] = sptree.nodes[j].age;
+   }
+   if(nfossil>MaxNFossils) error2("raise MaxNFossils?");
+
+   if(nfossil) {
+      /* The only reason for sorting t[] is to construct ranktc[].  */
+      qsort(t,  (size_t)n1, sizeof(double), comparedouble);
+      qsort(tc, (size_t)nfossil, sizeof(double), comparedouble);
+
+      for(i=j=0; i<nfossil; i++) {
+         if(i) j = ranktc[i-1]+1;
+         for( ; j<n1; j++)
+            if(tc[i]<t[j]) break;
+         ranktc[i] = j;
       }
-      if(debug==1)
-         printf("Fossil at node %d age %9.4f  rank diff %d - %d cdf %9.5f\n", j,t[nodesort[k]], k, rankprev, cdf);
-      rankprev=k;  cdfprev=cdf;
-      nfossil++;
-   }
-   if(nfossil && n1-1-rankprev>0) {
-      lnpt -= (n1-1.-rankprev)*log(1-cdfprev);
-      lnpt += LnGamma(n1-1.-rankprev+1);
+      if(debug==1) {
+         matout2(F0, t, 1, n1, 9, 5);
+         matout2(F0, tc, 1, nfossil, 9, 5);
+         for(i=0; i<nfossil; i++) 
+            printf("%9d", ranktc[i]);  
+         FPN(F0);
+      }
    }
 
-   /* Adhockery, added 3 May 2004, in Edmonton */
-   if(!sptree.nodes[sptree.root].fossil)
-      lnpt += 2*log(P0t1*(1-vt1))+(n1-1)*log(vt1);
-
-   lnpt += lnptC_Fossil();
+   for(i=0,rankprev=0,cdfprev=0; i<nfossil+1; i++) {
+      if(i < nfossil) {
+         cdf = CDFkernelBD(tc[i], t1, vt1, lambda, mu, rho);
+         k = ranktc[i]-rankprev-1;
+      }
+      else {
+         cdf = 1;
+         k = n1-rankprev-1;
+      }
+      if(k > 0)
+         lnpt += LnGamma(k+1.0) - k*log(cdf-cdfprev);
+      rankprev=ranktc[i];  cdfprev=cdf;
+   }
    if(debug==1) printf("\npdf = %.12f\n", exp(lnpt));
 
    return (lnpt);
 }
+
+
+#ifndef HardBounds
+   double tailL=0.025,  tailR=0.025;
+#else
+   double tailL=1e-299, tailR=1e-299;
+#endif
+
+double lnptC (void)
+{
+/* This calculates the prior density of times at calibration nodes as specified 
+   by the fossil calibration information, the second term in equation 3 in 
+   Yang & Rannala (2006).  
+   a=tL, b=tU.
+
+   The term for root is always calculated in this routine.  
+   If there is a fossil at root and if it is a lower bound, it is re-set to a 
+   pair of bounds.
+*/
+   int j, nfossil=0, fossil;
+   double t, lnpt=0, a,b, theta,thetaL,thetaR, *p;
+
+   if(sptree.nfossil==0) return(0);
+
+   for(j=sptree.nspecies; j<sptree.nnode; j++) {
+      if(j!=sptree.root && !sptree.nodes[j].usefossil) 
+         continue;
+      nfossil++;
+      p = sptree.nodes[j].pfossil;
+
+      t = sptree.nodes[j].age;
+      a = sptree.nodes[j].pfossil[0]; 
+      b = sptree.nodes[j].pfossil[1];
+      fossil = sptree.nodes[j].fossil;
+
+      if(j==sptree.root) {
+         if(!sptree.nodes[j].usefossil) {  /* root fossil absent or deleted */
+            a = sptree.RootAge[0];
+            b = sptree.RootAge[1];
+            fossil = (sptree.RootAge[0]>0 ? BOUND_F : UPPER_F);
+         }
+         else if (fossil==LOWER_F) {   /* root fossil is lower bound */
+            b = sptree.RootAge[1];
+            fossil = BOUND_F;
+         }
+      }
+
+      switch(fossil) {
+      case (LOWER_F):
+         theta = log(0.1)/log(0.9);
+         lnpt += log(tailL*theta/a);
+         if(t<a) lnpt += (theta-1)*log(t/a);
+         break;
+      case (UPPER_F):
+         thetaR = (1-tailR)/(tailR*b);
+         lnpt += (t<b ? log((1-tailR)/b) : log(tailR*thetaR)-thetaR*(t-b));
+         break;
+      case (BOUND_F): 
+         if(t>a && t<b)
+            lnpt += log((1-tailL-tailR)/(b-a));
+         else if(t<a) {
+            thetaL = (1-tailL-tailR)*a/(tailL*(b-a));
+            lnpt += log(tailL*thetaL/a) + (thetaL-1)*log(t/a);
+         }
+         else {
+            thetaR = (1-tailL-tailR)/(tailR*(b-a));
+            lnpt += log(tailR*thetaR) - thetaR*(t-b);
+         }
+         break;
+      case (GAMMA_F):
+         lnpt += a*log(b)-b*t+(a-1)*log(t)-LnGamma(a);
+         break;
+      case (SKEWN_F):
+         lnpt += log(PDFSkewN(t, p[0], p[1], p[2]));
+         break;
+      case (SKEWT_F):
+         lnpt += log(PDFSkewT(t, p[0], p[1], p[2], p[3]));
+         break;
+      case (S2N_F):
+         a = PDFSkewN(t, p[1], p[2], p[3]);
+         b = PDFSkewN(t, p[4], p[5], p[6]);
+         lnpt += log(p[0]*a + b);
+         break;
+      }
+   }
+   return(lnpt);
+}
+
+
+double SampleFossil(int fossil, double a, double b, double *importance);
+double getScaleFossilCombination (void);
+
+double SampleFossil (int fossil, double a, double b, double *importance)
+{
+/* this routine is used by getScaleFossilCombination().  It samples a time from 
+   the marginal fossil distribution with parameters a and b.
+
+   LOWER_F is the same as BOUND_F except that it requires importance correction.
+   It is used for non-root only, in which case b = RootAge[1], set up 
+   before calling this routine.
+   LOWER_F is the only case for which importance correction is needed.
+*/
+   double t, r=rndu(), theta, thetaL, thetaR;
+
+   *importance = 1;
+   switch(fossil) {
+   case(LOWER_F):  
+      theta = log(0.1)/log(0.9);
+      thetaL = (1-tailL-tailR)*a/(tailL*(b-a));
+      thetaR = (1-tailL-tailR)/(tailR*(b-a));
+      if(r > tailL + tailR) { /* flat part */
+         t = a + (b - a) * rndu();
+         *importance = (theta/a) / thetaR;
+      }
+      else if (r < tailL) {  /* left tail */
+         t = a * pow(rndu(), 1/thetaL);
+         *importance = theta/thetaL * pow(t/a, theta-thetaL);
+      }
+      else {                 /* right tail */
+         t = b - log(rndu())/thetaR;
+         *importance = theta/a / (thetaR*exp(-thetaR*(t-b)));
+      }
+      break;
+   case(UPPER_F):
+      if(r > tailR)  { /* flat part */
+         t = b*rndu();
+      }
+      else {  /* right tail */
+         thetaR = (1-tailR)/(tailR*b);
+         t = b - log(rndu())/thetaR;
+      }
+      break;
+   case (BOUND_F):
+      if(r > tailL + tailR)  /* flat part */
+         t = a + (b - a) * rndu();
+      else if (r < tailL) {  /* left tail */
+         thetaL = (1-tailL-tailR)*a/(tailL*(b-a));
+         t = a * pow(rndu(), 1/thetaL);
+      }
+      else {                 /* right tail */
+         thetaR = (1-tailL-tailR)/(tailR*(b-a));
+         t = b - log(rndu())/thetaR;
+      }
+      break;
+   case(GAMMA_F):
+      t = rndgamma(a)/b;
+      break;
+   default: 
+      printf("\nfossil = %d (%s) not implemented.\n", fossil, fossils[fossil]);
+      exit(-1);
+   }
+   return(t);
+}
+
+
+double getScaleFossilCombination (void)
+{
+/* This uses Monte Carlo integration to calculate the scale constant for the joint 
+   prior on fossil times, when some fossils are assumed to be in error and not used.
+   The scale constant is the integral of the density over the feasible region, where
+   the time satisfy the age constraints on the tree.
+   It is assumed that the ancestral nodes have smaller node numbers than descendent 
+   nodes, as is the case if the node numbers are assigned by ReadTreeN().
+   nfs = nfossilused or nfs = nfossilused + 1, depending on whether 
+   or not a fossil is used for the root.
+*/
+   signed char ConstraintTab[MaxNFossils][MaxNFossils]={{0}};  /* 1: row>col; 0: irrelevant */
+   int nr=2000000, ir, i,j,k, nfs,ifs[MaxNFossils]={0}, feasible;
+   int root=sptree.root, rootfossil = sptree.nodes[root].fossil;
+   double C, mt[MaxNFossils]={0}, t[MaxNFossils], ab[MaxNFossils][2]={0}, a,b, y, impt, naccept;
+   double theta=log(0.1)/log(0.9);
+   int debug=1;
+
+   if(sptree.nfossil > MaxNFossils) error2("raise MaxNFossils");
+   /* construct constraint table */
+   for(i=sptree.nspecies,nfs=0; i<sptree.nnode; i++) {
+      if(i==root || sptree.nodes[i].usefossil) 
+         ifs[nfs++] = i;
+   }
+   for(i=1; i<nfs; i++) {
+      for(j=0; j<i; j++) {
+         for(k=ifs[i]; k!=-1; k=sptree.nodes[k].father) {
+            if(k == ifs[j]) { ConstraintTab[i][j] = 1; break; }
+         }
+      }
+   }
+   if(debug) {
+      for(i=0; i<nfs; i++) {
+         printf("\n%d (%2d %s): ", i+1, ifs[i]+1, fossils[sptree.nodes[ifs[i]].fossil]);
+         for(j=0; j<i; j++)
+            printf("%4d", ConstraintTab[i][j]);
+      }
+      FPN(F0);
+   }
+
+   /* set up fossil calibration info, edit lower bounds to use importance sampling. */
+   for(i=0; i<nfs; i++) {
+      j = ifs[i];
+      ab[i][0] = sptree.nodes[j].pfossil[0]; 
+      ab[i][1] = sptree.nodes[j].pfossil[1]; 
+
+      if(j == root) { /* Importance correction is never used for root */
+         if(!sptree.nodes[j].usefossil) {  /* root fossil absent or excluded */
+            ab[i][0] = sptree.RootAge[0];
+            ab[i][1] = sptree.RootAge[1];
+            rootfossil = (sptree.RootAge[0]>0 ? BOUND_F : UPPER_F);
+         }
+         else if (sptree.nodes[root].fossil==LOWER_F) {   /* root fossil is lower bound */
+            ab[i][1] = sptree.RootAge[1];
+            rootfossil = BOUND_F;
+         }
+      }
+      else if(sptree.nodes[j].fossil==LOWER_F) {  /* nonroot fossil is lower bound */
+         /* this is the only case that need importance correction */ 
+         ab[i][1] = sptree.RootAge[1];
+         for(k=0; k<i; k++) {
+            if(ConstraintTab[i][k] && (ifs[k]!=root || sptree.nodes[ifs[k]].usefossil)) {
+               if(sptree.nodes[ifs[k]].fossil==UPPER_F || sptree.nodes[ifs[k]].fossil==BOUND_F)
+                  ab[i][1] = min2(ab[i][1], sptree.nodes[ifs[k]].pfossil[1]);
+               else if(sptree.nodes[ifs[k]].fossil==GAMMA_F) {
+                  a=sptree.nodes[ifs[k]].pfossil[0];
+                  b=sptree.nodes[ifs[k]].pfossil[1];
+                  ab[i][1] = min2(ab[i][1], a/b+2*sqrt(a)/b);
+               }
+            }
+         }
+      }
+   }
+
+   /* sample from the marginal fossil densities and truncate by rejection */
+   for(ir=0,naccept=0,C=0; ir<nr; ir++) {
+      for(i=0,y=1; i<nfs; i++) {
+         j = ifs[i];
+         t[i] = SampleFossil((j==root?rootfossil:sptree.nodes[j].fossil), ab[i][0], ab[i][1], &impt);
+         y *= impt;
+      }
+
+      feasible = 1;
+      for(i=1; i<nfs; i++) {
+         for(j=0; j<i; j++)
+            if(ConstraintTab[i][j] && t[i]>t[j]) 
+               { feasible=0; y=0; break; }
+         if(!feasible) break;
+      }
+
+      if(feasible) naccept++;
+      C = (ir*C + y)/(ir+1);
+      for(i=0; i<nfs; i++) 
+         mt[i] = (ir*mt[i] + t[i]*y)/(ir+1);
+      if((ir+1)%500000 == 0) {
+         printf("\r%7d %5.1f%% C %8.5f mt", ir+1, naccept/(ir+1)*100, C);
+         for(i=0; i<nfs; i++) 
+            printf(" %7.4f", mt[i]/C);
+      }
+   }
+   naccept /= nr;
+   if(naccept < 0.01) 
+      puts("\aMC integration to calculate C is inefficient due to low acceptance rate");
+   return(C);
+}
+
+
+int SetupPriorTimesFossilErrors (void)
+{
+/* This prepares for lnpriorTimes() under models of fossil errors.  It calculates 
+   the scaling factor for the probability density of times for a given combination
+   of the indicator variables, indicating which fossil is in error and not used.
+   The combination in which all fossils are wrong is excluded.
+*/
+   int  is,i, ncomFerr=(1<<sptree.nfossil)-1, nused=0, it;
+   int debug=1;
+
+   if(data.fossilerrorbeta[0] == 0) error2("should not be here."); 
+   sptree.CcomFossilErr = (double*)malloc(ncomFerr*sizeof(double));
+   if(sptree.CcomFossilErr == NULL) error2("oom for CcomFossilErr");
+
+   /* cycle through combinations of indicators, excluding that of all 0s. */
+   for (i=0; i<ncomFerr; i++) {
+      if(debug) printf("\n\n********* Com %2d/%2d: ", i+1, ncomFerr);
+
+      it = i;
+      for (is=sptree.nspecies, nused=0; is<sptree.nnode; is++) {
+         if(sptree.nodes[is].fossil) {
+            sptree.nodes[is].usefossil = 1 - it%2;
+            nused += sptree.nodes[is].usefossil;
+            it /= 2;
+            if(debug) printf("%2d (%2d)", sptree.nodes[is].usefossil, is+1);
+         }
+      }
+
+      if(debug) printf("  %2d fossils used", nused);
+
+      sptree.CcomFossilErr[i] = getScaleFossilCombination();
+   }
+
+   return(0);
+}
+
+
+double lnpriorTimes (void)
+{
+/* This calculates the prior density of node times in the master species tree:
+   sptree.nodes[].age. 
+*/
+   int  is,i, ncomFerr=(1<<sptree.nfossil)-1, nused, it;
+   double pE = sptree.Pfossilerr, ln1pE=log(1-pow(pE,(double)sptree.nfossil));
+   double lnpt=0, scaleF=-1e300, y;
+
+   if(data.fossilerrorbeta[0]==0)  /* no fossil errors in model */
+      lnpt = lnptC() + lnptBD();
+   else {  /* cycle through combinations of indicators, excluding that of all 0s. */
+      for(i=0; i<ncomFerr; i++) {
+         it = i;
+         for(is=sptree.nspecies, nused=0; is<sptree.nnode; is++) {
+            if(sptree.nodes[is].fossil) {
+               sptree.nodes[is].usefossil = 1 - it%2;
+               nused += sptree.nodes[is].usefossil;
+               it/=2;
+            }
+         }
+
+         y = nused*log(1-pE)+(sptree.nfossil-nused)*log(pE)-ln1pE
+           - log(sptree.CcomFossilErr[i]) + lnptC() + lnptBD();
+
+         if(y < scaleF + 100)
+            lnpt += exp(y-scaleF);
+         else {         
+            lnpt = lnpt*exp(scaleF-y) + 1;
+            scaleF = y;
+         }
+         lnpt += exp(y-scaleF);
+      }
+      lnpt = scaleF + log(lnpt);
+   }
+   return (lnpt);
+}
+
+int getPfossilerr (double postEFossil[], double nround)
+{
+/* This is modified from lnpriorTimes(), and prints out the conditonal Perror 
+   for each fossil given the times and pE.
+*/
+   int  is,i,k, nf=sptree.nfossil, ncomFerr=(1<<nf)-1, nused, it;
+   double pE = sptree.Pfossilerr, ln1pE=log(1-pow(pE,(double)nf));
+   double pt, pEf[MaxNFossils]={0}, scaleF=-1e300, y;
+   char Ef[MaxNFossils];  /* indicators of fossil errors */
+
+   for(i=0,pt=0; i<ncomFerr; i++) {
+      it = i;
+      for(is=sptree.nspecies, k=0, nused=0; is<sptree.nnode; is++) {
+         if(sptree.nodes[is].fossil) {
+            sptree.nodes[is].usefossil = 1 - it%2;
+            nused += sptree.nodes[is].usefossil;
+            Ef[k++] = !sptree.nodes[is].usefossil;
+            it /= 2;
+         }
+      }
+      if(k != nf) error2("k == nf?");
+
+      y = nused*log(1-pE)+(nf-nused)*log(pE)-ln1pE
+        - log(sptree.CcomFossilErr[i]) + lnptC() + lnptBD();
+
+      if(y < scaleF + 200) {
+         pt += y = exp(y-scaleF);
+      }
+      else {         /* change scaleF */
+         pt = pt*exp(scaleF-y) + 1;
+         for(k=0; k<nf; k++)
+            pEf[k] *= exp(scaleF-y);
+         scaleF = y;
+         y = 1;
+      }
+      for(k=0; k<nf; k++)
+         if(Ef[k]) pEf[k] += y;
+   }
+   for(k=0; k<nf; k++)
+      pEf[k] /= pt;
+
+   for(k=0; k<nf; k++)
+      postEFossil[k] = (postEFossil[k]*(nround-1)+pEf[k])/nround;
+   
+   return (0);
+}
+
 
 
 int LabelOldCondP (int spnode)
@@ -1375,7 +2145,7 @@ int LabelOldCondP (int spnode)
    The gene tree is in nodes[], as UseLocus has been called prior to this.
    This is called by UpdateTimes and UpdateRates.
 */
-   int i, j=spnode, nblength=0;
+   int i, j=spnode;
 
    if(j>=tree.nnode || j!=nodes[j].ipop) {
 
@@ -1395,63 +2165,73 @@ int LabelOldCondP (int spnode)
    }
 
    if(j<tree.nnode)
-      for( ; com.oldconP[j]=0,j!=tree.root; j=nodes[j].father)
-         nblength++;
-   return(nblength);
+      for( ; ; j=nodes[j].father) {
+         com.oldconP[j]=0;
+         if(j==tree.root) break;
+      }
+
+   return(0);
 }
 
-double UpdateTimesOnly (double *lnL, double finetune)
+double UpdateTimes (double *lnL, double finetune)
 {
 /* This updates the node ages in the master species tree sptree.nodes[].age, 
-   one by one for the clock model.  
 */
-   int  locus, is, i, *sons;
-   double c, naccept=0, t,tnew, tson[2], tb[2],y,ynew;
-   double lnacceptance, lnLd, lnpDinew[NGENE], lnpTnew;
+   int  locus, is, i, *sons, dad;
+   double naccept=0, t,tnew, tson[2], yb[2], y,ynew;
+   double lnacceptance, lnLd, lnpDinew[NGENE], lnpTnew, lnpRnew=-1;
 
    for(is=sptree.nspecies; is<sptree.nnode; is++) {
-      t=sptree.nodes[is].age;
-      sons=sptree.nodes[is].sons;
-      tson[0]=sptree.nodes[sons[0]].age; tson[1]=sptree.nodes[sons[1]].age;
-      tb[0]=max2(tson[0], tson[1]);
-      tb[1]=sptree.nodes[sptree.nodes[is].father].age;  /* used for non-root */
-      lnacceptance=0;  lnLd=0;
+      t = sptree.nodes[is].age;
+      sons = sptree.nodes[is].sons;
+      dad = sptree.nodes[is].father;
+      tson[0] = sptree.nodes[sons[0]].age;
+      tson[1] = sptree.nodes[sons[1]].age;
+      y = max2(tson[0], tson[1]);
+      yb[0] = (y>0 ? log(y) : -1e100);
+      if(is != sptree.root)  yb[1] = log(sptree.nodes[dad].age);
+      else                   yb[1] = 1e100;
 
-      if(is==tree.root) {
-         lnacceptance=finetune*(rndu()-.5);  c=exp(lnacceptance);
-         sptree.nodes[is].age = tnew = tb[0]+(t-tb[0])*c;
-      }
-      else {  /* this slides a window on y=(t-te)/(tp-te), with 0<y<1. */
-         y = (t-tb[0])/(tb[1]-tb[0]); /* linear transform */
-         ynew = rnduab(y-finetune/2, y+finetune/2);
-         ynew = reflect(ynew,0,1);
-         sptree.nodes[is].age = tnew = tb[0] + ynew*(tb[1]-tb[0]);
-      }
+      y = log(t);
+      ynew = y + finetune*rnd2NormalSym(m2NormalSym);
+      ynew = reflect(ynew, yb[0], yb[1]);
+      sptree.nodes[is].age = tnew = exp(ynew);
+      lnacceptance = ynew - y;
+      
+      lnpTnew = lnpriorTimes();
+      lnacceptance += lnpTnew - data.lnpT;
 
-      lnpTnew=lnpriorTimes();
-      lnacceptance += lnpTnew-data.lnpT;
+      if(com.clock==3) {
+         lnpRnew = lnpriorRates();
+         lnacceptance += lnpRnew - data.lnpR;
+      }
 
       for(locus=0,lnLd=0; locus<data.ngene; locus++) {
          UseLocus(locus, 1, mcmc.usedata, 0);
 
          if(mcmc.saveconP) {
-            FOR(i,sptree.nnode) com.oldconP[i]=1;
+            for(i=0;i<sptree.nnode;i++) com.oldconP[i]=1;
             LabelOldCondP(is);
          }
-         if(com.oldconP[tree.root]) error2("strange: no need to update likelihood?");
-         lnpDinew[locus] = lnpD_locus(locus);
-         lnLd += lnpDinew[locus]-data.lnpDi[locus];
+         if(com.oldconP[tree.root]) 
+            lnpDinew[locus] = data.lnpDi[locus];
+         else
+            lnpDinew[locus] = lnpD_locus(locus);
+         lnLd += lnpDinew[locus] - data.lnpDi[locus];
       }
       lnacceptance += lnLd;
 
-      if(debug==2) printf("species %2d tb: %8.5f %8.5f t: %8.5f%8.5f %9.2f", is,tb[0],tb[1],t,tnew,lnLd);
+      if(debug==2) printf("species %2d t %8.4f %8.4f %9.2f", is,t,tnew,lnLd);
 
       if(lnacceptance>=0 || rndu()<exp(lnacceptance)) {
          naccept++;
-         data.lnpT=lnpTnew;
-         for(i=0;i<data.ngene;i++) data.lnpDi[i]=lnpDinew[i];
-         *lnL+=lnLd;
+         data.lnpT = lnpTnew;
+         for(i=0;i<data.ngene;i++) 
+            data.lnpDi[i] = lnpDinew[i];
+         *lnL += lnLd;
          if(mcmc.usedata==1) switchconPin();
+         if(com.clock==3) 
+            data.lnpR = lnpRnew;
          if(debug==2) printf(" Y (%4d)\n", NPMat);
       }
       else {
@@ -1464,66 +2244,65 @@ double UpdateTimesOnly (double *lnL, double finetune)
    return(naccept/(sptree.nspecies-1.));
 }
 
-double UpdateTimes (double *lnL, double finetune)
+
+#if (0)  /*  this is not used now. */
+
+double UpdateTimesClock23 (double *lnL, double finetune)
 {
 /* This updates the node ages in the master species tree sptree.nodes[].age, 
    one by one.  It simultaneously changes the rates at the three branches 
    around the node so that the branch lengths remain the same, and there is 
-   no need to update the lnL.
+   no need to update the lnL.  Sliding window on the logarithm of ages.
 */
-   int  is, i, *sons;
-   double c, naccept=0, t,tnew, tson[2], tb[2],y,ynew, rateratio[3];
-   double lnacceptance, lnLd, lnpTnew,lnpRnew;
+   int  is, i, *sons, dad;
+   double naccept=0, tb[2],t,tnew, tson[2], yb[2],y,ynew, rateratio[3];
+   double lnacceptance, lnpTnew,lnpRnew;
 
-   if(debug==2) puts("\nUpdateTimes ");
-   if(com.clock==1) 
-      return UpdateTimesOnly(lnL, finetune);
+   if(debug==2) puts("\nUpdateTimesClock23 ");
 
    for(is=sptree.nspecies; is<sptree.nnode; is++) {
-      t=sptree.nodes[is].age;
-      sons=sptree.nodes[is].sons;
-      tson[0]=sptree.nodes[sons[0]].age; tson[1]=sptree.nodes[sons[1]].age;
-      tb[0]=max2(tson[0], tson[1]);
-      tb[1]=sptree.nodes[sptree.nodes[is].father].age;  /* used for non-root */
-      lnacceptance=0;  lnLd=0;
+      t = sptree.nodes[is].age;
+      sons = sptree.nodes[is].sons;
+      tson[0] = sptree.nodes[sons[0]].age;
+      tson[1] = sptree.nodes[sons[1]].age;
+      dad = sptree.nodes[is].father;
+      tb[0] = max2(tson[0], tson[1]);
+      yb[0] = (tb[0]>0 ? log(tb[0]) : -1e100);
+      if(is != sptree.root)  yb[1] = log(tb[1] = sptree.nodes[dad].age);
+      else                   yb[1] = 1e100;
 
-      if(is==tree.root) {
-         lnacceptance=finetune*(rndu()-.5);  c=exp(lnacceptance);
-         sptree.nodes[is].age = tnew = tb[0]+(t-tb[0])*c;
-      }
-      else {  /* this slides a window on y=(t-te)/(tp-te), with 0<y<1. */
-         y = (t-tb[0])/(tb[1]-tb[0]); /* linear transform */
-         ynew = rnduab(y-finetune/2, y+finetune/2);
-         ynew = reflect(ynew,0,1);
-         sptree.nodes[is].age = tnew = tb[0] + ynew*(tb[1]-tb[0]);
-      }
+      y = log(t);
+      ynew = y + finetune*rnd2NormalSym(m2NormalSym);
+      ynew = reflect(ynew, yb[0], yb[1]);
+      sptree.nodes[is].age = tnew = exp(ynew);
+      lnacceptance = ynew - y;
 
       /* Thorne et al. (1998) equation 9. */
-      rateratio[0]=(t-tson[0])/(tnew-tson[0]);
-      rateratio[1]=(t-tson[1])/(tnew-tson[1]);
+      rateratio[0] = (t-tson[0])/(tnew-tson[0]);
+      rateratio[1] = (t-tson[1])/(tnew-tson[1]);
       for(i=0; i<data.ngene; i++) {
          sptree.nodes[sons[0]].rates[i] *= rateratio[0];
          sptree.nodes[sons[1]].rates[i] *= rateratio[1];
       }
       lnacceptance += data.ngene*log(rateratio[0]*rateratio[1]);
-      if(is!=tree.root) {
-         rateratio[2]=(t-tb[1])/(tnew-tb[1]);
+      if(is != sptree.root) {
+         rateratio[2] = (t-tb[1])/(tnew-tb[1]);
          for(i=0; i<data.ngene; i++)
             sptree.nodes[is].rates[i] *= rateratio[2];
          lnacceptance += data.ngene*log(rateratio[2]);
       }
 
-      lnpTnew=lnpriorTimes();
-      lnacceptance += lnpTnew-data.lnpT;
-      lnpRnew=lnpriorRates();
-      lnacceptance+= lnpRnew-data.lnpR;
+      lnpTnew = lnpriorTimes();
+      lnacceptance += lnpTnew - data.lnpT;
+      lnpRnew = lnpriorRates();
+      lnacceptance += lnpRnew - data.lnpR;
 
-      if(debug==2) printf("species %2d tb: %8.5f %8.5f t: %8.5f%8.5f", is,tb[0],tb[1],t,tnew);
+      if(debug==2) printf("species %2d t %8.4f %8.4f", is,t,tnew);
 
       if(lnacceptance>=0 || rndu()<exp(lnacceptance)) {
-         naccept++;
-         data.lnpT=lnpTnew;
-         data.lnpR=lnpRnew;
+         naccept ++;
+         data.lnpT = lnpTnew;
+         data.lnpR = lnpRnew;
          if(debug==2) printf(" Y (%4d)\n", NPMat);
       }
       else {
@@ -1539,7 +2318,7 @@ double UpdateTimes (double *lnL, double finetune)
    return(naccept/(sptree.nspecies-1.));
 }
 
-
+#endif
 
 
 #if (0)
@@ -1588,14 +2367,14 @@ double lnpriorRates (void)
 /* This calculates the log of the prior of rates under the two rate-drift models:
    the independent rates (clock=2) and the geometric Brownian motion model (clock=3).
 
-   clock=2: the algorithm cycyles through the branches, and add up the log 
+   clock=2: the algorithm cycles through the branches, and add up the log 
    probabilities.
    clock=3: the root rate is mu or data.rgene[].  The algorithm cycles through 
    the ancestral nodes and deals with the two daughter branches.
 */
    int i, inode, dad=-1, g=data.ngene, s=sptree.nspecies, sons[2], root=sptree.root;
-   double lnpR=-log(2*PI)/2.0*(2*s-2)*g, t,tA,t1,t2,Tinv[4], detT;
-   double zz, r=-1, rA,r1,r2, yd[2], tmp[2];
+   double lnpR=-log(2*Pi)/2.0*(2*s-2)*g, t,tA,t1,t2,Tinv[4], detT;
+   double zz, r=-1, rA,r1,r2, y1,y2;
 
    if(com.clock==2) {
       for(i=0; i<g; i++)
@@ -1604,7 +2383,7 @@ double lnpriorRates (void)
          if(inode==root) continue;
          for(i=0; i<g; i++) {
             r = sptree.nodes[inode].rates[i];
-            zz=log(r/data.rgene[i]) + data.sigma2[i]/2;
+            zz = log(r/data.rgene[i]) + data.sigma2[i]/2;
             lnpR += -zz*zz/(2*data.sigma2[i]) - log(r);
          }
       }
@@ -1612,25 +2391,25 @@ double lnpriorRates (void)
    else { /* clock=3 */
       for(inode=0; inode<sptree.nnode; inode++) {
          if(sptree.nodes[inode].nson==0) continue; /* skip the tips */
-         dad=sptree.nodes[inode].father;
-         for(i=0;i<2;i++) sons[i]=sptree.nodes[inode].sons[i];
+         dad = sptree.nodes[inode].father;
+         for(i=0; i<2; i++) sons[i] = sptree.nodes[inode].sons[i];
          t = sptree.nodes[inode].age;
          if(inode==root) tA = 0;
          else            tA = (sptree.nodes[dad].age - t)/2;
-         t1=(t-sptree.nodes[sons[0]].age)/2;
-         t2=(t-sptree.nodes[sons[1]].age)/2;
-         detT=t1*t2+tA*(t1+t2);
-         Tinv[0]=(tA+t2)/detT; Tinv[1]=Tinv[2]=-tA/detT; Tinv[3]=(tA+t1)/detT;
+         t1 = (t-sptree.nodes[sons[0]].age)/2;
+         t2 = (t-sptree.nodes[sons[1]].age)/2;
+         detT = t1*t2+tA*(t1+t2);
+         Tinv[0] = (tA+t2)/detT; 
+         Tinv[1] = Tinv[2] = -tA/detT; 
+         Tinv[3] = (tA+t1)/detT;
          for(i=0; i<g; i++) {
             rA = (inode==root||dad==root ? data.rgene[i] : sptree.nodes[dad].rates[i]);
             r1 = sptree.nodes[sons[0]].rates[i];
             r2 = sptree.nodes[sons[1]].rates[i];
-            yd[0]=log(r1/rA)+(tA+t1)*data.sigma2[i]/2;
-            yd[1]=log(r2/rA)+(tA+t2)*data.sigma2[i]/2;
-            tmp[0]=yd[0]*Tinv[0]+yd[1]*Tinv[2];
-            tmp[1]=yd[0]*Tinv[1]+yd[1]*Tinv[3];
-            zz = (tmp[0]*yd[0]+tmp[1]*yd[1])/(2*data.sigma2[i]);
-            lnpR -= zz + log(detT*square(data.sigma2[i]))/2 + log(r1*r2);
+            y1 = log(r1/rA)+(tA+t1)*data.sigma2[i]/2;
+            y2 = log(r2/rA)+(tA+t2)*data.sigma2[i]/2;
+            zz = (y1*y1*Tinv[0]+2*y1*y2*Tinv[1]+y2*y2*Tinv[3]);
+            lnpR -= zz/(2*data.sigma2[i]) + log(detT*square(data.sigma2[i]))/2 + log(r1*r2);
          }
       }
    }
@@ -1647,19 +2426,22 @@ double UpdateRates (double *lnL, double finetune)
    tree, thus wasting computation, if rates are not correlated across loci.
 */
    int locus, inode, j, g=data.ngene;
-   double naccept=0, lnpRnew, lnpDinew, lnacceptance, lnLd, rold, c;
+   double naccept=0, lnpRnew, lnpDinew, lnacceptance, lnLd, rold;
+   double yb[2]={-1e100,1e100},y,ynew;
 
    if(com.clock==1)
       return UpdateRatesClock(lnL, finetune);
 
-   if(debug==3) puts("\nUpdateRates");
    for(locus=0; locus<g; locus++) {
       for(inode=0; inode<sptree.nnode; inode++) {
-         if(inode==sptree.root) continue;
+         if(inode == sptree.root) continue;
          rold = sptree.nodes[inode].rates[locus];
+         y = log(rold);
+         ynew = y + finetune*rnd2NormalSym(m2NormalSym);
+         ynew = reflect(ynew, yb[0], yb[1]);
+         sptree.nodes[inode].rates[locus] = exp(ynew);
+         lnacceptance = ynew - y;
 
-         c=exp(finetune*(rndu()-.5));
-         sptree.nodes[inode].rates[locus] *= c;
          UseLocus(locus, 1, mcmc.usedata, 0);  /* copyconP=1 */
 
          if(mcmc.saveconP) {
@@ -1667,23 +2449,23 @@ double UpdateRates (double *lnL, double finetune)
             LabelOldCondP(inode);
          }
 
-         lnpRnew=lnpriorRates();
-         lnacceptance = lnpRnew-data.lnpR;
-         lnpDinew=lnpD_locus(locus);
+         lnpRnew = lnpriorRates();
+         lnacceptance += lnpRnew - data.lnpR;
+         lnpDinew = lnpD_locus(locus);
          lnLd = lnpDinew - data.lnpDi[locus];
-         lnacceptance +=  lnLd + log(c);
+         lnacceptance +=  lnLd;
 
          if(lnacceptance>0 || rndu()<exp(lnacceptance)) {
             naccept++;
             if(mcmc.usedata==1) AcceptRejectLocus(locus,1);
    
-            data.lnpR=lnpRnew;
-            data.lnpDi[locus]=lnpDinew;
+            data.lnpR = lnpRnew;
+            data.lnpDi[locus] = lnpDinew;
             *lnL += lnLd;
          }
          else {
             if(mcmc.usedata==1) AcceptRejectLocus(locus,0);
-            sptree.nodes[inode].rates[locus]=rold;
+            sptree.nodes[inode].rates[locus] = rold;
          }
       }
    }
@@ -1691,53 +2473,54 @@ double UpdateRates (double *lnL, double finetune)
 }
 
 
-double logPriorRatio(double xnew, double xold, double a, double b, int distribution)
+double logPriorRatioGamma(double xnew, double xold, double a, double b)
 {
 /* This calculates the log of prior ratio when x is updated from xold to xnew.
    x has distribution with parameters a and b.
-*/
-   double lnr=-99999;
 
-   if(distribution==GAMMA)
-      lnr = (a-1)*log(xnew/xold) - b*(xnew-xold);
-   else if(distribution==IGAMMA)
-      lnr = -9999;
-   return(lnr);
+*/
+   return (a-1)*log(xnew/xold) - b*(xnew-xold);
 }
 
 double UpdateRatesClock (double *lnL, double finetune)
 {
 /* This updates rates data.rgene[] under the clock by cycling through the loci.
    The proposal affects all branch lengths, so com.oldconP[]=0.
+   The rate may go to 0 if a locus has no variation.
 */
    int locus, j, g=data.ngene;
-   double naccept=0, rgene0, lnLd, lnpDinew, lnacceptance, c=1;
+   double naccept=0, lnLd, lnpDinew, lnacceptance;
+   double yb[2]={-1e100,1e100},y,ynew, rold;
 
    if(debug==3) puts("\nUpdateRatesClock");
    if(mcmc.saveconP) FOR(j,sptree.nspecies*2-1) com.oldconP[j]=0;
    for(locus=0; locus<g; locus++) {
-      rgene0=data.rgene[locus];
-      data.rgene[locus] = rgene0 * (c=exp(finetune*(.5-rndu())));
+      rold = data.rgene[locus];
+      y = log(rold);
+      ynew = y + finetune*rnd2NormalSym(m2NormalSym);
+      ynew = reflect(ynew, yb[0], yb[1]);
+      data.rgene[locus] = exp(ynew);
+      lnacceptance = ynew - y;
   
       UseLocus(locus, 1, mcmc.usedata, 0);
-      lnpDinew=lnpD_locus(locus);
+      lnpDinew = lnpD_locus(locus);
       lnLd = lnpDinew - data.lnpDi[locus];   /* likelihood ratio */
-      lnacceptance =  lnLd + log(c);         /* proposal ratio */
+      lnacceptance +=  lnLd;         /* proposal ratio */
       /* prior ratio */
-      lnacceptance += logPriorRatio(data.rgene[locus],rgene0,data.rgenegamma[0],data.rgenegamma[1],GAMMA);
+      lnacceptance += logPriorRatioGamma(data.rgene[locus],rold,data.rgenegamma[0],data.rgenegamma[1]);
 
       if(debug==3)
-         printf("\nLocus %2d rgene %9.4f%9.4f %10.5f", locus+1, rgene0, data.rgene[locus], lnLd);
+         printf("\nLocus %2d rgene %9.4f%9.4f %10.5f", locus+1, rold, data.rgene[locus], lnLd);
 
       if(lnacceptance>=0 || rndu()<exp(lnacceptance)) {
          naccept++;
          *lnL += lnLd;
-         data.lnpDi[locus]=lnpDinew;
+         data.lnpDi[locus] = lnpDinew;
          if(mcmc.usedata==1) AcceptRejectLocus(locus,1);
          if(debug==3) printf(" Y\n");
       }
       else {
-         data.rgene[locus]=rgene0;
+         data.rgene[locus] = rold;
          if(mcmc.usedata==1) AcceptRejectLocus(locus,0); /* reposition conP */
 
          if(debug==3) printf(" N\n");
@@ -1757,47 +2540,54 @@ double UpdateParameters (double *lnL, double finetune)
 */
    int locus, j, ip, np=!com.fix_kappa+!com.fix_alpha;
    double naccept=0, lnLd,lnpDinew, lnacceptance, c=1;
-   double pold, pnew, *gammaprior;
+   double yb[2]={-1e100,1e100},y,ynew, pold, pnew, *gammaprior;
 
-   if(debug==4) puts("\nUpdateParameters");
    if(np==0) return(0);
-
+   if(debug==4) puts("\nUpdateParameters");
+   
    if(mcmc.saveconP) FOR(j,sptree.nspecies*2-1) com.oldconP[j]=0;
    for(locus=0; locus<data.ngene; locus++) {
       for(ip=0; ip<np; ip++) {
          if(ip==0 && !com.fix_kappa) {  /* kappa */
-            pold=data.kappa[locus];
-            data.kappa[locus] = pnew = pold * (c=exp(finetune*(.5-rndu())));
-            gammaprior=data.kappagamma;
+            pold = data.kappa[locus];
+            y = log(pold);
+            ynew = y + finetune*rnd2NormalSym(m2NormalSym);
+            ynew = reflect(ynew, yb[0], yb[1]);
+            data.kappa[locus] = pnew = exp(ynew);
+            gammaprior = data.kappagamma;
          }
          else {  /* alpha */
-            pold=data.alpha[locus];
-            data.alpha[locus] = pnew = pold * (c=exp(finetune*(.5-rndu())));
-            gammaprior=data.alphagamma;
+            pold = data.alpha[locus];
+            y = log(pold);
+            ynew = y + finetune*rnd2NormalSym(m2NormalSym);
+            ynew = reflect(ynew, yb[0], yb[1]);
+            data.alpha[locus] = pnew = exp(ynew);
+            gammaprior = data.alphagamma;
          }
+         lnacceptance = ynew - y;
 
          UseLocus(locus, 1, mcmc.usedata, 0); /* this copies parameter from data.[] to com. */
 
-         lnpDinew=lnpD_locus(locus);
+         lnpDinew = lnpD_locus(locus);
          lnLd = lnpDinew - data.lnpDi[locus];
-         lnacceptance =  lnLd + log(c);
-         lnacceptance += logPriorRatio(pnew,pold,gammaprior[0],gammaprior[1],GAMMA);
+         lnacceptance +=  lnLd;
+         lnacceptance += logPriorRatioGamma(pnew,pold,gammaprior[0],gammaprior[1]);
 
          if(debug==4)
             printf("\nLocus %2d para%d %9.4f%9.4f %10.5f", locus+1,ip+1,pold,pnew,lnLd);
 
-         if(lnacceptance>=0 || rndu()<exp(lnacceptance)) {
-            naccept++;
+         if(lnacceptance >= 0 || rndu() < exp(lnacceptance)) {
+            naccept ++;
             *lnL += lnLd;
-            data.lnpDi[locus]=lnpDinew;
+            data.lnpDi[locus] = lnpDinew;
             if(mcmc.usedata==1) AcceptRejectLocus(locus,1);
             if(debug==4) printf(" Y\n");
          }
          else {
             if(ip==0 && !com.fix_kappa)
-               data.kappa[locus]=pold;
+               data.kappa[locus] = pold;
             else 
-               data.alpha[locus]=pold;
+               data.alpha[locus] = pold;
             
             if(mcmc.usedata==1) AcceptRejectLocus(locus,0);
 
@@ -1816,8 +2606,9 @@ double UpdateParaRates (double finetune, double space[])
    The proposals in this routine do not change the likelihood.
 */
    int i, ip, g=data.ngene;
-   double lnacceptance, lnpRnew, naccept=0, pold, pnew, *gammaprior, c;
    char *parastr[2]={"mu", "sigma2"};
+   double lnacceptance, lnpRnew, naccept=0;
+   double yb[2]={-1e100,1e100},y,ynew, pold, pnew, *gammaprior;
 
    if(com.clock==1) return(0);
    if(debug==5) puts("\nUpdateParaRates (rgene & sigma2)");
@@ -1825,30 +2616,36 @@ double UpdateParaRates (double finetune, double space[])
    for(i=0; i<g; i++) {
       for(ip=0; ip<2; ip++) {  /* this loops through mu (rgene) and sigma2 */
          if(ip==0) {  /* rgene (mu) */
-            pold=data.rgene[i];
-            data.rgene[i] = pnew = pold * (c=exp(finetune*(.5-rndu())));
-            gammaprior=data.rgenegamma;
+            pold = data.rgene[i];
+            y = log(pold);
+            ynew = y + finetune*rnd2NormalSym(m2NormalSym);
+            ynew = reflect(ynew, yb[0], yb[1]);
+            data.rgene[i] = pnew = exp(ynew);
+            gammaprior = data.rgenegamma;
          }
          else {         /* sigma2 */
-            pold=data.sigma2[i];
-            data.sigma2[i] = pnew = pold * (c=exp(finetune*(.5-rndu())));
-            gammaprior=data.sigma2gamma;
+            pold = data.sigma2[i];
+            y = log(pold);
+            ynew = y + finetune*rnd2NormalSym(m2NormalSym);
+            ynew = reflect(ynew, yb[0], yb[1]);
+            data.sigma2[i] = pnew = exp(ynew);
+            gammaprior = data.sigma2gamma;
          }
 
-         lnacceptance = logPriorRatio(pnew,pold,gammaprior[0],gammaprior[1],GAMMA);
+         lnacceptance = ynew - y;
+         lnacceptance += logPriorRatioGamma(pnew,pold,gammaprior[0],gammaprior[1]);
          if(debug==5) printf("%-7s %2d %9.5f -> %9.5f ", parastr[ip], i, pold,pnew);
 
          lnpRnew = lnpriorRates();
          lnacceptance += lnpRnew-data.lnpR;
-         lnacceptance += log(c);
 
          if(lnacceptance>=0 || rndu()<exp(lnacceptance)) {
             naccept++;
             data.lnpR = lnpRnew;
          }
          else {
-            if(ip==0)  data.rgene[i] =pold;
-            else       data.sigma2[i]=pold;
+            if(ip==0)  data.rgene[i]  = pold;
+            else       data.sigma2[i] = pold;
          }
       }
    }
@@ -1866,42 +2663,44 @@ double mixing (double finetune)
    sptree.nodes[].rates and mu (data.rgene[]) at all loci.  The likelihood is 
    not changed.
 */
-   int i,j, ndivide=data.ngene;
+   int i,j, ndivide = data.ngene;
    double naccept=0, a=data.rgenegamma[0], b=data.rgenegamma[1], c, lnc;
    double lnacceptance=0, lnpTnew, lnpRnew=-1;
 
-   lnc=finetune*(rndu()-.5);  c=exp(lnc);
+   lnc = finetune*rnd2NormalSym(m2NormalSym);
+   c = exp(lnc);
    for(j=sptree.nspecies; j<sptree.nnode; j++) 
-      sptree.nodes[j].age*=c;
+      sptree.nodes[j].age *= c;
 
    for(j=0; j<data.ngene; j++) {  /* mu */
       lnacceptance += (a-1)*(-lnc) - b*(data.rgene[j]/c-data.rgene[j]);
-      data.rgene[j]/=c;
+      data.rgene[j] /= c;
    }
    if(com.clock>1) {              /* rate-drift models */
       ndivide += data.ngene*(sptree.nspecies*2-2);
       for(i=0; i<sptree.nnode; i++) 
-         if(i!=sptree.root)
+         if(i != sptree.root)
             for(j=0; j<data.ngene; j++)
                sptree.nodes[i].rates[j] /= c;
-      lnpRnew=lnpriorRates();
+      lnpRnew = lnpriorRates();
       lnacceptance += lnpRnew-data.lnpR;
    }
 
-   lnpTnew=lnpriorTimes();
+   lnpTnew = lnpriorTimes();
    lnacceptance += lnpTnew-data.lnpT + ((sptree.nspecies-1) - ndivide)*lnc;
 
    if(lnacceptance>0 || rndu()<exp(lnacceptance)) { /* accept */
-      naccept=1;
-      data.lnpT=lnpTnew;
-      data.lnpR=lnpRnew;
+      naccept = 1;
+      data.lnpT = lnpTnew;
+      data.lnpR = lnpRnew;
    }
    else {   /* reject */
-      for(j=sptree.nspecies; j<sptree.nnode; j++) sptree.nodes[j].age/=c;
-      for(j=0; j<data.ngene; j++) data.rgene[j]*=c;
-      if(com.clock>1) {
+      for(j=sptree.nspecies; j<sptree.nnode; j++) 
+         sptree.nodes[j].age /= c;
+      for(j=0; j<data.ngene; j++) data.rgene[j] *= c;
+      if(com.clock > 1) {
          for(i=0; i<sptree.nnode; i++) 
-            if(i!=sptree.root)
+            if(i != sptree.root)
                for(j=0; j<data.ngene; j++)
                   sptree.nodes[i].rates[j] *= c;
       }
@@ -1910,143 +2709,120 @@ double mixing (double finetune)
 }
 
 
-
-int ReadBlengthVar(char infile[])
+double UpdatePFossilErrors (double finetune)
 {
-/* this reads the MLEs of branch lengths under no clock and their SEs, for 
-   approximate calculation of sequence likelihood.  The branch lengths are 
-   stored in nodes[].label, and the variances are in data.varb[locsu][].
-
-   This also frees up memory for sequences.
+/* This updates the probability of fossil errors sptree.Pfossilerr.  
+   The proposal do not change the likelihood.
 */
-   FILE* fBV=gfopen(infile,"r");
-   char line[100000];
-   int lline=100000, locus, i,j,inode;
-   double small=1e-20, v;
+   double lnacceptance, lnpTnew, naccept=0, pold, pnew;
+   double p = data.fossilerrorbeta[0], q = data.fossilerrorbeta[1];
 
-   if(noisy) printf("\n\nReading branch lengths and variances from %s.\n", infile);
-   for(locus=0; locus<data.ngene; locus++) {
-      UseLocus(locus, 0, 0, 0);
-      NodeToBranch ();
+   pold = sptree.Pfossilerr;
+   pnew = pold + finetune*rnd2NormalSym(m2NormalSym);
+   sptree.Pfossilerr = pnew = reflect(pnew,0,1);
+   lnacceptance = (p-1)*log(pnew/pold) + (q-1)*log((1-pnew)/(1-pold));
+   lnpTnew = lnpriorTimes();
+   lnacceptance += lnpTnew-data.lnpT;
 
-      if(noisy) printf("\t\t%d branches.\n", tree.nbranch);
- 
-      for(;;) {
-         if(fgets(line,lline,fBV)==NULL) error2("EOF?");
-         if(strstr(line, "Locus")) { 
-            printf("%s\n", line);
-            fgets(line,lline,fBV);
-            break; 
-         }
-      }
-      for(i=0; i<tree.nbranch; i++) {
-         fscanf(fBV, "%d..%d", &j, &inode);
-         if(tree.branches[i][1] != inode-1) 
-            error2("something wrong with node numbering.");
-      }
-      for(i=0; i<tree.nbranch; i++)
-         fscanf(fBV, "%lf", &nodes[tree.branches[i][1]].label);
-      for(i=0; i<tree.nbranch; i++) {
-         if(fscanf(fBV, "%lf", &v)!=1) error2("error when reading SEs");
-         data.varb[locus][tree.branches[i][1]] = v*v;
-      }
-
-      for(i=0; i<tree.nnode; i++)
-         if(i!=tree.root) {
-            v=data.varb[locus][i];
-            printf("n%-2d b = %12.9f se&v = %12.9f %12.9f\n", i+1,nodes[i].label,v,sqrt(v));
-         }
+   if(lnacceptance>=0 || rndu()<exp(lnacceptance)) {
+      naccept++;
+      data.lnpT = lnpTnew;
    }
-   fclose(fBV);
-   /* free up memory for sequences */
-   for(locus=0; locus<data.ngene; locus++) {
-      free(data.fpatt[locus]);
-      for(j=0;j<data.ns[locus]; j++)
-         free(data.z[locus][j]);
+   else {
+      sptree.Pfossilerr = pold;
    }
-
-   return(0);
+   return(naccept);
 }
 
 
-int DescriptiveStatistics2Delete (FILE *fout, char infile[], int nbin, int nrho)
+int DescriptiveStatisticsSimple (FILE *fout, char infile[], int nbin, int nrho)
 {
    FILE *fin=gfopen(infile,"r");
-   int  n, p, i,j, jj, jeffnode;
-   char *fmt=" %9.6f", timestr[36];
+   int  n, p, i,j, jj;
+   char *fmt=" %9.6f", *fmt1=" %9.1f", timestr[32];
    double *x, *mean, *median, *minx, *maxx, *x005,*x995,*x025,*x975,*x25,*x75;
    double *y;
+   int  lline=640000, ifields[MAXNFIELDS], Ignore1stColumn=1, ReadHeader=0;
+   char line[640000];
+   char varstr[MAXNFIELDS][32]={""};
 
-   starttime();
-   printf("\nscanning the file %s once..", infile);
-   scanfile(fin, &n, &p);
-   printf("\nAha, i've seen %d observations, each with %d variables\n", n,p);
-   if(n<=2) return(1);
+   scanfile(fin, &n, &p, &ReadHeader, line, ifields);
+   if(ReadHeader)
+      for(i=0; i<p; i++) sscanf(line+ifields[i], "%s", varstr[i]);
 
-   x = (double*)malloc((p*12+p*p + p*nrho)*sizeof(double));
+   x = (double*)malloc((p*13+p*p + p*nrho)*sizeof(double));
    if (x==NULL) { puts("did not get enough space."); exit(-1); }
-   for(j=0;j<p*12+p*p + p*nrho; j++) x[j]=0;
+   for(j=0;j<p*13+p*p + p*nrho; j++) x[j]=0;
    mean=x+p; median=mean+p; minx=median+p; maxx=minx+p; 
    x005=maxx+p; x995=x005+p; x025=x995+p; x975=x025+p; x25=x975+p; x75=x25+p;
 
-   printf("collecting mean and sorting to get percentiles\n");
+   printf("\nCollecting min, max, and mean & sorting to get percentiles\n");
    for(i=0; i<n; i++) {
       for(j=0;j<p;j++) fscanf(fin,"%lf", &x[j]);
-      for(j=0;j<p;j++) mean[j]+=x[j]/n;
+      for(j=Ignore1stColumn; j<p; j++) mean[j] += x[j]/n;
    }
 
    y=(double*)malloc(n*sizeof(double));
    if(y==NULL) { printf("not enough mem for %d variables\n",n); exit(-1); }
-   for(jj=0;jj<p;jj++) {
+   for(jj=Ignore1stColumn; jj<p; jj++) {
       rewind(fin);
-      for(i=0;i<n;i++) {
-         for(j=0;j<p;j++) fscanf(fin,"%lf", &x[j]);
-         y[i]=x[jj];
-      }
+      if(ReadHeader) fgets(line, lline, fin);
 
+      for(i=0;i<n;i++) {
+         for(j=0; j<p; j++) fscanf(fin,"%lf", &x[j]);
+         y[i] = x[jj];
+      }
       qsort(y, (size_t)n, sizeof(double), comparedouble);
       if(n%2==0)  median[jj]=(y[n/2]+y[n/2+1])/2;
       else        median[jj]=y[(n+1)/2];
-      x005[jj]=y[(int)(n*.005)];  x995[jj]=y[(int)(n*.995)];
-      x025[jj]=y[(int)(n*.025)];  x975[jj]=y[(int)(n*.975)];
-      x25[jj]=y[(int)(n*.25)];    x75[jj]=y[(int)(n*.75)];
-      printf("\t%d/%d  %10s\r", jj+1,p, printtime(timestr));
+      x005[jj] = y[(int)(n*.005)];  x995[jj] = y[(int)(n*.995)];
+      x025[jj] = y[(int)(n*.025)];  x975[jj] = y[(int)(n*.975)];
+      x25[jj]  = y[(int)(n*.25)];    x75[jj] = y[(int)(n*.75)];
+      printf("\t%d/%d  %-10s %10s\r", jj+1, p, varstr[j], printtime(timestr));
    }
 
-
-   printf("\n\nposterior mean & 95%% credibility interval\n");
-   for(j=0;j<sptree.nspecies-1;j++) {
-      jeffnode=2*sptree.nspecies-1-1-j;
-      printf("%4d %.5f (%.5f, %.5f)\n", jeffnode, mean[j], x025[j],x975[j]);
+   printf("\n\nPosterior median mean & 95%% credibility interval\n\n");
+   for (j=Ignore1stColumn; j<p; j++) {
+      printf("%-10s", varstr[j]);
+      printf("%7.4f %7.4f (%6.4f, %6.4f)", median[j], mean[j], x025[j],x975[j]);
+      if(j<sptree.nspecies-1+Ignore1stColumn)
+         printf("  (age of jeffnode %2d)", 2*sptree.nspecies-1-1-j+Ignore1stColumn);
+      printf("\n");
    }
-   for(j=sptree.nspecies-1;j<p;j++) printf("%.5f (%.5f, %.5f)\n",mean[j], x025[j],x975[j]);
 
-   fprintf(fout, "\n\nposterior mean & 95%% credibility interval\n");
-   for(j=0;j<p;j++) fprintf(fout, "%.5f (%.5f, %.5f)\n",mean[j], x025[j],x975[j]);
-   
-      
-   free(x); free(y);  return(0);
+   if(fout) {
+      fprintf(fout, "\n\nPosterior median mean & 95%% credibility interval\n\n");
+      for (j=Ignore1stColumn; j<p; j++) {
+         fprintf(fout, "%-10s", varstr[j]);
+         fprintf(fout, "%7.4f %7.4f (%6.4f, %6.4f)", median[j], mean[j], x025[j],x975[j]);
+         if(j<sptree.nspecies-1+Ignore1stColumn)
+            fprintf(fout, "  (age of jeffnode %2d)", 2*sptree.nspecies-1-1-j+Ignore1stColumn);
+         fprintf(fout, "\n");
+      }
+   }
+   free(x); free(y);
+   return(0);
 }
 
 
 int MCMC (FILE* fout)
 {
-   char mcmcout[32]="mcmc.out";
-   FILE *fmcmcout=NULL;
-   int nsteps=4+(com.clock>1), nxpr[2]={12,3};
-   int i,j, ir, g=data.ngene;
-   double Paccept[5]={0}, lnL=0, nround=0, *x, *mx, *vx;
+   char mcmcout[32] = "mcmc.out";
+   FILE *fmcmcout = NULL;
+   int nsteps=4+(mcmc.usedata>0)+(data.fossilerrorbeta[0]>0), nxpr[2]={6,2};
+   int i,j,k, ir, g=data.ngene;
+   double Paccept[6]={0}, lnL=0, nround=0, *x, *mx, *vx, *px, postEFossil[MaxNFossils]={0};
    char timestr[36];
 
-   noisy=2;
-   if(mcmc.print) fmcmcout=gfopen(mcmcout,"w");
-   mcmc.saveconP=1;
-   if(mcmc.usedata!=1) mcmc.saveconP=0;
-   FOR(j,sptree.nspecies*2-1) com.oldconP[j]=0;
+   noisy = 2;
+   mcmc.saveconP = 1;
+   if(mcmc.usedata!=1) mcmc.saveconP = 0;
+   for(j=0; j<sptree.nspecies*2-1; j++) 
+      com.oldconP[j] = 0;
    GetMem();
-
-   if(mcmc.usedata==2)
-      ReadBlengthVar("in.BV");
+   if(mcmc.usedata == 2)
+      ReadBlengthGH("in.BV");
+   if(mcmc.print) fmcmcout = gfopen(mcmcout,"w");
 
    printf("\n%d burnin, sampled every %d, %d samples\n", 
            mcmc.burnin, mcmc.sampfreq, mcmc.nsample);
@@ -2056,14 +2832,24 @@ int MCMC (FILE* fout)
    printf("(Settings: cleandata=%d.  print=%d  saveconP=%d.)\n", 
           com.cleandata, mcmc.print, mcmc.saveconP);
 
-   com.np=GetInitials(fout);
+   com.np = GetInitials();
 
    x=(double*)malloc(com.np*(com.np+2)*sizeof(double));
    if(x==NULL) error2("oom in mcmc");
    mx=x+com.np;  vx=mx+com.np;
-
+   
+/*
+   printf("\aresetting times");
+   {
+      int k;
+      double x0[]={1.1, 0.99, 0.88, 0.77, 0.55, 0.44, 0.22, 0.11};
+      for(i=sptree.nspecies,k=0; i<sptree.nnode; i++)
+         sptree.nodes[i].age=x0[k++];
+   }
    printSptree();
-   collectx(x);
+*/
+
+   collectx(fmcmcout, x);
 
    if(!com.fix_kappa && !com.fix_alpha && data.ngene==2) { nxpr[0]=6; nxpr[1]=4; }
 
@@ -2077,17 +2863,21 @@ int MCMC (FILE* fout)
    if(com.clock>1) printf("\tG(%.4f, %.4f) for sigma2\n", data.sigma2gamma[0], data.sigma2gamma[1]);
 
    /* calculates prior for times and likelihood for each locus */
-   data.lnpT=lnpriorTimes();
-   for(j=0; j<data.ngene; j++) com.rgene[j]=-1;
-   if(com.clock>1)  data.lnpR=lnpriorRates();
-   printf("Initial parameters (np = %d):\n", com.np);
+   if(data.fossilerrorbeta[0]) 
+      SetupPriorTimesFossilErrors();
+   data.lnpT = lnpriorTimes();
+   for(j=0; j<data.ngene; j++) com.rgene[j]=-1;  /* com.rgene[] is not used. */
+   if(com.clock>1)
+      data.lnpR = lnpriorRates();
+   printf("\nInitial parameters (np = %d):\n", com.np);
    for(j=0;j<com.np;j++) printf(" %9.6f",x[j]); FPN(F0);
-   lnL=lnpData(data.lnpDi);
+   lnL = lnpData(data.lnpDi);
    printf("\nlnL0 = %9.2f\n", lnL);
 
    printf("\nStarting MCMC (np = %d) . . .\n", com.np);
    printf("finetune steps (time rate mixing para RatePara?):");
-   for(j=0;j<nsteps;j++) printf(" %7.4f",mcmc.finetune[j]);
+   for(j=0; j<nsteps; j++) 
+      printf(" %7.4f",mcmc.finetune[j]);
    if(com.clock==1) 
       printf("\n  paras: %d times, %d mu, (& kappa, alpha)\n", 
              sptree.nspecies-1, data.ngene);
@@ -2095,12 +2885,17 @@ int MCMC (FILE* fout)
       printf("\n  paras: %d times, %d mu, %d sigma2 (& rates, kappa, alpha)\n", 
              sptree.nspecies-1, data.ngene, data.ngene);
 
-   zero(mx,com.np);  zero(vx,com.np*com.np);
+   zero(mx,com.np);
+   zero(vx,com.np*com.np);
    if(com.np<nxpr[0]+nxpr[1]) { nxpr[0]=com.np; nxpr[1]=0; }
    for(ir=-mcmc.burnin; ir<mcmc.sampfreq*mcmc.nsample; ir++) {
       if(ir==0) { /* reset after burnin */
+         nround=0;
+         zero(Paccept,nsteps);
+         zero(mx,com.np); 
+         zero(vx,com.np*com.np); 
 #if 0
-         if(mcmc.burnin>10) {  /* reset finetune parameters */
+         if(mcmc.burnin>10) {  /* reset finetune parameters.  Do we want this? */
             for(j=0;j<nsteps;j++) 
                if(Paccept[j]<.1 || Paccept[j]>.8) {
                   mcmc.finetune[j] *= Paccept[j]/0.3;
@@ -2108,34 +2903,47 @@ int MCMC (FILE* fout)
                }
          }
 #endif
-         nround=0; zero(Paccept,nsteps);
-         zero(mx,com.np); zero(vx,com.np*com.np); 
       }
-      Paccept[0] = (Paccept[0]*nround + UpdateTimes(&lnL, mcmc.finetune[0]))/(nround+1);
-      Paccept[1] = (Paccept[1]*nround + UpdateRates(&lnL, mcmc.finetune[1]))/(nround+1);
-      Paccept[2] = (Paccept[2]*nround + mixing(mcmc.finetune[2]))/(nround+1);
-      Paccept[3] = (Paccept[3]*nround + UpdateParameters(&lnL, mcmc.finetune[3]))/(nround+1);
-      Paccept[4] = (Paccept[4]*nround + UpdateParaRates(mcmc.finetune[4],com.space))/(nround+1);
 
       nround++;
-      collectx(x);
-      FOR(j,com.np) mx[j]=(mx[j]*(nround-1)+x[j])/nround;
-      FOR(i,com.np) FOR(j,com.np) 
+
+      Paccept[0] = (Paccept[0]*(nround-1) + UpdateTimes(&lnL, mcmc.finetune[0]))/nround;
+      Paccept[1] = (Paccept[1]*(nround-1) + UpdateRates(&lnL, mcmc.finetune[1]))/nround;
+      Paccept[2] = (Paccept[2]*(nround-1) + mixing(mcmc.finetune[2]))/nround;
+      if(mcmc.usedata==1)
+         Paccept[3] = (Paccept[3]*(nround-1) + UpdateParameters(&lnL, mcmc.finetune[3]))/nround;
+      if(com.clock>1)
+         Paccept[4] = (Paccept[4]*(nround-1) + UpdateParaRates(mcmc.finetune[4],com.space))/nround;
+      if(data.fossilerrorbeta[0])
+         Paccept[5] = (Paccept[5]*(nround-1) + UpdatePFossilErrors(mcmc.finetune[5]))/nround;
+
+      collectx(fmcmcout, x);
+
+      for(j=0; j<com.np; j++) mx[j]=(mx[j]*(nround-1)+x[j])/nround;
+      for(i=0; i<com.np; i++) for(j=0; j<com.np; j++)
          vx[i*com.np+j] += (x[i]-mx[i])*(x[j]-mx[j]) * (nround-1.)/nround;
-      if(mcmc.print && ir>=0 && (ir+1)%mcmc.sampfreq==0) {
-         for(j=0;j<com.np; j++) fprintf(fmcmcout," %7.5f",x[j]);
-         if(mcmc.usedata) fprintf(fmcmcout," %10.3f",lnL);
+      if(data.fossilerrorbeta[0])
+         getPfossilerr(postEFossil, nround);
+
+      if(mcmc.print && ir>=0 && (ir==0 || (ir+1)%mcmc.sampfreq==0)) {
+         fprintf(fmcmcout,"%d", ir+1);   
+         for(j=0;j<com.np; j++) fprintf(fmcmcout,"\t%.7f",x[j]);
+         if(mcmc.usedata) fprintf(fmcmcout,"\t%.3f",lnL);
          FPN(fmcmcout);
       }
       if((ir+1)%max2(mcmc.sampfreq, mcmc.sampfreq*mcmc.nsample/10000)==0) {
-
          printf("\r%3.0f%%", (ir+1.)/(mcmc.nsample*mcmc.sampfreq)*100.);
 
-         FOR(j,nsteps) printf(" %4.2f", Paccept[j]);  printf(" ");
+         for(j=0; j<nsteps; j++) 
+            printf(" %4.2f", Paccept[j]); 
+         printf(" ");
 
-         FOR(j,nxpr[0]) printf(" %5.3f", mx[j]);
+         px = (ir >= 0 ? mx : x);
+         px = mx;
+
+         FOR(j,nxpr[0]) printf(" %5.3f", px[j]);
          if(com.np>nxpr[0]+nxpr[1] && nxpr[1]) printf(" -");
-         FOR(j,nxpr[1]) printf(" %5.3f", mx[com.np-nxpr[1]+j]);
+         FOR(j,nxpr[1]) printf(" %5.3f", px[com.np-nxpr[1]+j]);
          if(mcmc.usedata) printf(" %4.1f",lnL);
       }
 
@@ -2150,42 +2958,52 @@ int MCMC (FILE* fout)
       }
    }
    if(mcmc.print) fclose(fmcmcout);
-   copySptree();
-   puts("\nSpecies tree showing node ages, for TreeView");
-   FOR(j,sptree.nspecies-1) sptree.nodes[sptree.nspecies+j].age=mx[j];
-   FPN(F0); OutaTreeN(F0,1,1); FPN(F0);
+
    printf("\nTime used: %s", printtime(timestr));
-   fputs("\nSpecies tree showing node ages, for TreeView",fout);
-   FPN(fout); OutaTreeN(fout,1,1); FPN(fout);
    fprintf(fout,"\nTime used: %s", printtime(timestr));
 
-   FOR(i,com.np*com.np)  vx[i] /= nround;
-   matout(fout, mx, 1, com.np);
-   FOR(i,com.np) fprintf(fout, "%12.6f", (vx[i*com.np+i])); FPN(fout);
-   matout(fout, vx, com.np, com.np);
+   fprintf(fout, "\n\nmean and S.D. of parameters using all iterations\n\n");
+   fprintf(fout, "mean  ");
+   for(i=0; i<com.np; i++) 
+      fprintf(fout, " %9.5f", mx[i]);
+   fprintf(fout, "\nS.D.  ");
+   for(i=0; i<com.np*com.np; i++)  
+      vx[i] /= nround;
+   for(i=0; i<com.np; i++) 
+      fprintf(fout, " %9.5f", sqrt(vx[i*com.np+i])); 
+   FPN(fout);
 
-   if(com.clock>1) {
-      fprintf(fout,"\nVar-cov for rates\n");
+   puts("\nSpecies tree with node labels and ages, for TreeView to produce a tree like fig. 1 in Y&R06.");
+   copySptree();
+   for(j=0; j<sptree.nspecies-1; j++) 
+      nodes[sptree.nspecies+j].age = mx[j];
+   for(j=0; j<sptree.nnode; j++)
+      if(j!=sptree.root)  
+         nodes[j].branch = nodes[nodes[j].father].age-nodes[j].age;
+   FPN(F0); OutTreeN(F0,1,1); FPN(F0);
+   fputs("\nSpecies tree with node labels and ages, for TreeView to produce a tree like fig. 1 in Y&R06.",fout);
+   FPN(fout); OutTreeN(fout,1,PrNodeNum); FPN(fout);
+   FPN(fout); OutTreeN(fout,1,1); FPN(fout);
 
-
-      /**************  check this ***********/
-      for(i=sptree.nspecies-1; i<sptree.nspecies*5-3; i++,FPN(fout))
-         for(j=sptree.nspecies-1; j<=i; j++)
-            fprintf(fout, " %9.3f", vx[i*com.np+j]);
-      fprintf(fout, "\ncorrel for rates\n");
-      for(i=sptree.nspecies-1; i<sptree.nspecies*5-3; i++,FPN(fout))
-         for(j=sptree.nspecies-1; j<=i; j++)
-            fprintf(fout, " %9.3f", vx[i*com.np+j]/sqrt(vx[i*com.np+i]*vx[j*com.np+j]));
-   }
    free(x); 
+   if(data.fossilerrorbeta[0]) {
+      free(sptree.CcomFossilErr);
+      printf("\nPosterior probabilities that each fossil is in error.\n");
+      for(i=k=0; i<sptree.nspecies*2-1; i++) {
+         if((j=sptree.nodes[i].fossil) == 0) continue;
+         printf("Node %2d: %s (%9.4f, %9.4f)", i+1,fossils[j],sptree.nodes[i].pfossil[0],sptree.nodes[i].pfossil[1]);
+         printf(" %8.3f\n", postEFossil[k++]);
+      }
+   }
+
    if(mcmc.print) {
-      printf("\nSummarizing, time reset.");
+      printf("\nSummarizing MCMC output.");
       fprintf(fout,"\n\nSummary of MCMC results\n");
 
-      DescriptiveStatistics2Delete(fout, mcmcout, 1, 1);
-      /* DescriptiveStatistics(fout, mcmcout, 20, 20); */
+      DescriptiveStatisticsSimple(fout, mcmcout, 1, 1);
+      /* DescriptiveStatistics(fout, mcmcout, 30, 100, 0); */
+      printf("\nTime used: %s\n", printtime(timestr));
    }
    FreeMem();
-   printf("\nTime used: %s\n", printtime(timestr));
    return(0);
 }

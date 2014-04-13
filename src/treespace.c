@@ -96,13 +96,13 @@ int ListTrees (FILE* fout, int ns, int rooted)
 
    if(com.ns<=26) {
       for (i=0; i<com.ns; i++)
-         sprintf(com.spname[i], "%c\0", 'a'+i);
+         sprintf(com.spname[i], "%d\0", i+1);
    }
 
    for (i=0;i<nM;i++) Ib[i]=0;
    for (NTrees=0; ; ) {
       MakeTreeIb(ns, Ib, rooted);
-      OutaTreeN(fout, (com.ns<=26), 0);
+      OutTreeN(fout, (com.ns<=26), 0);
       fprintf(fout, " [%7d]\n", NTrees++);
 
       for (i=nM-1,Ib[nM-1]++,finish=0; i>=0; i--) {

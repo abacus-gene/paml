@@ -143,19 +143,27 @@ The source file PositiveSites.c is rather short so you can check the
 source file.
 
 PositiveSitesNEB, PositiveSitesBEB, and PositiveSitesBS are all
-supposed to work with codeml in paml 3.14 or later.  BEB was not
-implemented prior to version 3.14.
+supposed to work with codeml in paml 3.14 or later.  (Note that BEB was not
+implemented prior to version 3.14.)  
+
+The program should be run as follows:
+
+   PositiveSitesBEB <#sites> <#repl>
+   PositiveSitesBEB <#sites> <#repl> <Evolverf> <Codemlf>
+   PositiveSitesBS  <#sites> <#repl> <Evolverf> <Codemlf> <positive site classes>
 
 
-You run the programs in the following order.  The first two commands
-obviously simulate data sets and analyze them.  The third line
-summarizes the results, and you have to tell PositiveSites the number
-of codons in the sequence (100) and the number of simulated replicates
-on the command line.
+
+The whole analysis should be run in the following order: simulate data sets, analyze 
+datasets, and summarize the results.  
 
 	evolverNSsites
 	codeml
 	PositiveSitesNEB 100 500
+
+The last line above tells PositiveSites the number of codons in the sequence (100) 
+and the number of simulated replicates on the command line.
+
 
 Now about the measurements.  PositiveSites calculates the accuracy,
 power, and false positive rate of codeml inference of positive
@@ -180,6 +188,7 @@ calculated as the ratio of averages, taking the ratio after counting
 sites over replicate data sets.  Output is on the screen.  There are
 more descriptions of those measures in Yang, Wong & Nielsen
 (submitted).
+
 
 
 (C) Appensix: Testing the NEB algorithm.  This may not interest you

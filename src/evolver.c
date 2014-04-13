@@ -6,7 +6,7 @@
      cl -Ot -O2 -DCodonNSsites       -FeevolverNSsites.exe   evolver.c tools.c
      cl -Ot -O2 -DCodonNSbranchsites -FeevolverNSbranchsites.exe evolver.c tools.c
 
-     cc -fast -o evolver evolver.c tools.o -lm
+     cc -fast -o evolver evolver.c tools.c -lm
      cc -O4 -DCodonNSbranches -o evolverNSbranches evolver.c tools.c -lm
      cc -O4 -DCodonNSsites -o evolverNSsites evolver.c tools.c -lm
      cc -O4 -DCodonNSbranchsites -o evolverNSbranchsites evolver.c tools.c -lm
@@ -29,7 +29,7 @@
 #define NS            5000
 #define NBRANCH       (NS*2-2)
 #define MAXNSONS      20
-#define LSPNAME       40
+#define LSPNAME       50
 #define NCODE         64
 #define NCATG         40
 
@@ -93,7 +93,7 @@ static double Qfactor=-1, Qrates[5];  /* Qrates[] hold kappa's for nucleotides *
 
 int main (int argc, char*argv[])
 {
-   char *MCctlf=NULL, outf[96]="evolver.out", file1[96]="",file2[96]="";
+   char *MCctlf=NULL, outf[96]="evolver.out", file1[96]="truetree",file2[96]="rst1";
    int i, option=6, ntree=1,rooted, BD=0, burnin=0;
    double bfactor=1, birth=-1,death=-1,sample=-1,mut=-1, *space;
    FILE *fout=gfopen(outf,"w");
@@ -118,7 +118,6 @@ int main (int argc, char*argv[])
       strcpy(file1, argv[2]);
       strcpy(file2, argv[3]);
       if(argc>4) sscanf(argv[4],"%d",&burnin);
-      CladeSupport(file1, file2, burnin);
    }
    else {
       for(; ;) {
@@ -143,8 +142,10 @@ int main (int argc, char*argv[])
          option=6;  com.model=1; com.NSsites=3; 
          MCctlf = (argc==3 ? argv[2] : "MCcodonNSbranchsites.dat");
 #else
+
+         option=9;
          scanf("%d", &option);
-         /* option=8; */
+         
 #endif
          if(option==0) exit(0);
          if(option>=5 && option<=7) break;
@@ -167,6 +168,8 @@ int main (int argc, char*argv[])
          switch (option) {
          case(1):
          case(2):
+            for(i=0; i<com.ns; i++)          /* default spname */
+               sprintf(com.spname[i],"S%d",i+1);
             if(BD) {
                printf ("\nbirth rate, death rate, sampling fraction, and ");
                printf ("mutation rate (tree height)?\n");
@@ -175,8 +178,8 @@ int main (int argc, char*argv[])
             for(i=0;i<ntree;i++) {
                RandomLHistory (rooted, space);
                if(BD)  BranchLengthBD (1, birth, death, sample, mut);
-               if(com.ns<20&&ntree<10) { OutaTreeN(F0,0,BD); puts("\n"); }
-               OutaTreeN(fout,0,BD);  FPN(fout);
+               if(com.ns<20&&ntree<10) { OutTreeN(F0,0,BD); puts("\n"); }
+               OutTreeN(fout,1,BD);  FPN(fout);
             }
             /* for (i=0; i<com.ns-2-!rooted; i++) Ib[i]=(int)((3.+i)*rndu());
                MakeTreeIb (com.ns, Ib, rooted);
@@ -225,10 +228,11 @@ int between_f_and_x (void)
 
 void TreeDistanceDistribution (FILE* fout)
 {
-/* This reads the file of all trees (such as 7s.all.trees), and calculates the 
+/* This calculates figure 3.7 of Yang (2006).
+   This reads the file of all trees (such as 7s.all.trees), and calculates the 
    distribution of partition distance in all pairwise comparisons.
 */
-   int i,j,ntree, k,*nib, parti2B[NS], nsame, IBsame[NS], lparti=0;
+   int i,j,ntree, k,*nib, parti2B[NS], nsame, IBsame[NS], lenpart=0;
    char treef[64]="5s.all.trees", *partition;
    FILE *ftree;
    double mPD[NS], PD1[NS];  /* distribution of partition distances */
@@ -242,8 +246,8 @@ void TreeDistanceDistribution (FILE* fout)
    i=(com.ns*2-1)*sizeof(struct TREEN);
    if((nodes=(struct TREEN*)malloc(i))==NULL) error2("oom");
 
-   lparti=(com.ns-1)*com.ns*sizeof(char);
-   i=ntree*lparti;
+   lenpart=(com.ns-1)*com.ns*sizeof(char);
+   i=ntree*lenpart;
    printf("\n%d bytes of space requested.\n", i);
    partition=(char*)malloc(i);
    nib=(int*)malloc(ntree*sizeof(int));
@@ -252,16 +256,16 @@ void TreeDistanceDistribution (FILE* fout)
    puts("\ntree #: mean prop of tree pairs with 0 1 2 ... shared bipartitions\n");
    fputs("\ntree #: prop of tree pairs with 0 1 2 ... shared bipartitions\n",fout);
    for (i=0; i<ntree; i++) {
-      ReadaTreeN (ftree, &j, &k, 0, 1); 
+      ReadTreeN (ftree, &j, &k, 0, 1); 
       nib[i]=tree.nbranch-com.ns;
-      BranchPartition(partition+i*lparti, parti2B);
+      BranchPartition(partition+i*lenpart, parti2B);
    }
    for(k=0; k<com.ns-3; k++) mPD[k]=0;
    for (i=0; i<ntree; i++,FPN(fout)) {
       for(k=0; k<com.ns-3; k++) PD1[k]=0;
       for (j=0; j<ntree; j++) {
          if(j==i) continue;
-         nsame=NSameBranch(partition+i*lparti,partition+j*lparti, nib[i],nib[j],IBsame);
+         nsame=NSameBranch(partition+i*lenpart,partition+j*lenpart, nib[i],nib[j],IBsame);
          PD1[nsame] ++;
       }
       for(k=0; k<com.ns-3; k++) PD1[k] /= (ntree-1.);
@@ -278,14 +282,14 @@ void TreeDistanceDistribution (FILE* fout)
 
 void TreeDistances (FILE* fout)
 {
-   int i,j,ntree, k,*nib, parti2B[NS], nsame, IBsame[NS],nIBsame[NS], lparti=0;
+   int i,j,ntree, k,*nib, parti2B[NS], nsame, IBsame[NS],nIBsame[NS], lenpart=0;
    char treef[64]="5s.all.trees", *partition;
    FILE *ftree;
    double psame, mp, vp;
 
-
+   /*
    TreeDistanceDistribution(fout);
-
+   */
 
    puts("\nNumber of identical bi-partitions between trees.\nTree file name?");
    scanf ("%s", treef);
@@ -302,8 +306,8 @@ void TreeDistances (FILE* fout)
    k=2;
    scanf("%d", &k);
 
-   lparti=(com.ns-1)*com.ns*sizeof(char);
-   i=(k==1?2:ntree)*lparti;
+   lenpart=(com.ns-1)*com.ns*sizeof(char);
+   i=(k==1?2:ntree)*lenpart;
    printf("\n%d bytes of space requested.\n", i);
    partition=(char*)malloc(i);
    nib=(int*)malloc(ntree*sizeof(int));
@@ -312,27 +316,27 @@ void TreeDistances (FILE* fout)
    if(k==2) {    /* pairwise comparisons */
       fputs("Number of identical bi-partitions in pairwise comparisons\n",fout);
       for (i=0; i<ntree; i++) {
-         ReadaTreeN (ftree, &j, &k, 0, 1); 
+         ReadTreeN (ftree, &j, &k, 0, 1); 
          nib[i]=tree.nbranch-com.ns;
-         BranchPartition(partition+i*lparti, parti2B);
+         BranchPartition(partition+i*lenpart, parti2B);
       }
       for (i=0; i<ntree; i++,FPN(F0),FPN(fout)) {
          printf("%2d (%2d):", i+1,nib[i]);
          fprintf(fout,"%2d (%2d):", i+1,nib[i]);
          for (j=0; j<i; j++) {
-            nsame=NSameBranch(partition+i*lparti,partition+j*lparti, nib[i],nib[j],IBsame);
+            nsame=NSameBranch(partition+i*lenpart,partition+j*lenpart, nib[i],nib[j],IBsame);
             printf(" %2d", nsame);
             fprintf(fout," %2d", nsame);
          }
       }
    }
    else {  /* first vs. others */
-      ReadaTreeN (ftree, &j, &k, 0, 1);
+      ReadTreeN (ftree, &j, &k, 0, 1);
       nib[0]=tree.nbranch-com.ns;
       if (nib[0]==0) error2("1st tree is a star tree..");
       BranchPartition (partition, parti2B);
       fputs ("Comparing the first tree with the others\nFirst tree:\n",fout);
-      OutaTreeN(fout,0,0);  FPN(fout);  OutaTreeB(fout);  FPN(fout); 
+      OutTreeN(fout,0,0);  FPN(fout);  OutTreeB(fout);  FPN(fout); 
       fputs ("\nInternal branches in the first tree:\n",fout);
       FOR(i,nib[0]) { 
          k=parti2B[i];
@@ -346,10 +350,10 @@ void TreeDistances (FILE* fout)
       fputs("\nCorrect internal branches compared with the 1st tree:\n",fout);
       FOR(k,nib[0]) nIBsame[k]=0;
       for (i=1,mp=vp=0; i<ntree; i++,FPN(fout)) {
-         ReadaTreeN (ftree, &j, &k, 0, 1); 
+         ReadTreeN (ftree, &j, &k, 0, 1); 
          nib[1]=tree.nbranch-com.ns;
-         BranchPartition (partition+lparti, parti2B);
-         nsame=NSameBranch (partition,partition+lparti, nib[0],nib[1],IBsame);
+         BranchPartition (partition+lenpart, parti2B);
+         nsame=NSameBranch (partition,partition+lenpart, nib[0],nib[1],IBsame);
 
          psame=nsame/(double)nib[0];
          FOR(k,nib[0]) nIBsame[k]+=IBsame[k];
@@ -517,9 +521,10 @@ void MakeSeq(char*z, int ls)
    static int times=0;
 
    if(fseq) {
-      if(times++==0) printf("\nReading sequence at the root from file.\n");
+      if(times++==0) printf("Reading sequence at the root from file.\n\n");
       if(com.siterates && com.ncatG>1) 
          error2("sequence for root doesn't work for site-class models");
+
       for(lst=0; ; ) {
          for(i=0; i<n31; i++) {
             while((ch=fgetc(fseq)) !=EOF && !isalpha(ch)) ;
@@ -544,12 +549,12 @@ void MakeSeq(char*z, int ls)
       if(fabs(p[n-1]-1) > small)
          { printf("\nsum pi = %.6f != 1!\n",p[n-1]); exit(-1); }
       for(h=0; h<com.ls; h++) {
-         for(j=0,r=rndu();j<n-1;j++) if(r<p[j]) break;
+         for(j=0,r=rndu();j<n-1;j++) 
+            if(r<p[j]) break;
          z[h]=(char)j;
       }
    }
 }
-
 
 
 
@@ -634,8 +639,7 @@ void Simulate (char*ctlf)
    FILE *fin, *fseq, *ftree=NULL, *fanc=NULL, *fsiteID=NULL;
    char *paupstart="paupstart",*paupblock="paupblock",*paupend="paupend";
    char line[32000];
-   int lline=32000;
-   int i,j,k, ir,n,nr, fixtree=1, sspace=10000, rooted=1;
+   int lline=32000, i,j,k, ir,n,nr, fixtree=1, sspace=10000, rooted=1;
    int h=0,format=0, b[3]={0}, nrate=1, counts[NCATG];
    int *siteorder=NULL;
    char *tmpseq=NULL, *pc;
@@ -664,28 +668,30 @@ void Simulate (char*ctlf)
    printf ("\n%d seqs, %d sites, %d replicate(s)\n", com.ns,com.ls,nr);
    k=(com.ns*com.ls* (com.seqtype==CODONseq?4:1) *nr)/1000+1;
    printf ("Seq file will be about %dK bytes.\n",k);
-   FOR(i,com.ns) sprintf(com.spname[i],"seq.%d",i+1); /* default spname */
+   for(i=0; i<com.ns; i++)          /* default spname */
+      sprintf(com.spname[i],"S%d",i+1);
 
    if(fixtree) {
       fscanf(fin,"%lf",&tlength);   fgets(line, lline, fin);
-      if(ReadaTreeN(fin,&i,&j, 1, 1))  /* might overwrite spname */
+      if(ReadTreeN(fin,&i,&j, 1, 1))  /* might overwrite spname */
          error2("err tree..");
 
       if(i==0) error2("use : to specify branch lengths in tree");
+      for(i=0,T=0; i<tree.nnode; i++) 
+         if(i!=tree.root) T += nodes[i].branch;
       if(tlength>0) {
-         for(i=0,T=0; i<tree.nnode; i++) 
-            if(i!=tree.root) T+=nodes[i].branch;
          for(i=0; i<tree.nnode; i++) 
-            if(i!=tree.root) nodes[i].branch*=tlength/T;
+            if(i!=tree.root) nodes[i].branch *= tlength/T;
       }
+      printf("tree length = %.3f\n", (tlength>0?tlength:T));
       if(com.ns<100) {
          printf("\nModel tree & branch lengths:\n"); 
-         /* OutaTreeN(F0,1,1); FPN(F0); */
-         OutaTreeN(F0,0,1); FPN(F0);
+         /* OutTreeN(F0,1,1); FPN(F0); */
+         OutTreeN(F0,0,1); FPN(F0);
       }
       if(com.seqtype==CODONseq && com.model && !com.NSsites) { /* branch model */
          FOR(i,tree.nnode) nodes[i].omega=nodes[i].label;
-         FPN(F0);  OutaTreeN(F0, 1, PrBranch&PrLabel);  FPN(F0);
+         FPN(F0);  OutTreeN(F0, 1, PrBranch&PrLabel);  FPN(F0);
       }
    }
    else {   /* random trees, broken or need testing? */
@@ -738,7 +744,7 @@ void Simulate (char*ctlf)
 
          for(i=0; i<tree.nnode; i++)  blengthBS[i]=nodes[i].branch;
          for(k=0; k<com.ncatG; k++) {
-            ReadaTreeN(fin, &i, &j, 0, 1);
+            ReadTreeN(fin, &i, &j, 0, 1);
             if(i) error2("do not include branch lengths except in the first tree.");
             if(!j) error2("Use # to specify omega's for branches");
             for(i=0; i<tree.nnode; i++)  com.omegaBS[i*com.ncatG+k]=nodes[i].label;
@@ -752,7 +758,7 @@ void Simulate (char*ctlf)
                sprintf(pc, ", %.2f\0", com.omegaBS[i*com.ncatG+k]);
             sprintf(pc, "]'\0");
          }
-         FPN(F0);  OutaTreeN(F0,1,PrBranch|PrLabel);  FPN(F0);
+         FPN(F0);  OutTreeN(F0,1,PrBranch|PrLabel);  FPN(F0);
       }
       else if(!com.model) {  /* M0 */
          fscanf(fin,"%lf",&com.omega);
@@ -856,7 +862,7 @@ void Simulate (char*ctlf)
    if(fixtree) {
       fputs("\nAncestral sequences generated during simulation ",fanc);
       fprintf(fanc,"(check against %s)\n",seqf[format]);
-      OutaTreeN(fanc,0,0); FPN(fanc); OutaTreeB(fanc); FPN(fanc);
+      OutTreeN(fanc,0,0); FPN(fanc); OutTreeB(fanc); FPN(fanc);
    }
    if(com.alpha || com.NSsites) {
       fsiteID=(FILE*)gfopen(siteIDf,"w");
@@ -875,13 +881,13 @@ void Simulate (char*ctlf)
          if (rooted && com.ns<10) j=GetIofLHistory ();
          BranchLengthBD (1, birth, death, sample, mut);
          if(com.ns<20) { 
-            printf ("\ntree used: "); OutaTreeN(F0,1,1);  FPN(F0); 
+            printf ("\ntree used: "); OutTreeN(F0,1,1);  FPN(F0); 
          }
       }
       MakeSeq(com.z[tree.root],com.ls);
 
       if (com.alpha)
-         Rates4Sites (com.siterates,com.alpha,com.ncatG,com.ls, 0,space);
+         Rates4Sites(com.siterates,com.alpha,com.ncatG,com.ls, 0,space);
       else if(com.seqtype==1 && com.NSsites) { /* for NSsites */
          /* the table for the alias algorithm is the same, but ncatG is small. */
          MultiNomialAliasSetTable(com.ncatG, com.freqK, Falias, Lalias, space);
@@ -920,7 +926,7 @@ void Simulate (char*ctlf)
       printSeqs(fseq, NULL, NULL, format); /* printsma not usable as it codes into 0,1,...,60. */
       if(format==2 && !fixtree) {
          fprintf(fseq,"\nbegin tree;\n   tree true_tree = [&U] "); 
-         OutaTreeN(fseq,1,1); fputs(";\n",fseq);
+         OutTreeN(fseq,1,1); fputs(";\n",fseq);
          fprintf(fseq,"end;\n\n");
       }
       if(format==2) appendfile(fseq,paupblock);
@@ -933,7 +939,7 @@ void Simulate (char*ctlf)
 
          if(!fixtree) {
             if(format<2)
-               { OutaTreeN(fanc,1,1); FPN(fanc); FPN(fanc); }
+               { OutTreeN(fanc,1,1); FPN(fanc); FPN(fanc); }
          }
          else {
             fprintf(fanc,"%6d %6d\n",tree.nnode-com.ns,j);
@@ -1047,6 +1053,7 @@ char *GrepLine (FILE*fin, char*query, char* line, int lline)
    return(NULL);
 }
 
+
 void CladeProbabilities (char treefile[])
 {
 /* This reads a tree from treefile and then scans a set of MrBayes output files
@@ -1085,11 +1092,9 @@ void CladeProbabilities (char treefile[])
    if(i && i!=com.ns) error2("do you mean to specify ns in the tree file?");
    i=(com.ns*2-1)*sizeof(struct TREEN);
    if((nodes=(struct TREEN*)malloc(i))==NULL) error2("oom");
-   ReadaTreeN (ftree, &i, &j, 0, 1);
+   ReadTreeN (ftree, &i, &j, 0, 1);
 
-/* int ReadaTreeN (FILE *ftree, int *haslength, int *haslabel, int copyname, int popline) */
-
-   FPN(F0);  OutaTreeN(F0, 0, 0);  FPN(F0);  FPN(F0);
+   FPN(F0);  OutTreeN(F0, 0, 0);  FPN(F0);  FPN(F0);
    nib=tree.nbranch-com.ns;
    for(i=0;i<tree.nnode;i++) {
       nodes[i].nodeStr=NULL;
@@ -1125,30 +1130,25 @@ void CladeProbabilities (char treefile[])
          p+=4;
       }
    }
-   FPN(F0);  OutaTreeN(F0,1,PrLabel);  FPN(F0);
+   FPN(F0);  OutTreeN(F0,1,PrLabel);  FPN(F0);
 
-   for(i=0;i<tree.nnode;i++) free(nodes[i].nodeStr);
+   for(i=0; i<tree.nnode; i++) free(nodes[i].nodeStr);
    free(nodes); free(partition);  free(Pclade);
    fclose(ftree);   
    for(k=0; k<nmbfiles; k++) fclose(fmb[k]);
    exit(0);
 }
 
+
 void CladeSupport(char tree1f[], char tree2f[], int burnin)
 {
-/* This reads one tree from tree1f and then scans many trees in treesf to 
+/* This reads one tree from tree1f and then scans many trees in tree2f to 
    calculate (bootstrap and Bayesian) support values.
-
-   16 January 2005.  Stopped before finishing programming.  
-   Should add this later on.  Also add consensus tree.
-
 */
    int i,j,k, ntree, nib1,nib2, intree;
    char *partition1, *partition2;
    double Pclade[NS]={0};
    FILE *f1, *f2;
-
-   error2("work unfinished...");
 
    printf("Calculate support values for clades on the master tree\n");
    if(!isgraph(tree1f[0])) {
@@ -1162,11 +1162,10 @@ void CladeSupport(char tree1f[], char tree2f[], int burnin)
    if(k>1) puts("only the first tree in the master tree file is used.");
    i=(com.ns*2-1)*sizeof(struct TREEN);
    if((nodes=(struct TREEN*)malloc(i))==NULL) error2("oom");
-   for(i=0;i<com.ns*2-1;i++) nodes[i].nodeStr=NULL;
+   for(i=0; i<com.ns*2-1; i++) nodes[i].nodeStr=NULL;
 
-/* int ReadaTreeN (FILE *ftree, int *haslength, int *haslabel, int copyname, int popline) */
-   ReadaTreeN (f1, &i, &j, 1, 1);
-   printf("master tree\n"); OutaTreeN(F0,0,0);  FPN(F0);  FPN(F0);
+   ReadTreeN (f1, &i, &j, 1, 1);
+   printf("master tree\n"); OutTreeN(F0,0,0);  FPN(F0);  FPN(F0);
 
    nib1=tree.nbranch-com.ns;
    partition1=(char*)malloc(2*(com.ns-1)*com.ns*sizeof(char));
@@ -1176,9 +1175,10 @@ void CladeSupport(char tree1f[], char tree2f[], int burnin)
    BranchPartition(partition1, NULL);
 
    for(ntree=-burnin;  ; ntree++) {
-      if(ReadaTreeN (f2, &i, &j, 0, 1)) break;
-      printf("\nreading tree %3d. ", ntree+1);
-      if(com.ns<15) OutaTreeN(F0, 0, 0);
+      fscanf(f2, "%d%d", &i, &j);
+      if(ReadTreeN (f2, &i, &j, 0, 1)) break;
+      printf("\nreading tree %5d  ", ntree+1);
+      if(com.ns<15) OutTreeN(F0, 0, 0);
       if(ntree<0) continue;
       nib2=tree.nbranch-com.ns;
       BranchPartition(partition2, NULL);
@@ -1195,15 +1195,16 @@ void CladeSupport(char tree1f[], char tree2f[], int burnin)
    /* for(i=0; i<nib1; i++) Pclade[i]/=ntree; */
    rewind(f1);
    fscanf(f1, "%d%d", &com.ns, &k);
-   ReadaTreeN (f1, &i, &j, 1, 1);
+   ReadTreeN (f1, &i, &j, 1, 1);
    for(i=0,nib1=0; i<tree.nbranch; i++)
-      if(tree.branches[i][1]>=com.ns) 
-         nodes[tree.branches[i][1]].label=Pclade[nib1++];
+      if(tree.branches[i][1] >= com.ns) 
+         nodes[tree.branches[i][1]].label = Pclade[nib1++];
 
    if(burnin) printf("\n\n%d burn in, %d trees used\n", burnin, ntree);
    else       printf("\n\n%d trees used\n", ntree);
    matout2(F0, Pclade, 1, nib1, 6, 2);
-   FPN(F0);  OutaTreeN(F0,0,PrLabel);  FPN(F0);
+   FPN(F0);  OutTreeN(F0,0,PrLabel);  FPN(F0);
+   OutTreeN(F0,1,PrLabel);  FPN(F0);
 
    free(nodes);  free(partition1);  fclose(f1);  fclose(f2);
    exit(0);
@@ -1236,11 +1237,11 @@ void Rell2MLtree(int argc, char *argv[])
       fscanf(ft, "%d%d", &i, &j);
       if(i!=com.ns) error2("tree file error.");
       for(itree=0;  itree<ntree; itree++) {
-         if(ReadaTreeN (ft, &i, &j, 0, 1)) break;
+         if(ReadTreeN (ft, &i, &j, 0, 1)) break;
          if(itree==MLtree-1) break;
       }
-      OutaTreeN(F0, 0, 0); FPN(F0);
-      OutaTreeN(fo, 0, 0); FPN(fo);
+      OutTreeN(F0, 0, 0); FPN(F0);
+      OutTreeN(fo, 0, 0); FPN(fo);
    }
    exit(0);
 }

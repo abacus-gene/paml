@@ -31,4 +31,4 @@
     cleandata = 1  * remove sites with ambiguity data (1:yes, 0:no)?
 *        icode = 0  * (with RateAncestor=1. try "GC" in data,model=4,Mgene=4)
 *  fix_blength = -1  * 0: ignore, -1: random, 1: initial, 2: fixed
-        method = 0  * 0: simultaneous; 1: one branch at a time
+       method = 0  * Optimization method 0: simultaneous; 1: one branch a time

@@ -3,16 +3,17 @@
       outfile = mlc           * main result file name
 
         noisy = 9  * 0,1,2,3,9: how much rubbish on the screen
-      verbose = 0  * 0: concise; 1: detailed, 2: too much
+      verbose = 1  * 0: concise; 1: detailed, 2: too much
       runmode = 0  * 0: user tree;  1: semi-automatic;  2: automatic
                    * 3: StepwiseAddition; (4,5):PerturbationNNI; -2: pairwise
 
       seqtype = 2  * 1:codons; 2:AAs; 3:codons-->AAs
     CodonFreq = 2  * 0:1/61 each, 1:F1X4, 2:F3X4, 3:codon table
+
 *        ndata = 10
         clock = 0  * 0:no clock, 1:clock; 2:local clock; 3:CombinedAnalysis
        aaDist = 0  * 0:equal, +:geometric; -:linear, 1-6:G1974,Miyata,c,p,v,a
-   aaRatefile = dat/jones.dat  * only used for aa seqs with model=empirical(_F)
+   aaRatefile = dat/lg.dat  * only used for aa seqs with model=empirical(_F)
                    * dayhoff.dat, jones.dat, wag.dat, mtmam.dat, or your own
 
         model = 2
@@ -48,8 +49,7 @@
    Small_Diff = .5e-6
     cleandata = 1  * remove sites with ambiguity data (1:yes, 0:no)?
 *  fix_blength = -1  * 0: ignore, -1: random, 1: initial, 2: fixed
-        method = 0   * 0: simultaneous; 1: one branch at a time
-
+       method = 0  * Optimization method 0: simultaneous; 1: one branch a time
 
 * Genetic codes: 0:universal, 1:mammalian mt., 2:yeast mt., 3:mold mt.,
 * 4: invertebrate mt., 5: ciliate nuclear, 6: echinoderm mt., 

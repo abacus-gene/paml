@@ -6,6 +6,90 @@ Please report bugs at the PAML discussion group
 (http://www.rannala.org/phpBB2/) or to Ziheng Yang at z.yang @ ucl.ac.uk.
 
 
+Version 4.1, August 2008
+
+MCMCtree: A few changes have been introduced to this program.  The
+format for specifying fossil calibrations in the tree file has been
+changed, so that the gamma distribution is specified as 'G(alpha,
+beta)' and the old format '>0.6=0.7<0.8' does not work anymore.  The
+bounds can be specified using either the old form '<0.8' or the new
+form 'U(0.8)'.  Two exotic distributions, skew normal and skew t, are
+added, using the format 'SN(location, scale, shape)' and 'ST(location,
+scale, shape, df)'.  I edited the documentation pamlDOC.pdf and
+rewrote the part for mcmctree.  The format of the MCMC output file
+mcmc.out has been modified so that it is readable by Andrew Rambaut's
+Trace program.  Note that MCMCtree starts taking samples and writing
+into the file only after burnin.
+
+codeml (branch model): When codon sequences are analyzed under the
+branch model (model = 1 or 2, NSsites = 0), the main output file
+includes a tree under the line "w ratios as labels for TreeView:".
+This line was introduced in version 3.15.  However, the branch lengths
+in the tree had the dN values, while I intended them to be the
+original branch lengths (which are t, the number of nucleotide
+substitutions per codon).  This bug may also affect the results of
+ancestral reconstruction under the same branch model.  This bug is
+fixed now.
+
+baseml and codeml (discrete-gamma model): My intention has been to use
+the mean and not the median to represent all rates in each category
+when the discrete-gamma model is implemented.  See Yang (1994
+J. Mol. Evol. 39:306-314) for the distinction.  However, some bugs
+caused a few recent versions to use the median instead.  As far as I
+can infer, baseml in version 3.15 used the median, but baseml in
+versions 3.14 and 4 are correct (used the mean).  codeml in version 4a
+& 4b used the median but earlier versions are correct.  I hope both
+baseml and codeml are correct from version 4c.
+
+baseml and codeml (branch and clade labels): The local clock models
+(clock = 2) in the two programs and also the branch or branch-site
+models in codeml use labels to identify branches.  When nested clade
+label ($) are used, the program may get confused so that the branches
+are not labeled correctly.  I think this is not fixed in version 4c.
+
+
+Version 4b, January 2008
+
+mcmctree.  Changed a variable name in the control file from MaxRootAge
+to RootAge.  This should be specified in any of the following formats: 
+
+       RootAge = <1.0  * constraint on root age, used if no fossil for root.
+       RootAge = '<1.0'  * constraint on root age, used if no fossil for root.
+       RootAge = <1.0>0.8  * constraint on root age, used if no fossil for root.
+       RootAge = '<1.0>0.8'  * constraint on root age, used if no fossil for root.
+
+Added some text around the output, to make the results more comprehensible.
+
+evolver (option 8).  option 8 for calculating bipartition distances
+between trees is broken.  I changed the program to prepare for a
+figure and forgot to remove the changes afterwards.  This is now
+fixed.
+
+
+Version 4, July 2007
+
+mcmctree.  The MCMC algorithm of Rannala and Yang (2007) dealing with
+rate drift is added.  The section of manual on mcmctree is now
+rewritten.  An example data set is included in the
+examples/DatingSoftBound/ folder.
+
+codeml. This now implements the mutation-selection models of codon
+substitution of Yang and Nielsen (2008).  I should include more
+details after the models are better tested, for example, after the
+paper is written.
+
+baseml.  The log likelihood under the gamma-rates model (that is, when
+alpha != 0 in the control file) is not calculated correctly, or not as
+intended.  Version 3.14a is correct, but versions 3.14c and 3.15 are
+incorrect.  I am not sure about version 3.14b, as I have not kept a
+copy.  The bug causes the median to be used to represent all rates in
+each category of the discre-gamma model whereas the mean was intended.
+See the discussion around equation (10) and the paragraph below it in
+Yang (1994. J. Mol. Evol. 39:306-314).  The bug is not expected to
+have much effect on tree topologies or branch lengths.  Thanks to
+Simon Whelan for reporting the bug.
+
+
 
 Version 3.15, March 2006
 
@@ -34,8 +118,8 @@ generating sequences at all nodes that are descendents of the
 zero-length branch.  As a result, sequences at tips that are
 descendents of the zero-length branch have no data.  On some systems
 the uninitialized space is initialized as 0, and then the sequences
-will be printed out as consisting of all Ts (T is the first or 0th
-nucleotide).
+will be printed out as consisting of all Ts (T is the first nucleotide
+in my program).
 
 
 At the same time, I also turned on the option of simulating data on
@@ -185,7 +269,7 @@ M1a (NearlyNeutral) < M2a (PositiveSelection) < M3 (discrete), and M7
 special case of the model on the right:.  Two LRTs can be constructed
 using those models.  The first one compares M1a against M2a, using a
 chi square with df 2, and the second one compares M7 against M8, using
-a chi square with d.f.  2.
+a chi square with d.f. 2.
 
 (1b) Similarly branch-site model A (Yang and Nielsen 2002) is changed.
 The old model assumes 0 = 0 and is unrealistic.  This is replaced by 0

@@ -19,7 +19,7 @@
 #define F0 stdout
 #define min2(a,b) ((a)<(b)?(a):(b))
 #define max2(a,b) ((a)>(b)?(a):(b))
-#define PI 3.141592653
+#define Pi  3.1415926535897932384626433832795
 
 #define beep putchar('\a')
 #define spaceming2(n) ((n)*((n)*2+9+2)*(int)sizeof(double))
@@ -42,7 +42,10 @@ void randorder(int order[], int n, int space[]);
 #define rnduab(a,b) ((a)+((b)-(a))*rndu())
 double reflect(double x, double a, double b);
 #define rndexp(mean) (-(mean)*log(rndu()))
-double rndnormal(void);
+double rndNormal(void);
+double rnd2NormalSym (double m);
+double rndCauchy (void);
+double rndt4 (void);
 double rndgamma(double s);
 double rndbeta(double p, double q);
 int rndpoisson(double m);
@@ -51,30 +54,36 @@ int SampleCat (double P[], int n, double space[]);
 int MultiNomialAliasSetTable (int ncat, double prob[], double F[], int L[], double space[]);
 int MultiNomialAlias (int n, int ncat, double F[], int L[], int nobs[]);
 int MultiNomial2 (int n, int ncat, double prob[], int nobs[], double space[]);
-int AutodGamma (double M[], double freqK[], double rK[], double *rho1,
-    double alfa, double rho, int K);
-int DiscreteGamma (double freqK[], double rK[], 
-    double alfa, double beta, int K, int median);
-double PointChi2 (double prob, double v);
-#define PointGamma(prob,alpha,beta) PointChi2(prob,2.0*(alpha))/(2.0*(beta))
+int AutodGamma (double Mmat[], double freqK[], double rK[], double *rho1, double alfa, double rho, int K);
+int DiscreteGamma (double freqK[], double rK[], double alpha, double beta, int K, int dgammamean);
+
+double InverseCDFChi2 (double prob, double v);
+#define InverseCDFGamma(prob,alpha,beta) InverseCDFChi2(prob,2.0*(alpha))/(2.0*(beta))
 double PDFGamma(double x, double alpha, double beta);
 #define CDFGamma(x,alpha,beta) IncompleteGamma((beta)*(x),alpha,LnGamma(alpha))
 double  PDF_IGamma(double x, double alpha, double beta);
 #define CDF_IGamma(x,alpha,beta) (1-CDFGamma(1/(x),alpha,beta))
 #define CDFChi2(x,v) CDFGamma(x,(v)/2.0,0.5)
-int getab_gamma(double *a, double* b, double xmodetiles[3]);
 double PDFBeta(double x, double p, double q);
 double CDFBeta(double x, double p, double q, double lnbeta);
 double InverseCDFBeta(double prob, double p, double q, double lnbeta);
-double InverseCDF(double(*cdf)(double x,double par[]),
-       double p,double x,double par[],double xb[2]);
-double PointNormal (double prob);
+double InverseCDF(double(*cdf)(double x,double par[]), double p, double x, double par[], double xb[2]);
+double InverseCDFNormal (double prob);
+double PDFNormal (double x, double mu, double sigma2);
 double CDFNormal (double x);
+double logCDFNormal (double x);
+double PDFCauchy (double x, double m, double sigma);
+double PDFt (double x, double loc, double scale, double df, double lnConst);
+double CDFt (double x, double loc, double scale, double df, double lnbeta);
+double PDFSkewT (double x, double loc, double scale, double shape, double df);
+double PDFSkewN (double x, double loc, double scale, double shape);
+
 double LnGamma (double alpha);
 double DFGamma(double x, double alpha, double beta);
 double IncompleteGamma (double x, double alpha, double ln_gamma_alpha);
-double LBinormal(double h, double k, double r);
-double CDFBinormal (double h, double k, double r);
+#define CDFBinormal(h,k,r)  LBinormal(-(h),-(k),r)   /* CDF for bivariate normal */
+double LBinormal (double h, double k, double r);
+double logLBinormal (double h, double k, double r);
 double probBinomial (int n, int k, double p);
 double probBetaBinomial (int n, int k, double p, double q);
 long factorial(int n);
@@ -100,6 +109,7 @@ int PickExtreme (FILE *fout, char z[], int ls,int iring,int lfrag,int ffrag[]);
 
 int print1seq (FILE*fout, char *z, int ls, int encoded, int pose[]);
 void printSeqs(FILE *fout, int *pose, char keep[], int format);
+int printPatterns(FILE *fout);
 void printSeqsMgenes (void);
 int printsma(FILE*fout, char*spname[], char*z[],
     int ns, int l, int lline, int gap, int seqtype, 
@@ -110,8 +120,7 @@ int testXMat (double x[]);
 double SeqDivergence (double x[], int model, double alpha, double *kapa);
 int symtest (double freq[], int n, int nobs, double space[], double *chisym, 
     double* chihom);
-int dSdNNG1986(char *z1, char *z2, int lc, int icode, int transfed, 
-    double *dS, double *dN, double *S, double *N);
+int dSdNNG1986(char *z1, char *z2, int lc, int icode, int transfed, double *dS, double *dN, double *Ssites, double *Nsites);
 int difcodonNG(char codon1[], char codon2[], double *SynSite,double *AsynSite, 
     double *SynDif, double *AsynDif, int transfed, int icode);
 int difcodonLWL85 (char codon1[], char codon2[], double sites[3], double sdiff[3], 
@@ -149,10 +158,10 @@ int DNA2protein(char dna[], char protein[], int lc, int icode);
 int printcu (FILE *f1, double fcodon[], int icode);
 int printcums (FILE *fout, int ns, double fcodons[], int code);
 int QtoPi (double Q[], double pi[], int n, double *space);
-int PtoPi (double P[], double Pi[], int n, double *space);
-int PtoX (double P1[], double P2[], double Pi[], double X[]);
+int PtoPi (double P[], double pi[], int n, double *space);
+int PtoX (double P1[], double P2[], double pi[], double X[]);
 
-void starttime(void);
+void starttimer(void);
 char* printtime(char timestr[]);
 void sleep2(int wait);
 char *strc (int n, int c);
@@ -196,9 +205,9 @@ int correl (double x[], double y[], int n, double *mx, double *my,
             double *v11, double *v12, double *v22, double *r);
 int comparefloat  (const void *a, const void *b);
 int comparedouble (const void *a, const void *b);
-int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int nrho);
+int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int nrho, int propternary);
 int splitline (char line[], int fields[]);
-int scanfile(FILE*fin, int *nrecords, int *nx);
+int scanfile (FILE*fin, int *nrecords, int *nx, int *ReadHeader, char line[], int ifields[]);
 
 double bound (int nx, double x0[], double p[], double x[],
     int (*testx) (double x[], int nx));
@@ -243,10 +252,10 @@ int nls2 (FILE *fout, double *sx, double * x0, int nx,
 void NodeToBranch (void);
 void BranchToNode (void);
 void ClearNode (int inode);
-int ReadaTreeN (FILE *ftree, int *haslength, int *haslabel, int copyname, int popline);
-int ReadaTreeB (FILE *ftree, int popline);
-int OutaTreeN (FILE *fout, int spnames, int printopt);
-int OutaTreeB (FILE *fout);
+int ReadTreeN (FILE *ftree, int *haslength, int *haslabel, int copyname, int popline);
+int ReadTreeB (FILE *ftree, int popline);
+int OutTreeN (FILE *fout, int spnames, int printopt);
+int OutTreeB (FILE *fout);
 int DeRoot (void);
 int GetSubTreeN (int keep[], int space[]);
 void printtree (int timebranches);
@@ -291,7 +300,7 @@ int CollapsNode (int inode, double x[]);
 
 int MakeTreeIb (int ns, int Ib[], int rooted);
 int GetTreeI (int itree, int ns, int rooted);
-int NumberofTrees (int ns, int rooted);
+int NumberTrees (int ns, int rooted);
 int ListTrees (FILE* fout, int ns, int rooted);
 int GetIofTree (int rooted, int keeptree, double space[]);
 void ReRootTree (int newroot);
@@ -324,16 +333,17 @@ enum {BASEseq=0, CODONseq, AAseq, CODON2AAseq} DataTypes;
 enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrAge=8} OutTreeOptions;
 
 
+/* use mean (0) for discrete gamma instead of median (1) */
+#define DGammaMean 0  
+
 #define FAST_RANDOM_NUMBER
 
+#define m2NormalSym  0.95
 
-#define RELEASE      1
+#define MAXNFIELDS 10000
 
-#define VerStr "paml 3.15, November 2005"
+#define PAML_RELEASE      0
 
-
-/*
-#define DEBUG 9
-*/
+#define VerStr "paml version 4.1, August 2008"
 
 #endif

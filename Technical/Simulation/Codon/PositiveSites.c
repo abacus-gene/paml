@@ -11,7 +11,7 @@
 
    PositiveSitesBEB <#sites> <#repl>
    PositiveSitesBEB <#sites> <#repl> <Evolverf> <Codemlf>
-   PositiveSitesBR  <#sites> <#repl> <Evolverf> <Codemlf> <positive site classes>
+   PositiveSitesBS  <#sites> <#repl> <Evolverf> <Codemlf> <positive site classes>
 
    This compares siteID from evolverNSsites and mlc from codeml to calculate 
    the accuracy, power, and false positive rate of codeml inference of sites 

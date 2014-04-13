@@ -1,6 +1,6 @@
 0          * 0,1:seqs or patterns in paml format (mc.paml); 2:paup format (mc.nex)
 113147       * random number seed (odd number)
-8  10000  5  * <# seqs>  <# nucleotide sites>  <# replicates>
+8  10000  5  * <# seqs>  <# codons>  <# replicates>
 
 -1           * <tree length, use -1 if tree has absolute branch lengths>
 

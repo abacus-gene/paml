@@ -28,12 +28,13 @@
 #include "paml.h"
 #define NS            1000
 #define NBRANCH       (NS*2-2)
+#define MAXNSONS      100
 
 struct CommonInfo {
    char *z[2*NS-1], spname[NS][20], cleandata;
-   int ns,ls,npatt,*fpatt,np,ntime,ncode,clock,model,icode;
+   int ns, ls, npatt, np, ntime, ncode, clock, model, icode;
    int seqtype, *pose;
-   double *conP;
+   double *conP, *fpatt;
 }  com;
 struct TREEB {
    int nbranch, nnode, root, branches[NBRANCH][2];
@@ -41,6 +42,7 @@ struct TREEB {
 struct TREEN {
    int father, nson, sons[NS], ibranch;
    double branch, age, label, *conP;
+  char *nodeStr;
 }  nodes[2*NS-1];
 
 #define NODESTRUCTURE
@@ -74,8 +76,8 @@ void main (int argc, char*argv[])
 	   if(ch=='(') 
          { ungetc(ch,fmcmc); break; }
    }
-   ReadaTreeN(fmcmc, &i, &j, 2, 0);
-   OutaTreeN(F0,1,0);  FPN(F0);  FPN(F0);
+   ReadTreeN(fmcmc, &i, &j, 2, 0);
+   OutTreeN(F0,1,0);  FPN(F0);  FPN(F0);
 
    /* read posterior time estimates */
    for(i=0; i<tree.nnode; i++) nodes[i].age=0;
@@ -98,7 +100,7 @@ void main (int argc, char*argv[])
    for(i=0; i<tree.nnode; i++) 
       if(i!=tree.root) nodes[i].branch=nodes[nodes[i].father].age-nodes[i].age;
 
-   FPN(F0);  OutaTreeN(F0,1,1);  FPN(F0);
+   FPN(F0);  OutTreeN(F0,1,1);  FPN(F0);
    fclose(fmcmc);
    exit(0);
 }

@@ -3,11 +3,15 @@ CC = cc # cc, gcc, cl
 
 CFLAGS = -O4 -funroll-loops -fomit-frame-pointer -finline-functions
 
+#MAC OSX G5:
 #CFLAGS = -mcpu=G5 -O4 -funroll-loops -fomit-frame-pointer -finline-functions
+
+#MAC OSX intel:
+#CFLAGS = -march=pentium-m -O4 -funroll-loops -fomit-frame-pointer -finline-functions
 
 #CFLAGS = -O4
 #CFLAGS = -fast
-
+#CFLAGS = -m64 -march=opteron -mtune=opteron -ansi -O3 -funroll-loops -fomit-frame-pointer -finline-functions 
 #CFLAGS = -march=athlon -mcpu=athlon -O4 -funroll-loops -fomit-frame-pointer -finline-functions
 #CFLAGS = -march=pentiumpro -mcpu=pentiumpro -O4 -funroll-loops -fomit-frame-pointer -finline-functions 
 
