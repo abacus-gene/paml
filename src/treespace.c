@@ -70,7 +70,7 @@ int NumberofTrees (int ns, int rooted)
 {
    int i, ntree=1;
 
-   if (ns>15) error ("ns too large in NumberofTrees().");
+   if (ns>15) error2 ("ns too large in NumberofTrees().");
    for (i=4; i<=ns; i++)  ntree*=2*i-5;
    if (rooted) ntree*=2*i-3;
    return (ntree);
@@ -121,8 +121,8 @@ int GetIofTree (int rooted, int keeptree, double space[])
    char ns2=(char)(com.ns-2), *bA=(char*)space;  /* bA[b*ns2+j]: ancestors on branch b */
    struct TREEB tree0=tree;
 
-   if (tree.nnode-com.ns!=com.ns-1-!rooted) error ("GetIofTree");
-   if (com.ns>15) error("ns too large in GetIofTree");
+   if (tree.nnode-com.ns!=com.ns-1-!rooted) error2 ("GetIofTree");
+   if (com.ns>15) error2("ns too large in GetIofTree");
 
    /* find new root. 
       Ib[]: No. of times inner nodes are visited on paths 1-2, 1-3, 2-3 */
@@ -172,7 +172,7 @@ int GetIofTree (int rooted, int keeptree, double space[])
       a1=nodes[k=tree0.root].sons[0];  a2=nodes[tree0.root].sons[1];
       if (nodes[a1].father==k)      k=a1;
       else if (nodes[a2].father==k) k=a2;
-      else error ("rooooot");
+      else error2 ("rooooot");
       for (b=0; b<tree.nbranch; b++) if (tree.branches[b][1]==k) break;
       Ib[nM-1]=b;
    }
@@ -188,7 +188,8 @@ int GetIofTree (int rooted, int keeptree, double space[])
  void ReRootTree (int newroot)
 {
 /* reroot tree at newroot.  oldroot forgotten
-   The order of branches is not changed.  Branch lengths are updated too.
+   The order of branches is not changed.  
+   Branch lengths, and other parameters for branches are updated are updated.
 */
    int oldroot=tree.root, a,b;  /* a->b becomes b->a */
 
@@ -196,17 +197,33 @@ int GetIofTree (int rooted, int keeptree, double space[])
    for (b=newroot,a=nodes[b].father; b!=oldroot; b=a,a=nodes[b].father) {
       tree.branches[nodes[b].ibranch][0]=b;
       tree.branches[nodes[b].ibranch][1]=a;
-
-#if (CODEML || BASEML)
-      if(a>=com.ns) _oldlkl[a]=0;
+#if (BASEML || CODEML)
+      if(a>=com.ns && com.method==1) _oldlkl[a]=0;
 #endif
-
    }
+
    tree.root=newroot;
    BranchToNode ();
    for (b=oldroot,a=nodes[b].father; b!=newroot; b=a,a=nodes[b].father)
-      nodes[b].branch=nodes[a].branch;
-   nodes[newroot].branch=-1;
+      { nodes[b].branch=nodes[a].branch; nodes[b].label=nodes[a].label; }
+   nodes[newroot].branch=-1;  nodes[newroot].label=-1;
+
+#if (CODEML)
+   /* omega's are moved in updatelkl for NSbranchsites models */
+   if(com.model && com.NSsites==0) { 
+      for (b=oldroot,a=nodes[b].father; b!=newroot; b=a,a=nodes[b].father)
+         nodes[b].omega=nodes[a].omega;
+      nodes[newroot].omega=-1;
+   }
+#endif
+#if (BASEML)
+   if(com.nhomo==2) { 
+      for (b=oldroot,a=nodes[b].father; b!=newroot; b=a,a=nodes[b].father)
+         nodes[b].kappa=nodes[a].kappa;
+      nodes[newroot].kappa=-1;
+   }
+#endif
+
 }
 
 
@@ -225,7 +242,7 @@ int NeighborNNI (int i_tree)
    int i, a,b,c,d, ib=i_tree/2, ip=i_tree%2;
 
    if (tree.nbranch!=com.ns*2-2-(nodes[tree.root].nson==3)) 
-      error ("err NeighborNNI: multificating tree.");
+      error2 ("err NeighborNNI: multificating tree.");
 
    /* locate a,b,c,d */
    for (i=0,a=0; i<tree.nbranch; i++)
@@ -289,7 +306,7 @@ int GetIofLHistory (void)
    int index, i,j,k[NS+1], inode,nnode, nodea[NS], s[2];
 
    if (nodes[tree.root].nson!=2 || tree.nnode!=com.ns*2-1
-     || tree.root!=com.ns*2-2)  error("IofLH");
+     || tree.root!=com.ns*2-2)  error2("IofLH");
    for (i=0; i<com.ns; i++) nodea[i]=i;
    for (inode=nnode=com.ns,index=0; inode<com.ns*2-1; inode++,nnode--) {
       FOR (i,2) FOR (j,nnode)  
@@ -319,7 +336,7 @@ int CountLHistory(char LHistories[], double space[])
    int *AA=(int*)space, ns1=com.ns-1, nA[NS-1], iA[NS-1], nLH, ipn;
    
    nlevel=tree.nnode-com.ns;
-   if (com.ns-1!=tree.nnode-com.ns)  error ("binary tree?");
+   if (com.ns-1!=tree.nnode-com.ns)  error2 ("binary tree?");
    FOR (i,com.ns-1) iA[i]=0;
 /*
 printf ("nlevel %2d\troot %2d\n", nlevel, tree.root+1);

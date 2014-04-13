@@ -20,20 +20,22 @@
  195.06   7.64   1.90   1.90   1.90  19.00  21.14   2.53   1.90 1222.94  91.67   1.90 387.54   6.35   8.23   1.90 204.54   5.37   1.90
 
 
-0.072 0.019 0.039 0.019 0.006 0.025 0.024 0.056 0.028 0.088 0.168
+0.072 0.019 0.039 0.019 0.006 0.025 0.024 0.056 0.028 0.088 0.169
 0.023 0.054 0.061 0.054 0.072 0.086 0.029 0.033 0.043
 
 Ala Arg Asn Asp Cys Gln Glu Gly His Ile Leu Lys Met Phe Pro Ser Thr Trp Tyr Val
 
 
 S_ij = S_ji and PI_i for the mtREV24 model (Adachi and Hasegawa 1996).
-Prepared by Z. Yang according to data sent by Dr Masami Hasegawa.
-This matrix was obtained from the 12 mitochondrial proteins encoded by
-the same strand of the DNA from a diverse range of species including
-bird, fish, frog, lamprey, as well as mammals (see Adachi and Hasegawa
-1996 for details).  The other matrix (mtmam.dat) included in the
-package are based on the same proteins from mammals only.
+The PI's used to sum to 0.999 and I changed one of the freq from 0.168
+into 0.169 so that the sum is 1.  Prepared by Z. Yang according to
+data sent by Dr M. Hasegawa.  This matrix was obtained from the 12
+mitochondrial proteins encoded by the same strand of the DNA from a
+diverse range of species including bird, fish, frog, lamprey, as well
+as mammals (see Adachi and Hasegawa 1996 for details).  The other
+matrix (mtmam.dat) included in the package is based on the same
+proteins from mammals only.
 
 Adachi, J. and Hasegawa, M. (1996) MOLPHY version 2.3: programs for
 molecular phylogenetics based on maximum likelihood.  Computer Science
-Monographs of Institute of Statistical Mathematics 28:1--150
+Monographs of Institute of Statistical Mathematics 28:1-150.

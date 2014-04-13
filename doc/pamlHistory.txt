@@ -1,0 +1,602 @@
+History and bug fixes of PAML (Phylogenetic Analysis by Maximum Likelihood)
+Ziheng Yang
+
+Please report any bugs or comments to Ziheng Yang at z.yang@ucl.ac.uk.
+
+
+TO BE RELEASED
+Version 3.1
+
+Changed the way of counting base or amino acid frequencies so that
+this version of baseml or codeml might generate different results from
+previous versions under the following model specifications.  There is
+no difference if your data do not contain any alignment gaps or
+ambiguity characters or if you choose to remove them before any
+analysis (cleandata = 1).  The early versions used two ad hoc methods
+in dealing with such ambiguity characters in different places of the
+programs.  The new version uses another ad hoc method and in all places.
+
+baseml & aaml: if you have multiple genes and the model uses the same
+frequencies in the model for the different site partitions.  
+codonml:
+if you have ambiguity characters at all.  Ambiguity characters were ignored 
+when counting frequencies in previous versions but are used now.
+
+codonml (codeml with seqtype = 1) with Mgene = 1 does not work
+correctly if the sequences have alignment gaps or ambiguity
+characters.  Mgene = 1 means separate analysis.  The bug causes data
+for the genes except the first to be read out of frames, so that most
+likely you will see a lot of messages "stop codon XXX" before the
+program aborts.  This is now fixed.
+
+
+codonml (codeml with seqtype = 1) with fix_alpha=0: In the final
+output for the codon + gamma model, parameter alpha is not correctly
+identified.  If you have fix_kappa = 0, fix_omega =0, and fix_alpha=0,
+the last three numbers should be kappa, omega (dn/ds), and alpha.  The
+detailed output did not identify alpha correctly, although the
+likelhood value and the outputted rates and frequences (r and f) are
+correct.  I believe this is now corrected.
+
+
+
+14 May 2001, version 3.0e
+
+codonml (codeml with seqtype = 1) with model = 1: The program crashes
+when you have a small tree with <= 5 branches.  This is a new error
+introduced in version 3.0c.  It is now fixed.
+
+
+
+20 February 2001, versions 3.0c-3.0d
+
+We bought a Pentium III cluster running redhat linux 6.2.  The gcc
+compiler 2.61 has bugs and codeml does not run for NSsites = 7 or 8.
+The program might output "points out of order" or "Det goes to 0"
+error messages.  3.0d seems to be safer for these models.
+
+codonml (codeml with seqtype = 1) with NSsites = 3 might generate a
+message "error: sortwM3." and then stop with no output after the
+iteration.  This is now fixed.  During the iteration, there was no
+restriction on the w values, so that w0 can be greater than w1 and so
+on.  At the end of the iteration, I sort the three w values so taht w0
+< w1 < w2 before outputting.  3.0c has a bug at sorting.  If you don't
+see the error message, everything is fine.
+
+
+10 November 2000
+
+The probabilities for Joint ancestral reconstruction are not correct.
+Many values are larger than 1.  Fixed in version 3.0c.
+
+
+
+30 October 2000
+Version 3.0c
+
+(1) Changed parameterization of clock models (clock = 1, 2, or 3), so that
+the output now lists node ages, and the SEs are for node ages as well.
+Node ages are measured by the expected number of nucleotide or amino
+acid substitutions per site (nucleotide, amino acid, or codon) from
+the node to the present time, and are proportional to the divergence
+times.  In earlier versions, the output list proportions.
+
+(2) codonml: problem with NSsites model with multiple gene data
+(Mgene=1) is now fixed(?).  In the earlier version, the likelihood
+calculation was o.k., but identification of sites under positive
+selection was incorrect as the program attempted to list sites in
+another gene when it was analyzing data for one gene.  (1) Mgene
+options for codons and aminos:
+
+
+
+6 October 2000
+Version 3.0b
+The local clock models (clock = 2) are not implemented correctly in paml3.0 or 3.0a. 
+
+Yoder, A. D., and Z. Yang.  2000.  Estimation of primate speciation
+dates using local molecular clocks.  Molecular Biology and Evolution
+17 (7): 1081-1090.
+
+I introduced a serious error before I made the models available to the
+public, in ver3.0 (May 2000).  Two symptoms are noted right now: (1)
+crashes (which are good as they make you realise that something is
+wrong immediately) and (2) the local clock model (clock=2) having a
+worse likelihood than the global clock model (clock = 1).  The results
+in the paper are correct except for a typo ("37.30 - 48.48" in table 3
+for the cetacean-whale divergence using the C3 calibration should be
+"57.30 - 48.48").  I now include the example data sets and results
+from that paper to help you prepare your own data files.
+
+Sorry for any damages done.
+
+Many thanks to Toby Johnson and Philip Awadalla for spotting the error.
+
+
+
+Feb 4, 2000
+Version 3
+
+The program evolver may not generate sequences correctly if branch
+lengths are very large, say >10.  
+
+Scaling by nodes to avoid underflow.  When there are many sequences in
+the data (say > 200 or 300), the probability of observing data at a
+site can become too small to represent in the machine.  This is
+because the probabilities are multiplied along branches in the tree
+and a large tree has many branches.  Since version 2.0, this underflow
+is dealt with by scaling, and it works with both the one-rate and
+gamma-rates models.  It did not work with the NSsites models in
+codonml, but probably nobody has analysed large data sets to notice
+this.  Anyway, this version hopefully fixes that problem, when I was
+analysing the data set of Bush et al. (1999 MBE 16:1457-1465), which
+has about 350 sequences.  If you use the program on very large data
+sets, watch out for anything strange and let me know.  I suppose with
+the option of using supplied branch lengths, data sets of such sizes
+will become manageable, and this scaling will become important.
+
+
+
+Oct 14, 1999
+Version 2.0h
+
+Fixed the following errors, all simple errors.
+
+The RemoveIndel routine in 2.0e and 20.f has a bug that removes most
+sites in the sequence except those with all T's and C's for baseml.
+The same routine in 2.0g has a different bug that removes most sites
+except those will all T's and C's in the sequence for aaml.  In either
+case, the results will be grossly wrong.  The bugs affect the analysis
+only if you have gaps or ambiguity characters in the data and use
+runmode = 1 for aaml in 2.0e and 2.0f, and runmode = 1 for codonml for
+2.0g.
+
+The newly introduced option for amino acid reconstruction by baseml
+(icode) does not work.  The program aborts with an error message.
+This is now fixed.
+
+
+
+
+Sept 21, 1999
+Version 2.0g
+
+Fixed a bug in 2.0f that causes crash in codeml when getSE = 1.  
+
+If the tree has branch lengths, codeml and baseml in 2.0f will simply
+use the branch lengths rather than estimating them by iteration.  I
+have added a question for the user to choose to ignore the branch
+lengths, use them as fixed or use them as initial values for the
+iteration.
+
+
+
+June 30, 1999
+Version 2.0d
+Fixed some convergence problems in ML pairwise estimation of dS and 
+dN, in particular, in presence of data partitions (the G option).
+
+Fixed a bug in evolver.  The bug means that no sensible data are
+generated if the tree has branch lengths smaller than 1e-7.  At some
+point, I did something "clever" (taking advantage of the fact that at
+such small branch lengths, no evolution would occur), which destroyed
+the calculation.  
+
+
+
+May 12, 1999
+Version 2.0c
+Corrected a few problems with the evolver program, and with running 
+multiple data sets using baseml.  Added REV in MCbase.dat.
+Thanks to John Mercer.
+
+Note--Uncomment ndata in baseml or codeml to analyse multiple
+data sets generated from evolver.
+
+
+
+April 16, 1999
+
+Although posted only a few days ago, paml2.0 has an error in the
+program codeml, which invalidates most analyses based on codon
+substitution models.  The symptom is relatively easy to spot and is
+indicated by one of the parameters (say omega) not being estimated at
+all and in the output you will have exactly the same number as you
+specified in the control file.
+
+Amino acid-based analysis or pairwise comparison of codon sequences
+are not affected.  Use paml2.0a to redo the analysis.  Apologies for
+the trouble.
+
+
+
+31 Mar 31 1999
+version 2.0
+Added back the faster calculation when there is no missing data.
+Enabled the programs/analysis that broke in the temporary versions, 
+such as pamp, joint reconstruction.
+
+Renamed listtree as evolver, and added simulation options.
+
+
+
+Dec98 & Jan99 
+PAML 1.4 Temporary versions
+
+  pamlTMP.Jan99.notes
+  ===================
+  Ziheng Yang
+  Fri Jan 15 10:01:42 GMT 1999
+
+  .Type make to compile the programs.  If you got error messages, see
+  whether you know how to change the file Makefile.  If it does not work
+  either, look at the files paml.cc, paml.gcc, etc.
+
+  .At the suggestion of David Posada, I added ML estimation of pairwise 
+  distances between amino acid sequences in the program codeml.  
+
+  The relavant variables in the control file codeml.ctl are 
+
+	runmode = -2 for pairwise distance calculation
+     aaRatefile = jones.dat * only used for aa seqs with model=empirical(_F)
+			     * dayhoff.dat, jones.dat, mtmam.dat, or your own
+	  model = 3 
+	  alpha = 0
+
+  model specifies the amino acid substitution model.  You should choose
+  a value from 0, 1, 2, 3.  If you want to estimate the rate matrix from
+  your data, you should do that using many sequences and then move the
+  estimated substitution rate matrix (in the output file mlc) into a
+  file and change the variable aaRatefile.  
+
+  Choosing alpha>0 means using gamma distance with that specified alpha
+  parameter.  If you see anything strange, please let me know.
+
+  .I have included only three programs baseml, codeml, and listtree.
+  I have not tested the others and so they are not included.
+
+
+
+  pamlTMP.Dec98.notes
+  ===================
+  Ziheng Yang
+  Wed Dec  9 10:44:37 GMT 1998
+
+
+  This temporary version of paml has involved a number of changes, and
+  is quite likely to contain errors.  Please let me know if you notice
+  anything strange.  Some of the options do not work for now.  Details
+  follow.  I will compile the Win32 and PowerMac versions after
+  everything is fixed and tested.
+
+  . Missing data: baseml and codeml now handle missing data.  Choose
+  DelMissing = 1 in the control file to remove sites with ambiguity
+  characters or alignment gaps, as did previous versions.
+
+  . Clock: The clock is now fixed.  It may still crash, but the option
+  is not worse than the no-clock options.  The definitions of the node
+  times or branch lengths are now different from the documentation
+  (pamlDOC.html), and so check the branch lengths in the output tree
+  topology.  Thanks to Jeff Thorne.
+
+  . Nexus file formats: Paml programs now read sequence files and tree
+  structure files in the Nexus format used by paup and MacClade.  Only
+  the data or tree are read, and everything else in the file is ignored.
+
+  .  Ancestral reconstruction: Marginal ancestral reconstructions are
+  now done under the gamma-rates model as well as the constant-rate
+  model.  For protein-coding genes, reconstructions can now be done at
+  the nucleotide level with baseml (in particular, by using models that
+  account for differences at the three codon positions), at the amino
+  acid level with aaml, and at the codon level with aaml.  According to
+  Belinda Chang, those different reconstructions tend to be similar.
+  Results for ancestral reconstruction are now listed by site, and not
+  by site pattern as in earlier versions.  Missing data are now handled
+  in those analysis.  See instructions in this doc about baseml.ctl for
+  more options.  Thanks to Belinda Chang.  I would like to take this
+  opportunity to point out that the reconstructed ancestral sequences
+  are not the real observed sequences and may contain errors.
+
+  . I have disabled the option for variable rates among sites in
+  combination with variable dN/dS rate ratios among lineages in codonml.
+  This option has never been implemented in the program but was not
+  disabled.
+
+  . Distance matrices from codonml.  The program codonml outputs
+  matrices of synonymous and nonsynonymous rates in all pairwise
+  comparisons using the method of Nei & Gojobori (1986) into two files
+  named DistanceNG.dN & DistanceNG.dN.  The matrices are lower-diagonal
+  and can be used with programs, such as neighbor and fitch, in phylip
+  (and possibly paup* too) for tree reconstruction or branch length
+  estimation by distance methods.  If you choose runmode = -2 for ML
+  pairwise comparison, the program will also output two matrices of ML
+  estimates into two files named DistanceML.dS & DistanceML.dN, for
+  synonymous and nonsynonymous rates.  Since many users seem interested
+  in looking at dN/dS rate ratios among lineages, examination of the
+  tree shapes indicated by branch lengths calculated from the two rates
+  may be interesting although the analysis is intuitive.  Obviously, you
+  should NOT name your own data files with those names; otherwise they
+  will get overwritten.  If your species name has more than 10
+  characters, you will have to edit the files and cut the names short
+  before you can use Phylip programs.  I have decided to leave this work
+  to the user.  I plan to create some other distance matrix files for
+  nucleotides and amino acids as well.
+
+  . An minor prompt error when running codonml with model = 2 (variable
+  dN/dS ratios among lineages) is fixed.  The example data set
+  lysozymeSmall.nuc is included for the user to duplicate my results in
+  Yang (1998 Molecular Biology and Evolution 15: 568-573).  The control
+  file codemlLysozyme.ctl explains in more detail how to specify the
+  options.  I would like to remind you that it is not correct to use the
+  option model = 1 to estimate dN/dS ratios for branches to find out
+  which ratios are greater than one, and then to use model = 2 to test
+  whether that ratio is significantly greater than one.  The problem
+  with such an analysis is that the hypothesis being tested is derived
+  from the data which you use to test the hypothesis, and as a result,
+  you tend to get significantly results too often.  Strictly speaking,
+  the hypothesis should be formulated before the data are analysed.
+
+  Things that do not work in this version include
+
+  . All parsimony-based analyses are now broken.  The program pamp is
+  not included.  Programs baseml and codeml used to calculate the MP
+  score for each tree before doing an ML analysis on that tree.  Now a
+  -1 is used to indicate this is not possible.
+
+
+
+July 1998 
+Version 1.4 (UCL)
+
+     1.Most of the changes are in the program codeml (aaml for amino
+  acid sequences and codonml for codon sequences). A few new models of
+  codon substitution are implemented (see Yang and Nielsen 1998; Nielsen
+  and Yang 1998; Yang 1998).
+     2.Some problems relating to ancestral sequence reconstruction (in
+  baseml and codeml) are fixed. The earlier algorithm does not work
+  properly if the data contain more than several sequences. The
+  algorithm makes a guess at the likely character states at the interior
+  nodes of the tree, and then uses those to generate reconstructions
+  (joint reconstructions, see eq. 2 in Yang et al. 1995) to be
+  evaluated. Sometimes this strategy misses important reconstructions,
+  and as a result, the probabilities for reconstructed characters at
+  specific interior nodes (marginal reconstructions; see eq. 4 in Yang
+  et al. 1995) are substantially underestimated if the number of
+  sequences is not very small. I have now written separate codes to do
+  the marginal reconstruction, evaluating all possible character states
+  for each interior node. This works also under the gamma model of
+  substitution rates among sites, a feature that was not implemented
+  before. The joint reconstruction works with one rate for all sites
+  only and has the old problem of possibly missing important
+  reconstructions. However, the posterior probabilities for those joint
+  reconstructions that do get evaluated are accurate. I have added an
+  option (choose RateAncestor = 2 rather than 1) for the user to specify
+  the reconstruction to be evaluated. The two approaches are expected to
+  produce very similar results, and since the marginal reconstruction is
+  always reliable, perhaps it can always be used for data analysis.
+  (Thanks to Belinda Chang.)
+     3.The output file for estimated rates for sites under the
+  variable-rates models is now "Rates.out" instead of "rst".
+     4.I have implemented ancestral sequence reconstructions based on
+  codon-substitution models (codonml). This has not been tested
+  carefully, and I would appreciate your comments if you use it.
+     5.A number of minor changes have been made. I have fixed several
+  floating exception errors that seem to occur on DEC Alpha machines
+  only.
+     6.The documentation is now changed into the html format. 
+
+
+June 1998 
+Version 1.3a,b,c (UCL)
+
+  1. Basemlg was put back at the request a user.
+
+  2. Some changes are made to codeml concerning codon-substitution
+  models (Yang and Nielsen 1998 JME; Yang 1998 MBE; Nielsen and Yang
+  1998 Genetics)
+
+
+
+July 1997 
+PAML Version 1.3: (UC Berkeley)
+
+  1. Starting with this version, the program basemlg will not be
+  included in the package.  This program implements the (continuous)
+  gamma model of substitution rate variation among nucleotide sites
+  (Yang 1993).  It involves intensive computation and has been
+  superseded by the discrete-gamma model implemented in the program
+  baseml.  If you want to use this program, you should use previous
+  versions of paml, which can be obtained from me if nowhere else.
+
+  2. The simulation program mcml.c is removed from the package.  This is
+  now superced by the program listtree.c, which does different things
+  besides simulating data sets.
+
+  3. I have implemented the stepwise addition algorithm in the programs
+  baseml and codeml.  This algorithm is faster than the
+  star-decomposition algorithm implemented before, but my implementation
+  is crude and inefficient.  The NNI perturbation is implemented too.
+  These work without the molecular clock.
+
+  4. Many changes are made with the program codonml (codeml with
+  seqtype=1).  A few new codon-based models are implemented.  One
+  assumes different nonsynonymous/synonymous (dN/dS) rate ratios among
+  branches in the phylogeny, and may be useful for detecting episodic
+  positive selection.  Another allows the dN/dS ratio to vary among
+  sites and may be useful for testing neutrality and detecting
+  positively-selected sites in the sequence.  These are based on my
+  collaborative work with Rasmus Nielsen.  I made some changes to the
+  output of estimates of dS and dN in pairwise comparisons (codonml with
+  runmode=-2), so that the results are easy to understand.  Another
+  change with this program is in the codon-substitution model of Goldman
+  and Yang (1994).  We used the amino acid distance matrix of Grantham
+  (1974) to modify the rate of nonsynonymous substitutions, but
+  unfortunately the model does not fit data well.  It does not always
+  fit the data better than if we simply assume equal distance between
+  any two amino acids.  So I have added the option of ignoring the amino
+  acid differences.  Goldman and Yang's original formula is still
+  available but not recommended for use.  As a result of these changes,
+  the formulation of the Goldman and Yang model is now somewhat
+  different from the paper and previous versions of the program.  See
+  Section 6.2 for details.
+
+  5. I have again made some changes with the user interface, based on my
+  guess of what the "user" would like to see.
+
+
+
+1995-1996 
+Version 1.1a-d: (UC Berkeley)
+
+1.1a No records of changes remain.
+
+1.1b November, 1995:
+
+The following line at the beginning of the file tools.h 
+		#define __cplusplus
+is removed.  I added this line to avoid some (unjustified) warning
+messages from a compiler I used to use and forgot to remove it when I
+was preparing paml1.1.  This line made some compilers unable to
+compile.
+
+A bug that caused baseml and basemlg to give wrong estimates of kappa
+under the F84 model is now fixed.  Estimates of kappa under the F84
+models listed in the paml 1.0 and 1.1 documents are all incorrect and
+are a bit too small.  For example, the estimate of kappa under the F84
+model for the mtDNA data of Brown et al. (1982) should be 4.344 while
+the wrong estimate given in the large table of the document is 3.420.
+Likelihood value, branch lengths and other parameters seem to have
+been correctly calculated by paml 1.0 and 1.1.  Versions prior to 1.0
+do not have this bug, and results in Yang (J. Mol. Evol. 1994,
+39:306-314) and Yang, Lauder, and Lin (J. Mol. Evol. 1995,
+41:587-596), where the F84 model was used, are correct.
+
+1.1c March 1996 
+
+Representation of tree topologies using branches (see the document)
+are now allowed (restored) in the tree structure file.  This is for
+coping with cases where some taxa are ancestors of others.  If this
+representation is used, the line starts with a dollar sign.  So the
+following line in the file trees.5s (the tree file for 5 species)
+
+$ 5      6 3  6 4  6 5  3 1  3 2
+
+represents the tree ((12)34), with 5 to be the ancestor of 1 and 2.
+
+Alignment gaps are now allowed when option G is used (for multiple
+genes).  The gaps are removed before analysis.
+
+A small program listtree lists all the bifurcating trees for a given
+(small) number of species.
+
+codonml (codeml.c with seqtype=1) now has an option for calculating
+the number of synonymous substitutions per synonymous site (Ks) and
+the number of nonsynonymous substitutions per nonsynonymous site (Ka)
+and their ratio for each pairwise comparison, using the method of
+Goldman and Yang (1994).  This is implemented with
+runmode=-2. Estimates of Ks and Ka are collected in the file rst and
+estimates of model parameters in the file mlc.  This option produces
+table 2 in the Goldman & Yang paper.
+
+The interior nodes were incorrectly identified when the ancestral
+sequences were listed in the file rst.  They were all one less than
+their correct numbers.  Nodes 7, 8, 9, 10 for the stewart.aa data were
+incorrectly identified as nodes 6, 7, 8, 9.  This is corrected now.
+
+1.1d. July 1996
+
+An unintended version of codeml.c was included in version 1.1c, which
+causes the program to produce different results under the codon-based
+model of Goldman and Yang (1994).  The small number in baseml.c was
+set too small, making the program do unnecessary iterations; this is
+fixed now.  I also changed the program pamp so that it will estimate
+the substitution rate matrix without using a tree.
+
+I have included a few other genetic code tables in this version of
+codeml; see the file codeml.ctl.
+
+
+PAML Version 1.2: November 1996 (UC Berkeley)
+
+  1. I have done some changes with the user interface.  Name of files
+(sequence data file, control file, tree structure file) are now
+specified in the control files (The default are baseml.ctl,
+codeml.ctl, pamp.ctl, mcmctree.ctl).  The command line for executing a
+program is now ProgramName ControlFileName with ControlFileName
+optional.  I have added some text in the output file of baseml so that
+the results are eassier to understand.  Choose verbose=0 in the
+control file if you do not want the detailed output.
+
+  2. A new program mcmctree is included, which performs Bayesian
+estimation of phylogenies using Markov chain Monte Carlo methods
+(Rannala and Yang 1996; Yang and Rannala 1997).
+
+  3. A number of minor changes are made, such as using species names
+in the parenthesis tree representation.
+
+
+
+July 1995 
+Version 1.1: (IMEG PennState)
+
+  Models for analyzing data of multiple genes (Yang 1996 JME) are
+  implemented in baseml and codeml.  Two more programs are included:
+  pamp for parsimony-based analysis implementing the methods of Yang and
+  Kumar (1996 MBE) and mcml for Monte Carlo simulation (prepared for
+  Arndt von Haeseler but apparently not used).
+
+
+February 1995 
+Version 1.0 (IMEG, PennState)
+
+  This is the first official version of paml.  Three main programs are
+  included: baseml, basemlg and codeml.  Control files are used for all
+  of them.  The program codeml is formed by merging two programs codonml
+  and aaml, for codon sequences and amino acid sequences, respectively.
+  One rate, gamma rates, and auto-discrete-gamma rates for sites are
+  implemented for nucleotide, amino acid, and codon-based models.  The
+  document is provided as postscript files (paml1_3.ps).
+
+
+October 1994 
+Version 0.12, no name for package (BAU and IMEG PennState) 
+
+  The bracket notation of tree topologies is introduced.  Tree
+  search by star decomposition is implemented in baseml and codonml.
+  The options for baseml are moved into an option file baseml.ctl.  The
+  molecular clock seems to work with the automatic tree search model
+  (runmode=1 or 2).  The old readme file is renamed manual.
+
+
+March 1994 
+Version 0.10, no name for package: (NHM, England)
+
+  Programs tripml and comptree are renamed codonml and rell.  The readme
+  file is expanded and the numerical optimmization routine, ming1, used
+  by dnaml and codonml, is improved.  The discrete-gamma model of Yang
+  (1994 JME) is implemented in both baseml and codonml.
+
+  Preliminary version 0.11, no name for package: April 1994 (NHM,
+  England) Programs dnaml and dnamls are renamed baseml and basemlg to
+  avoid confusion with Joe Felsenstein's programs.  The
+  auto-discrete-gamma model and the nonparametric models of rate
+  variation and correlation mong sites of Yang (1995 Genetics) are added
+  in baseml.  Nonhomogeneous-process models of Yang and Roberts (1995
+  MBE) are implemented in baseml.
+
+
+April 1993 
+Version 0.01, no name for package (Cambridge).  Three programs are included in 
+the package:
+
+  1. dnamls implements the model of gamma rates among sites of Yang
+  (1993) and works with arbitrary topologies and substitution models
+  (JC69, K80, F81, HKY85).
+
+  2. dnaml implements the model of a single rate for all sites. (The
+  same name as Joe Felsenstein's program was used.)
+
+  3. tripml implements the codon-based model of Goldman and Yang (1994).
+  Trees are represented by the "branch notation".
+
+

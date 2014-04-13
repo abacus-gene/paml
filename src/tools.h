@@ -34,8 +34,10 @@ int Site2Pattern (FILE *fout);
 int GetSubSeqs(int nsnew);
 int GetSubTreeN (int hasbranch, char keep[], int rennodes);
 
-double rndu (void);
+int f_to_x(double x[], double f[], int n, int fromx, int LastItem);
 void SetSeed (int seed);
+double rndu (void);
+void randorder(int order[], int n, int space[]);
 double rndnorm (void);
 double rndgamma (double s);
 int rndpoisson (double m);
@@ -51,6 +53,7 @@ double PointChi2 (double prob, double v);
 #define CDFGamma(x,alpha,beta) IncompleteGamma((beta)*(x),alpha,LnGamma(alpha))
 #define CDFChi2(x,v) CDFGamma(x,(v)/2.0,0.5)
 double CDFBeta(double x, double p, double q, double lnbeta);
+double InverseCDFBeta(double prob, double p, double q, double lnbeta);
 double InverseCDF(double(*cdf)(double x,double par[]),
        double p,double x,double par[],double xb[2]);
 double PointNormal (double prob);
@@ -107,6 +110,8 @@ int print1site (FILE*fout, int h);
 int MultipleGenes (FILE* fout, double space[]);
 int lfunRates (FILE* fout, double x[], int np);
 int AncestralSeqs (FILE *fout, double x[]);
+void ListAncestSeq(FILE *fout, char *zanc);
+int ChangesSites(FILE*fout, char *zanc);
 int InitPartialLikelihood (void);
 
 int NucListall(char b, int *nb, int ib[4]);
@@ -122,7 +127,7 @@ int PtoX(double P1[], double P2[], double Pi[], double X[]);
 void sleep(clock_t wait);
 char *strc (int n, char c);
 void strcase (char *str, int direction);
-void error(char * message);
+void error2(char * message);
 int sort1 (double x[], int n, int rank[], int descending, int space[]);
 int appendfile(FILE*fout, char*filename);
 
@@ -198,6 +203,11 @@ int SetxBound (int np, double xb[][2]);
 int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
     int (*dfun)(double x[], double *f, double dx[], int n),
     double x[], double xb[][2], double space[], double e, int n);
+int ming1 (FILE *fout, double *f, double (* fun)(double x[], int n),
+    int (*dfun) (double x[], double *f, double dx[], int n),
+    int (*testx) (double x[], int n),
+    double x0[], double space[], double e, int n);
+
 
 int Newton (FILE *fout, double *f, double (* fun)(double x[], int n),
     int (* ddfun) (double x[], double *fx, double dx[], double ddx[], int n),

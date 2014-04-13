@@ -115,7 +115,7 @@ int dnamaker (char z[], int ls, double pi[])
 
    xtoy(pi, p, 4);
    for (i=1; i<4; i++) p[i]+=p[i-1];
-   if (fabs(p[3]-1) > 1e-5) error ("sum pi != 1..");
+   if (fabs(p[3]-1) > 1e-5) error2 ("sum pi != 1..");
    for (i=0; i<ls; i++) {
       for(j=0,r=rndu();j<4;j++) if(r<p[j]) break;
       z[i]=(char)j;
@@ -181,7 +181,7 @@ int PickExtreme (FILE *fout, char *z, int ls, int iring, int lfrag, int *ffrag)
 
    f_mono_di(fout, z, ls, iring, fb1, fb2, p_2 );
    if (iring) {
-      error ("change PickExtreme()");
+      error2 ("change PickExtreme()");
       FOR (i, lfrag-1)  z[ls+i]=z[i];       /* dangerous */
       z[ls+i]=(char) 0;
    }
@@ -280,7 +280,7 @@ int difcodonNG(char codon1[], char codon2[], double *SynSite,double *AsynSite,
          iy[i]+=by[j]*b[i][j];
          if(b[i][j]<0||b[i][j]>3) { 
             printf("\nb[%d][%d] = %d ", i,j,b[i][j]);
-            error("err: difcodonNG");
+            error2("difcodonNG");
          }
       }
       iaa[i]=GenetCode[icode][iy[i]];
@@ -354,7 +354,7 @@ int testTransP (double P[], int n)
 
    for (i=0; i<n; i++) {
       for (j=0,sum=0; j<n; sum+=P[i*n+j++]) 
-         if (P[i*n+j]<0) status=-1;
+         if (P[i*n+j]<-1e-6) status=-1;
       if (fabs(sum-1)>1e-6) {
          printf ("\nrow sum (#%2d) = 1 = %10.6f", i+1, sum);
          status=-1;
@@ -380,9 +380,12 @@ int PMatUVRoot (double P[], double t, int n, double U[], double V[],
           for (j=0,uexpt=U[i*n+k]*expt; j<n; j++)
              *pP++ += uexpt*V[k*n+j];
 
+   for(i=0;i<n*n;i++)  if(P[i]<0)  P[i]=0;
+
+
 #if (DEBUG>=5)
       if (testTransP(P,n)) {
-         matout (F0,P,n,n);
+         /*  matout (F0,P,n,n); */
          printf("\nP(%.6f) err in PMatUVRoot.\n", t);
       }
 #endif
@@ -416,7 +419,7 @@ int PMatK80 (double P[], double t, double kappa)
    }
 
 #if (DEBUG>=9)
-      if (testTransP(P,4)) error("PMatK80 error.");
+      if (testTransP(P,4)) error2("PMatK80 error.");
 #endif
    return (0);
 }
@@ -477,7 +480,7 @@ int EvolveHKY85 (char source[], char target[], int ls, double t,
          PMatTN93 (TransP, a1t*r, a2t*r, bt*r, pi);
          for (i=0;i<n;i++) {
             for (j=1;j<n;j++) TransP[i*n+j]+=TransP[i*n+j-1];
-            if (fabs(TransP[i*n+n-1]-1)>1e-5) error ("TransP err");
+            if (fabs(TransP[i*n+n-1]-1)>1e-5) error2 ("TransP err");
          }
       }
       for (j=0,i=source[h],r=rndu();j<n-1;j++)  if (r<TransP[i*n+j]) break;
@@ -492,6 +495,7 @@ int Rates4Sites (double rates[],double alpha,int ncatG,int ls, int cdf,
 /* Rates for sites from the gamma (ncatG=0) or discrete-gamma (ncatG>1).
    Rates are converted into the c.d.f. if cdf=1, which is useful for
    simulation under JC69-like models. 
+   space[ncatG*2]
 */
    int h, ir,j, *counts=(int*)(space+2*ncatG);
    double *rK=space, *freqK=space+ncatG;
@@ -519,8 +523,10 @@ int Rates4Sites (double rates[],double alpha,int ncatG,int ls, int cdf,
 char *getcodon(char codon[], int icodon)
 {
 /* id : (0,63) */
-   if (icodon<0||icodon>63) 
-      error("getcodon.");
+   if (icodon<0||icodon>63) {
+      printf("\ncodon %d\n", icodon);
+      error2("getcodon.");
+   }
    codon[0]=BASEs[icodon/16]; 
    codon[1]=BASEs[(icodon%16)/4];
    codon[2]=BASEs[icodon%4];
@@ -532,7 +538,7 @@ char *getcodon(char codon[], int icodon)
 char *getAAstr(char *AAstr, int iaa)
 {
 /* iaa (0,20) with 20 meaning termination */
-   if (iaa<0 || iaa>20) error("getAAstr: iaa err. \n");
+   if (iaa<0 || iaa>20) error2("getAAstr: iaa err. \n");
    strncpy (AAstr, AA3Str+iaa*3, 3);
    return (AAstr);
 }
@@ -579,8 +585,8 @@ int Codon2AA(char codon[3], char aa[3], int icode, int *iaa)
       if(naa==0)  { iaa0=*iaa; naa++; }
       else if (*iaa!=iaa0)  naa=2;
    }
-   if(naa==0) 
-      { printf("\nstop codon %c%c%c\n",codon[0],codon[1],codon[2]); *iaa=20; }
+   if(naa==0)
+      { printf("stop codon %c%c%c\n",codon[0],codon[1],codon[2]); *iaa=20; }
    else if(naa==2)  *iaa=20; 
    else             *iaa=iaa0;
    strncpy(aa, AA3Str+*iaa*3, 3);
@@ -614,7 +620,7 @@ int printcu (FILE *fout, double fcodon[], int icode)
    int wc=8, wf=7, wd=0;  /* wc: for codon, wf: for wt, wd: decimal  */
    int it, i,j,k, iaa;
    double faa[21], fb3x4[3*5], wt=0; /* chi34, Ic, lc, */
-   char *word="|-", aa3[4]="",codon[4]="", ss3[4][4], *noodle;
+   char *word="|-", aa3[4]="   ",codon[4]="   ", ss3[4][4], *noodle;
    static double aawt[]={89.1, 174.2, 132.1, 133.1, 121.2, 146.2,
          147.1,  75.1, 155.2, 131.2, 131.2, 146.2, 149.2, 165.2, 115.1,
          105.1, 119.1, 204.2, 181.2, 117.1};
@@ -652,7 +658,7 @@ int printcums (FILE *fout, int ns, double fcodons[], int icode)
 {
    int neach0=6, neach=neach0, wc=3,wd=0;  /* wc: for codon, wd: decimal  */
    int iaa,it, i,j,k, i1, ngroup, igroup;
-   char *word="|-", aa3[4]="",codon[4]="", ss3[4][4], *noodle;
+   char *word="|-", aa3[4]="   ",codon[4]="   ", ss3[4][4], *noodle;
 
    ngroup=(ns-1)/neach+1;
    for(igroup=0; igroup<ngroup; igroup++,FPN(fout)) {
@@ -688,6 +694,7 @@ int PtoPi (double P[], double pi[], int n, double *space)
 {
 /* from transition probability P[ij] to pi, the stationary frequencies
    (I-P)' * pi = 0     pi * 1 = 1
+   space[] is of size n*(n+1).
 */
    int i,j;
    double *T = space;      /* T[n*(n+1)]  */
@@ -787,12 +794,12 @@ void sleep(clock_t wait)
    while(goal>clock()) ;
 }
 
-char * strc (int n, char c)
+char *strc (int n, char c)
 {
    static char s[256];
    int i;
 
-   if (n>255) error ("line >255 in strc");
+   if (n>255) error2 ("line >255 in strc");
    FOR (i,n) s[i]=c;    s[n]=0;
    return (s);
 }
@@ -817,7 +824,7 @@ int appendfile(FILE*fout, char*filename)
    return(0);
 }
 
-void error (char * message)
+void error2 (char * message)
 { printf("\nerror: %s.\n", message); exit(-1); }
 
 int zero (double x[], int n)
@@ -877,6 +884,37 @@ int sort1 (double x[], int n, int rank[], int descending, int space[])
    return (0);
 }
 
+
+int f_to_x(double x[], double f[], int n, int fromf, int LastItem)
+{
+/* This transforms between x and f.
+   If (fromf), f->x
+   else        x->f.
+   The iterative variable x[] and freq[0,1,n-2] are related as:
+      freq[k] = exp(x[k])/(1+SUM(exp(x[k]))), k=0,1,...,n-2, 
+   x[] and freq[] may be the same vector.
+   The last element (freq[n-1] and x[n-1]=1) is updated only if(LastItem).
+*/
+   int i;
+   double tot;
+
+   if (fromf) {  /* f => x */
+      if((tot=1-sum(f,n-1))<1e-80) error2("f[n-1]==1, not dealt with.");
+      tot=1/tot;
+      FOR(i,n-1)  x[i]=log(f[i]*tot);
+      if(LastItem) x[n-1]=0;
+   }
+   else {        /* x => f */
+      for(i=0,tot=1; i<n-1; i++)  tot+=(f[i]=exp(x[i]));
+      FOR(i,n-1)  f[i]/=tot;
+      if(LastItem) f[n-1]=1/tot;
+   }
+   return(0);
+}
+
+
+
+
 static unsigned int z_rndu=137;
 static unsigned int w_rndu=13757;
 
@@ -924,6 +962,22 @@ double rndu (void)
 }
 
 #endif
+
+
+void randorder(int order[], int n, int space[])
+{
+/* This orders 0,1,2,...,n-1 at random
+   space[n]
+*/
+   int i,k, *item=space;
+
+   FOR(i,n) item[i]=i;
+   FOR(i,n) {
+      k=(int)((n-i)*rndu());
+      order[i]=item[i+k];  item[i+k]=item[i];
+   }
+}
+
 
 double rndnorm (void)
 {
@@ -1105,7 +1159,7 @@ int MultiNomial (int n, int ncat, double prob[], int nobs[], double space[])
       xtoy(prob, pcdf, ncat);
       for(i=1; i<ncat; i++) pcdf[i]+=pcdf[i-1];
    }
-   if (fabs(pcdf[ncat-1]-1) > 1e-5) error ("sum P!=1 in MultiNomial");
+   if (fabs(pcdf[ncat-1]-1) > 1e-5) error2 ("sum P!=1 in MultiNomial");
    if (crude) {
       for(j=1,lcrude[0]=i=0; j<ncrude; j++)  {
          while (pcdf[i]<(double)j/ncrude) i++;
@@ -1197,10 +1251,10 @@ double LnGamma (double x)
    double f=0, fneg=0, z;
 
    if(x<=0) {
-      error("lnGamma not implemented for x<0");
+      error2("lnGamma not implemented for x<0");
       if((int)x-x==0) { puts("lnGamma undefined"); return(-1); }
       for (fneg=1; x<0; x++) fneg/=x;
-      if(fneg<0) error("strange!! check lngamma");
+      if(fneg<0) error2("strange!! check lngamma");
       fneg=log(fneg);
    }
    if (x<7) {
@@ -1218,8 +1272,8 @@ double DFGamma(double x, double alpha, double beta)
 {
 /* mean=alpha/beta; var=alpha/beta^2
 */
-   if (alpha<=0 || beta<=0) error("err in DFGamma()");
-   if (alpha>100) error("large alpha in DFGamma()");
+   if (alpha<=0 || beta<=0) error2("err in DFGamma()");
+   if (alpha>100) error2("large alpha in DFGamma()");
    return pow(beta*x,alpha)/x * exp(-beta*x - LnGamma(alpha));
 
 }
@@ -1384,7 +1438,7 @@ int AutodGamma (double M[], double freqK[], double rK[], double *rho1,
    double *point=freqK;
    double x, y, large=20, v1;
 /*
-   if (fabs(rho)>1-1e-4) error ("rho out of range");
+   if (fabs(rho)>1-1e-4) error2 ("rho out of range");
 */
    FOR (i,K-1) point[i]=PointNormal((i+1.0)/K);
    for (i=0; i<K; i++) {
@@ -1501,7 +1555,7 @@ double CDFBeta(double x, double p, double q, double lnbeta)
 */
    int indx, ns;
 /*   double acu=1e-9, in_beta=x, small=1e-10; */
-   double acu=1e-15, in_beta=x, small=1e-15;
+   double acu=1e-20, in_beta=x, small=1e-15;
    double psq=p+q, cx, xx, pp, qq, temp, term, ai, rx;
 
    if(x<small)        return 0;
@@ -1521,7 +1575,7 @@ double CDFBeta(double x, double p, double q, double lnbeta)
    line1: xx=x;   pp=p; qq=q;  indx=0;
    line2: term=ai=in_beta=1; ns=(int)(qq+cx*psq);
 
-   /*  user soper's reduction formulae */
+   /*  use soper's reduction formulae */
    rx=xx/cx;
    line3:    temp=qq-ai;  if(ns==0) rx=xx;
    for (; ;) {
@@ -1538,6 +1592,98 @@ double CDFBeta(double x, double p, double q, double lnbeta)
 
   return in_beta;    
 }
+
+
+double InverseCDFBeta(double prob, double p, double q, double lnbeta)
+{
+/* this gives the inverse cdf for beta(p,q) at given probability prob
+   Algorithm AS 109  Appl. Statist. (1977) vol.26, p.111.  This replaces
+   Algorithm AS 64  Appl. Statist. (1973), vol.22, p.411.
+
+   lnbeta is log of complete beta function; provide it if it is known,
+   and otherwise use 0.
+   returns -1 if in error
+*/
+   int index=0;
+   double a, adj, g, h, pp, prev, qq, r, s;
+   double sq, t, tx, w, y, yprev, acu=1e-14, lower=.0001, upper=.9999;
+   double xinbta=prob;
+     
+   if (p<=0 || q<=0 || prob<0 || prob>1) return(-1);
+   if (prob==0 || prob==1) return(prob);
+
+   if (prob<=.5) {  /* change tail if necessary */
+      a=prob;  pp=p;  qq=q;  index=0;
+   }
+   else {
+      a=1-prob;  pp=q;  qq=p;  index=1;
+   }
+
+   /* calculate the initial approximation */
+   if(lnbeta==0) lnbeta=LnGamma(p)+LnGamma(q)-LnGamma(p+q);
+   r = sqrt(-log(a * a));
+   y = r - (2.30753+0.27061*r)/(1+ (0.99229+0.04481*r) * r);
+   if (pp>1 && qq>1) goto line5;
+      r = qq + qq;
+      t = 1/(9*qq);
+      t = (1- t + y * sqrt(t));  t = r * t*t*t;
+      if (t<=0) goto line3;
+      t = (4*pp + r - 2) / t;
+      if (t<=1) goto line4;
+      xinbta = 1-2/ (t + 1);
+      goto line6;
+line3:
+      xinbta = 1- exp((log((1-a) * qq) + lnbeta) / qq);
+      goto line6;
+line4:
+      xinbta = exp((log(a * pp) + lnbeta) / pp);
+      goto line6;
+line5:
+      r = (y * y - 3)/6;
+      s = 1/ (pp*2-1);
+      t = 1/ (qq*2-1);
+      h = 2/ (s + t);
+      w = y * sqrt(h + r) / h - (t - s) * (r + 5/6. - 2/(3* h));
+      xinbta = pp / (pp + qq * exp(w*2));
+
+      
+/*   solve for x by a modified newton-raphson method, using betaCDF() */
+line6:
+      r = 1- pp;
+      t = 1- qq;
+      yprev = 0;  sq = prev = 1;
+      if (xinbta<lower) xinbta = lower;
+      if (xinbta>upper) xinbta = upper;
+
+line7:
+      y = CDFBeta(xinbta, pp, qq, lnbeta);
+
+
+      y = (y - a) * exp(lnbeta + r * log(xinbta) + t * log(1-xinbta));
+      if (y * yprev<=0) prev = sq;
+      g = 1;
+line9:
+      adj = g * y;
+      sq = adj * adj;
+      if (sq>=prev) goto line10;
+      tx = xinbta - adj;
+      if (tx>=0 && tx<=1) goto line11;
+line10:
+      g = g/3;
+      goto line9;
+line11:
+      if (prev<=acu) goto line12;
+      if (y * y<=acu) goto line12;
+      if (tx==0 || tx==1) goto line10;
+      if (tx==xinbta) goto line12;
+      xinbta = tx;
+      yprev = y;
+      goto line7;
+line12:
+      if (index) xinbta = 1- xinbta;
+      return (xinbta);
+}
+
 
 static double prob_InverseCDF, *par_InverseCDF;
 static double (*cdf_InverseCDF)(double x,double par[]);
@@ -1560,7 +1706,7 @@ double InverseCDF(double(*cdf)(double x,double par[]),
    double sdiff,step=min2(0.05,(xb[1]-xb[0])/100);
 
    prob_InverseCDF=p;  par_InverseCDF=par; cdf_InverseCDF=cdf;
-   if(x<=xb[0]||x>=xb[1]) x=0.5;
+   if(x<=xb[0]||x>=xb[1]) x=.5;
    LineSearch(diff_InverseCDF, &sdiff, &x, xb, step);
    return(x);
 }
@@ -1649,7 +1795,7 @@ int ScatterPlot (int n, int nseries, int yLorR[], double x[], double y[],
 long factorial(int n)
 {
    long f, i;
-   if (n>10) error ("n>10 in factorial");
+   if (n>10) error2 ("n>10 in factorial");
    for (i=2,f=1; i<=(long)n; i++) f*=i;
    return (f);
 }
@@ -1666,7 +1812,7 @@ double Binomial(double n, double k, double *scale)
    *scale=0;
    if(k==0) return(1);
    if(k<0 || (int)k!=k) 
-      error("k is not a whole number in Binomial.");
+      error2("k is not a whole number in Binomial.");
 
    if(n>0 && (int)n==n) k=min2(k,n-k);
    for (i=1,c=1; i<=k; i++) {
@@ -2066,7 +2212,7 @@ int nls2 (FILE *fout, double *sx, double * x0, int nx,
    double *x, *g, *p, *C, *J, *y, *space, *space_J;
 
    sspace=(n*(n+4+ny)+ny+2*(n+ny))*sizeof(double);
-   if((space=(double*)malloc(sspace))==NULL) error("oom in nls2");
+   if((space=(double*)malloc(sspace))==NULL) error2("oom in nls2");
    zero (space, n*(n+4+ny)+ny);
    x=space;  g=x+n;  p=g+n;  C=p+n;  J=C+n*(n+1);  y=J+ny*n; space_J=y+ny;
 
@@ -2179,7 +2325,7 @@ int debug=0;
 
    if(step<=0) return(*x0);
    a0=a1=a2=a3=f0=f1=f2=f3=-1;
-   if(*x0<xb[0]||*x0>xb[1]) error("err LineSearch: x0 out of range");
+   if(*x0<xb[0]||*x0>xb[1]) error2("err LineSearch: x0 out of range");
    f2=f0=fun(a2=a0=*x0);
    step1=min2(step,(a0-xb[0])/4);
    step1=max2(step1,e);
@@ -2188,16 +2334,18 @@ int debug=0;
       if(a1>xb[0]) {
          f1=fun(a1);
          if(f1>f2)  break;
-         else 
-            { a3=a2; f3=f2; a2=a1; f2=f1; }
+         else {
+            a3=a2; f3=f2; a2=a1; f2=f1;
+         }
       }
       else {
          a1=xb[0];  f1=fun(a1);
-         if(f1<f2) { a2=a1; f2=f1; }
+         if(f1<=f2) { a2=a1; f2=f1; }
          break;
       }
    }
-   if(!i) { /* *x0 is the best point during the previous search */
+
+   if(i==0) { /* *x0 is the best point during the previous search */
       step1=min2(step,(xb[1]-a0)/4);
       for(i=0,a3=a2,f3=f2; ; i++) {
          a3+=(step1*=factor); 
@@ -2219,8 +2367,13 @@ int debug=0;
    for (ii=0; ii<maxround; ii++) {
       /* a4 is the minimum from the parabola over (a1,a2,a3)  */
 
+      if (a1>a2+1e-99 || a3<a2-1e-99 || f2>f1+1e-99 || f2>f3+1e-99) /* for linux */
+         { printf("\npoints out of order (ii=%d)!",ii+1); break; }
+
+/*
       if (a1>a2 || a3<a2 || f2>f1 || f2>f3)
-         { puts ("\npoints out of order!"); break; }
+         { printf("\npoints out of order (ii=%d)!",ii+1); break; }
+*/
       a4 = 2*((a2-a3)*f1+(a3-a1)*f2+(a1-a2)*f3);
       if (fabs(a4)>small)
          a4=((a2*a2-a3*a3)*f1+(a3*a3-a1*a1)*f2+(a1*a1-a2*a2)*f3)/a4;
@@ -2451,7 +2604,7 @@ int Newton (FILE *fout, double *f, double (* fun)(double x[], int n),
    printf ("\n\nIterating by Newton\tnp:%6d\nInitial:", n);
    FOR (i,n) printf ("%8.4f", x0[i]);       FPN (F0);
    if (fout) fprintf (fout, "\n\nNewton\tnp:%6d\n", n);
-   if (testx (x0, n)) error ("Newton..\ainvalid initials.");
+   if (testx (x0, n)) error2 ("Newton..\ainvalid initials.");
    FOR (Iround, maxround) {
        if (ddfun)
            (*ddfun) (x0, f, g, H, n);
@@ -2543,13 +2696,14 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
     int (*dfun)(double x[], double *f, double dx[], int n),
     double x[], double xb[][2], double space[], double e, int n)
 {
-/* n-D minimization with bounds using the BFGS algorithm
+/* n-variate minimization with bounds using the BFGS algorithm
      g0[n] g[n] p[n] x0[n] y[n] s[n] z[n] H[n*n] C[n*n] tv[2*n]
      xmark[n],ix[n]
    Size of space should be (check carefully?)
       #define spaceming2(n) ((n)*((n)*2+9+2)*sizeof(double))
    nfree: # free variables
-   xmark[i]=0 for inside space; -1 for lower boundary; 1 for upper boundary
+   xmark[i]=0 for inside space; -1 for lower boundary; 1 for upper boundary.
+   x[] has initial values at input and returns the estimates in return.
    ix[i] specifies the i-th free parameter
 
 */
@@ -2577,11 +2731,11 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
    }
 
    f0=*f=(*fun)(x,n);
+   xtoy(x,x0,n);
    if (noisy>2) {
       printf ("\n\nIterating by ming2\nInitial: fx= %12.6f\nx=",f0);
       FOR(i,n) printf("%9.5f",x[i]);   FPN(F0);
    }
-   xtoy(x,x0,n);
 
    if (dfun)  (*dfun) (x0, &f0, g0, n);
    else       gradientB (n, x0, f0, g0, fun, tv, xmark);
@@ -2622,8 +2776,8 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
             fflush (fout);
          }
          w=.2;  if(e<1e-4) w=0.01;  if(e<1e-6) w=.001;
-         if (SIZEp<w && H_end (x0,x,f0,*f,e,e,n))
-            { xtoy(x,x0,n); break; }
+         if (SIZEp<w && H_end(x0,x,f0,*f,e,e,n))
+            break;
       }
       if (dfun)  (*dfun) (x, f, g, n);
       else       gradientB (n, x, *f, g, fun, tv, xmark);
@@ -2676,3 +2830,116 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
    }
    return(0);
 }
+
+
+
+int ming1 (FILE *fout, double *f, double (* fun)(double x[], int n),
+    int (*dfun) (double x[], double *f, double dx[], int n),
+    int (*testx) (double x[], int n),
+    double x0[], double space[], double e, int n)
+{
+/* n-D minimization using quasi-Newton or conjugate gradient algorithms, 
+   using function and its gradient.
+
+   g0[n] g[n] p[n] x[n] y[n] s[n] z[n] H[n*n] tv[2*n]
+   using bound()
+*/
+   int i,j, maxround=1000, fail=0;
+   double small=1.e-20;     /* small value for checking |w|=0   */
+   double f0, *g0, *g, *p, *x, *y, *s, *z, *H, *tv;
+   double w,v, t, h;
+
+   if (testx (x0, n))
+      { printf ("\n\aInvalid initials..\n"); matout(F0,x0,1,n); return(-1); }
+   f0 = *f = (*fun)(x0, n);
+
+   if (noisy>2) {
+      printf ("\n\nIterating by ming1\nInitial: fx= %12.6f\nx=", f0);
+      FOR (i,n) printf ("%8.4f", x0[i]);       FPN (F0);
+   }
+   if (fout) {
+      fprintf (fout, "\n\nIterating by ming1\nInitial: fx= %12.6f\nx=", f0);
+      FOR (i,n) fprintf (fout, "%10.6f", x0[i]);
+   }
+   g0=space;   g=g0+n;  p=g+n;   x=p+n;
+   y=x+n;      s=y+n;   z=s+n;   H=z+n;  tv=H+n*n;
+   if (dfun)  (*dfun) (x0, &f0, g0, n);
+   else       gradient (n, x0, f0, g0, fun, tv, AlwaysCenter);
+
+   SIZEp=0;  xtoy (x0, x, n);  xtoy (g0,g,n);  identity (H,n);  
+   FOR (Iround, maxround) {
+      FOR (i,n) for (j=0,p[i]=0.; j<n; j++)  p[i] -= H[i*n+j]*g[j];
+      t=bound (n, x0, p, tv, testx);
+
+      if (Iround == 0)  h = fabs(2*f0*.01/innerp(g,p,n));
+      else              h = norm(s,n)/SIZEp;
+      h = max2(h,1e-5);  h = min2(h,t/8);
+      SIZEp = norm(p,n);
+
+      t = LineSearch2 (fun, f, x0, p, h, t, .00001, tv, n);
+
+      if (t<=0 || *f<=0 || *f>1e32) {
+         if (fail) {
+            if(SIZEp>.1 && noisy>2) 
+               printf("\nSIZEp:%9.4f  Iround:%5d", SIZEp, Iround+1);
+            if (AlwaysCenter) { Iround=maxround;  break; }
+            else { AlwaysCenter=1; identity(H,n); fail=1; }
+         }
+         else      { identity(H, n); fail=1; }
+      }
+      else  {
+         fail=0;
+         FOR(i,n)  x[i]=x0[i]+t*p[i];
+
+         if (fout) {
+            fprintf (fout, "\n%3d %7.4f%14.6f  x", Iround+1, SIZEp, *f);
+            FOR (i,n) fprintf (fout, "%8.5f  ", x[i]);
+            fflush (fout);
+         }
+         if (SIZEp<0.001 && H_end (x0,x,f0,*f,e,e,n))
+            { xtoy(x,x0,n); break; }
+      }
+      if (dfun)  (*dfun) (x, f, g, n);
+      else       gradient (n,x,*f,g,fun,tv, (AlwaysCenter||fail||SIZEp<1));
+
+      for (i=0,f0=*f; i<n; i++)
+         { y[i]=g[i]-g0[i];  s[i]=x[i]-x0[i];  g0[i]=g[i]; x0[i]=x[i]; }
+
+      /* renewal of H varies with different algorithms   */
+#ifdef SR1
+      /*   Symmetrical Rank One (Broyden, C. G., 1967) */
+      for (i=0,w=.0; i<n; i++) {
+         for (j=0,t=.0; j<n; j++) t += H[i*n+j] * y[j];
+         z[i]=s[i] - t;
+         w += y[i]*z[i];
+      }
+      if (fabs(w)<small)   { identity(H,n); fail=1; continue; }
+      FOR (i,n)  FOR (j,n)  H[i*n+j] += z[i]*z[j]/w;
+#else
+#ifdef DFP
+      /* Davidon (1959), Fletcher and Powell (1963). */
+      for (i=0,w=v=0.; i<n; i++) {
+         for (j=0,z[i]=.0; j<n; j++) z[i] += H[i*n+j] * y[j];
+         w += y[i]*z[i];  v += y[i]*s[i];
+      }
+      if (fabs(w)<small || fabs(v)<small)  { identity(H,n); fail=1; continue;}
+      FOR (i,n)  FOR (j,n)  H[i*n+j] += s[i]*s[j]/v - z[i]*z[j]/w;
+#else
+      for (i=0,w=v=0.; i<n; i++) {
+         for (j=0,z[i]=0.; j<n; j++) z[i] += H[i*n+j] * y[j];
+         w+=y[i]*z[i];    v+=y[i]*s[i];
+      }
+      if (fabs(v)<small)   { identity(H,n); fail=1; continue; }
+      FOR (i,n)  FOR (j,n)
+         H[i*n+j] += ( (1+w/v)*s[i]*s[j] - z[i]*s[j] - s[i]*z[j] ) / v;
+#endif
+#endif
+   }    /* for (Iround,maxround)  */
+
+   if (Iround==maxround) {
+      if (fout) fprintf (fout,"\ncheck convergence!\n");
+      return(-1);
+   }
+   return(0);
+}
+

@@ -1,5 +1,5 @@
 
-      seqfile = HIVenvSweden.paup  mtCDNApri.nuc    * sequence data file name
+      seqfile = HIVenvSweden.paup    * sequence data file name
       outfile = mlc          * main result file name
      treefile = HIVenvSweden.trees   * tree structure file name
 

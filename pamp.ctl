@@ -1,5 +1,5 @@
 
-    seqfile = mtprim9.nuc * sequence data file name
+    seqfile = examples/mtprim9.nuc * sequence data file name
     outfile = mp        * main result file
    treefile = 9s.trees  * tree structure file name
 

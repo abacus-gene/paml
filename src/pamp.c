@@ -5,15 +5,18 @@
                            pamp <SequenceFileName>
 */
 
-#ifdef __MWERKS__
+#include "tools.h"
+
+#ifdef macintosh
 /* Added by Andrew Rambaut to accommodate Macs -
-   Brings up dialog box to allow command line parameters.
-*/
+   (1) Brings up dialog box to allow command line parameters.
+   (2) Reduces the size of statically allocated data.    */
 #include <console.h>
+#define NS            500
+#else
+#define NS            5000
 #endif
 
-#include "tools.h"
-#define NS            5000
 #define NBRANCH       (NS*2-2)
 #define NNODE         (NS*2-1)
 #define NGENE         2
@@ -49,7 +52,7 @@ struct TREEB {
 struct TREEN {
    int father, nson, sons[NS], ibranch, label;
    double branch, divtime, *lkl;
-}  nodes[2*NS-1];
+}  *nodes;
 
 
 #define NCATCHANGE 100
@@ -57,6 +60,7 @@ extern int noisy, *ancestor;
 extern double *SeqDistance;
 int maxchange, NSiteChange[NCATCHANGE];
 double MuChange;
+int LASTROUND=0; /* no use for this */
 
 #define EIGEN
 #define LSDISTANCE
@@ -85,43 +89,46 @@ int main (int argc, char *argv[])
    GetOptions (ctlf);
    if(argc>1) { strcpy(ctlf, argv[1]); printf("\nctlfile set to %s.\n",ctlf);}
 
-   if ((fseq=fopen(com.seqf, "r"))==NULL) error ("seqfile err.");
-   if ((fout=fopen (com.outf, "w"))==NULL) error("outfile creation err.");
-   if((fseq=fopen (com.seqf,"r"))==NULL)  error("No sequence file!");
+   if ((fseq=fopen(com.seqf, "r"))==NULL) error2 ("seqfile err.");
+   if ((fout=fopen (com.outf, "w"))==NULL) error2("outfile creation err.");
+   if((fseq=fopen (com.seqf,"r"))==NULL)  error2("No sequence file!");
    ReadSeq (NULL, fseq);
+   i=(com.ns*2-1)*sizeof(struct TREEN);
+   if((nodes=(struct TREEN*)malloc(i))==NULL) error2("oom");
+
    fprintf (fout,"PAMP %15s, %s sequences\n", com.seqf, Seqstr[com.seqtype]);
    if (com.nhomo) fprintf (fout, "nonhomogeneous model\n");
 
    space = (double*)malloc(10000*sizeof(double));  /* *** */
    SeqDistance=(double*)malloc(com.ns*(com.ns-1)/2*sizeof(double));
    ancestor=(int*)malloc(com.ns*(com.ns-1)/2*sizeof(int));
-   if (SeqDistance==NULL||ancestor==NULL) error("oom");
+   if (SeqDistance==NULL||ancestor==NULL) error2("oom");
 
    i = com.ns*(com.ns-1)/2;
    s3 = sizeof(double)*((com.ns*2-2)*(com.ns*2-2 + 4 + i) + i);
    s3 = max2(s3, com.ncode*com.ncode*(2*com.ns-2+1)*(int)sizeof(double));
 
    Ft = (double*) malloc(s3);
-   if (space==NULL || Ft==NULL)  error ("oom space");
+   if (space==NULL || Ft==NULL)  error2 ("oom space");
 
    Initialize (fout, space, com.seqtype);
-   if (com.ngene>1) error ("option G not allowed yet");
+   if (com.ngene>1) error2 ("option G not allowed yet");
 
 /*
    PatternLS (fout, Ft, 0., space, &i);
    printf ("\nPairwise estimation of rate matrix done..\n");
    fflush(fout);
 */
-   if ((ftree=fopen (com.treef,"r"))==NULL) error ("no treefile");
+   if ((ftree=fopen (com.treef,"r"))==NULL) error2 ("no treefile");
    fscanf (ftree, "%d%d", &i, &ntree);
-   if (i!=com.ns) error ("ns in the tree file");
+   if (i!=com.ns) error2 ("ns in the tree file");
 
    FOR (itree, ntree) {
 
       printf ("\nTREE # %2d\n", itree+1);
       fprintf (fout,"\nTREE # %2d\n", itree+1);
 
-      if (ReadaTreeN (ftree, &i, 1)) error ("err tree..");
+      if (ReadaTreeN (ftree, &i, 1)) error2 ("err tree..");
       OutaTreeN (F0, 0, 0);    FPN (F0); 
       OutaTreeN (fout, 0, 0);  FPN (fout);
 
@@ -142,6 +149,7 @@ int main (int argc, char *argv[])
       PathwayMP1 (fout, &maxchange, NSiteChange, Ft, space, 1);
       printf ("Yang reconstruction done..\n");    fflush(fout);
    }
+   free(nodes);
    return (0);
 }
 
@@ -160,7 +168,7 @@ int GetOptions (char *ctlf)
             else if (line[i]==comment) break;
          if (t==0) continue;
          sscanf (line, "%s%*s%d", opt, &t);
-         if ((pline=strstr(line, "="))==NULL) error ("option file.");
+         if ((pline=strstr(line, "="))==NULL) error2 ("option file.");
 
          for (i=0; i<nopt; i++) {
             if (strncmp(opt, optstr[i], 8)==0)  {
@@ -188,8 +196,8 @@ int GetOptions (char *ctlf)
    if (com.seqtype==0)       com.ncode=4;
    else if (com.seqtype==2)  com.ncode=20;
    else if (com.seqtype==3)  com.ncode=2;
-   else                      error ("seqtype");
-   if (com.ncatG>NCATG) error ("raise NCATG?");
+   else                      error2 ("seqtype");
+   if (com.ncatG>NCATG) error2 ("raise NCATG?");
    return (0);
 }
 
@@ -331,7 +339,7 @@ int PatternMP (FILE *fout, double Ft[])
    double *Q, *pi, *Root, *U, *V, *branch, *space, *T1, t;
 
    if((Q=(double*)malloc((n*n*6+tree.nbranch)*sizeof(double)))==NULL)
-      error("PathwayMP: oom");
+      error2("PathwayMP: oom");
    pi=Q+n*n; Root=pi+n; U=Root+n; V=U+n*n; branch=V+n*n; 
    space=T1=branch+tree.nbranch;
 
@@ -384,19 +392,19 @@ int PathwayMP1 (FILE *fout, int *maxchange, int NSiteChange[],
    double sumpr, bestpr, pr, *pnode=NULL, *pnsite;
 
    if((pnsite=(double*)malloc((com.ns-1)*n*sizeof(double)))==NULL)
-      error("PathwayMP1: oom");
+      error2("PathwayMP1: oom");
 
    PATHWay=(char*)malloc(nid*(n+3)*sizeof(char));
    NCharaCur=PATHWay+nid;  ICharaCur=NCharaCur+nid;  CharaCur=ICharaCur+nid;
    if (job==0) {
       zero(Ft,n*n*(tree.nbranch+1));
-      if((Ftt=(int*)malloc(n*n*tree.nbranch*sizeof(int)))==NULL) error("oom");
+      if((Ftt=(int*)malloc(n*n*tree.nbranch*sizeof(int)))==NULL) error2("oom");
    }
    else {
       pnode=(double*)malloc((nid*com.npatt+1)*(sizeof(double)+sizeof(char)));
       FOR (j,nid) zz[com.ns+j]=(char*)(pnode+nid*com.npatt)+j*com.npatt;
       FOR (j,com.ns) zz[j]=com.z[j];
-      if (pnode==NULL) error ("oom");
+      if (pnode==NULL) error2 ("oom");
    }
    for (j=0,visit[i=0]=tree.root-com.ns; j<tree.nbranch; j++) 
       if (tree.branches[j][1]>=com.ns) visit[++i]=tree.branches[j][1]-com.ns;
@@ -416,7 +424,7 @@ int PathwayMP1 (FILE *fout, int *maxchange, int NSiteChange[],
       FOR (j,nid) Equivoc[j]=(NCharaCur[j]>1);
 
       if (nchange>*maxchange) *maxchange=nchange;
-      if (nchange>NCATCHANGE-1) error ("raise NCATCHANGE");
+      if (nchange>NCATCHANGE-1) error2 ("raise NCATCHANGE");
       NSiteChange[nchange]+=(int)com.fpatt[h];
 
       DownStates (tree.root);
@@ -534,7 +542,7 @@ double DistanceREV (double Ft[], int n,double alpha,double Root[],double U[],
 
       else  abyx(1/pi[i], Q+i*n, n); 
    }
-   if (eigen (1, Q, n, Root, T1, U, V, T2)) error ("eigen jgl");
+   if (eigen (1, Q, n, Root, T1, U, V, T2)) error2 ("eigen jgl");
    xtoy (U, V, n*n);
    matinv (V, n, n, T1);
 /*
@@ -568,7 +576,7 @@ int PatternLS (FILE *fout, double Ft[], double alpha,double space[],int *cond)
    FILE *fdist=fopen("Distance", "w");
    
    if((pi=(double*)malloc((n*n*3+tree.nbranch)*sizeof(double)))==NULL)
-      error("PatternLS: oom");
+      error2("PatternLS: oom");
    Root=pi+n;  U=Root+n; V=U+n*n; branch=V+n*n;
 
    *cond=0;

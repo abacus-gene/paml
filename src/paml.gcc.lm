@@ -4,5 +4,5 @@ gcc -o basemlg -O2 basemlg.c tools.o -lm
 gcc -o codeml -O2  codeml.c tools.o eigen.o -lm
 gcc -o pamp -O2 pamp.c tools.o eigen.o -lm
 gcc -o mcmctree -O2 mcmctree.c tools.o -lm
-gcc -o evolver -O2 evolver.c tools.o -lm
-gcc -o rell -O2 rell.c tools.o -lm
+gcc -o evolver -O2 evolver.c tools.o eigen.o -lm
+gcc -o yn00 -O2 yn00.c tools.o -lm

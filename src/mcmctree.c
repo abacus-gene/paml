@@ -73,6 +73,7 @@ enum {JC69, K80, F81, F84, HKY85, TN93, REV} MODELS;
 int nR=4, nreplicateMC;
 double lnpBestTree, PMat[16], Cijk[64], Root[4];
 double _rateSite=1;
+int LASTROUND=0; /* no use for this */
 
 #define REALSEQUENCE
 #define PARSIMONY
@@ -114,13 +115,13 @@ int main(int argc, char *argv[])
    if (argc>1) 
       { strcpy(ctlf, argv[1]); printf ("\nctlfile reset to %s.\n", ctlf); }
    GetOptions (ctlf);
-   if ((fout=fopen(com.outf,"w"))==NULL) error("outfile creation err.");
+   if ((fout=fopen(com.outf,"w"))==NULL) error2("outfile creation err.");
    if((fseq=fopen (com.seqf,"r"))==NULL)  {
       printf ("\n\nSequence file %s not found!\n", com.seqf);
       exit (-1);
    }
 
-   if ((space=(double*)malloc(50000*sizeof(double)))==NULL) error("oom");
+   if ((space=(double*)malloc(50000*sizeof(double)))==NULL) error2("oom");
 
    for (idata=0; idata<ndata; idata++) {
       if (ndata>1) {
@@ -134,7 +135,7 @@ int main(int argc, char *argv[])
       if (com.clock) fprintf (fout, " Clock  ");
       if (com.alpha) fprintf (fout,"dGamma (ncatG=%d)", com.ncatG);
       if (com.nalpha>1) fprintf (fout,"(%d gamma)", com.nalpha);
-      if (com.ngene>1) error ("multiple genes not supported");
+      if (com.ngene>1) error2 ("multiple genes not supported");
       
       fprintf(fout,"\n%s Bayesian analysis:", 
           (com.hier?"Hierarchical":"Empirical"));
@@ -153,7 +154,7 @@ int main(int argc, char *argv[])
          com.fhK=(double*)malloc(com.npatt*com.ncatG*sizeof(double));
          DiscreteGamma (com.freqK, com.rK, com.alpha, com.alpha, com.ncatG, 0);
       }
-      if (com.lkl==NULL || (com.alpha && com.fhK==NULL)) error ("oom");
+      if (com.lkl==NULL || (com.alpha && com.fhK==NULL)) error2 ("oom");
       
       if (com.model>1)
          EigenTN93(com.model,com.kappa,com.kappa,com.pi,&nR,Root,Cijk);
@@ -314,7 +315,7 @@ int GetOptions (char *ctlf)
             else if (line[i]==comment) break;
          if (t==0) continue;
          sscanf (line, "%s%*s%lf", opt, &t);
-         if ((pline=strstr(line, "="))==NULL) error ("option file.");
+         if ((pline=strstr(line, "="))==NULL) error2 ("option file.");
 
          for (i=0; i<nopt; i++) {
             if (strncmp(opt, optstr[i], 8)==0)  {
@@ -352,12 +353,12 @@ int GetOptions (char *ctlf)
    else
       if (noisy) printf ("\nno ctl file..");
 
-   if (com.model>HKY85)  error("model.");
-   if (com.model!=F84 && com.kappa<=0)  error("init kappa.");
+   if (com.model>HKY85)  error2("model.");
+   if (com.model!=F84 && com.kappa<=0)  error2("init kappa.");
    if (com.alpha==0)  com.nalpha=0;
    else              com.nalpha=(com.nalpha?com.ngene:!com.fix_alpha);
-   if (com.Mgene==1) error ("separate analyses not implemented.  DIY.");
-   if (com.alpha)  if (com.ncatG<2 || com.ncatG>NCATG) error ("ncatG");
+   if (com.Mgene==1) error2 ("separate analyses not implemented.  DIY.");
+   if (com.alpha)  if (com.ncatG<2 || com.ncatG>NCATG) error2 ("ncatG");
    if (com.model==JC69 || com.model==F81) { com.fix_kappa=1; com.kappa=1; }
    if (com.delta1>10 || com.delta1<0.1) puts ("\adelta1 not good..");
 
@@ -432,7 +433,7 @@ void MCMCtrees (FILE* fout, double space[])
 
    if(MAXTREEKEPT<burnin) puts("\nMAXTREEKEPT is too small??");
    lnPLHs=(double*)malloc(MAXTREEKEPT*3*sizeof(double));
-   if(lnPLHs==NULL) error("oom MCMCtrees");
+   if(lnPLHs==NULL) error2("oom MCMCtrees");
    IofLHs=(int*)(lnPLHs+MAXTREEKEPT);
    counts=IofLHs+MAXTREEKEPT;
 
@@ -443,17 +444,17 @@ void MCMCtrees (FILE* fout, double space[])
       printf ("\nRun MCMC to generate candidate labeled histories.\n");
    else {
       printf("\nLabeled histories read from the file %s.\n", com.LHf);
-      if ((fLH=fopen(com.LHf,"r"))==NULL) error("LHs file open error");
+      if ((fLH=fopen(com.LHf,"r"))==NULL) error2("LHs file open error2");
       EvaluateLHs(fout, fLH, IofLHs, lnPLHs, ntreekept, com.delta1);
       free(lnPLHs);
       return ;
    }
-   if ((ftree=fopen(com.treef,"r"))==NULL) error ("no treefile");
+   if ((ftree=fopen(com.treef,"r"))==NULL) error2 ("no treefile");
    fscanf(ftree, "%d%d", &i, &irun);  /* irun (ntree) ignored */
-   if (i!=com.ns) error ("ns in the tree file");
-   if (ReadaTreeN (ftree, &i, 1)) error ("err tree..");  fclose(ftree);
+   if (i!=com.ns) error2 ("ns in the tree file");
+   if (ReadaTreeN (ftree, &i, 1)) error2 ("err tree..");  fclose(ftree);
    OutaTreeN (F0, 0, 0);  FPN(F0);   OutaTreeB (F0);  FPN(F0);
-   if (com.ns*2-1!=tree.nnode) error("Use a rooted tree to start.");
+   if (com.ns*2-1!=tree.nnode) error2("Use a rooted tree to start.");
    nLHj=CountLHistory(LH_NNI, space);
    FOR (i,nLHj) {
       printf ("\nLH#%3d/%d:", i+1, nLHj);
@@ -465,7 +466,7 @@ void MCMCtrees (FILE* fout, double space[])
       scanf("%d", &jLH);  jLH--;
    }
    printf ("\nStart the chain with ordering #%d...\n", jLH+1);
-   if (jLH<0 || jLH>nLHj-1) error ("not in range."); 
+   if (jLH<0 || jLH>nLHj-1) error2 ("not in range."); 
 
    FOR (i,MAXTREEKEPT) counts[i]=0;
    for (irun=-burnin,ntreekept=0,wantL=0; irun<nrun; irun++) {
@@ -478,7 +479,7 @@ void MCMCtrees (FILE* fout, double space[])
          }
          else  TL='L';                                 /* change LH */
          nLHj=CountLHistory(LH_NNI, space);  jLH=(int)(nLHj*rndu());
-         if (nLHj>norder) { printf("%9d>%9d",nLHj,norder); error("norder"); }
+         if (nLHj>norder) { printf("%9d>%9d",nLHj,norder); error2("norder"); }
       }
       ReorderNodes (LH_NNI+jLH*(com.ns-1));
       jLH=GetIofLHistory ();
@@ -565,7 +566,7 @@ void EvaluateLHs(FILE*fout, FILE*fLH, int IofLHs[], double lnPLHs[],
    fprintf(fout, "\n\nEvaluate LHs (delta=%.3f):\n\n", delta);
    if (fLH) {
       fscanf(fLH, "%d%d", &j, &ntreekept);
-      if (j!=com.ns || ntreekept>MAXTREEKEPT)  error ("LHfile err.");
+      if (j!=com.ns || ntreekept>MAXTREEKEPT)  error2 ("LHfile err.");
    }
    for (j=0; j<ntreekept; j++) {
       if (fLH) { fscanf(fLH,"%d",&IofLHs[j]); fgets(line,200,fLH); }

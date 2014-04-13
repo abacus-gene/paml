@@ -10,8 +10,8 @@
       seqtype = 2  * 1:codons; 2:AAs; 3:codons-->AAs
     CodonFreq = 2  * 0:1/61 each, 1:F1X4, 2:F3X4, 3:codon table
        aaDist = 0  * 0:equal, +:geometric; -:linear, 1-6:G1974,Miyata,c,p,v,a
-   aaRatefile = jones.dat * only used for aa seqs with model=empirical(_F)
-                          * dayhoff.dat, jones.dat, mtmam.dat, or your own
+   aaRatefile = wag.dat * only used for aa seqs with model=empirical(_F)
+                   * dayhoff.dat, jones.dat, wag.dat, mtmam.dat, or your own
 
         model = 2
                    * models for codons:
@@ -38,18 +38,9 @@
        Malpha = 0  * different alphas for genes
         ncatG = 8  * # of categories in dG of NSsites models
 
-      fix_rho = 1  * 0: estimate rho (correlation parameter); 1: fix it at rho
-          rho = 0. * initial or fixed rho,   0:no correlation
-
         clock = 0   * 0:no clock, 1:global clock; 2:local clock; 3:TipDate
         getSE = 0  * 0: don't want them, 1: want S.E.s of estimates
  RateAncestor = 1  * (0,1,2): rates (alpha>0) or ancestral states (1 or 2)
-
-* Genetic codes: 0:universal, 1:mammalian mt., 2:yeast mt., 3:mold mt.,
-* 4: invertebrate mt., 5: ciliate nuclear, 6: echinoderm mt., 
-* 7: euplotid mt., 8: alternative yeast nu. 9: ascidian mt., 
-* 10: blepharisma nu.
-* These codes correspond to transl_table 1 to 11 of GENEBANK.
 
    Small_Diff = .5e-6
 *    cleandata = 0  * remove sites with ambiguity data (1:yes, 0:no)?

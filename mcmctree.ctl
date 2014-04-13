@@ -1,5 +1,5 @@
 
-    seqfile = mtprim9.nuc  * sequence data file name
+    seqfile = examples/mtprim9.nuc  * sequence data file name
     outfile = mcmctree.out * main result file name
    treefile = 9s.trees     * tree file for initial rooted tree topology
 

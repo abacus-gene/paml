@@ -98,25 +98,25 @@ int GetSeqFileType(FILE *fseq, int *paupseq)
    puts("\nseq file is not paml format.  Trying to read it as a paup file.");
 
    for ( ; ; ) {
-      if(fgets(line,lline,fseq)==NULL) error("seq err1: EOF");
+      if(fgets(line,lline,fseq)==NULL) error2("seq err1: EOF");
       strcase(line,0);
       if(strstr(line,paupstart)) break;
    }
    for ( ; ; ) {
-      if(fgets(line,lline,fseq)==NULL) error("seq err2: EOF");
+      if(fgets(line,lline,fseq)==NULL) error2("seq err2: EOF");
       strcase(line,0);
       if((p=strstr(line,ntax))!=NULL) {
-         while (*p != '=') { if(*p==0) error("seq err"); p++; }
+         while (*p != '=') { if(*p==0) error2("seq err"); p++; }
          sscanf(p+1,"%d", &com.ns);
-         if((p=strstr(line,nchar))==NULL) error("err: expect nchar");
-         while (*p != '=') { if(*p==0) error("err"); p++; }
+         if((p=strstr(line,nchar))==NULL) error2("err: expect nchar");
+         while (*p != '=') { if(*p==0) error2("err"); p++; }
          sscanf(p+1,"%d", &com.ls);
          break;
       } 
    }
    printf("\nns: %d\tls: %d\n", com.ns, com.ls); 
    for ( ; ; ) {
-      if(fgets(line,lline,fseq)==NULL) error("seq err1: EOF");
+      if(fgets(line,lline,fseq)==NULL) error2("seq err1: EOF");
       strcase(line,0);
       if (strstr(line,paupend)) break;
    }
@@ -141,7 +141,7 @@ int ReadSeq (FILE *fout, FILE *fseq)
    int gap=(n31==3?3:10), nchar=(com.seqtype==AAseq?20:4);
    char *pch=((com.seqtype<=1||com.seqtype==CODON2AAseq)?BASEs:(com.seqtype==2?AAs:BINs));
 
-   if (com.seqtype==4) error("seqtype==BINs, check with author");
+   if (com.seqtype==4) error2("seqtype==BINs, check with author");
    if (noisy>=9 && (com.seqtype<=CODONseq||com.seqtype==CODON2AAseq)) {
       puts("\n\nAmbiguity character definition table:\n");
       FOR (i,(int)strlen(BASEs)) {
@@ -152,9 +152,9 @@ int ReadSeq (FILE *fout, FILE *fseq)
    }
    GetSeqFileType(fseq, &paupseq);
 
-   if (com.ns>NS) error ("too many sequences.. raise NS?");
+   if (com.ns>NS) error2 ("too many sequences.. raise NS?");
    if (com.ls%n31!=0) {
-      printf ("\n%d nucleotides", com.ls); error ("seq. len. err.");
+      printf ("\n%d nucleotides", com.ls); error2 ("seq. len. err.");
    }
    lcode=com.ls/n31;
    if (noisy) printf ("\nns = %d  \tls = %d\n", com.ns, com.ls);
@@ -170,16 +170,16 @@ int ReadSeq (FILE *fout, FILE *fseq)
    if(com.fpatt) free(com.fpatt);
    com.pose=(int*) malloc(com.ls*sizeof(int));
    com.fpatt=(double*) malloc(com.ls*sizeof(double));
-   if(com.z[com.ns-1]==NULL || com.pose==NULL||com.fpatt==NULL) error("oom zpf");
+   if(com.z[com.ns-1]==NULL || com.pose==NULL||com.fpatt==NULL) error2("oom zpf");
    com.rgene[0]=1;   com.ngene=1;  
 
    lline=max2(lline, com.ls/n31*(n31+1)+lspname+50);
-   if((line=(char*)malloc(lline*sizeof(char)))==NULL) error("oom line");
+   if((line=(char*)malloc(lline*sizeof(char)))==NULL) error2("oom line");
    FOR (j,com.ls) com.pose[j]=0;      /* gene #1, default */
    if(paupseq) goto readseq;
 
    /* first line */
-   if (!fgets(line,lline,fseq)) error ("err ReadSeq: first line");
+   if (!fgets(line,lline,fseq)) error2 ("err ReadSeq: first line");
    for (j=0; j<lline && line[j] && line[j]!='\n'; j++) {
       if (!isalnum(line[j])) continue;
       line[j]=(char)toupper(line[j]);
@@ -188,13 +188,13 @@ int ReadSeq (FILE *fout, FILE *fseq)
          case 'C': basecoding=1; break;
          case 'S': Sequential=1; break;
          case 'I': Sequential=0; break;
-         default : printf (".Bad option %c\n", line[j]);  exit (-1);
+         default : printf ("\nBad option %c\n", line[j]);  exit (-1);
       }
    }
    if (strchr(line,'C')) {   /* protein-coding DNA sequences */
-      if(com.seqtype==2) error("option C?");
+      if(com.seqtype==2) error2("option C?");
       else if (com.seqtype==0) {
-         if (com.ls%3!=0 || noptline<1)  error("option C?");
+         if (com.ls%3!=0 || noptline<1)  error2("option C?");
          com.ngene=3; FOR(i,3) com.lgene[i]=com.ls/3;
          for (i=0;i<com.ls;i++) com.pose[i]=i%3;
 #if BASEML
@@ -211,13 +211,13 @@ int ReadSeq (FILE *fout, FILE *fseq)
       line[0]=(char)toupper(line[0]);
       switch (line[0]) {
       case ('G') :
-         if(basecoding) error("incorrect option format, use GC?\n");
-         if (fscanf(fseq,"%d",&com.ngene)!=1) error ("expecting #gene here..");
-         if (com.ngene>NGENE) error ("raise NGENE?");
+         if(basecoding) error2("incorrect option format, use GC?\n");
+         if (fscanf(fseq,"%d",&com.ngene)!=1) error2 ("expecting #gene here..");
+         if (com.ngene>NGENE) error2 ("raise NGENE?");
          if (com.fix_rgene) {    /* specified in the main program? */
             puts ("reading rates for genes from the seq. file, correct?");
             FOR (k, com.ngene) if (fscanf (fseq, "%lf", &com.rgene[k]) != 1)
-               error ("err: fix_rgene?");
+               error2 ("err: fix_rgene?");
          }
          fgets (line, lline, fseq);
          if (!blankline(line)) {      /* #sites in each gene on the 2nd line */
@@ -227,14 +227,14 @@ int ReadSeq (FILE *fout, FILE *fseq)
                while (*p && isalnum(*p)) p++;
             }
             for (; i<com.ngene; i++)
-               if (fscanf(fseq,"%d", &com.lgene[i])!=1) error("EOF at lgene");
+               if (fscanf(fseq,"%d", &com.lgene[i])!=1) error2("EOF at lgene");
 
             for (i=0,k=0; i<com.ngene; k+=com.lgene[i],i++)
                FOR (j, com.lgene[i]) com.pose[k+j]=i;
             for (i=0,k=0; i<com.ngene; i++) k+=com.lgene[i];
             if (k!=lcode) {
                matIout(F0, com.lgene, 1, com.ngene);
-               printf("\n%6d != %d", lcode, k);  error("ls for genes");
+               printf("\n%6d != %d", lcode, k);  error2("ls for genes");
             }
          }
          else {                   /* site marks on later line(s)  */
@@ -248,7 +248,7 @@ int ReadSeq (FILE *fout, FILE *fseq)
                   { printf("\ngene mark %d at %d?\n", ch, k+1);  exit (-1); }
                com.pose[k++]=ch-1;
             }
-            if(!fgets(line,lline,fseq)) error("err: option lines");
+            if(!fgets(line,lline,fseq)) error2("err: option lines");
          }
          break;
       default :
@@ -263,9 +263,9 @@ int ReadSeq (FILE *fout, FILE *fseq)
       FOR (j,com.ns) {
          lspname=LSPNAME;
          FOR (i, 2*lspname) line[i]='\0';
-         if (!fgets (line, lline, fseq)) error("err: EOF?");
+         if (!fgets (line, lline, fseq)) error2("err: EOF?");
          if (blankline(line)) {
-            if (!fgets (line, lline, fseq)) error("err: EOF");
+            if (!fgets (line, lline, fseq)) error2("err: EOF");
             if (!hasbase(line))
                { printf("err: empty line (seq %d)\n",j+1); exit(-1); }
          }
@@ -289,16 +289,17 @@ int ReadSeq (FILE *fout, FILE *fseq)
             }
             *p=(char)toupper(*p);  
             p1=strchr(pch,*p);
-            if (p1 && p1-pch>=nchar)  miss=1;
+            if (p1 && p1-pch>=nchar)  
+               miss=1;
             if (*p==eq) {
-               if (j==0) error ("err: . in 1st seq.?");
+               if (j==0) error2 ("err: . in 1st seq.?");
                com.z[j][k]=com.z[0][k];  k++;
             }
             else if (p1) 
                com.z[j][k++]=*p;
             else if (isalpha(*p)) 
                { printf("\nerr: %c at %d seq %d.",*p,k+1,j+1); exit(0); }
-            else if (*p==(char)EOF) error ("err: EOF?");
+            else if (*p==(char)EOF) error2 ("err: EOF?");
          }           /* for(k) */
       }              /* for (j,com.ns) */
    }
@@ -315,17 +316,17 @@ int ReadSeq (FILE *fout, FILE *fseq)
             if (!fgets(line,lline,fseq)) {
                printf("\nerr reading site %d, seq %d group %d",
                   lt[j]+1,j+1,igroup+1);
-               error ("err: EOF?");
+               error2 ("err: EOF?");
             }
             if (!hasbase(line)) {
                if (j) {
                   printf ("\n%d, seq %d group %d", lt[j]+1, j+1, igroup+1);
-                  error ("err: empty line.");
+                  error2 ("err: empty line.");
                }
                else 
                   if (PopEmptyLines(fseq,lline,line)==-1) {
                      printf ("\n%d, seq %d group %d", lt[j]+1, j+1, igroup+1);
-                     error ("err: EOF?");
+                     error2 ("err: EOF?");
                   }
             }
             p=line;
@@ -346,7 +347,8 @@ int ReadSeq (FILE *fout, FILE *fseq)
                if (lt[j]==com.ls) break;
                *p=(char)toupper(*p);
                p1=strchr(pch,*p);
-               if (p1 && p1-pch>=nchar) miss=1;
+               if (p1 && p1-pch>=nchar) 
+                  miss=1;
                if (*p==eq) {
                   if (j==0) {
                      printf("err: . in 1st seq, group %d.\n",igroup);
@@ -362,7 +364,7 @@ int ReadSeq (FILE *fout, FILE *fseq)
                           *p,lt[j]+1,j+1,igroup+1);
                   exit(-1);
                }
-               else if (*p==(char)EOF) error ("err: EOF");
+               else if (*p==(char)EOF) error2 ("err: EOF");
             }         /* for (*p) */
          }            /* for (j,com.ns) */
       }               /* for (igroup) */
@@ -386,13 +388,14 @@ int ReadSeq (FILE *fout, FILE *fseq)
 */
    if (noisy>=2) printf ("\nSequences read..\n");
    if(n31==3) com.ls=lcode;
-   IdenticalSeqs();
+
+   /*  IdenticalSeqs(); */
 
 #ifdef CODEML
    if(com.seqtype==CODON2AAseq) {
       if (noisy>2) puts("\nTranslating into AA sequences\n");
       FOR(i,com.ns) {
-         if (noisy>2) printf("\nTranslating sequence %d\n",i+1);
+         if (noisy>2) printf("Translating sequence %d\n",i+1);
          DNA2protein(com.z[i], com.z[i], com.ls,com.icode);
       }
       com.seqtype=AAseq;
@@ -421,6 +424,7 @@ int IdenticalSeqs(void)
    int is,js,h, same,nkept=com.ns;
    int ls1=com.ls*(com.seqtype==CODONseq||com.seqtype==CODON2AAseq?3:1);
 
+   puts("\nIdenticalSeqs: not tested\a");
    FOR(is,com.ns) keep[is]=1;
    FOR(is,com.ns)  { 
       if(!keep[is]) continue;
@@ -437,7 +441,7 @@ int IdenticalSeqs(void)
    FOR(is,com.ns) if(!keep[is]) nkept--;
    if(nkept<com.ns) {
       strcpy(tmpf,com.seqf);  strcat(tmpf,".tmp");
-      if((ftmp=fopen(tmpf,"w"))==NULL) error("IdenticalSeqs: file error");
+      if((ftmp=fopen(tmpf,"w"))==NULL) error2("IdenticalSeqs: file error");
       printSeqs(ftmp,NULL,keep,1);
       fclose(ftmp);
       printf("\nUnique sequences collected in %s.\n",tmpf);
@@ -492,6 +496,8 @@ int PatternWeight (FILE *fout, double space[])
          if(newpatt) {
             FOR(j,com.ns) FOR(k,nb) zt[j][com.npatt*nb+k]=b[j][k];
             poset[h]=com.npatt++;
+            if(noisy && (h+1)%2000==0) 
+               printf("\r%d patterns at %d sites", com.npatt,h+1);
          }
          com.fpatt[poset[h]]++;
       }     /* for (h)  */
@@ -575,7 +581,7 @@ int Initialize (FILE *fout, double *space, int seqtype)
          for(irf=0; irf<nrf; irf++) {
             for (h=com.posG[ig]; h<com.posG[ig+1]; h++) {
                b=strchr(pch,com.z[j][h])-pch;
-               if(b<0) error("Initialize: strange char");
+               if(b<0) error2("Initialize: strange char");
                else if (b<nc)
                   com.pi[b]+=com.fpatt[h];
                else if(com.seqtype==BASEseq) {
@@ -636,6 +642,7 @@ int Initialize (FILE *fout, double *space, int seqtype)
       fillxc (com.pi, 1./nc, nc);
       FOR (j,com.ngene) xtoy (com.pi, com.piG[j], nc);
    }
+
    if (com.seqtype==AAseq) {
       for (j=0,t=0; j<nc; j++) t+=(com.pi[j]>0);
       if (t<=4)  printf ("\n\a\t\tAre these a.a. sequences?");
@@ -652,7 +659,7 @@ int Initialize (FILE *fout, double *space, int seqtype)
    }
 
    if(com.cleandata)  /* for aa and base sequences */
-     FOR(j,com.ns) if(transform(com.z[j],com.npatt,1,com.seqtype)) error("uh?");
+     FOR(j,com.ns) if(transform(com.z[j],com.npatt,1,com.seqtype)) error2("uh?");
 
    if (noisy>2) printf ("\n\nInitialized..\n");
    return(0);
@@ -674,14 +681,14 @@ int RemoveIndel(void)
       { n31=3; nchar=4; pch=BASEs; }
    else {
       n31=1;
-      if(com.seqtype==AAseq) { nchar=20; pch=AAs; }
+      if(com.seqtype==AAseq)        { nchar=20; pch=AAs; }
       else if(com.seqtype==BASEseq) { nchar=4; pch=BASEs; }
-      else  { nchar=2; pch=BINs; }
+      else                          { nchar=2; pch=BINs; }
     }
 
-   if (com.ls%n31) error ("ls in RemoveIndel.");
+   if (com.ls%n31) error2 ("ls in RemoveIndel.");
    if((miss=(char*)malloc(com.ls/n31 *sizeof(char)))==NULL)
-      error("oom miss");
+      error2("oom miss");
    FOR (h,com.ls/n31) miss[h]=0;
    for (js=0; js<com.ns; js++) {
       for (h=0,nindel=0; h<com.ls/n31; h++) {
@@ -693,6 +700,9 @@ int RemoveIndel(void)
       }
       if (nindel) printf ("\n%6d ambiguity characters in seq. %d", nindel,js+1);
    }
+   if(noisy) puts("\nThe following sites are removed: ");
+   for (h=0; h<com.ls/n31; h++)  if(miss[h]) printf(" %2d", h+1);
+
    for (h=0,lnew=0; h<com.ls/n31; h++)  {
       if(miss[h]) continue;
       for (js=0; js<com.ns; js++) {
@@ -722,10 +732,10 @@ puts("\nMPInformSites: missing data not dealt with yet?\n");
 
    finf=fopen("MPinf.seq","w");
    fninf=fopen("MPninf.seq","w");
-   if (finf==NULL || fninf==NULL) error("MPInformSites: file creation error");
+   if (finf==NULL || fninf==NULL) error2("MPInformSites: file creation error");
 
    puts ("\nSorting parsimony-informative sites: MPinf.seq & MPninf.seq");
-   if ((imark=(char*)malloc(com.ls*sizeof(char)))==NULL) error("oom imark");
+   if ((imark=(char*)malloc(com.ls*sizeof(char)))==NULL) error2("oom imark");
    for (h=0,lsinf=0; h<com.ls; h++) {
       for (i=0; i<com.ns; i++) markb[i]=0;
       for (i=0; i<com.ns; i++) markb[(int)com.z[i][com.pose[h]]-1]++;
@@ -886,7 +896,7 @@ void printSeqs(FILE *fout, int *pose, char keep[], int format)
    for(j=0; j<com.ns; j++,FPN(fout)) {
       if(keep && !keep[j]) continue;
       fprintf(fout,"%s%-*s  ", (format?"      ":""),wname,com.spname[j]);
-      print1seq(fout, com.z[j],com.ls, com.cleandata, pose);
+      print1seq(fout,com.z[j],com.ls,com.cleandata, pose);
    }
    if (format==1) fprintf(fout, "   ;\nend;");
    FPN(fout);
@@ -909,7 +919,7 @@ double SeqDivergence (double x[], int model, double alpha, double *kappa)
    double p[4], Y,R, a1,a2,b, P1,P2,Q,fd,tc,ag, a1t,a2t,bt;
    double small=1e-6,largek=999;
 
-   if (testXMat(x)) error ("X err..");
+   if (testXMat(x)) error2 ("X err..");
    for (i=0,fd=1,zero(p,4); i<4; i++) {
       fd -= x[i*4+i];
       FOR (j,4) { p[i]+=x[i*4+j]/2;  p[j]+=x[i*4+j]/2; }
@@ -982,7 +992,7 @@ int DistanceMatNuc (FILE *fout, int model, double alpha)
    double x[16], kappat=0, t,bigD=5;
    FILE *fdist=(FILE*)fopen(distf,"w");
    
-   if(fdist==NULL) error("DistnaceMatNuc: file creation error");
+   if(fdist==NULL) error2("DistnaceMatNuc: file creation error");
    fprintf(fdist,"%6d\n", com.ns);
    if (model>=HKY85) model=4; /* TN93 here */
    if (fout) {
@@ -1103,7 +1113,7 @@ int EigenTN93 (int model, double kappa1, double kappa2, double pi[],
          for (k=1; k<4; k++)  Cijk[i*4*nr+j*nr+k] = U[i*4+k]*V[k*4+j];
          break;
       default:
-         error ("err:model");
+         error2 ("err:model");
       }
    }
 #ifdef BASEMLG
@@ -1136,7 +1146,7 @@ int EigenREV (FILE* fout, double rates[], double pi[],
       matout (fout, Q, 4,4);
    }
    if ((k=eigen (1,Q,4,Root,T1,U,V,T2))!=0) 
-      error ("\ncomplex roots in EigenREV?");
+      error2 ("\ncomplex roots in EigenREV?");
    xtoy (U, V, 16);
    matinv (V, 4, 4, T1);
    FOR (i,4) FOR(j,4) FOR(k,4) Cijk[i*4*4+j*4+k] = U[i*4+k]*V[k*4+j];
@@ -1231,7 +1241,7 @@ int fun_LS (double x[], double diff[], int np, int npair)
    double dexp;
 
    if (SetBranch(x) && noisy>2) puts ("branch len.");
-   if (npair != com.ns*(com.ns-1)/2) error ("# seq pairs err.");
+   if (npair != com.ns*(com.ns-1)/2) error2 ("# seq pairs err.");
    FOR (i, com.ns) FOR (j, i) {
       it=i*(i-1)/2+j;
       for (aa=i,dexp=0; aa!=ancestor[it]; aa=nodes[aa].father)
@@ -1251,7 +1261,7 @@ int LSDistance (double *ss,double x[],int (*testx)(double x[],int np))
 
    if ((*testx)(x, com.ntime)) {
       matout (F0, x, 1, com.ntime);
-      error ("initial err in LSDistance()");
+      puts ("initial err in LSDistance()");
    }
    FOR (i, com.ns) FOR (j, i) {
       h=i*(i-1)/2+j;
@@ -1261,7 +1271,7 @@ int LSDistance (double *ss,double x[],int (*testx)(double x[],int np))
             if (a1==a2) { ancestor[h]=a1; break; }
          if (ancestor[h] != -1) break;
       }
-      if (ancestor[h] == -1) error ("no ancestor");
+      if (ancestor[h] == -1) error2 ("no ancestor");
    }      
    i=nls2((com.ntime>20&&noisy>=3?F0:NULL),
       ss,x,com.ntime,fun_LS,NULL,testx,com.ns*(com.ns-1)/2,1e-6);
@@ -1276,14 +1286,16 @@ void BranchToNode (void)
 {
 /* tree.root need to be specified before calling this
 */
-   int i,j, from, to;
+   int i, from, to;
    
    tree.nnode=tree.nbranch+1;
+
 /*
    if (tree.root<0 || tree.root>com.ns*2-2) 
-      { printf ("root at %d", tree.root+1); error ("tree root"); }
+      { printf ("root at %d", tree.root+1); error2 ("tree root"); }
 */
-   FOR (j,tree.nnode) ClearNode (j);   /* Is this necessary? */
+   FOR (i,tree.nnode)
+      { nodes[i].father=nodes[i].ibranch=-1;  nodes[i].nson=0; }
    FOR (i,tree.nbranch) {
       from=tree.branches[i][0];
       to  =tree.branches[i][1];
@@ -1322,11 +1334,15 @@ void NodeToBranch (void)
    if (tree.nnode!=tree.nbranch+1)  puts ("nd!=nb+1");
 }
 
+
 void ClearNode (int inode)
 {
+/* a source of confusion. Try not to use this routine.
+*/
    nodes[inode].father=nodes[inode].ibranch=-1;
-   nodes[inode].label=0;
    nodes[inode].nson=0;
+   nodes[inode].branch=nodes[inode].divtime=0;
+   /* nodes[inode].label=0; */
    /* nodes[inode].branch=0; clear node structure only, not branch lengths */
    /* FOR (i, com.ns) nodes[inode].sons[i]=-1; */
 }
@@ -1342,7 +1358,7 @@ int ReadaTreeB (FILE *ftree, int popline)
          if (fscanf (ftree, "%d", & tree.branches[j][i]) != 1) state=-1;
          tree.branches[j][i]--;
          if(tree.branches[j][i]<0 || tree.branches[j][i]>com.ns*2-1) 
-            error("err ReadaTreeB.");
+            error2("ReadaTreeB: node numbers out of range");
       }
       if (tree.branches[j][0]<com.ns) YoungAncestor=1;
 /*
@@ -1353,7 +1369,7 @@ int ReadaTreeB (FILE *ftree, int popline)
    if(popline) fgets(line, 254, ftree);
    tree.root=tree.branches[0][0];
 
-   if(YoungAncestor)  puts("Ancestors in the data?  Check (lkl) carefully.");
+   if(YoungAncestor)  puts("Ancestors in the data?  Check lkl carefully.");
 
 /*
    com.ntime = com.clock ? (tree.nbranch+1)-com.ns+(tree.root<com.ns)
@@ -1382,31 +1398,34 @@ int GetTreeFileType(FILE *ftree, int *ntree, int *pauptree, int shortform)
    paupch=";" will be the last character before the list of trees.
    Modify if necessary.
 */
-   int i,k, lline=10000, ch, paupch=';';
+   int i,k, lline=10000, ch=0, paupch=';';
    char line[10000];
    char *paupstart="begin tree", *paupend="translate";
 
    *pauptree=0;
    k=fscanf(ftree,"%d%d",&i,ntree);
-   if(k==1) { *ntree=i; return(0); }
-   if(i==com.ns) return(0);
-   puts("\n# seqs in tree file does not match.  Read as a paup tree file.");
+   if(k==2 && i==com.ns) return(0);                 /* old paml style */
+   else if(k==1) { *ntree=i; return(0); }           /* phylip & molphy style */
+   while(ch!='(' && !isalnum(ch)) ch=fgetc(ftree);  /* treeview style */
+   if(ch=='(') { *ntree=-1; ungetc(ch,ftree); return(0); }
+
+   puts("\n# seqs in tree file does not match.  Read as the nexus format.");
    for ( ; ; ) {
-      if(fgets(line,lline,ftree)==NULL) error("tree err1: EOF");
+      if(fgets(line,lline,ftree)==NULL) error2("tree err1: EOF");
       strcase(line,0);
       if (strstr(line,paupstart)) { *pauptree=1; *ntree=-1; break; }
    }
    if(shortform) return(0);
    for ( ; ; ) {
-      if(fgets(line,lline,ftree)==NULL) error("tree err2: EOF");
+      if(fgets(line,lline,ftree)==NULL) error2("tree err2: EOF");
       strcase(line,0);
       if (strstr(line,paupend)) break;
    }
    for ( ; ; ) {
-      if((ch=fgetc(ftree))==EOF) error("tree err3: EOF");
+      if((ch=fgetc(ftree))==EOF) error2("tree err3: EOF");
       if (ch==paupch) break;
    }
-   if(fgets(line,lline,ftree)==NULL) error("tree err4: EOF");
+   if(fgets(line,lline,ftree)==NULL) error2("tree err4: EOF");
 
    return(0);
 }
@@ -1431,7 +1450,7 @@ int PaupTreeRubbish(FILE *ftree)
          return(-1);
       }
       else if (ch==']') break;
-      else if (ch=='(') error("err treefile: strange");
+      else if (ch=='(') error2("err treefile: strange");
    }
    return(0);
 }
@@ -1456,13 +1475,19 @@ int ReadaTreeN (FILE *ftree, int *length_label, int popline)
    char check[NS], line[255], delimiters[]="(),:#$;";
 
    *length_label=0;
+   tree.nnode=com.ns;  tree.nbranch=0;
+   FOR(i,2*com.ns-1) {
+      nodes[i].father=nodes[i].ibranch=-1;
+      nodes[i].nson=nodes[i].label=0;
+      nodes[i].branch=0;
+      /* nodes[i].divtime=0; */
+      /* at least for tips, note clock=3 */
+   }
    while(isspace(ch)) ch=fgetc(ftree);  /* skip spaces */
    ungetc(ch,ftree);
    if (isdigit(ch)) { ReadaTreeB(ftree,popline); return(0); }
 
-   tree.nnode=com.ns;  tree.nbranch=0;
-   FOR (i, 2*com.ns-1) ClearNode (i);
-   FOR (i, com.ns) check[i]=0;
+   FOR(i,com.ns) check[i]=0;
    for (;;) {
       ch = fgetc (ftree);
       if (ch==EOF) return(-1);
@@ -1490,10 +1515,10 @@ int ReadaTreeN (FILE *ftree, int *length_label, int popline)
          haslabel=1; fscanf(ftree,"%d",&nodes[inodeb].label);
       }
       else if (ch==',') ;
-      else if (ch==';' && level!=0) error("; in treefile");
+      else if (ch==';' && level!=0) error2("; in treefile");
       else { /* read species name or number */
          line[0]=(char)ch;  line[1]=(char)fgetc(ftree);
-/*         if(line[1]==(char)EOF) error("eof in tree file"); */
+/*         if(line[1]==(char)EOF) error2("eof in tree file"); */
          if (com.ns<10 && isdigit(line[0]) && isdigit(line[1])) 
            { ungetc(line[1], ftree); line[1]=0; }
          else 
@@ -1536,14 +1561,14 @@ int ReadaTreeN (FILE *ftree, int *length_label, int popline)
 */
    FOR(i,com.ns)  if(check[i]!=1) return(-1);
    if(tree.nbranch>2*com.ns-2) { 
-      printf("nbranch %d", tree.nbranch); error("too many branches in tree?");
+      printf("nbranch %d", tree.nbranch); error2("too many branches in tree?");
    }
    *length_label=haslength+2*haslabel;
-
    return (0);
 }
 
 
+int IncludeNodeLabel=0;
 
 int OutSubTreeN (FILE *fout, int inode, int spnames, int branchlen);
 
@@ -1552,26 +1577,28 @@ int OutSubTreeN (FILE *fout, int inode, int spnames, int branchlen)
    int i,ison;
 
    fputc ('(', fout);
-
    FOR (i, nodes[inode].nson) {
       ison=nodes[inode].sons[i];
-      if (nodes[ison].nson==0) {
-         if (spnames) fprintf (fout, "%s", com.spname[ison]);
-         else         fprintf (fout, "%d", ison+1);
+      if(nodes[ison].nson==0) {
+         if(spnames) {
+            if(IncludeNodeLabel) fprintf(fout, "%d_",ison+1);
+            fprintf(fout,"%s",com.spname[ison]);
+         }
+         else
+            fprintf(fout,"%d",ison+1);
       }
       else
          OutSubTreeN(fout,ison,spnames,branchlen);
-      if (branchlen) { 
+      if(IncludeNodeLabel && nodes[ison].nson) fprintf(fout," %d ",ison+1);
+      if(branchlen) { 
 
 /*  Add branch labels to be read by Rod Page's TreeView. */
 #ifdef CODEML
-          if(com.verbose>1 && com.model==1) {
-          fprintf(fout," #%.2f ", POMEGA[OmegaBranch[nodes[ison].ibranch]]);
+         if(com.verbose>1 && com.seqtype==1 && com.model && !com.NSsites) {
+         fprintf(fout," #%.2f ", nodes[ison].omega);
 }
 #endif
-
          fprintf(fout,":%.6f", nodes[ison].branch);
-
       }
 
       if(com.ns>9 || spnames || branchlen)
@@ -1580,8 +1607,12 @@ int OutSubTreeN (FILE *fout, int inode, int spnames, int branchlen)
    fputc (')', fout);
 
    /* output node times for treeview */
-   if(com.clock && noisy>=9 && com.ns>9 && branchlen)
+/*
+   if(noisy>=9 && com.ns>9 && com.clock && branchlen)
       fprintf(fout," #%.1f ", nodes[inode].divtime);
+*/
+   if(noisy>=9 && com.ns>9 && branchlen)
+      fprintf(fout," #%d ", inode+1);
 
    return (0);
 }
@@ -1589,7 +1620,11 @@ int OutSubTreeN (FILE *fout, int inode, int spnames, int branchlen)
 
 int OutaTreeN (FILE *fout, int spnames, int branchlen)
 {
-   OutSubTreeN(fout,tree.root,spnames,branchlen);  fputc(';',fout);
+/* IncludeNodeLabel=1 will label the nodes
+*/
+   OutSubTreeN(fout,tree.root,spnames,branchlen);  
+   if(IncludeNodeLabel) fprintf(fout," %d ", tree.root+1);
+   fputc(';',fout);
    return(0);
 }
 
@@ -1609,18 +1644,20 @@ void PointLklnodes (void)
 
 
 double ScaleTimes_clock3=1, YoungDate=0, divtime_oldSon[2*NS-1];
-/* for clock=3: mutation=mut/ScaleTimes_clock3; divtime=divtime*ScaleTimes_clock3 */
+/* for clock=3: mutation=mut/ScaleTimes_clock3; 
+                divtime=divtime*ScaleTimes_clock3 */
 void SetDivTime(int inode, double x[]);
 void SetDivTime_OldSon(int inode);
 static int innode_time=0;  
 /* number of internal node times, usd to deal with young ancestors.  
-   Check that this works with ordinary trees 
+   This might be broken.
 */
 
 
 int GetSeqTimes(void)
 {
 /* Known divergence times are rescaled by ScaleTimes_clock3
+   Andrew Rambaut's TipDate models
 */
    int i,k;
    double young=-1,old=-1,date;
@@ -1631,7 +1668,7 @@ int GetSeqTimes(void)
       for(; k>0 &&(com.spname[i][k]=='.'||isdigit(com.spname[i][k])); k--);
       sscanf(com.spname[i]+k+1, "%lf", &date);
       nodes[i].divtime=date;
-      if(date<0) error("date<0");
+      if(date<0) error2("date<0");
       if(i==0) young=old=date;
       else { old=min2(old,date); young=max2(young,date); }
       printf("%9.2f for species %d (%s)\n", date,i+1,com.spname[i]);
@@ -1652,14 +1689,15 @@ int GetSeqTimes(void)
 
 void SetDivTime_OldSon(int inode)
 {
-/* This is for (clock==3), and finds the oldest son for each internal nodes, using 
-   nodes[].divtime for tips (which are initialized in GetSeqTimes).
+/* This is for (clock==3), and finds the oldest son for each internal node, 
+   using nodes[].divtime for tips (which are initialized in GetSeqTimes).
    Call this in GetInitial as this does not change for the same tree:
    SetDivTime_OldSon(tree.root).
+   ntime include the node times as well mutation rate so that ntime==com.ns.
 */
    int i,ison;
 
-   if(com.clock!=3) error("SetDivTime_OldSon");
+   if(com.clock!=3) error2("SetDivTime_OldSon");
    divtime_oldSon[inode]=0;
    for(i=0; i<nodes[inode].nson; i++) {
       ison=nodes[inode].sons[i];
@@ -1690,11 +1728,13 @@ void SetDivTime(int inode, double x[])
             nodes[ison].divtime=nodes[inode].divtime*x[innode_time++];
          else if(com.clock==3) 
             nodes[ison].divtime=divtime_oldSon[ison]+
-               (nodes[inode].divtime-divtime_oldSon[ison])*x[innode_time++];
+               (nodes[inode].divtime-divtime_oldSon[ison]) * x[innode_time++];
          SetDivTime(ison,x);
       }
    }
+
 }
+
 
 int SetBranch (double x[])
 {
@@ -1707,32 +1747,30 @@ int SetBranch (double x[])
             if((nodes[i].branch=x[nodes[i].ibranch])<small)  status=-1;
       }
    else {
-      innode_time=0;
-      nodes[tree.root].divtime=x[0]; innode_time=1;
-      SetDivTime(tree.root, x);
-      FOR (i,tree.nnode) {
-         if(i==tree.root) { innode_time++; continue; }
+      if(LASTROUND==0) {
+         innode_time=0;
+         nodes[tree.root].divtime=x[0]; innode_time=1;
+         SetDivTime(tree.root, x);
+      }
+      else
+         for(i=0; i<tree.nnode-com.ns; i++) 
+            nodes[i+com.ns].divtime=x[i];
+
+      FOR (i,tree.nnode) {  /* nodes[].divtime to nodes[].branch */
+         /* if(i==tree.root) { innode_time++; continue; } */
+         if(i==tree.root) 
+            { if(tree.root<com.ns) innode_time++;  continue; }
          nodes[i].branch=(nodes[nodes[i].father].divtime-nodes[i].divtime)*mut;
          if(nodes[i].branch<small)  status=-1;
       }
    }
 
-/*
-puts("\noldestTime divtime");
-FOR(i,tree.nnode) printf("%6d%10.5f%10.5f\n", i+1,divtime_oldSon[i],nodes[i].divtime);
-OutaTreeN(F0,1,1); FPN(F0);
-getchar();
-*/
-
-#if (BASEML || CODEML)
-   if(com.clock==2) FOR(i,tree.nbranch) if(rateBranch[i]) 
-     nodes[tree.branches[i][1]].branch*=x[innode_time+rateBranch[i]-1];
-/*
-OutaTreeN(F0,0,1); FPN(F0);
-matIout(F0,rateBranch,1,tree.nbranch);
-matout(F0,x,1,com.np);
-*/
+#if (BASEML || CODEML) /* multiply by rates in local clock models */
+   if(com.clock==2)
+      FOR(i,tree.nbranch) if(rateBranch[i]) 
+         nodes[tree.branches[i][1]].branch*=x[innode_time+rateBranch[i]-1];
 #endif
+
    return(status);
 }
 
@@ -1748,7 +1786,7 @@ int CollapsNode (int inode, double x[])
 */
    int i,j, ifather, ibranch, ison;
 
-   if (inode==tree.root || inode<com.ns) error("err CollapsNode");
+   if (inode==tree.root || inode<com.ns) error2("err CollapsNode");
    ibranch=nodes[inode].ibranch;   ifather=nodes[inode].father; 
    for (i=0; i<nodes[inode].nson; i++) {
       ison=nodes[inode].sons[i];
@@ -1818,7 +1856,7 @@ void BranchPartition (char partition[], int parti2B[])
          nib++;
       }
    }
-   if (nib!=tree.nbranch-com.ns) error("err BranchPartition"); 
+   if (nib!=tree.nbranch-com.ns) error2("err BranchPartition"); 
 }
 
 
@@ -1899,12 +1937,13 @@ int Perturbation(FILE* fout, int initialMP, double space[])
    This needs more work.
 */
    int step=0, ntree=0, nmove=0, improve=0, ineighb, i;
+   int sizetree=(2*com.ns-1)*sizeof(struct TREEN);
    double *x=treestar.x;
    FILE *ftree;
 
-if(com.clock) error("\n\aerr: pertubation does not work with a clock yet.\n");
+if(com.clock) error2("\n\aerr: pertubation does not work with a clock yet.\n");
 if(initialMP&&!com.cleandata)
-   error("\ncannot get initial parsimony tree for gapped data yet.");
+   error2("\ncannot get initial parsimony tree for gapped data yet.");
 
    fprintf(fout, "\n\nHeuristic tree search by NNI perturbation\n");
    if (initialMP) {
@@ -1915,10 +1954,10 @@ if(initialMP&&!com.cleandata)
    else {
       if (noisy) printf ("\nInitial tree read from file %s:\n", com.treef);
       fprintf(fout, "\nInitial tree read from file.\n");
-      if ((ftree=fopen (com.treef,"r"))==NULL) error ("treefile not exist?");
+      if ((ftree=fopen (com.treef,"r"))==NULL) error2 ("treefile not exist?");
       fscanf (ftree, "%d%d", &i, &ntree);
-      if (i!=com.ns) error ("ns in the tree file");
-      if(ReadaTreeN (ftree, &i, 1)) error ("err tree..");
+      if (i!=com.ns) error2 ("ns in the tree file");
+      if(ReadaTreeN (ftree, &i, 1)) error2 ("err tree..");
       fclose(ftree);
    }
    if (noisy) { FPN (F0);  OutaTreeN (F0,0,0);  FPN(F0); }
@@ -1931,11 +1970,11 @@ if(initialMP&&!com.cleandata)
       FPN(fout);
    }
    fflush(fout);
-   treebest.tree=tree;  memcpy(treebest.nodes, nodes, sizeof(nodes));
+   treebest.tree=tree;  memcpy(treebest.nodes, nodes, sizetree);
 
    for (step=0; ; step++) {
       for (ineighb=0,improve=0; ineighb<(tree.nbranch-com.ns)*2; ineighb++) {
-         tree=treebest.tree; memcpy (nodes, treebest.nodes, sizeof(nodes));
+         tree=treebest.tree; memcpy (nodes, treebest.nodes, sizetree);
          NeighborNNI (ineighb);
          if(noisy) {
             printf("\nTrying tree # %d (%d move[s]) \n", ++ntree,nmove);
@@ -1949,7 +1988,7 @@ if(initialMP&&!com.cleandata)
             FPN(F0);
          }
          if (tree.lnL<=treebest.tree.lnL) {
-            treebest.tree=tree;  memcpy (treebest.nodes, nodes, sizeof(nodes));
+            treebest.tree=tree;  memcpy (treebest.nodes, nodes, sizetree);
             improve=1; nmove++;
             if (noisy) printf(" moving to this tree\n");
             if (fout) {
@@ -1967,7 +2006,7 @@ if(initialMP&&!com.cleandata)
       }
       if (!improve) break;
    }
-   tree=treebest.tree;  memcpy (nodes, treebest.nodes, sizeof(nodes));
+   tree=treebest.tree;  memcpy (nodes, treebest.nodes, sizetree);
    if (noisy) {
       printf("\n\nBest tree found:\n");
       OutaTreeN(F0,0,0);  FPN(F0);  OutaTreeN(F0,1,1);  FPN(F0); 
@@ -1991,6 +2030,7 @@ int StepwiseAdditionMP (double space[])
 */
    char *z0[NS];
    int  ns0=com.ns, is, i,j,h, tiestep=0,tie,bestbranch=0;
+   int sizetree=(2*com.ns-1)*sizeof(struct TREEN);
    double bestscore=0,score;
 
    _mnnode=com.ns*2-1;
@@ -1998,7 +2038,7 @@ int StepwiseAdditionMP (double space[])
    _step0=(int*)malloc(com.npatt*_mnnode*sizeof(int));
    if (noisy>2) 
      printf("\n%9ld bytes for MP (U0 & N0)\n", 2*com.npatt*_mnnode*sizeof(int));
-   if (_U0==NULL || _step0==NULL) error ("oom U0&step0");
+   if (_U0==NULL || _step0==NULL) error2 ("oom U0&step0");
 
    FOR (i,ns0)  z0[i]=com.z[i];
    tree.nbranch=tree.root=com.ns=3;
@@ -2008,13 +2048,13 @@ int StepwiseAdditionMP (double space[])
       FOR (i,com.ns)
         { _U0[h*_mnnode+i]=1<<(com.z[i][h]-1); _step0[h*_mnnode+i]=0; }
    for (is=com.ns,tie=0; is<ns0; is++) {
-      treestar.tree=tree;  memcpy (treestar.nodes, nodes, sizeof(nodes));
+      treestar.tree=tree;  memcpy (treestar.nodes, nodes, sizetree);
 
       for (j=0; j<treestar.tree.nbranch; j++,com.ns--) {
-         tree=treestar.tree;  memcpy (nodes, treestar.nodes, sizeof(nodes));
+         tree=treestar.tree;  memcpy (nodes, treestar.nodes, sizetree);
          com.ns++;
          AddSpecies (is, j);
-         score=MPScoreStepwiseAddition (is, space, 0);
+         score=MPScoreStepwiseAddition(is, space, 0);
 /*
 OutaTreeN(F0, 0, 0); 
 printf(" Add sp %d (ns=%d) at branch %d, score %.0f\n", is+1,com.ns,j+1,score);
@@ -2026,10 +2066,10 @@ printf(" Add sp %d (ns=%d) at branch %d, score %.0f\n", is+1,com.ns,j+1,score);
          }
       }
       tie+=tiestep;
-      tree=treestar.tree;  memcpy (nodes, treestar.nodes, sizeof(nodes));
+      tree=treestar.tree;  memcpy (nodes, treestar.nodes, sizetree);
       com.ns=is+1;
       AddSpecies (is, bestbranch);
-      score=MPScoreStepwiseAddition (is, space, 1);
+      score=MPScoreStepwiseAddition(is, space, 1);
 
       if (noisy)
        { printf("\r  Added %d [%5.0f steps]",is+1,-bestscore); fflush(F0);}
@@ -2100,7 +2140,7 @@ int readx(double x[], int *fromfile)
    else               { npin=com.np-com.ntime; xin=xcom; }
 
    if(npin<=0) return(0);
-   if(com.runmode>0&&com.seqtype==1&&com.model) error("option or in.codeml");
+   if(com.runmode>0&&com.seqtype==1&&com.model) error2("option or in.codeml");
    printf("\nReading initials/paras from file (np=%d). Stop if wrong.\n",npin);
    fscanf(fin,"%lf",&xin[i=0]);
    *fromfile=1;
@@ -2125,7 +2165,7 @@ double TreeScore(double x[], double space[])
    int i;
    double xb[NP][2], e=1e-6, lnL=0;
 
-   if(com.clock==2) error("local clock in TreeScore");
+   if(com.clock==2) error2("local clock in TreeScore");
    com.ntime = com.clock ? tree.nnode-com.ns : tree.nbranch;
 
    GetInitials(x, &i);  /* this shoulbe be improved??? */
@@ -2159,7 +2199,8 @@ int StepwiseAddition (FILE* fout, double space[])
    Try to get good initial values.
 */
    char *z0[NS], *spname0[NS];
-   int  ns0=com.ns, is, i,j, bestbranch=0, randadd=1, order[NS];
+   int ns0=com.ns, is, i,j, bestbranch=0, randadd=0, order[NS];
+   int sizetree=(2*com.ns-1)*sizeof(struct TREEN);
    double bestscore=0,score, *x=treestar.x;
 
    if (noisy) printf("\n\nHeuristic tree search by stepwise addition\n");
@@ -2182,10 +2223,10 @@ int StepwiseAddition (FILE* fout, double space[])
    FOR (i,tree.nbranch) { tree.branches[i][0]=com.ns; tree.branches[i][1]=i; }
    BranchToNode ();
    for (is=com.ns; is<ns0; is++) {                  /* add the is_th species */
-      treestar.tree=tree;  memcpy (treestar.nodes, nodes, sizeof(nodes));
+      treestar.tree=tree;  memcpy (treestar.nodes, nodes, sizetree);
 
       for (j=0; j<treestar.tree.nbranch+(com.clock>0); j++,com.ns--) { 
-         tree=treestar.tree;  memcpy (nodes, treestar.nodes, sizeof(nodes));
+         tree=treestar.tree;  memcpy(nodes, treestar.nodes, sizetree);
          com.ns++;
          AddSpecies(is,j);
          /* recalculate com.pi ? */
@@ -2194,19 +2235,18 @@ int StepwiseAddition (FILE* fout, double space[])
             { printf("\n "); OutaTreeN(F0, 0, 0); printf("%12.3f",-score); }
 
          if (j==0 || score<bestscore || (score==bestscore&&rndu()<.2)) {
-            treebest.tree=tree;  memcpy(treebest.nodes, nodes, sizeof(nodes));
+            treebest.tree=tree;  memcpy(treebest.nodes, nodes, sizetree);
             xtoy (x, treebest.x, com.np);
             bestscore=score; bestbranch=j;
          }
-
       }
-      tree=treebest.tree;  memcpy (nodes,treebest.nodes,sizeof(nodes));
+      tree=treebest.tree;  memcpy(nodes,treebest.nodes, sizetree);
       xtoy (treebest.x, x, com.np);
       com.ns=is+1;
 
       if (noisy) {
          printf("\n\nAdded sp. %d, %s [%.3f]\n",is+1,com.spname[is],-bestscore);
-         OutaTreeN(F0,1,1);  FPN(F0);
+         OutaTreeN(F0,0,0);  FPN(F0);  OutaTreeN(F0,1,0);  FPN(F0);
          if (com.np>com.ntime) {
             printf("\tparameters:"); 
             for(i=com.ntime; i<com.np; i++) printf("%9.5f", x[i]);
@@ -2245,15 +2285,16 @@ int StarDecomposition (FILE *fout, double space[])
 */
    int status=0,stage=0, i,j, itree,ntree=0,ntreet,best=0,improve=1,collaps=0;
    int inode, nson=0, ison1,ison2, son1, son2;
-   double x[NP], e=1e-7;
+   int sizetree=(2*com.ns-1)*sizeof(struct TREEN);
+   double x[NP];
    FILE *ftree, *fsum=frst;
 /*
 fsum=NULL;
 */
-   if (com.runmode==1) {   /* read the star-like tree from trees.*s */
-      if ((ftree=fopen (com.treef,"r"))==NULL) error ("no treefile");
+   if (com.runmode==1) {   /* read the star-like tree from tree file */
+      if ((ftree=fopen (com.treef,"r"))==NULL) error2 ("no treefile");
       fscanf (ftree, "%d%d", &i, &ntree);
-      if (ReadaTreeN(ftree, &i, 1)) error ("err tree file");
+      if (ReadaTreeN(ftree, &i, 1)) error2 ("err tree file");
       fclose (ftree);
    }
    else {                  /* construct the star tree of ns species */
@@ -2263,11 +2304,11 @@ fsum=NULL;
       com.ntime = com.clock?1:tree.nbranch;
       BranchToNode ();
    }
-   if (noisy) { printf ("\n\nstage 0: ");  OutaTreeN (F0, 0, 0); }
-   if (fsum) { fprintf (fsum,"\n\nstage 0: ");  OutaTreeN (fsum, 0, 0); }
-   if (fout) { fprintf (fout,"\n\nstage 0: ");  OutaTreeN (fout, 0, 0); }
+   if (noisy) { printf("\n\nstage 0: ");  OutaTreeN(F0,0,0); }
+   if (fsum) { fprintf(fsum,"\n\nstage 0: ");  OutaTreeN(fsum,0,0); }
+   if (fout) { fprintf(fout,"\n\nstage 0: ");  OutaTreeN(fout,0,0); }
 
-   tree.lnL=TreeScore(x, space);
+   tree.lnL=TreeScore(x,space);
 
    if (noisy)  printf("\nlnL:%14.6f%6d", -tree.lnL, NFunCall);
    if (fsum) fprintf(fsum,"\nlnL:%14.6f%6d", -tree.lnL, NFunCall);
@@ -2277,7 +2318,7 @@ fsum=NULL;
       OutaTreeB (fout);  FPN(fout);
       FOR (i, com.np) fprintf (fout,"%9.5f", x[i]);  FPN (fout);
    }
-   treebest.tree=tree;  memcpy (treebest.nodes, nodes, sizeof(nodes));
+   treebest.tree=tree;  memcpy(treebest.nodes,nodes,sizetree);
    FOR (i,com.np) treebest.x[i]=x[i];
    for (ntree=0,stage=1; ; stage++) {
       for (inode=treebest.tree.nnode-1; inode>=0; inode--) {
@@ -2287,7 +2328,7 @@ fsum=NULL;
          else if (nson>2+(inode==treebest.tree.root)) break;
       }
       if (inode==-1 || /*stage>com.ns-3+com.clock ||*/ !improve) { /* end */
-         tree=treebest.tree;  memcpy (nodes, treebest.nodes, sizeof(nodes));
+         tree=treebest.tree;  memcpy (nodes, treebest.nodes, sizetree);
 
          if (noisy) {
             printf("\n\nbest tree: ");  OutaTreeN(F0,0,0);
@@ -2304,17 +2345,17 @@ fsum=NULL;
          }
          break;
       }
-      treestar=treebest;  memcpy(nodes,treestar.nodes,sizeof(nodes));
+      treestar=treebest;  memcpy(nodes,treestar.nodes,sizetree);
 
       if (collaps && stage) { 
          printf ("\ncollapsing nodes\n");
          OutaTreeN (F0, 1, 1);  FPN(F0);
 
-         tree=treestar.tree;  memcpy(nodes, treestar.nodes, sizeof(nodes));
+         tree=treestar.tree;  memcpy(nodes, treestar.nodes, sizetree);
          for (i=com.ns,j=0; i<tree.nnode; i++)
             if (i!=tree.root && nodes[i].branch<1e-7) 
                { CollapsNode (i, treestar.x);  j++; }
-         treestar.tree=tree;  memcpy(treestar.nodes, nodes, sizeof(nodes));
+         treestar.tree=tree;  memcpy(treestar.nodes, nodes, sizetree);
 
          if (j)  { 
             fprintf (fout, "\n%d node(s) collapsed\n", j);
@@ -2378,7 +2419,7 @@ fsum=NULL;
          tree.lnL=TreeScore(x, space);
 
          if (tree.lnL<treebest.tree.lnL) {
-            treebest.tree=tree;  memcpy (treebest.nodes, nodes, sizeof(nodes));
+            treebest.tree=tree;  memcpy (treebest.nodes, nodes, sizetree);
             FOR(i,com.np) treebest.x[i]=x[i];
             best=itree+1;   improve=1;
          }
@@ -2411,9 +2452,10 @@ int DecompTree (int inode, int ison1, int ison2)
 /* decompose treestar at NODE inode into tree and nodes[]
 */
    int i, son1, son2;
+   int sizetree=(2*com.ns-1)*sizeof(struct TREEN);
    double bt, fmid=0.001, fclock=0.0001;
 
-   tree=treestar.tree;  memcpy (nodes, treestar.nodes, sizeof(nodes));
+   tree=treestar.tree;  memcpy (nodes, treestar.nodes, sizetree);
    for (i=0,bt=0; i<tree.nnode; i++)
       if (i!=tree.root) bt+=nodes[i].branch/tree.nbranch;
 
@@ -2444,7 +2486,12 @@ int DecompTree (int inode, int ison1, int ison2)
 
 int MultipleGenes (FILE* fout, double space[])
 {
-   int ig, j, ngene0, npatt0, lgene0[NGENE], posG0[NGENE+1];
+/* This does the separate analysis of multiple-gene data.
+   Note that com.pose[] is not correct and so RateAncestor = 0 should be set
+   in baseml and codeml.
+*/
+   int ig=0, j, ngene0, npatt0, lgene0[NGENE], posG0[NGENE+1];
+   int nb = ((com.seqtype==1 && !com.cleandata) ? 3 : 1);
 
    ngene0=com.ngene;  npatt0=com.npatt;
    FOR (ig, ngene0)   lgene0[ig]=com.lgene[ig];
@@ -2456,12 +2503,13 @@ int MultipleGenes (FILE* fout, double space[])
    scanf("%d", &ig); 
    ig--;
 */
+
    for ( ; ig<ngene0; ig++) {
-      com.ngene=1; 
+      com.ngene=1;
       com.ls=com.lgene[0]= ig==0?lgene0[0]:lgene0[ig]-lgene0[ig-1];
       com.npatt =  ig==ngene0-1 ? npatt0-posG0[ig] : posG0[ig+1]-posG0[ig];
       com.posG[0]=0;  com.posG[1]=com.npatt;
-      FOR (j,com.ns) com.z[j]+=posG0[ig];   com.fpatt+=posG0[ig];
+      FOR (j,com.ns) com.z[j]+=posG0[ig]*nb;   com.fpatt+=posG0[ig];
       xtoy (com.piG[ig], com.pi, com.ncode);
 
       printf ("\n\nGene #%4d  ls:%4d  npatt:%4d\n",ig+1,com.ls,com.npatt);
@@ -2481,15 +2529,15 @@ int MultipleGenes (FILE* fout, double space[])
 #endif
       else                         StepwiseAddition(fout, space);
 
-      FOR (j,com.ns) com.z[j]-=posG0[ig];
+      FOR (j,com.ns) com.z[j]-=posG0[ig]*nb;
       com.fpatt-=posG0[ig];
    }
    com.ngene=ngene0;  com.npatt=npatt0;  com.ls=lgene0[ngene0-1];
    FOR(ig,ngene0)   com.lgene[ig]=lgene0[ig];
    FOR(ig,ngene0+1) com.posG[ig]=posG0[ig];
-
    return (0);
 }
+
 
 int printSeqsMgenes (void)
 {
@@ -2506,7 +2554,7 @@ int printSeqsMgenes (void)
    for (ig=0, FPN(F0); ig<com.ngene; ig++) {
       for (h=0,lg=0; h<com.ls; h++)  if (com.pose[h]==ig) lg++;
       sprintf (seqf, "Gene%d.seq\0", ig+1);
-      if ((fseq=fopen(seqf,"w"))==NULL) error("file creation err.");
+      if ((fseq=fopen(seqf,"w"))==NULL) error2("file creation err.");
       printf ("%d sites in gene %d go to file %s\n", lg, ig+1,seqf);
 
       fprintf (fseq, "%8d%8d\n", com.ns, lg*n31);
@@ -2554,7 +2602,7 @@ int printSeqsMgenes2 (void)
 for(ig=0,lg=0; ig<com.ngene; ig++) wantgene[ig]=!wantgene[ig];
 */
 
-   if(com.ngene!=44) error("ngene!=44");
+   if(com.ngene!=44) error2("ngene!=44");
    FOR(h,com.ls) { 
       printf("%3d",com.pose[h]); 
       if((h+1)%20==0) FPN(F0); if((h+1)%500==0) getchar();
@@ -2565,7 +2613,7 @@ for(ig=0,lg=0; ig<com.ngene; ig++) wantgene[ig]=!wantgene[ig];
    for(ig=0,lg=0; ig<com.ngene; ig++) 
       if(wantgene[ig]) { ngenekept++; lg+=com.lgene[ig]; }
 
-   if((fseq=fopen(seqf,"w"))==NULL) error("file creation err.");
+   if((fseq=fopen(seqf,"w"))==NULL) error2("file creation err.");
    fprintf(fseq,"%4d %4d  G\nG  %d  ", com.ns, lg*n31, ngenekept);
    FOR(ig,com.ngene) if(wantgene[ig]) fprintf(fseq," %3d", com.lgene[ig]);
    FPN(fseq);
@@ -2940,11 +2988,11 @@ int BootstrapSeq (char* seqf)
 
    printf("\nGenerating bootstrap samples in file %s\n", seqf);
    if(com.seqtype==CODONseq||com.seqtype==CODON2AAseq) { n31=3; gap=1; }
-   if(sites==NULL) error("oom in BootstrapSeq");
-   if(fseq==NULL) error("BootstrapSeq: file open error");
+   if(sites==NULL) error2("oom in BootstrapSeq");
+   if(fseq==NULL) error2("BootstrapSeq: file open error2");
    if(com.ngene>1) {
-      if(lsb<com.ls) error("jackknife when #gene>1");
-      if((gmark=(int*)malloc(com.ls*sizeof(int)))==NULL) error("oom in boot");
+      if(lsb<com.ls) error2("jackknife when #gene>1");
+      if((gmark=(int*)malloc(com.ls*sizeof(int)))==NULL) error2("oom in boot");
       if(noisy) puts("Stratefied sampling");
 
       FOR(ig,com.ngene) com.lgene[ig]=gcounts[ig]=0;
@@ -3008,12 +3056,13 @@ int rell(FILE*flnf, FILE*fout, int ntree)
    fprintf(fout,"Number of replicates: %d\n", nr);
 
    fscanf(flnf,"%d%d%d", &ntree0, &ls0, & npatt0);
-   if ((ntree0!=-1 && ntree0!=ntree) || ls0!=com.ls || npatt0!=com.npatt)
-      error("rell: input data file incorrect.");
+   if (ntree0!=ntree)  error2("rell: input data file strange.  Check.");
+   if (ls0!=com.ls || npatt0!=com.npatt)
+      error2("rell: input data file incorrect.");
    k = ntree*(com.npatt+nr+4)*sizeof(double) + com.ls*sizeof(int);
    if(com.sspace<k) {
       if((com.space=(double*)realloc(com.space,com.sspace=k))==NULL)
-         error("oom space");
+         error2("oom space");
       com.sspace=k;
       if(noisy) printf("space reset to %d bytes in rell.\n",k);
    }
@@ -3055,7 +3104,7 @@ int rell(FILE*flnf, FILE*fout, int ntree)
          if(com.ngene>1) {
             for(h=com.posG[ig],k=0;h<com.posG[ig+1];h++)
                FOR(j,com.fpatt[h]) pattg[k++]=h;
-            if(k!=lgene) error("rell: # sites for gene");
+            if(k!=lgene) error2("rell: # sites for gene");
          }
          FOR(j,lgene) {
             h=pattg[(int)(lgene*rndu())];
@@ -3122,7 +3171,7 @@ int ProbSitePattern (double x[], double *lnL, double fhs[])
    zero (fhs, com.npatt);
    if (com.alpha==0) {
       for (ig=0,*lnL=0; ig<com.ngene; ig++) {
-         if (com.Mgene>1) SetPGene(ig, 1, 1, 0, x+com.ntime);
+         if(com.Mgene>1) SetPGene(ig, 1, 1, 0, x+com.ntime);
          PartialLikelihood (tree.root, ig);
          for (h=com.posG[ig]; h<com.posG[ig+1]; h++) {
             for (i=0; i<com.ncode; i++) 
@@ -3133,7 +3182,8 @@ int ProbSitePattern (double x[], double *lnL, double fhs[])
    }
    else {
       for (ig=0; ig<com.ngene; ig++) {
-         SetPGene(ig, com.Mgene>1, com.Mgene>1, com.nalpha>1, x+com.ntime);
+         if(com.Mgene>1)
+            SetPGene(ig, com.Mgene>1, com.Mgene>1, com.nalpha>1, x+com.ntime);
          for (ir=0; ir<com.ncatG; ir++) {
             SetPSiteClass(ir, x+com.ntime);
             PartialLikelihood (tree.root, ig);
@@ -3151,9 +3201,9 @@ int ProbSitePattern (double x[], double *lnL, double fhs[])
 }
 
 
-void ListAncestSeq(FILE *fout, char *ancSeq)
+void ListAncestSeq(FILE *fout, char *zanc)
 {
-/* ancSeq[nintern*com.npatt] holds ancestral sequences.
+/* zanc[nintern*com.npatt] holds ancestral sequences.
    Extant sequences are coded if cleandata.
 */
    int wname=15, j;
@@ -3164,8 +3214,8 @@ void ListAncestSeq(FILE *fout, char *ancSeq)
       print1seq(fout,com.z[j],com.ls,com.cleandata, com.pose);
    }
    for(j=0;j<tree.nnode-com.ns;j++,FPN(fout)) {
-      fprintf(fout,"node #%-*d", wname-5,j+1);
-      print1seq(fout, ancSeq+j*com.npatt,com.ls,1, com.pose);
+      fprintf(fout,"node #%-*d", wname-5,com.ns+j+1);
+      print1seq(fout, zanc+j*com.npatt,com.ls,1, com.pose);
    }
 }
 
@@ -3184,7 +3234,7 @@ int AncestralMarginal (FILE *fout, double x[], double fhs[])
    the current node (in).
 */
    char *pch=(com.seqtype==0?BASEs:(com.seqtype==2?AAs:BINs)), *za;
-   char str[4]="",aa3[4]="";
+   char str[4]="",codon[4]="", aa[4]="";
    int n=com.ncode, inode,ir, ic=0,b[3],i,j,k1=-1,k2,k3;
    int h,hp,ig, best, oldroot=tree.root;
    int nid=tree.nnode-com.ns, nchange;
@@ -3203,7 +3253,7 @@ int AncestralMarginal (FILE *fout, double x[], double fhs[])
    fprintf (fout,"(eq. 4 in Yang et al. 1995).\n    This algorithm is OK.\n");
    pChar1node=(double*)malloc(com.npatt*n*sizeof(double));
    pnode=(double*)malloc((nid*com.npatt+1)*(sizeof(double)+sizeof(char)));
-   if (pnode==NULL||pChar1node==NULL) error ("oom pnode");
+   if (pnode==NULL||pChar1node==NULL) error2 ("oom pnode");
    za=(char*)(pnode+nid*com.npatt);
 
 #ifdef BASEML
@@ -3212,7 +3262,7 @@ int AncestralMarginal (FILE *fout, double x[], double fhs[])
    if(com.seqtype==1) { coding=1; k1=com.npatt; }
    if(coding==1) {
       if((pbestAA=(double*)malloc(nid*k1*2*sizeof(double)))==NULL) 
-         error("oom pbestAA");
+         error2("oom pbestAA");
       bestAA=(char*)(pbestAA+nid*k1);
    }
 
@@ -3224,11 +3274,11 @@ int AncestralMarginal (FILE *fout, double x[], double fhs[])
    /* This loop reroots the tree at inode & reconstructs sequence at inode */
    for (inode=com.ns; inode<tree.nnode; inode++) {
       zero (pChar1node,com.npatt*n);
-      if(noisy) printf ("Node %2d: ", inode+1);
+      if(noisy) printf ("Node %3d: ", inode+1);
       ReRootTree (inode);
       if (com.alpha==0) {   /* constant rate for sites (ngene>1 OK) */
          for (ig=0,lnL=0; ig<com.ngene; ig++) {
-            if (com.Mgene>1) SetPGene(ig, 1, 1, 0, x+com.ntime);
+            if(com.Mgene>1) SetPGene(ig, 1, 1, 0, x+com.ntime);
             PartialLikelihood (tree.root, ig);
             for (h=com.posG[ig]; h<com.posG[ig+1]; h++) {
                for (i=0,fh=0,pbest=0,best=-1; i<n; i++) {
@@ -3237,7 +3287,7 @@ int AncestralMarginal (FILE *fout, double x[], double fhs[])
                   if ((y=y/fhs[h])>pbest) { pbest=y; best=i; }
                   pChar1node[h*n+i]=y;
                }
-               if (fabs(fh-fhs[h])>min2(1e-6,fh*.001)) error("err: fh 1?");
+               if (fabs(fh-fhs[h])>min2(1e-6,fh*.001)) error2("err: fh 1?");
                lnL -= log(fh)*(double)com.fpatt[h];
                za[(inode-com.ns)*com.npatt+h]=(char)best;
                pnode[(inode-com.ns)*com.npatt+h]=pbest;
@@ -3246,11 +3296,12 @@ int AncestralMarginal (FILE *fout, double x[], double fhs[])
       }
       else {                /* gamma rates among sites */
          /* sum over the rate distribution (ir) to calculate pChar1node[] */
-         zero(com.fhK,com.npatt); /* calculates lnL for error checking */
+         zero(com.fhK,com.npatt); /* calculates lnL for error2 checking */
          for (ig=0; ig<com.ngene; ig++) {
-            SetPGene(ig, com.Mgene>1, com.Mgene>1, com.nalpha>1, x+com.ntime);
+            if(com.Mgene>1)
+               SetPGene(ig,com.Mgene>1,com.Mgene>1,com.nalpha>1,x+com.ntime);
             for (ir=0; ir<com.ncatG; ir++) {
-               SetPSiteClass(ir,x+com.ntime);
+               SetPSiteClass(ir, x+com.ntime);
                PartialLikelihood (tree.root, ig);
                for (h=com.posG[ig]; h<com.posG[ig+1]; h++) {
                   for (i=0,fh=0; i<n; i++) {
@@ -3263,13 +3314,13 @@ int AncestralMarginal (FILE *fout, double x[], double fhs[])
          }
          for (h=0,lnL=0; h<com.npatt; h++) {
             FOR (i,n) pChar1node[h*n+i]/=fhs[h];
-            if (fabs(1-sum(pChar1node+h*n,n))>1e-5) error("Err: sum!=1");
+            if (fabs(1-sum(pChar1node+h*n,n))>1e-5) error2("Err: sum!=1");
 
             for (i=0,best=-1,pbest=-1; i<n; i++)
                if (pChar1node[h*n+i]>pbest) {best=i; pbest=pChar1node[h*n+i];}
             za[(inode-com.ns)*com.npatt+h]=(char)best;
             pnode[(inode-com.ns)*com.npatt+h]=pbest;
-            if (fabs(com.fhK[h]-fhs[h])>1e-6) error("err: fh 2?");
+            if (fabs(com.fhK[h]-fhs[h])>1e-6) error2("err: fh 2?");
             lnL-=log(com.fhK[h])*com.fpatt[h];
          }
       }     /* if (alpha) */
@@ -3299,7 +3350,7 @@ if(com.seqtype==1 &&(FROM61[j]<0||FROM61[j]>63)) { puts("strange 1"); getchar();
       }     /* if (verbose) */
 
 
-      /* find the best amino acid from codon & nuc seqs, for Belinda Chang */
+      /* find the best amino acid from codon & nuc seqs */
 #ifdef CODEML
       if(com.seqtype==CODONseq)
          FOR(h,com.npatt) {
@@ -3316,9 +3367,11 @@ if(com.seqtype==1 &&(FROM61[j]<0||FROM61[j]>63)) { puts("strange 1"); getchar();
          }
 #endif
 
-      if(com.seqtype==0 && coding) {
-         FOR(h,com.ls/3) {
-            for(y=0,j=0;j<20;j++) pAA[j]=0;
+      if(com.seqtype==0 && coding) { /* coding seqs analyzed by baseml */
+         FOR(h,com.ls/3) {  /* h-th codon */
+            /* sums up probs for the 20 AAs for each node. Stop codons are 
+               ignored, and so those probs are approxiamte. */
+            for(j=0,y=0;j<20;j++) pAA[j]=0;
             FOR(k1,4) FOR(k2,4) FOR(k3,4) {
                ic=k1*16+k2*4+k3;
                b[0]=com.pose[h*3+0]*n+k1; 
@@ -3328,11 +3381,11 @@ if(com.seqtype==1 &&(FROM61[j]<0||FROM61[j]>63)) { puts("strange 1"); getchar();
                if((ic=GenetCode[com.icode][ic])==-1) y+=fh;
                else                                  pAA[ic]+=fh;
             }
-            if(fabs(1-y-sum(pAA,20))>1e-6) error("AncestralMarginal strange?");
+            if(fabs(1-y-sum(pAA,20))>1e-6) error2("AncestralMarginal strange?");
 
             for(j=0,best=0,pbest=0; j<20; j++) 
                if(pAA[j]>pbest) { pbest=pAA[j]; best=j; }
-            
+
             bestAA[(inode-com.ns)*com.ls/3+h]=(char)best;
             pbestAA[(inode-com.ns)*com.ls/3+h]=pbest/(1-y);
          }
@@ -3340,19 +3393,19 @@ if(com.seqtype==1 &&(FROM61[j]<0||FROM61[j]>63)) { puts("strange 1"); getchar();
    }        /* for (inode), This closes the big loop */
    ReRootTree(oldroot);
 
-   if(com.seqtype==0 && coding) {
+   if(com.seqtype==0 && coding) { /* coding seqs analyzed by baseml */
       fputs("\nBest amino acids reconstructed from nucleotide model.\n",fout);
       fputs("Prob at each node listed by amino acid (codon) site\n",fout);
       fputs("(Please ignore if not relevant)\n\n",fout);
       for(h=0;h<com.ls/3;h++,FPN(fout)) {
          fprintf(fout,"%4d ", h+1);
          FOR(j,com.ns) {
-            b[0]=com.z[j][com.pose[h*3+0]];
-            b[1]=com.z[j][com.pose[h*3+1]];
-            b[2]=com.z[j][com.pose[h*3+2]];
-            ic=GenetCode[com.icode][b[0]*16+b[1]*4+b[2]];
-            if(ic<0) { puts("stop codon inside?");  ic=20; }
-            fprintf(fout," %c%c%c(%c)",BASEs[b[0]],BASEs[b[1]],BASEs[b[2]],AAs[ic]);
+            if(com.cleandata)
+               FOR(i,3) codon[i]=BASEs[com.z[j][com.pose[h*3+i]]];
+            else 
+               FOR(i,3) codon[i]=com.z[j][com.pose[h*3+i]];
+            Codon2AA(codon, aa, com.icode, &i);
+            fprintf(fout," %s(%c)",codon,AAs[i]);
          }
          fprintf(fout,": ");
          for (j=0; j<tree.nnode-com.ns; j++) {
@@ -3372,21 +3425,21 @@ if(com.seqtype==1 &&(FROM61[j]<0||FROM61[j]>63)) { puts("strange 1"); getchar();
    }
 
    fputs("\n\nProb of best character at each node, listed by site ",fout);
-   if (com.verbose==0) fputs("(choose verbose to list constant sites.)",fout);
+   /* if (com.verbose==0) fputs("(choose verbose to list constant sites.)",fout); */
    if (com.ngene>1) fputs("\n\nSite (g) Freq  Data: \n",fout);
    else             fputs("\n\nSite   Freq   Data: \n",fout);
 
    FOR (h, com.ls) {
       hp=com.pose[h];
-      fprintf (fout,"\n%4d ", h+1);
+      fprintf(fout,"\n%4d ",h+1);
 
 #ifdef CODEML
       /* fprintf (frst1,"\n%4d ", h+1); */
 #endif
 
       if (com.ngene>1) {  /* which gene the site is from */
-         for(ig=1;ig<com.ngene;ig++) if (hp<com.posG[ig]) break;
-         fprintf(fout,"(%d)", ig);
+         for(ig=1;ig<com.ngene;ig++) if(hp<com.posG[ig]) break;
+         fprintf(fout,"(%d)",ig);
       }
       fprintf(fout," %5.0f   ", com.fpatt[hp]);
       print1site(fout,hp);   fputs(": ",fout);
@@ -3413,7 +3466,7 @@ fprintf(frst1," %1c %5.3f",
 
    /* Map changes onto branches 
       k1 & k2 are the two characters; p1 and p2 are the two probs. */
-   fputs("\n\nChanges along branches.\n",fout);
+   fputs("\n\nSummary of changes along branches.\n",fout);
    fputs("Check root for directions of change.\n",fout);
    fputs("Ignore branches/sites with alignment gaps?\n",fout);
    for(j=0;j<tree.nbranch;j++,FPN(fout)) {
@@ -3437,7 +3490,7 @@ fprintf(frst1," %1c %5.3f",
 #ifdef CODEML
             if(inode<com.ns) {
                if(!com.cleandata)
-                  { Codon2AA(com.z[inode]+hp*3,aa3,com.icode,&k2); k2=AAs[k2];}
+                  { Codon2AA(com.z[inode]+hp*3,aa,com.icode,&k2); k2=AAs[k2];}
                else
                   k2=AAs[GenetCode[com.icode][FROM61[com.z[inode][hp]]]];
             }
@@ -3463,8 +3516,8 @@ fprintf(frst1," %1c %5.3f",
 
    ListAncestSeq(fout, za);
    fprintf(fout,"\n\nOverall accuracy of the %d ancestral sequences:", nid);
-   matout2 (fout,pMAPnode, 1, nid, 9,5);  fputs("for a site.\n",fout);
-   matout2 (fout,pMAPnodeA, 1, nid, 9,5); fputs("for the sequence.\n", fout);
+   matout2(fout,pMAPnode, 1, nid, 9,5);  fputs("for a site.\n",fout);
+   matout2(fout,pMAPnodeA, 1, nid, 9,5); fputs("for the sequence.\n", fout);
 
    /* best amino acid sequences from codonml */
 #ifdef CODEML
@@ -3482,6 +3535,7 @@ fprintf(frst1," %1c %5.3f",
       FPN(fout);
    }
 #endif
+   ChangesSites(fout,za);
 
    free(pnode); free(pChar1node);
    if(coding) free(pbestAA);
@@ -3490,22 +3544,142 @@ fprintf(frst1," %1c %5.3f",
 }
 
 
+int ChangesSites(FILE*fout, char *zanc)
+{
+/* this lists and counts changes at sites from reconstructed ancestral sequences
+   com.z[] has the data, and zanc[] has the ancestors
+   For codon sequences (codonml or baseml with com.coding), synonymous and 
+   nonsynonymous changes are counted separately.
+   Added in Nov 2000.
+*/
+   char *pch=(com.seqtype==0?BASEs:(com.seqtype==2?AAs:BINs));
+   char codon[2][4]={"   ","   "};
+   int  i,h,hp,inode,k1,k2,d, coding=0, ls1=com.ls;
+   double St,Nt,ns,na, nst,nat;
+
+   if(!com.cleandata) {
+      puts("\a\nthink about counting changes for unclean data\n");
+      return(0);
+   }
+#if BASEML
+   if(com.coding) { coding=1; ls1=com.ls/3; }
+#endif
+   if(com.seqtype==CODONseq) coding=1;
+
+   if(coding) {
+      fputs("\n\nChanges at sites (syn nonsyn).\n\n",fout);
+      fputs("syn and nonsyn changes at each site\n",frst1);
+
+      for(h=0; h<ls1; h++) {
+         hp=com.pose[h];
+         fprintf(fout,"%4d ",h+1);
+         for(inode=0,nst=nat=0; inode<tree.nnode; inode++) {
+
+FOR(i,3) codon[0][i]=codon[1][i]=-1;  /*  to force crashes */
+
+            if(inode==tree.root) continue;
+            if(com.seqtype==CODONseq) {
+#ifdef CODEML
+               k1=zanc[(nodes[inode].father-com.ns)*com.npatt+hp];
+               getcodon(codon[0],FROM61[k1]);
+               if(inode>=com.ns)
+                  getcodon(codon[1],FROM61[zanc[(inode-com.ns)*com.npatt+hp]]);
+               else {
+                  if(com.cleandata)
+                     getcodon(codon[1],FROM61[com.z[inode][hp]]);
+                  else
+                     FOR(i,3) codon[1][i]=com.z[inode][hp*3+i];
+               }
+#endif
+            }
+            else { /* baseml coding reconstruction */
+               FOR(i,3) {
+                  k1=zanc[(nodes[inode].father-com.ns)*com.npatt+com.pose[h*3+i]];
+                  codon[0][i]=BASEs[k1];
+               }
+               if(inode>=com.ns)
+                  FOR(i,3)
+                     codon[1][i]=BASEs[zanc[(inode-com.ns)*com.npatt+com.pose[h*3+i]]];
+               else {
+                  if(com.cleandata)
+                     FOR(i,3) codon[1][i]=BASEs[com.z[inode][com.pose[h*3+i]]];
+                  else  
+                     FOR(i,3) codon[1][i]=com.z[inode][com.pose[h*3+i]];
+               }
+            }
+
+            FOR(i,3)
+               if(codon[0][i]!=codon[1][i]) break;
+            if(i<3) {
+               difcodonNG(codon[0],codon[1],&St,&Nt,&ns,&na,0,com.icode);
+               nst+=ns;  nat+=na;
+               fprintf(fout," %3s.%3s ",codon[0],codon[1]);
+            }
+         }
+         fprintf(fout," (%.1f  %.1f)\n", nst,nat);
+         fprintf(frst1," %4d  %.1f  %.1f\n", h+1,nst,nat);
+      }
+   }
+   else {  /* noncoding nucleotide or aa sequences */
+      fputs("\n\nCounts of changes at sites\n\n",fout);
+      for(h=0;h<com.ls;h++) {
+         hp=com.pose[h];
+         fprintf(fout,"%4d ",h+1);
+         for(inode=0,d=0;inode<tree.nnode;inode++) {
+            if(inode==tree.root) continue;
+            k1=pch[ zanc[(nodes[inode].father-com.ns)*com.npatt+hp] ];
+            if(inode<com.ns) {
+               if(com.cleandata) k2=pch[com.z[inode][hp]];
+               else              k2=com.z[inode][hp];
+            }
+            else  
+               k2=pch[ zanc[(inode-com.ns)*com.npatt+hp] ];
+            if(k1!=k2) {
+               d++;
+               fprintf(fout," %c%c", k1,k2);
+            }
+         }
+         fprintf(fout," (%d)\n", d);
+      }
+   }
+   return(0);
+}
+
+
+
 #if BASEML
 extern complex cU[], cV[], cRoot[];
 #endif
 
-int GetPMatBranch(double Pt[], double t, int inode)
+int GetPMatBranch (double Pt[], double t, int inode)
 {
 /* P(t) for branch leading to inode, used in baseml and codeml
+
+   For branch&site models, this uses IClass to set U&V&Root to the right place 
+   in the 5 sets of U&V&Root vectors (w0b,w0f,w1b,w1f,w2f):
+       iclass=0: w0b (0), w0f (1)
+       iclass=1: w1b (2), w1f (3)
+       iclass=2: w0b (0), w2f (4)
+       iclass=3: w1b (2), w2f (4)
 */
-   int k=-1;
+   int updateUVRoot=0;
+   int iUVR=0, iUVR0[4][2]={{0,1}, {2,3}, {0,4}, {2,4}};
+
 
 #if CODEML
-
-   if (com.seqtype==CODONseq && (com.model==NSbranchB||com.model==NSbranch2)) {
-      com.omega=POMEGA[OmegaBranch[k=nodes[inode].ibranch]];
-      if (com.fix_omega && OmegaBranch[k]==N_OMEGA-1) com.omega=OMEGA_FIX;
-      EigenQc(0,-1,NULL,NULL,NULL,Root,U,V, com.kappa,com.omega,Pt);
+   if(com.seqtype==1 && com.NSsites && com.model) { /* branch&site models */
+      iUVR=iUVR0[IClass][nodes[inode].label];
+      U=_UU[iUVR]; V=_VV[iUVR]; Root=_Root[iUVR]; 
+   }
+   else if (com.seqtype==CODONseq && com.model==2 && N_OMEGA<=5) { /* branch model */
+      iUVR=nodes[inode].label;  U=_UU[iUVR]; V=_VV[iUVR]; Root=_Root[iUVR];
+   }
+   else if (com.seqtype==CODONseq && com.model) { /* branch model */
+      updateUVRoot=(com.omega!=nodes[inode].omega);
+      if(com.NSsites && Qfactor_NS!=Qfactor_NS_branch[nodes[inode].label])
+         { Qfactor_NS=Qfactor_NS_branch[nodes[inode].label]; updateUVRoot=1; }
+      if(updateUVRoot)
+         EigenQc(0,-1,NULL,NULL,NULL,Root,U,V, com.kappa, nodes[inode].omega, Pt);
    }
    if (com.seqtype==AAseq && com.model==Poisson)
       PMatJC69like(Pt,t,com.ncode);
@@ -3547,18 +3721,18 @@ void UpPassPPSG2000 (int inode, int igene)
    inode has daughter nodes x (that is, x and y in PPSG).
    ichar is for father, and jchar is for inode.
    nodes[root].lkl[h] is the prob for best reconstruction at the site
+
+   Need more thoughts about ambiguity data (error2 in running stewart.aa).
 */
-   int n=com.ncode, ichar,jchar, jbest, x,ix,h;
-   double t,pj,pjbest;
+   int n=com.ncode, ichar,jchar, jbest=-1, x,ix,h;
+   double t,pj,pjbest=-1;
 
    FOR(ix,nodes[inode].nson) 
       if(nodes[x=nodes[inode].sons[ix]].nson>0) /* if son x is not a tip */
          UpPassPPSG2000(x,igene);
 
-   if(inode!=tree.root) {
-      t=nodes[inode].branch*com.rgene[igene]*_rateSite;
-      GetPMatBranch(PMat,t,inode);
-   }
+   if(inode!=tree.root)
+      GetPMatBranch(PMat,nodes[inode].branch*com.rgene[igene]*_rateSite,inode);
    for(h=com.posG[igene]; h<com.posG[igene+1]; h++) { /* to save space */
       for(ichar=0; ichar<(inode!=tree.root?n:1); ichar++) { /* ichar for father */
          for(jchar=0; jchar<n; jchar++) { /* jchar for inode, for finding best*/
@@ -3567,14 +3741,14 @@ void UpPassPPSG2000 (int inode, int igene)
                x=nodes[inode].sons[ix];  /* this loops through inode's sons */
                if(com.cleandata && nodes[x].nson<1)  /* x is tip */
                   pj*=PMatTips[x*n*n+jchar*n+com.z[x][h]];
-               else                                /* x is internal node */
+               else                            /* x is internal node or tip */
                   pj*=nodes[x].lkl[h*n+jchar];
             }
             if(jchar==0 || pjbest<pj)
                { pjbest=pj; jbest=jchar; } 
          }
          nodes[inode].lkl[h*n+ichar]=pjbest; 
-         nodeChar[(inode-com.ns)*com.npatt*n+h*n+ichar]=jbest;
+         nodeChar[(inode-com.ns)*com.npatt*n+h*n+ichar]=(char)jbest;
       }
 
       if(_nnodeScale && _nodeScale[inode]) {  /* scaling to avoid underflow */
@@ -3618,17 +3792,17 @@ int AncestralJointPPSG2000 (FILE *fout, double x[], double fhs[])
    partial likelihood values are destroyed.
    ancSeq[nintern*com.npatt] stores the ancestral seqs, from UpPassPPSG2000.
 */
-   char *pch=(com.seqtype==0?BASEs:(com.seqtype==2?AAs:BINs)),codon[4];
+   char *pch=(com.seqtype==0?BASEs:(com.seqtype==2?AAs:BINs)),codon[4]="";
    int n=com.ncode,nintern=tree.nnode-com.ns, i,h,hp,ig;
-   double *psites, t;
+   double *psites;
 
    nodeChar=(char*)malloc(nintern*com.npatt*(n+1)*sizeof(char));
    ancSeq=nodeChar+nintern*com.npatt*n;
-   if(nodeChar==NULL) error("oom nodeChar in AncestralJointPPSG2000");
+   if(nodeChar==NULL) error2("oom nodeChar in AncestralJointPPSG2000");
    if(com.cleandata && com.sspace<com.ns*n*n*(int)sizeof(double)) {
       com.sspace=com.ns*n*n*sizeof(double);
       if((com.space=(double*)realloc(com.space,com.sspace))==NULL)
-         error("oom PPSG");
+         error2("oom PPSG");
       if(noisy) printf("\nspace reset to %d bytes in Ancestral.\n",com.sspace);
    }
    if(_nnodeScale)  zero(_nodeScaleF,com.npatt);
@@ -3636,12 +3810,11 @@ int AncestralJointPPSG2000 (FILE *fout, double x[], double fhs[])
    PMatTips=psites=com.space;
    for(ig=0; ig<com.ngene; ig++) {
       if(com.Mgene>1) SetPGene(ig,1,1,0,x+com.ntime);
-      FOR(i,com.ns) {
-         t=nodes[i].branch*com.rgene[ig]*_rateSite;
-         GetPMatBranch(PMatTips+i*n*n,t,i);
-      }
+      FOR(i,com.ns)
+         GetPMatBranch(PMatTips+i*n*n,nodes[i].branch*com.rgene[ig]*_rateSite,i);
       UpPassPPSG2000(tree.root, ig);
-      FOR(h,com.npatt) psites[h]=nodes[tree.root].lkl[h*n+0]/fhs[h];
+      for (h=com.posG[ig]; h<com.posG[ig+1]; h++)
+         psites[h]=nodes[tree.root].lkl[h*n+0]/fhs[h];
       DownPassPPSG2000(tree.root,ig); /* enumerate best characters */
    }
    if(_nnodeScale)  FOR(h,com.npatt) fhs[h]-=_nodeScaleF[h];
@@ -3663,10 +3836,13 @@ int AncestralJointPPSG2000 (FILE *fout, double x[], double fhs[])
       fprintf (fout,"\n%4d ", h+1);
       if (com.ngene>1) fprintf(fout,"(%d) ", ig+1);
       fprintf (fout," %6.0f  ",com.fpatt[hp]);
-      print1site(fout,hp); fputs(" ",fout);
+      print1site(fout,hp); fputs(": ",fout);
       FOR(i,nintern) {
-         if(com.seqtype==1) 
-            fprintf(fout,"%s ",getcodon(codon,ancSeq[i*com.npatt+hp]));
+         if(com.seqtype==1) {
+#ifdef CODEML
+            fprintf(fout,"%s ",getcodon(codon,FROM61[ancSeq[i*com.npatt+hp]]));
+#endif
+         }
          else
             fprintf(fout,"%c",pch[ancSeq[i*com.npatt+hp]]);
       }
@@ -3688,6 +3864,11 @@ int AncestralSeqs (FILE *fout, double x[])
 */
    double lnL=0, *fhs;
 
+   if(com.Mgene==1) {
+      puts("When Mgene=1, use RateAncestor = 0.");
+      return(0);
+   }
+
    if(_nnodeScale) 
       { puts("\nAncestralSeq with scaling, not done yet."); return(-1); }
    if (tree.nnode==com.ns) 
@@ -3698,8 +3879,14 @@ int AncestralSeqs (FILE *fout, double x[])
    FPN(fout);  OutaTreeN(fout,1,1);  FPN(fout);  FPN(fout);
    OutaTreeN(fout,0,0);  FPN(fout);  FPN(fout);
    OutaTreeB (fout);     FPN(fout);
+
+   fputs("\ntree with node labels for Rod Page's TreeView\n",fout);
+   IncludeNodeLabel=1;
+   OutaTreeN(fout,1,1);  FPN(fout);
+   IncludeNodeLabel=0;
+
    fprintf (fout, "\nNodes %d to %d are ancestral\n", com.ns+1,tree.nnode);
-   if ((fhs=(double*)malloc(com.npatt*sizeof(double)))==NULL) error("oom fhs");
+   if ((fhs=(double*)malloc(com.npatt*sizeof(double)))==NULL) error2("oom fhs");
    
    ProbSitePattern (x, &lnL, fhs);
    if (com.alpha) {
@@ -3710,8 +3897,7 @@ int AncestralSeqs (FILE *fout, double x[])
    if(!com.cleandata) fputs("Unreliable at sites with alignment gaps\n",fout);
 
    AncestralMarginal(fout,x,fhs);  fflush(fout);
-
-   if(com.alpha==0 && tree.nnode>com.ns+1)
+   if(com.alpha==0 && tree.nnode>com.ns+1 && com.cleandata)
       AncestralJointPPSG2000 (fout, x, fhs);
    FPN(fout);
    free (fhs);
@@ -3736,7 +3922,7 @@ void InitializeNodeScale(void)
    if(lklSiteClass) k*=com.ncatG;
    if(_nnodeScale) {
       if((_nodeScaleF=(double*)realloc(_nodeScaleF,k))==NULL) 
-         error("oom nscale");
+         error2("oom nscale");
       memset(_nodeScaleF,k,0);
 
       if(noisy) {
@@ -3752,7 +3938,11 @@ int SetnScale(int inode)
 {
 /* This marks nodes for applying scaling factors when calculating f[h].
 */
-   int i,d=0, every=400;
+   int i,d=0, every;
+
+   if(com.seqtype==0)       every=201;  /* baseml */
+   else if(com.seqtype==1)  every=21;   /* codonml */
+   else                     every=101;  /* aaml */
 
    FOR(i,nodes[inode].nson)
       d+=(nodes[nodes[inode].sons[i]].nson?SetnScale(nodes[inode].sons[i]):1);
@@ -3774,7 +3964,7 @@ int lfunRates (FILE* fout, double x[], int np)
    int  ir,il,it=0, h,hp,j, nscale=1, direction=-1;
    double lnL=0,fh,fh1, t, re,mre,vre, b1[NCATG],b2[NCATG],*fhs;
 
-   if (noisy) printf("\nEstimated rates for sites go into file %s\n",ratef);
+   if (noisy) printf("\nEstimated rates fo3r sites go into file %s\n",ratef);
    if (SetParameters(x)) puts ("par err. lfunAdG_rate");
 
    fprintf(fout, "\nEstimated rates for sites from %sML.\n",
@@ -3788,7 +3978,7 @@ int lfunRates (FILE* fout, double x[], int np)
       matout2(fout,com.MK,com.ncatG,com.ncatG,8,4);
    }
 
-   if((fhs=(double*)malloc(com.npatt*sizeof(double)))==NULL) error("oom fhs");
+   if((fhs=(double*)malloc(com.npatt*sizeof(double)))==NULL) error2("oom fhs");
    fx_r(x,np);
    if(_nnodeScale)
       FOR(h,com.npatt) {
@@ -3953,7 +4143,7 @@ double lfundG (double x[], int np)
       if(fh<=0) {
          if(!FPE) {
             FPE=1;  matout(F0,x,1,np);
-            printf("\nlfundG: h=%4d  fhK=%9.6e", h, fh);
+            printf("\nlfundG: h=%4d  fhK=%9.6e\ndata: ", h, fh);
             print1site(F0,h);  FPN(F0);
          }
          fh=1e-70;
@@ -3961,7 +4151,7 @@ double lfundG (double x[], int np)
       lnL-=log(fh)*com.fpatt[h];
 
       if(com.print<0){
-         fprintf(flnf,"\n%6d%6.0f%12.6f%9.2f  ",
+         fprintf(flnf,"\n%6d %6.0f %12.6f %9.2f  ",
             h+1,com.fpatt[h],log(fh),com.ls*fh);
          print1site(flnf,h);
       }
@@ -3972,26 +4162,24 @@ double lfundG (double x[], int np)
 
 int SetPSiteClass(int iclass, double xcom[])
 {
-/* This sets parameters for the iclass-th site class.
-   This communicates with PartialLikelihood()
-*/
-/*
-   int k=com.nrgene+!com.fix_kappa;
-   k+=((com.ntime==0&&com.method==0) ? tree.nbranch : com.ntime);
+/* This sets parameters for the iclass-th site class
+   This is used by PartialLikelihood() and also updatelkl in both algorithms
+   For method=0 and 1.
 */
    int k=com.nrgene+!com.fix_kappa;
 
-   if(iclass>com.ncatG-1) error("SetPSiteClass");
    _rateSite=com.rK[iclass];
 #if CODEML
-   if(com.NSsites) {
+   if(com.seqtype==CODONseq && com.NSsites) {
       _rateSite=1;
-      if(com.aaDist) {
-         if(com.aaDist<10)       POMEGA=xcom+k+com.ncatG-1+2*iclass;
-         else if(com.aaDist==11) POMEGA=xcom+k+com.ncatG-1+4*iclass;
-         else if(com.aaDist==12) POMEGA=xcom+k+com.ncatG-1+5*iclass;
+      if (!com.model) {
+         if(com.aaDist) {
+            if(com.aaDist<10)       POMEGA=xcom+k+com.ncatG-1+2*iclass;
+            else if(com.aaDist==11) POMEGA=xcom+k+com.ncatG-1+4*iclass;
+            else if(com.aaDist==12) POMEGA=xcom+k+com.ncatG-1+5*iclass;
+         }
+         EigenQc(0,-1,NULL,NULL,NULL,Root,U,V, com.kappa,com.rK[iclass],PMat);
       }
-      EigenQc(0,-1,NULL,NULL,NULL,Root,U,V, com.kappa,com.rK[iclass],PMat);
    }
 #endif
    return (0);
@@ -4012,9 +4200,13 @@ int fx_r (double x[], int np)
 
    if(SetParameters(x)) puts("\npar err..");
    for(ig=0; ig<com.ngene; ig++) { /* alpha may differ over ig */
-      SetPGene(ig, com.Mgene>1, com.Mgene>1, com.nalpha>1, x+com.ntime);
+      if(com.Mgene>1)
+         SetPGene(ig, com.Mgene>1, com.Mgene>1, com.nalpha>1, x+com.ntime);
       for(ir=0; ir<com.ncatG; ir++) {
 
+#ifdef CODEML
+         IClass=ir;
+#endif
          if(ir && lklSiteClass) {  /* shift com.lkl */
             if(_nnodeScale) _nodeScaleF+=com.npatt*_nnodeScale;
             for(i=com.ns;i<tree.nnode;i++)
@@ -4028,8 +4220,8 @@ int fx_r (double x[], int np)
             for (i=0,fh=0; i<com.ncode; i++)
                fh += com.pi[i]*nodes[tree.root].lkl[h*com.ncode+i];
 
-            if (fh<=0) {
-               if(fh<-1e-10 && !FPE) {
+            if (fh<0) {
+               if(fh<-1e-10 && !FPE) { /* note that 0 is o.k. here */
                   FPE=1; matout(F0,x,1,np);
                   printf ("\nfx_r: h=%3d  fhK=%9.6e\nData: ", h+1,fh);
                   if(com.seqtype==0||com.seqtype==2)
@@ -4042,8 +4234,7 @@ int fx_r (double x[], int np)
             else
                for(k=0,com.fhK[ir*com.npatt+h]=log(fh); k<_nnodeScale; k++)
                   com.fhK[ir*com.npatt+h]+=_nodeScaleF[k*com.npatt+h];
-
-         }
+         }  /* for (h) */
       }   /* for (ir) */
       if(lklSiteClass) {
          if(_nnodeScale) _nodeScaleF-=(com.ncatG-1)*_nnodeScale*com.npatt;
@@ -4070,11 +4261,13 @@ double lfun (double x[], int np)
          for(i=0,fh=0; i<com.ncode; i++) 
             fh += com.pi[i]*nodes[tree.root].lkl[h*com.ncode+i];
          if(fh<=0) {
+
             if(!FPE) {
                FPE=1;  matout(F0,x,1,np);
                printf("\alfun: h=%4d  fh=%9.6e\nData: ", h+1,fh);
                print1site(F0,h);  FPN(F0);
             }
+
             fh=1e-70;
          }
          fh=log(fh);
@@ -4082,7 +4275,7 @@ double lfun (double x[], int np)
 
          lnL-=fh*com.fpatt[h];
          if (com.print<0) {
-            fprintf(flnf,"\n%6d%6.0f%12.6f%9.2f ",
+            fprintf(flnf,"\n%6d %6.0f %12.6f %9.2f ",
                h+1,com.fpatt[h],fh,com.ls*exp(fh));
             print1site(flnf,h);
          }
@@ -4096,7 +4289,7 @@ double lfun (double x[], int np)
 int print1site (FILE*fout,int h)
 {
 /* This print out one site in the data com.z[].  It may be the h-th 
-   site in the rootal data file or the h-th pattern.
+   site in the original data file or the h-th pattern.
    The data are coded if com.cleandata==1 or not if otherwise.
 */
    char str[4]="";
@@ -4160,7 +4353,7 @@ int InitPartialLikelihood (void)
             }
             if(nsense==0) {
                printf("\nseq. %d pattern %d",is+1,h+1);
-               error("Initlkl: stop codon");
+               error2("Initlkl: stop codon");
             }
 #endif
          }
@@ -4195,41 +4388,40 @@ int minB (FILE*fout, double *lnL,double x[],double xb[][2],double space[])
    This calls minbranches to estimate branch lengths and ming2 to 
    estimate other paramters.
    xb[] are destroyed.
+   Note that minbranches() does not update nodes[].lkl.
 */
    int i, npcom=com.np-com.ntime, ir,maxr=(npcom?500:1);
-   double *xcom=x+com.ntime, lnL0= *lnL,dl, e=1e-5, tb[2];
+   double *xcom=x+com.ntime, lnL0= *lnL,dl, e=.1, tb[2];
 
-   if(com.ntime==0) error("minB: should not come here");
+   if(com.ntime==0) error2("minB: should not come here");
 
    /* tb[0]=xb[0][0]; tb[1]=xb[0][1]; */
    tb[0]=1e-8, tb[1]=50;
    if(npcom)
       for(i=com.ntime,xcom=x+com.ntime; i<com.np; i++)
          { xb[i-com.ntime][0]=xb[i][0]; xb[i-com.ntime][1]=xb[i][1]; }
+   else
+      e=.5e-3;
    com.ntime=0;  com.fix_branch=2;
-   if(npcom) e=.1;
    if(*lnL<=0) *lnL=com.plfun(x,com.np);
    FOR(ir,maxr) {
       if(npcom) {
-         if(noisy>2) printf("\n\nRound %d: Paras (%d) (e=%.3e)",ir+1,npcom,e*.1);
-         SetxInitials (xcom);
-         ming2(NULL,lnL,com.plfun,NULL,xcom,xb, space,e*.1,npcom);
+         if(noisy>2) 
+            printf("\n\nRound %d phase I: Paras (%d) (e=%.2e)",ir+1,npcom,e);
+         ming2(NULL,lnL,com.plfun,NULL,xcom,xb, space,e,npcom);
          if(noisy>2) { FPN(F0); matout(F0,xcom,1,npcom); }
       }
+
       if(noisy>2)
-         printf("\nRound %d: Blengths (%d, e=%.3e)\n",ir+1,tree.nbranch,e);
+         printf("\nRound %d phase II: Blengths (%d, e=%.3e)\n",ir+1,tree.nbranch,e);
 
 #if(CODEML)
       if(com.NSsites==0) POMEGA=xcom+com.nrgene+!com.fix_kappa;
 #endif
       minbranches(lnL,x,tb, e, space);
 
-      if((dl=fabs(*lnL-lnL0))<1e-7 && e<.01) break;
-      e/=5;  if(dl<1) e/=5;
-      if(dl<0.5) e=min2(e,0.1);  if(dl<0.1) e=min2(e,1e-3);
-      e=max2(e,1e-6);
-
-      /* if(dl<0.1 && e<1e-5 && ir>5) e=0.001; */
+      if((dl= lnL0- *lnL)<.4e-6) break;
+      if(dl<0.5) e=.05;
 
       lnL0= *lnL;
       if(fout) {
@@ -4249,28 +4441,33 @@ int minB (FILE*fout, double *lnL,double x[],double xb[][2],double space[])
 
 int updatelkl(double x[], int inode)
 {
-/* update lkl for inode.  Note that _nodeScaleF and nodes[].lkl are shifted 
-   if(lklSiteClass).
+/* update lkl for inode.  
+   Note that _nodeScaleF and nodes[].lkl are shifted if(lklSiteClass).
    called from minbranches()
 */
    int ig,i,ir;
 
    if(lklSiteClass==0)
       FOR(ig,com.ngene) {
-         SetPGene(ig,com.Mgene>1,com.Mgene>1,com.nalpha>1,x+tree.nbranch);
+         if(com.Mgene>1)
+            SetPGene(ig,com.Mgene>1,com.Mgene>1,com.nalpha>1,x+tree.nbranch);
          PartialLikelihood(inode,ig);
       }
    else {
       FOR(ir,com.ncatG) {
+#ifdef CODEML
+         IClass=ir;
+#endif
          if(ir) {
             _nodeScaleF+=_nnodeScale*com.npatt;
             for(i=com.ns;i<tree.nnode;i++)
                nodes[i].lkl+=(tree.nnode-com.ns)*com.ncode*com.npatt;
          }
-         SetPSiteClass(ir,x+tree.nbranch);
+         SetPSiteClass(ir, x+tree.nbranch);
          FOR(ig,com.ngene) {
-            SetPGene(ig,com.Mgene>1,com.Mgene>1,com.nalpha>1,x+tree.nbranch);
-            if(com.nalpha>1) SetPSiteClass(ir,x+tree.nbranch);
+            if(com.Mgene>1)
+               SetPGene(ig,com.Mgene>1,com.Mgene>1,com.nalpha>1,x+tree.nbranch);
+            if(com.nalpha>1) SetPSiteClass(ir, x+tree.nbranch);
             PartialLikelihood(inode,ig);
          }
       }  /* for(ir) */
@@ -4284,10 +4481,11 @@ int updatelkl(double x[], int inode)
 }
 
 
-int minbranches(double *lnL, double x[], double tb[2], double e, double space[])
+int minbranches (double *lnL,double x[],double tb[2],double e,double space[])
 {
-/* optimizing one branch at one time
-   Z. Yang, November 1999
+/* Z. Yang, November 1999.
+   optimizing one branch at a time
+   
    for each branch a..b, reroot the tree at b, and 
    then calculate partial likelihood for node a.
    For each branch, this routine determines the Newton search direction 
@@ -4297,11 +4495,12 @@ int minbranches(double *lnL, double x[], double tb[2], double e, double space[])
    in lfuntddl().
    lfun or lfundG and thus SetParameters is called once beforehand to set up 
    global points like POMEGA.
-   for NSsites and NSbranch models, for example.
+   This works with NSsites and NSbranch models.
+   At the end of the routine, nodes[].lkl are not updated.
 */
    int ib,oldroot=tree.root, a,b;
    int icycle, maxcycle=1000, icycleb,ncycleb=10, i;
-   double lnL0=0, l0,l,dl,ddl, t,t0,t00, diffb, p,step=1, small=1e-20,y;
+   double lnL0=0, l0,l,dl,ddl, t,t0,t00, diffb, p,step=1, small=1e-15,y;
 
    lnL0=l0=l=*lnL;
    if(noisy>2) printf("lnL0 =    %14.6f\n",-lnL0);
@@ -4320,9 +4519,9 @@ int minbranches(double *lnL, double x[], double tb[2], double e, double space[])
             else
                lfuntdd_SiteClass(t,a,b,x, &y,&dl,&ddl,space);
 
-            if(fabs(y-l)>1e-6 && noisy>=3) {
-               printf("\nb=%d cycle=%d lnL=%12.7f != %12.7f  ",ib,icycleb,l,y);
-               puts("minbranches: rounding error?");
+            if((fabs(y-l)>1e-4 && noisy>2) || (fabs(y-l)>1e-5 && noisy>=9)) {
+               printf("\nwarning rounding error? b=%d cycle=%d lnL=%12.7f != %12.7f\n",ib,icycleb,l,y);
+               /* exit(-1); */
             }
 
             p=-dl/fabs(ddl);
@@ -4331,11 +4530,11 @@ int minbranches(double *lnL, double x[], double tb[2], double e, double space[])
             else if(p<0)       step=min2(1,(tb[0]-t0)/p);
             else               step=min2(1,(tb[1]-t0)/p);
 
-            if(icycle==0 && step!=1 && step!=0) step*=0.99; /* avoid the border */
-
+            if(icycle==0 && step!=1 && step!=0) step*=0.99; /* avoid border */
             for (i=0; step>small; i++,step/=4) {
-               if(!lklSiteClass) lfunt((t=t0+step*p), a,b,x, &l, space);
-               else              lfunt_SiteClass((t=t0+step*p), a,b,x, &l,space);
+               t=t0+step*p;
+               if(!lklSiteClass) lfunt(t, a,b,x, &l, space);
+               else              lfunt_SiteClass(t, a,b,x, &l,space);
                if(l<l0) break;
             }
             if(step<=small) { t=t0; l=l0; break; }
@@ -4343,6 +4542,7 @@ int minbranches(double *lnL, double x[], double tb[2], double e, double space[])
             t0=t; l0=l;
          }
          x[ib]=t; nodes[a].branch=t;
+
          if(fabs(t-t00)>diffb) diffb=fabs(t-t00);
       }   /* for (ib) */
       *lnL=l;
@@ -4357,10 +4557,12 @@ int minbranches(double *lnL, double x[], double tb[2], double e, double space[])
 }
 
 
+
+
+
 int lfunt(double t, int a,int b,double x[],double *l, double space[])
 {
-/* partial likelihood updated correctly already.
-   i for a, j for b?
+/* See notes for lfunt_dd and minbranches
 */
    int i,j,k, h,ig,n=com.ncode, nroot=n;
    int n1=(com.cleandata&&b<com.ns?1:n);
@@ -4368,14 +4570,17 @@ int lfunt(double t, int a,int b,double x[],double *l, double space[])
    double *P=space, piqi,pqj, fh;
 
 #if (CODEML)
-   if (com.seqtype==CODONseq && com.model) {
-      com.omega=POMEGA[OmegaBranch[k=nodes[a].ibranch]];
-      if (com.fix_omega && OmegaBranch[k]==N_OMEGA-1)  com.omega=OMEGA_FIX;
-      EigenQc(0,-1,NULL,NULL,NULL,Root,U,V, com.kappa,com.omega,PMat);
+   if (com.seqtype==CODONseq && com.model==2) {
+      if(N_OMEGA<=5)
+         { U=_UU[nodes[a].label]; V=_VV[nodes[a].label]; Root=_Root[nodes[a].label]; }
+      else 
+         EigenQc(0,-1,NULL,NULL,NULL,Root,U,V, com.kappa,nodes[a].omega,PMat);
    }
 #endif
 
 #if (BASEML)
+   if (com.nhomo==2)
+      EigenTN93(com.model,nodes[a].kappa,1,com.pi,&nR,Root,Cijk);
    nroot=nR;
 #endif
 
@@ -4419,8 +4624,11 @@ int lfunt(double t, int a,int b,double x[],double *l, double space[])
 int lfuntdd(double t, int a,int b,double x[],double *l,double*dl,double*ddl,
     double space[])
 {
-/* partial likelihood updated correctly already.
-   i for a, j for b?
+/* Calculates lnL for branch length t for branch b->a.
+   See notes in minbranches().
+   partial likelihood updated correctly already.
+
+   i for b, j for a?
 */
    int i,j,k, h,ig,n=com.ncode, nroot=n;
    int n1=(com.cleandata&&b<com.ns?1:n);
@@ -4429,13 +4637,16 @@ int lfuntdd(double t, int a,int b,double x[],double *l,double*dl,double*ddl,
 
 #if(CODEML)
    if (com.seqtype==CODONseq && com.model) {
-      com.omega=POMEGA[OmegaBranch[k=nodes[a].ibranch]];
-      if (com.fix_omega && OmegaBranch[k]==N_OMEGA-1)  com.omega=OMEGA_FIX;
-      EigenQc(0,-1,NULL,NULL,NULL,Root,U,V, com.kappa,com.omega,PMat);
+      if(com.model==2 && N_OMEGA<=5)
+         { U=_UU[nodes[a].label]; V=_VV[nodes[a].label]; Root=_Root[nodes[a].label]; }
+      else 
+         EigenQc(0,-1,NULL,NULL,NULL,Root,U,V, com.kappa,nodes[a].omega,PMat);
    }
 #endif
 
 #if (BASEML)
+   if (com.nhomo==2)
+      EigenTN93(com.model,nodes[a].kappa,1,com.pi,&nR,Root,Cijk);
    nroot=nR;
 #endif
    *l=*dl=*ddl=0;
@@ -4480,9 +4691,11 @@ int lfuntdd(double t, int a,int b,double x[],double *l,double*dl,double*ddl,
             dfh+=piqi*dpqj;
             ddfh+=piqi*ddpqj;
          }
-         if(fh<1e-250)
-            printf("a bit too small: fh = %10.6e\n",fh);
-
+         if(fh<1e-250) {
+            printf("too small: fh[%d] = %10.6e\n",h,fh);
+            OutaTreeN(F0,0,1);
+            exit(0);
+         }
          *l-=log(fh)*com.fpatt[h];
          FOR(i,_nnodeScale) *l-=_nodeScaleF[i*com.npatt+h]*com.fpatt[h];
          *dl-=dfh/fh*com.fpatt[h];
@@ -4496,6 +4709,7 @@ int lfuntdd(double t, int a,int b,double x[],double *l,double*dl,double*ddl,
 int lfunt_SiteClass(double t, int a,int b,double x[],double *l,double space[])
 {
 /* see notes in lfuntdd_SiteClass
+   For branch&site models, look at the notes in GetPMatBranch()
 */
    int i,j,k, h,ig,ir,it, n=com.ncode, nroot=n;
    int n1=(com.cleandata&&b<com.ns?1:n);  /* one state for a tip? */
@@ -4504,17 +4718,13 @@ int lfunt_SiteClass(double t, int a,int b,double x[],double *l,double space[])
    double *Sh=fh+com.npatt;  /* scale factor for each site pattern*/
    double *pK=com.fhK;  /* proportion for each site class after scaling */
 
+   int iUVR=0,iUVR0[4][2]={{0,1}, {2,3}, {0,4}, {2,4}};
+
 #if (BASEML)
+   if (com.nhomo==2)
+      EigenTN93(com.model,nodes[a].kappa,1,com.pi,&nR,Root,Cijk);
    nroot=nR;
 #endif
-
-/*
-FPN(F0);
-for(ir=0; ir<com.ncatG; ir++,FPN(F0)) 
-   for(k=0; k<_nnodeScale; k++)
-      printf("%12.3e ",_nodeScaleF[ir*_nnodeScale*com.npatt + k*com.npatt+0]);
-getchar();
-*/
 
    if(_nnodeScale==0) 
       FOR(ir,com.ncatG) FOR(h,com.npatt)  pK[ir*com.npatt+h]=com.freqK[ir];
@@ -4529,22 +4739,27 @@ getchar();
          FOR(ir,com.ncatG)
             pK[ir*com.npatt+h]=com.freqK[ir]*exp(pK[ir*com.npatt+h]-Sh[h]);
       }
-
-      /* matout2(F0,Sh,1,com.npatt,7,2); */
-   
    }
 
    FOR(h,com.npatt) fh[h]=0;
    FOR(ir,com.ncatG) {
-      SetPSiteClass(ir,x+tree.nbranch);  /* com.ntime=0, x is rootal */
- 
+      SetPSiteClass(ir, x+tree.nbranch);  /* com.ntime=0, x is original */
+
+#if CODEML  /* branch b->a */
+      if(com.seqtype==CODONseq && com.NSsites && com.model) { /* branch&site models */
+         iUVR=iUVR0[ir][nodes[a].label];
+         U=_UU[iUVR]; V=_VV[iUVR]; Root=_Root[iUVR]; 
+      }
+#endif
+
       if(ir) {
          for(i=com.ns;i<tree.nnode;i++)
-            nodes[i].lkl+=(tree.nnode-com.ns)*com.ncode*com.npatt;
+            nodes[i].lkl+=(tree.nnode-com.ns)*n*com.npatt;
       }
       for (ig=0; ig<com.ngene; ig++) {
-         SetPGene(ig,com.Mgene>1,com.Mgene>1,com.nalpha>1,x+tree.nbranch);
-         if(com.nalpha>1) SetPSiteClass(ir,x+tree.nbranch);
+         if(com.Mgene>1)
+            SetPGene(ig,com.Mgene>1,com.Mgene>1,com.nalpha>1,x+tree.nbranch);
+         if(com.nalpha>1) SetPSiteClass(ir, x+tree.nbranch);
 
          FOR(i,n*n) P[i]=0;
          for(k=0,expt=1; k<nroot; k++) {
@@ -4573,7 +4788,7 @@ getchar();
    }        /* for(ir) */
 
    for(i=com.ns;i<tree.nnode;i++)
-      nodes[i].lkl-=(com.ncatG-1)*(tree.nnode-com.ns)*com.ncode*com.npatt;
+      nodes[i].lkl-=(com.ncatG-1)*(tree.nnode-com.ns)*n*com.npatt;
    for(h=0,*l=0; h<com.npatt; h++) {
       
       if(fh[h]<1e-250) 
@@ -4616,13 +4831,15 @@ int lfuntdd_SiteClass(double t, int a,int b,double x[],
    double *fh=ddP+n*n, *dfh=fh+com.npatt, *ddfh=dfh+com.npatt;
    double *Sh=ddfh+com.npatt;  /* scale factor for each site pattern */
    double *pK=com.fhK;  /* proportion for each site class after scaling */
+   int iUVR=0,iUVR0[4][2]={{0,1}, {2,3}, {0,4}, {2,4}};
 
 #if (BASEML)
+   if (com.nhomo==2)
+      EigenTN93(com.model,nodes[a].kappa,1,com.pi,&nR,Root,Cijk);
    nroot=nR;
 #endif
-
-   if(com.sspace<(int)(2*com.ncode*com.ncode+4*com.npatt)*(int)sizeof(double))
-      error("lfuntdd_SiteClass: not enough momery is allocated.\nLet me know");
+   if(com.sspace<(int)(2*n*n+4*com.npatt)*(int)sizeof(double))
+      error2("lfuntdd_SiteClass: not enough momery is allocated.\nLet me know");
    if(_nnodeScale==0) 
       FOR(ir,com.ncatG) FOR(h,com.npatt)  pK[ir*com.npatt+h]=com.freqK[ir];
    else {
@@ -4640,14 +4857,23 @@ int lfuntdd_SiteClass(double t, int a,int b,double x[],
 
    FOR(h,com.npatt) fh[h]=dfh[h]=ddfh[h]=0;
    FOR(ir,com.ncatG) {
-      SetPSiteClass(ir,x+tree.nbranch);
+      SetPSiteClass(ir, x+tree.nbranch);
+
+#if CODEML  /* branch b->a */
+      if(com.seqtype==CODONseq && com.NSsites && com.model) { /* branch&site models */
+         iUVR=iUVR0[ir][nodes[a].label];
+         U=_UU[iUVR]; V=_VV[iUVR]; Root=_Root[iUVR]; 
+      }
+#endif
+
       if(ir) {
          for(i=com.ns;i<tree.nnode;i++)
-            nodes[i].lkl+=(tree.nnode-com.ns)*com.ncode*com.npatt;
+            nodes[i].lkl+=(tree.nnode-com.ns)*n*com.npatt;
       }
       for (ig=0; ig<com.ngene; ig++) {
-         SetPGene(ig,com.Mgene>1,com.Mgene>1,com.nalpha>1,x+tree.nbranch);
-         if(com.nalpha>1) SetPSiteClass(ir,x+tree.nbranch);
+         if(com.Mgene>1)
+            SetPGene(ig,com.Mgene>1,com.Mgene>1,com.nalpha>1,x+tree.nbranch);
+         if(com.nalpha>1) SetPSiteClass(ir, x+tree.nbranch);
 
          FOR(i,n*n) P[i]=dP[i]=ddP[i]=0;
          for(k=0,expt=1; k<nroot; k++) {
@@ -4691,7 +4917,7 @@ int lfuntdd_SiteClass(double t, int a,int b,double x[],
    }        /* for(ir) */
 
    for(i=com.ns;i<tree.nnode;i++)
-      nodes[i].lkl-=(com.ncatG-1)*(tree.nnode-com.ns)*com.ncode*com.npatt;
+      nodes[i].lkl-=(com.ncatG-1)*(tree.nnode-com.ns)*n*com.npatt;
    for(h=0,*l=*dl=*ddl=0; h<com.npatt; h++) {
       if(fh[h]<1e-250) 
          printf("a bit small: fh = %10.6e\n",fh[h]);
@@ -4775,6 +5001,7 @@ int RandomLHistory (int rooted, double space[])
    double t;
 
    for (i=0; i<2*ns-1-!rooted; i++) ClearNode(i);
+
    for (i=0; i<ns; i++) nodea[i]=i;
    for (i=ns,t=0; i>(1+!rooted); i--) {
       nodes[it=2*ns-i].nson=2;
@@ -4812,8 +5039,8 @@ int GenerateSeq (void)
    int i,h;
    double T=com.pi[0],C=com.pi[1],A=com.pi[2],G=com.pi[3],Y=T+C,R=A+G;
 
-   if (com.ncode!=4) error ("ncode");
-   if (com.ns<2 || com.ls<1) error ("err GenerateSeq 1");
+   if (com.ncode!=4) error2 ("ncode");
+   if (com.ns<2 || com.ls<1) error2 ("err GenerateSeq 1");
 
    if (com.model==F84) { kappa1=1+com.kappa/Y; kappa2=1+com.kappa/R; }
    else                  kappa1=kappa2=com.kappa;
@@ -4827,7 +5054,7 @@ int GenerateSeq (void)
    else                 Evolve   (tree.root);
    com.npatt=0;
    FOR(i,com.ns) FOR(h,com.ls) {
-      if(com.z[i][h]<0 || com.z[i][h]>3) error("err GenerateSeq 2.");
+      if(com.z[i][h]<0 || com.z[i][h]>3) error2("err GenerateSeq 2.");
 #ifndef SIMULATE
       com.z[i][h]=BASEs[com.z[i][h]];
 #endif

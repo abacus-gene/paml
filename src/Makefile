@@ -1,6 +1,8 @@
 PRGS =  baseml basemlg codeml codemlsites evolver mcmctree pamp yn00
 CC = cl # cc, gcc, cl
-CFLAGS = -O2 -G6 -nologo -ML -Za -W3 -DWIN32 -DNDEBUG
+CFLAGS =  -O2 -Ot -Oi -Og -G6 -nologo -ML -Za -W3 -DWIN32 -DNDEBUG
+
+
 
 DEFINE = #
 LIBS = #-lm -lM

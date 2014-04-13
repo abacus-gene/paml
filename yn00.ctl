@@ -1,4 +1,4 @@
-      seqfile = abglobin.nuc * sequence data file name
+      seqfile = examples/abglobin.nuc * sequence data file name
       outfile = yn           * main result file
       verbose = 0  * 1: detailed output (list sequences), 0: concise output
 

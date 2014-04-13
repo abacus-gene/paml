@@ -25,7 +25,7 @@
   0.00659745  0.01667307  0.01459541  0.00175204
   0.00386627  0.00977084  0.00855328  0.00102674
 
-// codon freqs under the F3x4 table from (mtCDNAape.nuc)
+// codon freqs in fixed order TTT, TTC, ..., GGG, from mtCDNAape.nuc under the F3x4 table
 
 
 MCcodon.dat

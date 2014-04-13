@@ -48,8 +48,8 @@ struct CommonInfo {
    int  seqtype, ns, ls, ngene, posG[NGENE+1],lgene[NGENE],*pose,npatt;
    int  clock,fix_alpha,fix_kappa,fix_rgene,Malpha,print,verbose;
    int  model, runmode, cleandata, ndata;
-   int np, ntime, nrate, nrgene, ncode;
-   double *fpatt, pi[4], lmax, alpha,kappa, rgene[NGENE],piG[NGENE][6],*lkl;
+   int np, ntime, nrate, ncode, nrgene;
+   double *fpatt, pi[4], lmax, alpha,kappa, rgene[NGENE],piG[NGENE][4],*lkl;
    double *SSave, *ErSave, *EaSave;
    int  nhomo, nparK, ncatG, fix_rho, getSE;  /* unused */
    double rho;                           /* unused */
@@ -75,6 +75,7 @@ enum {JC69, K80, F81, F84, HKY85, TN93, REV, UNREST} MODELS;
 #define REV_UNREST
 */
 #define BASEMLG
+int LASTROUND=0; /* no use for this */
 #include "treesub.c"
 
 int main(int argc, char *argv[])
@@ -101,13 +102,13 @@ int main(int argc, char *argv[])
 
    frate=fopen(ratef,"w");  frub=fopen("rub","w");  flfh=fopen("lfh","w");
 
-   if ((space=(double*)malloc(50000*sizeof(double)))==NULL) error ("oom");
+   if ((space=(double*)malloc(50000*sizeof(double)))==NULL) error2 ("oom");
 
    if (argc>1) { strcpy(ctlf, argv[1]); printf ("\nctlfile is %s.\n", ctlf); }
    GetOptions (ctlf);
 
-   if ((fout=fopen (com.outf, "w"))==NULL) error("outfile creation err.");
-   if((fseq=fopen (com.seqf,"r"))==NULL)  error("No sequence file!");
+   if ((fout=fopen (com.outf, "w"))==NULL) error2("outfile creation err.");
+   if((fseq=fopen (com.seqf,"r"))==NULL)  error2("No sequence file!");
    ReadSeq (NULL, fseq);
 
    fprintf (fout,"BASEMLG %15s %8s + Gamma", com.seqf, models[com.model]);
@@ -118,7 +119,7 @@ int main(int argc, char *argv[])
 
    SeqDistance=(double*)malloc(com.ns*(com.ns-1)/2*sizeof(double));
    ancestor=(int*)malloc(com.ns*(com.ns-1)/2*sizeof(int));
-   if (SeqDistance==NULL||ancestor==NULL) error("oom");
+   if (SeqDistance==NULL||ancestor==NULL) error2("oom");
 
    Initialize (fout, space, 0);
    if (com.model==JC69) PatternJC69like (fout);
@@ -140,9 +141,9 @@ int Forestry (FILE *fout, double space[])
    double x[NP], xb[NP][2], lnL[NTREE], e=1e-5, *var=space+NP;
    FILE *ftree, *finbasemlg=NULL;
 
-   if ((ftree=fopen(com.treef,"r"))==NULL)   error("treefile err.");
+   if ((ftree=fopen(com.treef,"r"))==NULL)   error2("treefile err.");
    fscanf (ftree, "%d%d", &i, &ntree);
-   if (i!=com.ns || ntree>NTREE) error ("err:ns || ntree..");              
+   if (i!=com.ns || ntree>NTREE) error2 ("err:ns || ntree..");              
    fprintf (flfh,"%6d%6d%6d\n", ntree, com.ls, com.npatt);
 
    fprintf(frate,"Rates for sites, from BASEMLG, %d tree(s)\n\n", ntree);
@@ -156,7 +157,7 @@ int Forestry (FILE *fout, double space[])
       fprintf(frub,"\n\nTREE # %2d", itree+1);
       fprintf(frate,"\nTREE # %2d\n", itree+1);
 
-      if (ReadaTreeN(ftree, &i, 1)) error ("err tree..");
+      if (ReadaTreeN(ftree, &i, 1)) error2 ("err tree..");
       com.ntime = com.clock ? tree.nnode-com.ns: tree.nbranch;
 
       OutaTreeN (F0, 0, 0);   
@@ -176,7 +177,7 @@ int Forestry (FILE *fout, double space[])
       if (finbasemlg) {
          printf ("\n\nReading initial values from in.basemlg.. Stop if wrong.");
          FOR (j, np)
-            if (fscanf(finbasemlg,"%lf",&x[j])!=1) error ("err in.basemlg");
+            if (fscanf(finbasemlg,"%lf",&x[j])!=1) error2 ("err in.basemlg");
       }
       else {
          if (itree==0) printf("\a");
@@ -341,7 +342,7 @@ int GetMem (int nbranch, int nR, int nitem)
       size=nm*nitem;
       printf ("\n\nSave %12ld bytes\n", size*sizeof(double));
       com.lkl = (double*)malloc(size*sizeof(double));
-      if (com.lkl==NULL) error("oom");
+      if (com.lkl==NULL) error2("oom");
    }
    com.ErSave  = com.lkl;
    if (nitem>1) com.SSave=com.ErSave+nm;
@@ -400,7 +401,7 @@ int RhoRate (double x[])
    double lnL, fh, sumfh=0, rh, Bmx, alpha, kappa;
    double mrh=0, mrh0=0, vrh=0, vrh0=0;
 
-   if (com.ngene>1) error ("ngene>1");
+   if (com.ngene>1) error2 ("ngene>1");
    alpha=(com.fix_alpha ? com.alpha : x[com.np-1]);
    kappa=(com.fix_kappa ? com.kappa : x[com.ntime]);
 
@@ -462,7 +463,7 @@ int lfunG_print (double x[], int np)
 
    fputs("\nEstimation of rates for sites by BASEMLG.\n",frate);
  
-   if ((rates=(double*)malloc(com.npatt*2*sizeof(double)))==NULL) error("oom");
+   if ((rates=(double*)malloc(com.npatt*2*sizeof(double)))==NULL) error2("oom");
    fhs=rates+com.npatt;
    
    FOR (i, com.nrgene) com.rgene[i+1]=x[com.ntime+i];
@@ -565,7 +566,7 @@ int lfunG_d (double x[], double *lnL, double dl[], int np)
    double drk1[4], c=1;
    double *p=com.pi, T=p[0],C=p[1],A=p[2],G=p[3],Y=T+C,R=A+G;
 
-   if (com.clock||com.model>HKY85) error ("err lfunG_d");
+   if (com.clock||com.model>HKY85) error2 ("err lfunG_d");
    NFunCall++;
    FOR (i, com.nrgene) com.rgene[i+1]=x[com.ntime+i];
    kappa=(com.fix_kappa ? com.kappa : x[com.ntime+com.nrgene]);
@@ -620,7 +621,7 @@ int lfunG_dd (double x[], double *lnL, double dl[], double ddl[], int np)
    double T=com.pi[0],C=com.pi[1],A=com.pi[2],G=com.pi[3],Y=T+C,R=A+G;
 
 
-   if (com.clock||com.model>HKY85) error ("err lfunG_dd");
+   if (com.clock||com.model>HKY85) error2 ("err lfunG_dd");
    NFunCall++;
    FOR (i, com.nrgene) com.rgene[i+1]=x[com.ntime+i];
    kappa=(com.fix_kappa ? com.kappa : x[com.ntime+com.nrgene]);
@@ -730,7 +731,7 @@ int GetOptions (char *ctlf)
             else if (line[i]==comment) break;
          if (t==0) continue;
          sscanf (line, "%s%*s%lf", opt, &t);
-         if ((pline=strstr(line, "="))==NULL) error("option file.");
+         if ((pline=strstr(line, "="))==NULL) error2("option file.");
 
          for (i=0; i<nopt; i++) {
             if (strncmp(opt, optstr[i], 8)==0)  {
@@ -775,12 +776,12 @@ int GetOptions (char *ctlf)
    else
       if (noisy) printf ("\nno ctl file..");
 
-   if (com.runmode)  error("runmode!=0 for BASEMLG?");
-   if (com.model!=F84 && com.kappa<=0)  error("init kappa..");
-   if (com.alpha<=0) error("init alpha..");
+   if (com.runmode)  error2("runmode!=0 for BASEMLG?");
+   if (com.model!=F84 && com.kappa<=0)  error2("init kappa..");
+   if (com.alpha<=0) error2("init alpha..");
    if (com.alpha==0 || com.Malpha || com.rho>0 || com.nhomo>0 || com.nparK>0 
       || com.model>HKY85)
-       error ("\noptions in file baseml.ctl inappropriate.. giving up..");
+       error2 ("\noptions in file baseml.ctl inappropriate.. giving up..");
    if (com.model==JC69 || com.model==F81) { com.fix_kappa=1; com.kappa=1; }
    if(com.cleandata==0) { 
       puts("cleandata set to 1, with ambiguity data removed. ");
