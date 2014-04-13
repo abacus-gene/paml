@@ -26,9 +26,9 @@ typedef struct { double re, im; } complex;
 #define spaceming2(n) ((n)*((n)*2+9+2)*(int)sizeof(double))
 
 int ReadSeq (FILE *fout, FILE *fseq);
-int Initialize (FILE *fout, double space[]);
+int Initialize (FILE *fout);
 int MoveCodonSeq (int ns, int ls, char *z[]);
-int PatternWeight (FILE *fout, double space[]);
+int PatternWeight (FILE *fout);
 int PatternJC69like (FILE *fout);
 int PatternWeightSimple (int CollapsJC, double space[]);
 int Site2Pattern (FILE *fout);
@@ -40,6 +40,10 @@ int f_and_x(double x[], double f[], int n, int fromx, int LastItem);
 void SetSeed (unsigned int seed);
 double rndu (void);
 void randorder(int order[], int n, int space[]);
+#define rnduab(a,b) ((a)+((b)-(a))*rndu())
+double sample_uniform(double x, double range[2], double finetune);
+double reflect(double x, double a, double b);
+#define rndexp(mean) (-(mean)*log(rndu()))
 double rndnorm (void);
 double rndgamma (double s);
 int rndpoisson (double m);
@@ -98,15 +102,19 @@ int dSdNNG1986(char *z1, char *z2, int lc, int icode, int transfed,
 int difcodonNG(char codon1[], char codon2[], double *SynSite,double *AsynSite, 
     double *SynDif, double *AsynDif, int transfed, int icode);
 int testTransP (double P[], int n);
-int PMatUVRoot (double P[],double t,int n,double U[],double V[],double Root[]);
+void pijJC69 (double pij[2], double t);
 int PMatK80 (double P[], double t, double kapa);
+int PMatT92 (double P[], double t, double kappa, double pGC);
 int PMatTN93 (double P[], double a1t, double a2t, double bt, double pi[]);
+int PMatUVRoot (double P[],double t,int n,double U[],double V[],double Root[]);
 int PMatCijk (double PMat[], double t);
 int EvolveHKY85 (char source[], char target[], int ls, double t, 
     double rates[], double pi[], double kapa, int isHKY85);
 int DistanceMatNuc (FILE *fout, FILE*f2base, int model, double alpha);
-int EigenREVbase (FILE* fout, double kapa[], double pi[], 
-                  int *nR, double Root[], double Cijk[]);
+int getpi_sqrt (double pi[], double pi_sqrt[], int n, int *npi0);
+int EigenQREVbase (FILE* fout, double kappa[], 
+                   double pi[], double pi_sqrt[], int npi0,
+                   int *nR, double Root[], double Cijk[]);
 int EigenQunrest(FILE *fout, double kappa[], double pi[], 
     int *nR, complex cRoot[], complex cU[], complex cV[]);
 
@@ -138,6 +146,7 @@ int printdouble(FILE*fout, double a);
 void strcase (char *str, int direction);
 void error2(char * message);
 int sort1 (double x[], int n, int rank[], int descending, int space[]);
+FILE *gfopen(char *filename, char *mode);
 int appendfile(FILE*fout, char*filename);
 
 int zero (double x[], int n);
@@ -174,7 +183,7 @@ int correl (double x[], double y[], int n, double *mx, double *my,
 /* complex functions */
 #define csize(a) (fabs(a.re)+fabs(a.im))
 complex compl (double re,double im);
-complex conj (complex a);
+complex conj2 (complex a);
 complex cplus (complex a, complex b);
 complex cminus (complex a, complex b);
 complex cby (complex a, complex b);
@@ -231,7 +240,7 @@ int nls2 (FILE *fout, double *sx, double * x0, int nx,
 void NodeToBranch (void);
 void BranchToNode (void);
 void ClearNode (int inode);
-int ReadaTreeN (FILE *ftree, int *length_label, int popline);
+int ReadaTreeN (FILE *ftree, int *haslength, int *haslabel, int popline);
 int ReadaTreeB (FILE *ftree, int popline);
 int OutaTreeN (FILE *fout, int spnames, int branchlen);
 int OutaTreeB (FILE *fout);
@@ -298,14 +307,14 @@ void EvolveJC (int inode);
 #define  AAseq       2
 #define  CODON2AAseq 3
 
-/*
+
 #define FAST_RANDOM_NUMBER
-*/
+
 
 /*
 #define DEBUG 9
 */
 
-#define VerStr "paml 3.12 February 2002"
+#define VerStr "paml 3.13, August 2002"
 
 #endif

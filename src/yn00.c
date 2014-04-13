@@ -23,7 +23,7 @@ int EncodeSeqCodon(void);
 int Statistics(FILE *fout, double space[]);
 int DistanceMatNG86 (FILE *fout, double alpha);
 int DistanceYN00(int is, int js, double*S, double*N, double*dS,double*dN,
-    double *t,double space[]);
+    double *SEdS, double *SEdN, double *t,double space[]);
 int GetKappa (void);
 int GetFreqs(int is1, int is2, double f3x4[], double pi[]);
 int CountSites(char z[],double pi[],double*Stot,double*Ntot,
@@ -31,7 +31,8 @@ int CountSites(char z[],double pi[],double*Stot,double*Ntot,
 int GetPMatCodon(double P[],double t, double kappa, double omega, double space[]);
 int CountDiffs(char z1[],char z2[], 
                double*Sdts,double*Sdtv,double*Ndts,double*Ndtv,double PMat[]);
-int DistanceF84(double n,double P,double Q,double pi[],double*k_HKY, double*t);
+int DistanceF84(double n, double P, double Q, double pi[],
+		          double*k_HKY, double*t, double*SEt);
 double dsdnREV (int is, int js, double space[]);
 
 int ExpPattFreq(double t,double kappa,double omega,double pi[],double space[]);
@@ -43,7 +44,7 @@ void SimulateData2s64(FILE* fout, double f3x4_0[], double space[]);
 struct common_info {
    char *z[NS], *spname[NS], seqf[96],outf[96];
    int ns,ls,npatt,codonf,icode,ncode,getSE,*pose,verbose, seqtype, cleandata;
-   int fcommon,kcommon, iteration, ndata, npi0;
+   int fcommon,kcommon, iteration, ndata, npi0, print;
    double *fpatt, pi[NCODE], f3x4s[NS][12], kappa, omega;
    int ngene,posG[NGENE+1],lgene[NGENE],fix_rgene, model;
    double rgene[NGENE],piG[NGENE][NCODE], alpha;
@@ -75,12 +76,12 @@ int main(int argc, char *argv[])
    FILE *fout, *fseq, *fds,*fdn,*ft;
    char ctlf[96]="yn00.ctl";
    int n=com.ncode, is,js, j,k, idata, wname=20, sspace;
-   double t=0.4, dS=0.1,dN=0.1, S,N, f3x4[12], *space=NULL;
+   double t=0.4, dS=0.1,dN=0.1, S,N, SEdS, SEdN, f3x4[12], *space=NULL;
 
    /* ConsistencyMC(); */
 
    if (argc>1)  strcpy(ctlf, argv[1]); 
-   com.seqtype=1;  com.cleandata=1; com.ndata=1;
+   com.seqtype=1;  com.cleandata=1; com.ndata=1;  com.print=0;
    noisy=1; com.icode=0;  com.fcommon=0;  com.kcommon=1;
    GetOptions (ctlf);
    fout=fopen (com.outf,"w"); frst=fopen("rst","w"); frst1=fopen("rst1","w"); 
@@ -127,7 +128,7 @@ int main(int argc, char *argv[])
          /* puts("kappa?"); scanf("%lf", &com.kappa); */
       }
 
-      fputs("\nseq. seq.     S       N        t   kappa   omega     dN     dS\n\n",fout);
+      fputs("\nseq. seq.     S       N        t   kappa   omega     dN +- SE    dS +- SE\n\n",fout);
       fprintf(fds,"%6d\n", com.ns);  fprintf(fdn,"%6d\n", com.ns);
       fprintf(ft,"%6d\n", com.ns);
       FOR(is,com.ns) {
@@ -141,12 +142,13 @@ int main(int argc, char *argv[])
 
             if(!com.fcommon) GetFreqs(is,js,f3x4,com.pi);
             if(!com.kcommon) GetKappa();
-            j=DistanceYN00(is, js, &S, &N, &dS,&dN, &t,space);
+            j=DistanceYN00(is, js, &S, &N, &dS,&dN, &SEdS, &SEdN, &t,space);
 
-            fprintf(fout,"%7.1f %7.1f %8.4f %7.4f %7.4f %6.4f %6.4f\n",
-               S,N,t,com.kappa,com.omega,dN,dS);
-            /* fprintf(frst,"YN: %8.4f%8.4f%8.4f%7.4f%7.4f\n",t,com.kappa,com.omega,dN,dS); */
-	 
+            fprintf(fout,"%7.1f %7.1f %8.4f %7.4f %7.4f %6.4f +- %6.4f %7.4f +- %6.4f\n",
+               S,N,t,com.kappa,com.omega,dN,SEdN,dS,SEdS);
+            fprintf(frst," YN: %8.4f%8.4f%8.4f %6.4f +- %6.4f %7.4f +- %6.4f\n",
+               t,com.kappa,com.omega,dN,SEdN,dS,SEdS);
+
             fprintf(fds," %7.4f",dS); fprintf(fdn," %7.4f",dN); fprintf(ft," %7.4f",t);
          }    /* for (js) */
          FPN(fds); FPN(fdn); FPN(ft);    
@@ -208,7 +210,7 @@ int GetOptions (char *ctlf)
 }
 
 int DistanceYN00(int is, int js, double*S, double*N, double*dS,double*dN,
-    double *t,double space[])
+    double *SEdS, double *SEdN, double *t,double space[])
 {
 /* calculates dS, dN, w, t by iteration.
    com.kappa & com.pi[] are calculated beforehand are not updated.
@@ -246,9 +248,9 @@ int DistanceYN00(int is, int js, double*S, double*N, double*dS,double*dN,
 
       CountDiffs(com.z[is],com.z[js], &Sdts,&Sdtv,&Ndts,&Ndtv, PMat);
 
-      if(DistanceF84(*S, Sdts/ *S, Sdtv/ *S, fbS, &y, dS)) status=-1;
+      if(DistanceF84(*S, Sdts/ *S, Sdtv/ *S, fbS, &y, dS, SEdS)) status=-1;
       if(noisy>3) printf("   syn kappa=%8.4f\n",y);
-      if(DistanceF84(*N, Ndts/ *N, Ndtv/ *N, fbN, &y, dN)) status=-1;
+      if(DistanceF84(*N, Ndts/ *N, Ndtv/ *N, fbN, &y, dN, SEdN)) status=-1;
       if(noisy>3) printf("nonsyn kappa=%8.4f\n",y);
 
       if(*dS<1e-9) { status=-1; com.omega=maxomega; }
@@ -422,7 +424,7 @@ int DistanceMatNG86 (FILE *fout, double alpha)
 fprintf (frub, " NG %7.3f %6.4f %6.4f\n", dN_dS, dN, dS);
 omega_NG=dN_dS;  dN_NG=dN; dS_NG=dS;
 /* for infinite data */
-fprintf (frst, " NG %7.3f %6.4f %6.4f\n", dN_dS, dN, dS);
+fprintf (frst, " NG %7.3f %6.4f %6.4f ", dN_dS, dN, dS);
 
       }
       if(noisy)  printf(" %3d",i+1);
@@ -498,7 +500,7 @@ fprintf(frub,"  %c ", (ndeg==2?'+':'-')); fflush(frub);
             P=(F[k][0*4+1]+F[k][2*4+3])*2;
             Q=1-(F[k][0*4+0]+F[k][1*4+1]+F[k][2*4+2]+F[k][3*4+3]) - P;
             FOR(j,4) pi[j]=sum(F[k]+j*4,4);
-            DistanceF84(S[k], P,Q,pi, &ka[k], &t);
+            DistanceF84(S[k], P,Q,pi, &ka[k], &t, NULL);
             wk[k]=(ka[k]>0?S[k]:0);
 
             /* matout(F0,F[k],4,4);  matout(F0,pi,1,4);  */
@@ -726,14 +728,18 @@ if(debug==DIFF) getchar();
 }
 
 
-int DistanceF84(double n,double P,double Q,double pi[],double*k_HKY, double*t)
+int DistanceF84(double n, double P, double Q, double pi[],
+    double*k_HKY, double*t, double*SEt)
 {
-/* This calculates kappa and d from P & Q & pi under F84.
+/* This calculates kappa and d from P (proportion of transitions) & Q 
+   (proportion of transversions) & pi under F84.
    When F84 fails, we try to use K80.  When K80 fails, we try
    to use JC69.  When JC69 fails, we set distance t to maxt.
+   Variance formula under F84 is from Tateno et al. (1994), and briefly 
+   checked against simulated data sets.
 */
    int failF84=0,failK80=0,failJC69=0;
-   double tc,ag, Y,R, a=0,b=0, k_F84;
+   double tc,ag, Y,R, a=0,b=0, A,B,C, k_F84;
    double Qsmall=min2(1e-10,0.1/n), maxkappa=999,maxt=99;
 
    *k_HKY=-1;
@@ -744,11 +750,12 @@ int DistanceF84(double n,double P,double Q,double pi[],double*k_HKY, double*t)
       matout(F0,pi,1,4);
       error2("DistanceF84: input err.");
    }
-   if(Q<Qsmall)          failF84=failK80=1;
+   if(Q<Qsmall)  failF84=failK80=1;
    else if(Y<=0 || R<=0 || (tc<=0 && ag<=0)) failF84=1;
    else {
-      a=(2*(tc+ag)+2*(tc*R/Y+ag*Y/R)*(1-Q/(2*Y*R)) - P) / (2*tc/Y+2*ag/R);
-      b=1-Q/(2*Y*R);
+      A=tc/Y+ag/R; B=tc+ag; C=Y*R;
+      a=(2*B+2*(tc*R/Y+ag*Y/R)*(1-Q/(2*C)) - P) / (2*A);
+      b=1-Q/(2*C);
       if (a<=0 || b<=0) failF84=1;
    }
    if (!failF84) {
@@ -756,8 +763,13 @@ int DistanceF84(double n,double P,double Q,double pi[],double*k_HKY, double*t)
       if(b<=0) failF84=1;
       else {
          k_F84=a/b-1;
-         *t = 4*b*(tc*(1+ k_F84/Y)+ag*(1+ k_F84/R)+Y*R);
-         *k_HKY = (tc+ag + (tc/Y+ag/R)* k_F84)/(tc+ag); /* k_F84=>k_HKY85 */
+         *t = 4*b*(tc*(1+ k_F84/Y)+ag*(1+ k_F84/R)+C);
+         *k_HKY = (B + (tc/Y+ag/R)* k_F84)/B; /* k_F84=>k_HKY85 */
+         if(SEt) {
+            a = A*C/(A*C-C*P/2-(A-B)*Q/2);
+            b = A*(A-B)/(A*C-C*P/2-(A-B)*Q/2) - (A-B-C)/(C-Q/2);
+            *SEt = sqrt((a*a*P+b*b*Q-square(a*P+b*Q))/n);
+         }
       }
    }
    if(failF84 && !failK80) {  /* try K80 */
@@ -771,12 +783,19 @@ int DistanceF84(double n,double P,double Q,double pi[],double*k_HKY, double*t)
             *k_HKY=(.5*a-.25*b)/(.25*b);
             *t = .5*a+.25*b;
          }
+         if(SEt) {
+            a=1/(1-2*P-Q); b=(a+1/(1-2*Q))/2;
+            *SEt = sqrt((a*a*P+b*b*Q-square(a*P+b*Q))/n);
+         }
       }
    }
    if(failK80) {
       if((P+=Q)>=.75) { failJC69=1; P=.75*(n-1.)/n; }
       *t = -.75*log(1-P*4/3.); 
       if(*t>maxt) *t=maxt;
+      if(SEt) {
+         *SEt = sqrt(9*P*(1-P)/n) / (3-4*P);
+      }
    }
    if(*k_HKY>maxkappa) *k_HKY=maxkappa;
 
@@ -970,7 +989,7 @@ int ConsistencyMC(void)
 
       fputs("\n    S       N        t   kappa   omega     dN     dS\n\n",fout);
       GetFreqs(0,1,f3x4,com.pi);
-      j=DistanceYN00(0,1, &S, &N, &dS,&dN, &t,space);
+      j=DistanceYN00(0,1, &S, &N, &dS,&dN, &SEdS, &SEdN, &t,space);
       fprintf(fout,"%7.1f %7.1f %8.4f%8.4f%8.4f%7.4f%7.4f\n",S,N,t,com.kappa,com.omega,dN,dS);
       fprintf(frst,"%8.4f%8.4f%8.4f%7.4f%7.4f\n",t,com.kappa,com.omega,dN,dS);
       fflush(frst);
@@ -1057,7 +1076,7 @@ void SimulateData2s64(FILE* fout, double f3x4_0[], double space[])
             Statistics(NULL, space);
             GetFreqs(0,1,f3x4,com.pi);
             t=(.25*dS_NG+.75*dN_NG)*3;
-            j=DistanceYN00(0, 1, &S, &N, &dS,&dN, &t,space);
+            j=DistanceYN00(0, 1, &S, &N, &dS,&dN, &SEdS, &SEdN, &t,space);
             if(j==2) nfail2++;
             if(dS<1e-6 || dN<-1e-6) { ir--; continue; }
             x[3]=dN/dS; x[4]=dN; x[5]=dS;

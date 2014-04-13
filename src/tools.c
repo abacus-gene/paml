@@ -105,7 +105,7 @@ int CodeChara (char b, int seqtype)
       }
    else
       FOR(i,n) if (b==pch[i]) return (i);
-   printf ("\nerr: strange character '%c' ", b);
+   if(noisy>=9) printf ("\nwarning: strange character '%c' ", b);
    return (-1);
 }
 
@@ -270,6 +270,9 @@ int difcodonNG (char codon1[], char codon2[], double *SynSite,double *AsynSite,
    dmark[i] (=0,1,2) is the i_th different codon position, with i=0,1,ndiff
    step[j] (=0,1,2) is the codon position to be changed at step j (j=0,1,ndiff)
    b[i][j] (=0,1,2,3) is the nucleotide at position j (0,1,2) in codon i (0,1)
+
+   I made some arbitrary decisions when the two codons have ambiguity characters
+   20 September 2002.
 */
    int i,j,k, i1,i2, iy[2], iaa[2],ic[2];
    int ndiff,npath,nstop,sdpath,ndpath,dmark[3],step[3],b[2][3],bt1[3],bt2[3];
@@ -282,8 +285,12 @@ int difcodonNG (char codon1[], char codon2[], double *SynSite,double *AsynSite,
          else          b[i][j]=(int)CodeChara((char)(i?codon1[j]:codon2[j]),0);
          iy[i]+=by[j]*b[i][j];
          if(b[i][j]<0||b[i][j]>3) { 
-            printf("\nb[%d][%d] = %d ", i,j,b[i][j]);
-            error2("difcodonNG");
+            if(noisy>=9) 
+               printf("\nwarning ambiguity in difcodonNG: %s %s", codon1,codon2);
+            *SynSite = 0.5;  *AsynSite = 2.5;
+            *SynDif = (codon1[2]!=codon2[2])/2;
+            *AsynDif = *SynDif + (codon1[0]!=codon2[0])+(codon1[1]!=codon2[1]);
+            return((int)(*SynDif + *AsynDif));
          }
       }
       iaa[i]=GeneticCode[icode][iy[i]];
@@ -380,13 +387,12 @@ int PMatUVRoot (double P[], double t, int n, double U[], double V[],
    if (t<1e-100) { identity (P, n); return(0); }
    for (k=0,zero(P,n*n); k<n; k++)
       for (i=0,pP=P,expt=exp(t*Root[k]); i<n; i++)
-          for (j=0,uexpt=U[i*n+k]*expt; j<n; j++)
-             *pP++ += uexpt*V[k*n+j];
+         for (j=0,uexpt=U[i*n+k]*expt; j<n; j++)
+            *pP++ += uexpt*V[k*n+j];
    for(i=0;i<n*n;i++)  if(P[i]<0)  P[i]=0;
-
 #if (DEBUG>=5)
       if (testTransP(P,n)) {
-         /*  matout (F0,P,n,n); */
+         /*  matout(F0,P,n,n); */
          printf("\nP(%.6f) err in PMatUVRoot.\n", t);
          exit(-1);
       }
@@ -395,6 +401,18 @@ int PMatUVRoot (double P[], double t, int n, double U[], double V[],
    return (0);
 }
 
+
+void pijJC69 (double pij[2], double t)
+{
+   if (t<-0.01) printf ("\nt = %.5f in pijJC69", t);
+   if (t<1e-100) 
+      { pij[0]=1; pij[1]=0; }
+   else
+      { pij[0] = (1.+3*exp(-4*t/3.))/4;  pij[1] = (1-pij[0])/3; }
+}
+
+
+
 int PMatK80 (double P[], double t, double kappa)
 {
 /* PMat for JC69 and K80
@@ -402,7 +420,7 @@ int PMatK80 (double P[], double t, double kappa)
    int i,j;
    double e1, e2;
 
-   if (t<-0.1) printf ("\nt = %.5f in PMatUVRoot", t);
+   if (t<-0.1) printf ("\nt = %.5f in PMatK80", t);
    if (t<1e-100) { identity (P, 4); return(0); }
    e1=exp(-4*t/(kappa+2));
    if (fabs(kappa-1)<1e-5) {
@@ -417,6 +435,29 @@ int PMatK80 (double P[], double t, double kappa)
       P[0*4+2]=P[0*4+3]=P[2*4+0]=P[3*4+0]=
       P[1*4+2]=P[1*4+3]=P[2*4+1]=P[3*4+1]=.25*(1-e1);
    }
+   return (0);
+}
+
+
+int PMatT92 (double P[], double t, double kappa, double pGC)
+{
+/* PMat for Tamura'92
+   t is branch lnegth, number of changes per site.
+*/
+   double e1, e2;
+   t/=(pGC*(1-pGC)*kappa + .5);
+
+   if (t<-0.1) printf ("\nt = %.5f in PMatT92", t);
+   if (t<1e-100) { identity (P, 4); return(0); }
+   e1=exp(-t); e2=exp(-(kappa+1)*t/2);
+
+   P[0*4+0]=P[2*4+2] = (1-pGC)/2*(1+e1)+pGC*e2;
+   P[1*4+1]=P[3*4+3] = pGC/2*(1+e1)+(1-pGC)*e2;
+   P[1*4+0]=P[3*4+2] = (1-pGC)/2*(1+e1)-(1-pGC)*e2;
+   P[0*4+1]=P[2*4+3] = pGC/2*(1+e1)-pGC*e2;
+
+   P[0*4+2]=P[2*4+0]=P[3*4+0]=P[1*4+2] = (1-pGC)/2*(1-e1);
+   P[1*4+3]=P[3*4+1]=P[0*4+3]=P[2*4+1] = pGC/2*(1-e1);
    return (0);
 }
 
@@ -749,6 +790,7 @@ int printsma(FILE*fout, char*spname[], char*z[],
    char *pch=(seqtype<=1 ? BASEs : (seqtype==2?AAs:BINs));
    char codon[4]="   ";
 
+   codon[0]=-1;  /* to avoid warning */
    if (gap==0) gap=lline+1;
    ngroup=(l-1)/lline+1;
    for (igroup=0,FPN(fout); igroup<ngroup; igroup++,FPN(fout))  {
@@ -791,32 +833,32 @@ int printsma(FILE*fout, char*spname[], char*z[],
         Simple tools
 ******************************/
 
-clock_t clock_start, clock_cur;
+static time_t time_start;
 
-void starttime(void)
+void starttime (void)
 {
-   clock_start=clock();
+   time_start=time(NULL);
 }
 
-char* printtime(char timestr[])
+char* printtime (char timestr[])
 {
-   long i;
-   double t;
+/* print time elapsed since last call to starttime()
+*/
+   time_t t;
 
-   clock_cur=clock();
-   if(clock_cur<0) printf("\nmillenium bug (%ld)\n", clock_cur);
-   i=(long)(t=(clock_cur-clock_start)/(double)CLOCKS_PER_SEC);
-   sprintf(timestr,"%02ld:%02ld:%02.1f", i/3600,(i%3600)/60, t-(i/60)*60);
+   t=time(NULL)-time_start;
+   sprintf(timestr,"%02ld:%02ld:%02ld", t/3600,(t%3600)/60, t-(t/60)*60);
    return(timestr);
 }
 
 void sleep2(int wait)
 {
 /* Pauses for a specified number of seconds. */
-   clock_t goal;
-   goal=wait+clock()/CLOCKS_PER_SEC;
-   while(goal>clock()) ;
+   time_t t_cur=time(NULL);
+
+   while(time(NULL)<t_cur+wait) ;
 }
+
 
 
 char *strc (int n, char c)
@@ -844,12 +886,21 @@ void strcase (char *str, int direction)
 }
 
 
+FILE *gfopen(char *filename, char *mode)
+{
+   FILE *fp=(FILE*)fopen(filename, mode);
+   if(fp==NULL) {
+      printf("\nerror when opening file %s\n", filename);
+      exit(-1);
+   }
+   return(fp);
+}
+
 int appendfile(FILE*fout, char*filename)
 {
-   FILE *fin=fopen(filename,"r");
+   FILE *fin=gfopen(filename,"r");
    int ch;
 
-   if(fin==NULL) return(-1);
    while((ch=fgetc(fin))!=EOF) fputc(ch,fout);
    fclose(fin);
    return(0);
@@ -896,11 +947,12 @@ double norm (double x[], int n)
 
 int sort1 (double x[], int n, int rank[], int descending, int space[])
 {
+/* inefficient bubble sort */
    int i,j, it=0, *mark=space;
    double t=0;
 
-   FOR (i, n) mark[i]=1;
-   FOR (i, n) {
+   FOR (i,n) mark[i]=1;
+   FOR (i,n) {
       for (j=0; j<n; j++)  if (mark[j]) { t=x[j]; it=j++; break; }
       if (descending) {
          for ( ; j<n; j++)
@@ -918,7 +970,7 @@ int sort1 (double x[], int n, int rank[], int descending, int space[])
 
 int f_and_x(double x[], double f[], int n, int fromf, int LastItem)
 {
-/* This transforms between x and f.
+/* This transforms between x and f.  x and f can be identical.
    If (fromf), f->x
    else        x->f.
    The iterative variable x[] and frequency f[0,1,n-2] are related as:
@@ -943,28 +995,33 @@ int f_and_x(double x[], double f[], int n, int fromf, int LastItem)
    return(0);
 }
 
+#if 0
+double rndu (void)
+{
+/* 32-bit integer assumed */
+   w_rndu *= 127773;
+   return ldexp((double)w_rndu, -32);
+}
+#endif
 
 
 static unsigned int z_rndu=137;
-static unsigned int w_rndu=13757;
+static unsigned int w_rndu=123456757;
 
 void SetSeed (unsigned int seed)
 {
    z_rndu=170*(seed%178)+137;
-   w_rndu=seed;
+   w_rndu = seed*127773;
 }
 
 
 #ifdef FAST_RANDOM_NUMBER
-
 double rndu (void)
 {
-/* 32-bit integer assumed 
-*/
-   w_rndu *= 127773;
+/* From Ripley (1987, page 46). 32-bit integer assumed */
+   w_rndu = w_rndu*69069+1;
    return ldexp((double)w_rndu, -32);
 }
-
 #else 
 
 double rndu (void)
@@ -992,6 +1049,40 @@ double rndu (void)
 }
 
 #endif
+
+
+double sample_uniform(double x, double range[2], double finetune)
+{
+   double w[2], xnew;
+   
+   w[0] = x - (range[1]-range[0])*finetune/2;
+   w[1] = x + (range[1]-range[0])*finetune/2;
+   xnew = rnduab(w[0],w[1]);
+   xnew = reflect(xnew, range[0], range[1]);
+   return(xnew);
+}
+
+double reflect(double x, double a, double b)
+{
+/* This returns a variable in the range (a,b) by reflecting x back into the range
+*/
+   int rounds=0;
+   double x0=x;
+
+   if(a>=b) {
+      printf("improper range %f (%f, %f)\n", x0,a,b);
+      printf("");
+   }
+   for ( ; ; rounds) {
+      if(x>=a && x<=b) return x;
+      if(x<a)      x = a + a - x;
+      else if(x>b) x = b - (x - b);
+      if(noisy>2 && ++rounds==2) {
+         printf("reflecting more than once %f (%f, %f)\n", x0,a,b);
+         printf("");
+      }
+   }
+}
 
 
 void randorder(int order[], int n, int space[])
@@ -1028,7 +1119,6 @@ double rndnorm (void)
    return (u1*sqrt(-2*log(sumsquare)/sumsquare));
 }
 
-#define rndexp(mean) (-mean*log(rndu()))
 
 int rndpoisson (double m)
 {
@@ -1688,7 +1778,7 @@ double InverseCDFBeta(double prob, double p, double q, double lnbeta)
    Ziheng Yang, May 2001
 */
    double fpu=3e-308, acu_min=1e-300, lower=fpu, upper=1-2.22e-16;
-/* acu_min>= fpu: Minimal value for accuracy 'acu' which will depend on (a,p); */
+   /* acu_min>= fpu: Minimal value for accuracy 'acu' which will depend on (a,p); */
    int swap_tail, i_pb, i_inn;
    double a, adj, g, h, pp, prev=0, qq, r, s, t, tx=0, w, y, yprev;
    double acu;
@@ -1749,20 +1839,13 @@ double InverseCDFBeta(double prob, double p, double q, double lnbeta)
 
 
    
-   
-   
-/* Added by Ziheng as qbeta() does not work 
+/* Changes made by Ziheng to fix a bug in qbeta()
    qbeta(0.25, 0.143891, 0.05) = 3e-308   wrong (correct value is 0.457227)
 */
+   if(xinbta<0) xinbta=(a+.5)/2;
+   else if (xinbta < lower)  xinbta = lower;
+   else if (xinbta > upper)  xinbta = upper;
 
-/*
-if(xinbta<0) xinbta=a/2;
-*/
-
-
-
-   if (xinbta<lower)       xinbta = lower;
-   else if (xinbta>upper)  xinbta = upper;
 
    /* Desired accuracy should depend on (a,p)
     * This is from Remark .. on AS 109, adapted.
@@ -1779,7 +1862,7 @@ if(xinbta<0) xinbta=a/2;
       /* y = pbeta2(xinbta, pp, qq, lnbeta) -- to SAVE CPU; */
       y = (y - a) *
          exp(lnbeta + r * log(xinbta) + t * log(1. - xinbta));
-      if (y * yprev <= 0.)
+      if (y * yprev <= 0)
          prev = max2(fabs(adj),fpu);
       g = 1;
       for (i_inn=0; i_inn < 1000; i_inn++) {
@@ -1800,12 +1883,12 @@ if(xinbta<0) xinbta=a/2;
       xinbta = tx;
       yprev = y;
    }
-   error2("InverseCDFBeta: not converged");
-
+/*
+   printf("\nwarning: InverseCDFBeta(%.2f, %.5f, %.5f) = %.6e\n", 
+      prob,p,q, (swap_tail ? 1. - xinbta : xinbta));
+*/
    L_converged:
-   if (swap_tail)
-      xinbta = 1. - xinbta;
-   return xinbta;
+   return (swap_tail ? 1. - xinbta : xinbta);
 }
 
 
@@ -1997,7 +2080,7 @@ int matout2 (FILE * fout, double x[], int n, int m, int wid, int deci)
 {
    int i,j;
    for (i=0,FPN(fout); i<n; i++,FPN(fout)) 
-      FOR(j,m) fprintf(fout," %*.*f", wid, deci, x[i*m+j]);
+      FOR(j,m) fprintf(fout," %*.*f", wid-1, deci, x[i*m+j]);
    return (0);
 }
 
@@ -2069,6 +2152,14 @@ int matinv (double x[], int n, int m, double space[])
 }
 
 
+int getpi_sqrt (double pi[], double pi_sqrt[], int n, int *npi0)
+{
+   int j;
+   for(j=0,*npi0=0; j<n; j++)
+      if(pi[j]) pi_sqrt[(*npi0)++]=sqrt(pi[j]);
+   *npi0 = n - *npi0;
+   return(0);
+}
 
 int eigenQREV (double Q[], double pi[], double pi_sqrt[], int n, int npi0,
                double Root[], double U[], double V[])
@@ -2080,7 +2171,7 @@ int eigenQREV (double Q[], double pi[], double pi_sqrt[], int n, int npi0,
    where S is symmetrical, all elements of pi are positive, and U*V = I.
    pi_sqrt[n-npi0] has to be calculated before calling this routine.
 
-   [U 0] [Q_0 0] [U^-1 0]    [\Root 0]
+   [U 0] [Q_0 0] [U^-1 0]    [Root  0]
    [0 I] [0   0] [0    I]  = [0     0]
 
    Ziheng Yang, 25 December 2001 (ref is CME/eigenQ.pdf)
@@ -2088,7 +2179,7 @@ int eigenQREV (double Q[], double pi[], double pi_sqrt[], int n, int npi0,
    int i,j, inew,jnew, nnew=n-npi0, status;
 
    /* store in U the symmetrical matrix S = sqrt(D) * Q * sqrt(-D) */
-   if(pi_sqrt==NULL)  error2("this should be done before");
+   if(pi_sqrt==NULL)  error2("pi_sqrt should be calculated before");
    if(npi0==0) {
       for(i=0; i<n; i++)
          for(j=0,U[i*n+i] = Q[i*n+i]; j<i; j++)
@@ -2112,7 +2203,7 @@ int eigenQREV (double Q[], double pi[], double pi_sqrt[], int n, int npi0,
       }
       status=eigenRealSym(U, nnew, Root, V);
 
-      for(i=n-1,inew=nnew-1; i>=0; i--)  /* construct Root */
+      for(i=n-1,inew=nnew-1; i>=0; i--)   /* construct Root */
          Root[i] = (pi[i] ? Root[inew--] : 0);
       for(i=n-1,inew=nnew-1; i>=0; i--) {  /* construct V */
          if(pi[i]) {
@@ -2144,6 +2235,9 @@ int eigenQREV (double Q[], double pi[], double pi_sqrt[], int n, int npi0,
                U[i*n+j] = (i==j);
       }
    }
+
+   if(fabs(Root[0])>1e-12 && noisy) printf("Root[0] = %.5e\n",Root[0]);
+   Root[0]=0;
    return(status);
 }
 
@@ -2366,10 +2460,9 @@ int variance (double x[], int n, int nx, double mx[], double vx[])
 */
    int i, j, k;
 
-   FOR (i, nx)  {
-      mx[i]=0;
-      FOR (k,n) mx[i]=(mx[i]*k+x[i*n+k])/(k+1.);
-   }
+   FOR(i,nx)  mx[i]=0;
+   FOR(i,nx)  FOR (k,n) 
+      mx[i]=(mx[i]*k+x[i*n+k])/(k+1.);
    FOR (i, nx*nx) vx[i]=0;
    for (i=0; i<nx; i++)  for (j=i; j<nx; j++) {
        FOR (k,n) vx[i*nx+j]+=(x[i*n+k]-mx[i])*(x[j*n+k]-mx[j]);
@@ -2395,6 +2488,121 @@ int correl (double x[], double y[], int n, double *mx, double *my,
 
    if (*v11>0.0 && *v22>0.0)  *r=*v12/sqrt(*v11 * *v22);
    else                       *r=-9;
+   return(0);
+}
+
+
+int bubblesort (float x[], int n)
+{
+/* inefficient bubble sort */
+   int i,j;
+   float t=0;
+
+   for(i=0;i<n;i++) {
+      for(j=i;j<n;j++)
+         if(x[j]<x[i]) { t=x[i]; x[i]=x[j]; x[j]=t; }
+   }
+   return (0);
+}
+
+
+typedef float resulttype;
+
+int comparefloat (const void *a, const void *b)
+{  
+   resulttype aa = *(resulttype*)a, bb= *(resulttype*)b;
+   return (aa==bb ? 0 : aa > bb ? 1 : -1);
+}
+
+
+int DescriptiveStatistics (FILE *fout, char infile[], int nbin)
+{
+/* this reads fin nx+2 times.
+*/
+   FILE *fin=fopen(infile,"r");
+   int  n, nx, i,j,k, jj;
+   char *fmt=" %9.6f", timestr[32];
+   double *x, *mean, *median, *minx, *maxx, *x025, *x975, *var, t;
+   double *mid, *freq, *gap;  /* size nbin, for binning */
+   resulttype *y;
+
+   starttime();
+   if (fin==NULL) { puts("input file open err"); exit(-1); }
+   fscanf(fin,"%d%d", &n,&nx);
+   printf("\n%d observations %d variables\n", n,nx);
+   x = (double*)malloc((nx*7+nx*nx)*sizeof(double));
+   mid = (double*)malloc((2*nx*nbin+nx)*sizeof(double));
+   if (x==NULL || mid==NULL) { puts("did not get enough space."); exit(-1); }
+   for(j=0;j<nx*7+nx*nx;j++) x[j]=0; 
+   mean=x+nx; median=mean+nx; minx=median+nx; maxx=minx+nx; 
+   x025=maxx+nx; x975=x025+nx; var=x975+nx;
+   freq=mid+nx*nbin; gap=freq+nx*nbin;
+   printf("collecting min, max, and mean");
+   for(i=0; i<n; i++) {
+      for(j=0;j<nx;j++) fscanf(fin,"%lf", &x[j]);
+      if(i==0) 
+         for(j=0;j<nx;j++) minx[j]=maxx[j]=x[j];
+      else {
+         for(j=0;j<nx;j++) 
+            if      (minx[j]>x[j]) minx[j]=x[j];
+            else if (maxx[j]<x[j]) maxx[j]=x[j];
+      }
+      for(j=0;j<nx;j++) mean[j]+=x[j]/n;
+   }
+   printf(" %10s\nhistogram & variance",printtime(timestr));
+   for(j=0;j<nx;j++) {
+      gap[j]=(maxx[j]-minx[j])/nbin;
+      for (k=0; k<nbin; k++) 
+         { freq[j*nbin+k]=0; mid[j*nbin+k]=minx[j]+gap[j]*(k+0.5); }
+   }
+   rewind(fin);  fscanf(fin,"%d%d", &n,&nx);
+   for (i=0; i<n; i++) {
+      for(j=0;j<nx;j++) fscanf(fin,"%lf", &x[j]);
+      for(j=0;j<nx;j++) {
+         for (k=0; k<nbin; k++) if(x[j]<=minx[j]+gap[j]*(k+1)) break;
+         freq[j*nbin+k]++;
+      }
+      for(j=0;j<nx;j++) for(k=0;k<=j;k++)
+          var[j*nx+k] += (x[j]-mean[j])*(x[k]-mean[k])/n;
+   }
+   printf("%10s\nsorting to get median and percentiles\n",printtime(timestr));
+   y=(float*)malloc(n*sizeof(float));
+   if(y==NULL) { printf("not enough mem for %d variables\n",n); exit(-1); }
+   for(jj=0;jj<nx;jj++) {
+      rewind(fin);  fscanf(fin,"%d%d", &n,&nx);
+      for(i=0;i<n;i++) {
+         for(j=0;j<nx;j++) fscanf(fin,"%lf", &x[j]);
+         y[i]=(float)x[jj];
+      }
+
+      /* bubblesort(y, n); */
+      qsort(y, (size_t)n, sizeof(float), comparefloat);
+
+      median[jj]=y[(n+1)/2];
+      x025[jj]=y[(int)(n*.025+.5)];
+      x975[jj]=y[(int)(n*.975+.5)];
+      printf("  variable %d out of %d %10s\n",jj+1,nx,printtime(timestr));
+   }
+
+   fprintf(fout,"\nmean    ");  for(j=0;j<nx;j++) fprintf(fout, fmt, mean[j]);
+   fprintf(fout,"\nmedian  ");  for(j=0;j<nx;j++) fprintf(fout, fmt, median[j]);
+   fprintf(fout,"\nS.D.    ");  for(j=0;j<nx;j++) fprintf(fout, fmt, sqrt(var[j*nx+j]));
+   fprintf(fout,"\nmin     ");  for(j=0;j<nx;j++) fprintf(fout, fmt, minx[j]);
+   fprintf(fout,"\nmax     ");  for(j=0;j<nx;j++) fprintf(fout, fmt, maxx[j]);
+   fprintf(fout,"\n2.5%%    "); for(j=0;j<nx;j++) fprintf(fout, fmt, x025[j]);
+   fprintf(fout,"\n97.5%%   "); for(j=0;j<nx;j++) fprintf(fout, fmt, x975[j]);
+   fprintf (fout, "\n\ncorrelation coefficient\n");
+   for (j=0; j<nx; j++,fputc('\n',fout))
+      for (k=0; k<=j; k++) {
+         t=sqrt(var[j*nx+j]*var[k*nx+k]);
+         fprintf(fout, fmt, (t>0?var[j*nx+k]/t:-9));
+      }
+   fprintf(fout, "\nmidvalue and freq for bins\n");
+   for (k=0; k<nbin; k++,fputc('\n',fout))
+      for(j=0;j<nx;j++)
+         fprintf(fout, "%s%.5f\t%.5f", (j?"\t\t":""),mid[j*nbin+k], freq[j*nbin+k]/n);
+
+   free(x); free(mid);  free(y);
    return(0);
 }
 
@@ -2779,7 +2987,7 @@ double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[],
 */
 
    if (noisy>2)
-      printf ("\n%4d h-lim-p%9.4f%9.4f%9.4f ", Iround+1, step, limit, norm(p,n));
+      printf ("\n%4d h-lim-p %8.4f %8.4f %8.4f ",Iround+1,step,limit,norm(p,n));
 
    if (step<=0 || limit<small || step>=limit) {
       if (noisy>2) 
@@ -3062,8 +3270,6 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
 
       if (alpha<=0) {
          if (fail) {
-            if (SIZEp>.1 && noisy>2)
-               printf("\nSIZEp:%9.4f  Iround:%5d", SIZEp, Iround+1);
             if (AlwaysCenter) { Iround=maxround;  break; }
             else { AlwaysCenter=1; identity(H,n); fail=1; }
          }
@@ -3128,6 +3334,7 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
 
    *f=(*fun)(x,n);  /* try to remove this after updating LineSearch2() */
    if (noisy>2) FPN(F0);
+
    if (Iround==maxround) {
       if (fout) fprintf (fout,"\ncheck convergence!\n");
       return(-1);
@@ -3246,4 +3453,3 @@ int ming1 (FILE *fout, double *f, double (* fun)(double x[], int n),
    }
    return(0);
 }
-

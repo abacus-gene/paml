@@ -20,14 +20,24 @@
 *  Thu May  6 15:22:31 CDT 1993
 ***************************************************************/
 
-#include "paml.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#define FOR(i,n) for(i=0; i<n; i++)
+#define FPN(file) fputc('\n', file)
+typedef struct { double re, im; } complex;
+#define csize(a) (fabs(a.re)+fabs(a.im))
+#define min2(a,b) ((a)<(b)?(a):(b))
+#define max2(a,b) ((a)>(b)?(a):(b))
+
 
 #define BASE        2    /* base of floating point arithmetic */
-#define DIGITS     40    /* no. of digits to the base BASE in the fraction */
-/*
-#define DIGITS     53
-*/
+#define DIGITS     50    /* no. of digits to the base BASE in the fraction */
 #define MAXITER    30    /* max2. no. of iterations to converge */
+/*
+#define DIGITS     40
+#define MAXITER    30
+*/
 
 #define pos(i,j,n)      ((i)*(n)+(j))
 
@@ -85,7 +95,7 @@ complex compl (double re,double im)
     return(r);
 }
 
-complex conj (complex a)
+complex conj2 (complex a)
 {
     a.im = -a.im;
     return(a);
@@ -186,7 +196,8 @@ int cmatout (FILE * fout, complex x[], int n, int m)
 
 int cmatinv( complex x[], int n, int m, double space[])
 {
-/* x[n*m]  ... m>=n
+/* complex matrix inversion
+   x[n*m]  ... m>=n
 */
    int i,j,k, *irow=(int*) space;
    double xmaxsize, ee=1e-20;

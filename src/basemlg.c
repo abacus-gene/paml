@@ -53,7 +53,7 @@ struct CommonInfo {
    int np, ntime, nrate, ncode, nrgene;
    double *fpatt, pi[4], lmax, alpha,kappa, rgene[NGENE],piG[NGENE][4],*lkl;
    double *SSave, *ErSave, *EaSave;
-   int  nhomo, nparK, ncatG, fix_rho, getSE, npi0;  /* unused */
+   int  nhomo, nparK, ncatG, fix_rho, getSE, npi0, readfpatt;  /* unused */
    double pi_sqrt[4], rho;                           /* unused */
 }  com;
 struct TREEB {
@@ -61,8 +61,8 @@ struct TREEB {
    double lnL;
 }  tree;                
 struct TREEN {
-   int father, nson, sons[NS], ibranch, label;
-   double branch, divtime, *lkl;
+   int father, nson, sons[NS], ibranch;
+   double branch, divtime, label, *lkl;
 }  nodes[2*NS-1];
 
 static int nR=4, CijkIs0[64];
@@ -70,8 +70,8 @@ static double Cijk[64], Root[4];
 
 FILE *frub, *flfh, *frate;
 char *ratef="rates";
-char *models[]={"JC69", "K80", "F81", "F84", "HKY85", "TN93", "REV", "UNREST"};
-enum {JC69, K80, F81, F84, HKY85, TN93, REV, UNREST} MODELS;
+char *models[]={"JC69","K80","F81","F84","HKY85","T92","TN93","REV","UNREST", "REVu","UNRESTu"};
+enum {JC69, K80, F81, F84, HKY85, T92, TN93, REV, UNREST, REVu, UNRESTu} MODELS;
 
 /*
 #define REV_UNREST
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
    FILE *fout, *fseq=NULL, *fpair[6];
    char pairfs[1][32]={"2base.t"};
    char ctlf[32]="baseml.ctl";
-   double  *space;
+   double  space[50000];
 
 #ifdef __MWERKS__
 /* Added by Andrew Rambaut to accommodate Macs -
@@ -105,8 +105,6 @@ int main(int argc, char *argv[])
 
    frate=fopen(ratef,"w");  frub=fopen("rub","w");  flfh=fopen("lfh","w");
 
-   if ((space=(double*)malloc(50000*sizeof(double)))==NULL) error2 ("oom");
-
    if (argc>1) { strcpy(ctlf, argv[1]); printf ("\nctlfile is %s.\n", ctlf); }
    GetOptions (ctlf);
 
@@ -125,7 +123,7 @@ int main(int argc, char *argv[])
    ancestor=(int*)malloc(com.ns*(com.ns-1)/2*sizeof(int));
    if (SeqDistance==NULL||ancestor==NULL) error2("oom");
 
-   Initialize (fout, space);
+   Initialize (fout);
    if (com.model==JC69) PatternJC69like (fout);
 
    DistanceMatNuc (fout, fpair[0], com.model, com.alpha);
@@ -142,7 +140,7 @@ int main(int argc, char *argv[])
 int Forestry (FILE *fout, double space[])
 {
    int  status=0, i,j, itree, ntree, np;
-   int pauptree=0, btree=0, length_label;
+   int pauptree=0, btree=0, haslength;
    double x[NP], xb[NP][2], lnL[NTREE], e=1e-5, *var=space+NP;
    FILE *ftree, *finbasemlg=NULL;
 
@@ -162,7 +160,7 @@ int Forestry (FILE *fout, double space[])
       fprintf(frate,"\nTREE # %2d\n", itree+1);
 
       if((pauptree && PaupTreeRubbish(ftree)) || 
-         ReadaTreeN(ftree,&length_label,1))
+         ReadaTreeN(ftree,&haslength,&i,1))
            { puts("err or end of tree file."); break; }
 
       com.ntime = com.clock ? tree.nnode-com.ns: tree.nbranch;
@@ -218,7 +216,7 @@ int Forestry (FILE *fout, double space[])
 
       fprintf (fout, "\n\n# fun calls:%10d\n", NFunCall);
       OutaTreeN(fout,1,1);  fputs(";\n", fout);
-      lfunG_print (x, np);
+      if(com.print) lfunG_print (x, np);
 /*
       RhoRate (x);
 */
@@ -719,13 +717,13 @@ int lfunG_dd (double x[], double *lnL, double dl[], double ddl[], int np)
 
 int GetOptions (char *ctlf)
 {
-   int i, nopt=26, lline=255;
+   int i, nopt=27, lline=255;
    char line[255], *pline, opt[20], comment='*';
    char *optstr[]={"seqfile","outfile","treefile", "noisy",
         "cleandata", "ndata", "verbose","runmode",
         "clock","fix_rgene","Mgene","nhomo","getSE","RateAncestor",
         "model","fix_kappa","kappa","fix_alpha","alpha","Malpha","ncatG", 
-        "fix_rho","rho","nparK", "Small_Diff", "method"};
+        "fix_rho","rho","nparK", "Small_Diff", "method", "readfpatt"};
    double t;
    FILE  *fctl=fopen (ctlf, "r");
 
@@ -771,6 +769,7 @@ int GetOptions (char *ctlf)
                   case (23): com.nparK=(int)t;       break;
                   case (24):                         break;   /* smallDiff */
                   case (25):                         break;   /* method */
+                  case (26): com.readfpatt=(int)t;   break;
                }
                break;
             }
@@ -796,3 +795,10 @@ int GetOptions (char *ctlf)
    }
    return (0);
 }
+
+
+/*
+28 July 2002.
+I have not checked the program carefully since I implemented T92.  Models up to 
+HKY85 should be fine.
+*/

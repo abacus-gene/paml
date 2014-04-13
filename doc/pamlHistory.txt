@@ -1,32 +1,62 @@
 History and bug fixes of PAML (Phylogenetic Analysis by Maximum Likelihood)
 Ziheng Yang
 
-
 Please report any bugs or comments to Ziheng Yang at z.yang@ucl.ac.uk.
 
-Version 3.12a, May 2002
 
-(1) codeml: For pairwise amino acid sequence comparison (seqtype = 2
+Version 3.13, August 2002
+
+(1) baseml: nhomo = 1 and model = 6 (for both the one-rate and gamma-rates
+    models) in version 3.12 gives incorrect results.  The error was introduced 
+    in version 3.12 and is now fixed.  Sorry for the trouble and thanks to
+    Joshua Scott Rest.
+
+(2) baseml: Tamura's (1992) model is inserted between HKY85 and TN93.  
+    Unfortunately this means that the model code for TN93 and REV are shifted, 
+    and you have to change your control file for those two models.  I also 
+    added user-specified REV or UNREST models.
+    0:JC69, 1:K80, 2:F81, 3:F84, 4:HKY85, 5:T92, 6:TN93,
+    7:REV, 8:UNREST, 9:REVu; 10:UNRESTu
+
+(4) I implemented the nonhomogeneous models of Galtier and Gouy
+    (1998).  The options are model = 5 (T92) and nhomo = 3 (N1) or 4
+    (N2) or 5 (user).  nhomo = 5 is added for the model of Yang and
+    Roberts (1995) as well.  It means that the user specifies, in the
+    tree, how many sets of base frequencies (or how many GC content
+    parameters in the model of Galtier and Gouy 1998) should be used
+    and which branches has which sets.
+
+(5) codeml: For pairwise amino acid sequence comparison (seqtype = 2
     and runmode = -2), the program crashes.  This is fixed now.
     Thanks to Dennis Paul Wall.  
 
-(2) The mechanistic models of amino acid substitution (model = 6 or 7)
+(6) codeml: The mechanistic models of amino acid substitution (model = 6 or 7)
     are broken for quite some time due to lack of maintenance.  I have
     now fixed them.  See the file examples/mtCDNA/readme.txt.
+
+(7) codemlsites is now removed, which is for batch run of multiple NSsites
+    models.  This is now done by specifying several NSsites models in
+    the control file codeml.ctl for codeml, for example: NSsites = 0 1
+    7 8.
+
+(8) baseml & codeml used to ask the user what to do if the tree has branch 
+    lengths.  I have now introduced a variable fix_blength in the control 
+    file that does the same thing. 
+    fix_blength = -1  * 0: ignore, -1: random, 1: initial, 2: fixed
 
 
 
 Version 3.12, March 2002
 
 (1) baseml and codeml, Mgene=2 or 4 (different pi's) and RateAncestor
-= 1 Ancestral reconstruction does not work properly although the ML
-iteration is fine.  The output likelihood values (in the form "Node
-20: lnL = -1047.965624") are different from the optimum likelihood
-already calculated.  The option was fine in version 3.0e and 3.1, and
-was broken in version 3.11.
+    = 1 Ancestral reconstruction does not work properly although the
+    ML iteration is fine.  The output likelihood values (in the form
+    "Node 20: lnL = -1047.965624") are different from the optimum
+    likelihood already calculated.  The option was fine in version
+    3.0e and 3.1, and was broken in version 3.11.
 
 (2) codeml stops with an error message "pi=0" when some amino acids are 
-missing in the sequences.  Earlier versions of the program are correct.
+    missing in the sequences.  Earlier versions of the program are correct.
 
 (3) yn00 now accepts multiple data sets (specified by ndata).
 
@@ -34,36 +64,37 @@ missing in the sequences.  Earlier versions of the program are correct.
 Version 3.11, September 2001
 
 (1) baseml and codeml (clock = 1 or clock = 2) sometimes print out
-ridiculous (e.g., large negative) tree lengths and branch lengths.  I
-thought this was fixed in version 3.1, but it was not.  Hopefully it
-is now fixed.
+    ridiculous (e.g., large negative) tree lengths and branch lengths.
+    I thought this was fixed in version 3.1, but it was not.
+    Hopefully it is now fixed.
 
 (2) baseml and codeml: Malpha (a separate alpha for each site
-partition) does not work with Mgene = 0.  The output will give you the
-same alpha value for each gene as you specify in the control file.
-This is now fixed.
+    partition) does not work with Mgene = 0.  The output will give you
+    the same alpha value for each gene as you specify in the control
+    file.  This is now fixed.
 
 (3) baseml: When the REV or UNREST models (model = 6 or 7) are used
-together with Mgene = 2, 3, 4, the program outputs one Q matrix, when
-each site partition should have a different Q matrix.  The ML parameter 
-estimates are correct, but I did not bother to format the output correctly.  
-The single Q matrix in the output is the one for the first partition.  
-I have added the output for the other matrices now.
+    together with Mgene = 2, 3, 4, the program outputs one Q matrix,
+    when each site partition should have a different Q matrix.  The ML
+    parameter estimates are correct, but I did not bother to format
+    the output correctly.  The single Q matrix in the output is the
+    one for the first partition.  I have added the output for the
+    other matrices now.
 
 (4) baseml and codeml.  Ancestral reconstruction was disabled for
-large trees with more than 100 or 200 sequences in previous versions.
-It is now allowed.  On large trees, the multiplication of transition
-probabilities across branches in the tree cause the product to become
-too small to be represented in the computer.  This is known as
-underflows.  I implemented a scaling algorithm to avoid underflows some 
-time ago but did not bother to do it with the ancestral reconstruction 
-algorithm at the time.  The algorithm should now work, up to the upper 
-limit set in the program, that is, 1000 or 2000 sequences.
+    large trees with more than 100 or 200 sequences in previous
+    versions.  It is now allowed.  On large trees, the multiplication
+    of transition probabilities across branches in the tree cause the
+    product to become too small to be represented in the computer.
+    This is known as underflows.  I implemented a scaling algorithm to
+    avoid underflows some time ago but did not bother to do it with
+    the ancestral reconstruction algorithm at the time.  The algorithm
+    should now work, up to the upper limit set in the program, that
+    is, 1000 or 2000 sequences.
 
 
 
 Version 3.1, June 2001
-
 
 Changed the way of counting base or amino acid frequencies so that
 this version of baseml or codeml might generate different results from

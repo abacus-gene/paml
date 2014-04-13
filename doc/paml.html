@@ -4,39 +4,37 @@
 <title>Phylogenetic Analysis by Maximum Likelihood (PAML)</title>
 </head>
 
-<body link="#0000FF" vlink="#800080">
-<h1 align="center"><font color="#008000" size="5"
-face="Bookman Old Style">Phylogenetic Analysis by Maximum
-Likelihood (PAML) </font></h1>
+<body link="#0000FF" vlink="#800080" bgcolor="#FFFFFF">
+<h2 align="center">Phylogenetic Analysis by Maximum Likelihood (PAML)<br>
+  Version 3.12, March 2002</h2>
 
-<p align="center"><font color="#FF0000" size="4">Version 3.1, July 2001</font></p>
-<p align="center"><a href="http://abacus.gene.ucl.ac.uk/"><font size="4"><strong>Ziheng
-Yang</strong></font></a><strong> (</strong><a
-href="mailto:z.yang@ucl.ac.uk"><strong>z.yang@ucl.ac.uk</strong></a><strong>)</strong></p>
+<p align="center"><a href="http://abacus.gene.ucl.ac.uk/"><b>Ziheng
+Yang</b></a> (<a href="mailto:z.yang@ucl.ac.uk">z.yang@ucl.ac.uk</a>)</p>
+
+
 
 <hr>
 
 <h2>Table of contents</h2>
 
 <ul>
-    <li><a href="#Intro">Introduction </a></li>
+    <li><a href="#introduction">Introduction </a></li>
     <li><blink><font size="5"><a href="speed.pdf">How fast is my new computer?</a></font></blink></li>
-    <li><a href="#PAMLorNot">What does PAML do?</a> </li>
-    <li><a href="#GetPAML">Downloading and Compiling PAML</a> </li>
-    <li><a href="#Running">Running Programs in PAML </a></li>
-    <li><a href="#History">History and Bug Fixes</a> </li>
+    <li><a href="#download">Downloading and Compiling PAML</a> </li>
+    <li><a href="#running">Running Programs in PAML </a></li>
+    <li><a href="#history">History and Bug Fixes</a> </li>
     <li><a href="pamlDOC.pdf">PAML Manual (pamlDOC.pdf)</a>
     <li><a href="pamlFAQs.html">PAML FAQs</a>
     </li>
 </ul>
 
-<h2><a name="Intro">Introduction </a></h2>
 
-<p>PAML is a program package for phylogenetic analyses of DNA or
-protein sequences using maximum likelihood. It is maintained and
-distributed for academic use free of charge by Ziheng Yang. ANSI
-C source codes as well as PowerMAC and Windows 95/NT executables
-are provided. </p>
+<p>
+<h2><a name="introduction">Introduction</a></h2>
+<p>PAML is a program package for phylogenetic analyses of DNA or protein sequences 
+  using maximum likelihood. It is maintained and distributed for academic use 
+  free of charge by Ziheng Yang. ANSI C source codes as well as PowerMAC and Windows 
+  95/NT executables are provided. </p>
 
 <p>This document is about downloading and compiling PAML and getting
 started. See the manual (<a href="pamlDOC.pdf">pamlDOC.pdf</a>) for
@@ -147,7 +145,7 @@ programs in the package is given below. </p>
         further documentation is included for this program.</li>
 </ul>
 
-<h2><a name="PAMLorNot">What does PAML do? </a></h2>
+<p><b>What does PAML do?</b></p>
 
 <p>PAML is not good for tree making. There are a few options for
 heuristic tree search, but they do not work well except for small
@@ -186,87 +184,52 @@ packages. </p>
         sets. </li>
 </ul>
 
-<h2><a name="GetPAML">Downloading and Compiling PAML </a></h2>
+<h2><a name="download">Downloading and Compiling PAML </a></h2>
 
-<p>PAML download files are at <a
-href="ftp://abacus.gene.ucl.ac.uk/pub/paml/">ftp://abacus.gene.ucl.ac.uk/pub/paml/</a>.  <p>
+The downloading ftp site is <a
+href="ftp://abacus.gene.ucl.ac.uk/pub/paml/">ftp://abacus.gene.ucl.ac.uk/pub/paml/</a>.
+Windows and Mac executables are provided, as well as C source codes
+for UNIX systems.  The source codes in those archives are exactly the
+same, so you get any archive to compile yourself.
+<p>
 
-<p><b>UNIX or other systems for workstations and mainframes. </b>Get
-the compressed archive <code>paml*.*.tar.Z</code>, where *.*
-represents the version numbers. This archive contains the source
-codes, example data files, control files, and documentation. You
-log on to your UNIX account, and create a directory to hold the
-paml files. You then use the ftp command in UNIX to get the
-archive:</p>
 
-<dir>
-    <li><code>ftp abacus.gene.ucl.ac.uk <br>
-        (use anonymous for username and your email for passwd) <br>
-        cd pub/paml <br>
-        ls <br>
-        bin <br>
-        get paml*.*.tar.Z <br>
-        quit <br>
-        </code></li>
-</dir>
+<p><b>Windows 95/98/NT/2000/XP. </b> Download the win32 archive
+(paml*.*.win32.exe.  The self-extracting archive has all the files for
+the package (source codes, example data files, control files,
+documentation, and executables).  You can run it and it will explode
+into a directory with all the files.  Programs in the package (the
+<code>.EXE</code> files) are simple Win32 Console applications, and do
+not support mice or menues.  Open a "command prompt" box and type the
+name of the program rather than double-clicking the program name from
+Windows Explorer.
 
-<p>You then use the following commands to unpack and decode the
-archive. </p>
+<p><b>UNIX, linux, MAC OS X or other systems</b>. Download the UNIX
+ archive (paml*.*.tar.Z) and unpack it into a folder.  Type make to
+ compile or look at Makefile.UNIX or readme.txt for compiling
+ instructions. <br>
 
-<dir>
-    <li><code>uncompress paml*.*.tar.Z <br>
-        tar xf paml*.*.tar <br>
-        <br>
-        make </code></li>
-</dir>
 
-<p>The <code>make</code> command is to compile the programs.
-Programs in PAML are written in ANSI C and should be compilable
-with any ANSI C-compatible compiler. You may need to change a few
-flags at the beginning of <font face="Courier New">Makefile</font>.
-For example, if the compiler complains about -fast, you can
-change it into -O2 or -O3. If you have gcc rather than cc, you
-make that change too. You can read the mannual pages for your
-compiler (say cc) by typing <br>
-</p>
+<i>MAC OS X.</i> You should open a command terminal
+(Applications-Utilities-Terminal) and then compile and run the
+programs from the terminal.  You cd to the paml folder and then look
+at the readme.txt or Makefile or Makefile.UNIX files.  
 
-<dir>
-    man cc 
-</dir>
 
-<p>The page will be very long, but look for options for
-optimization. The <code>-lm</code> switch forces a link to the
-math library. With some compilers or installations, this switch
-is unnecessary but using it does not harm. With some others, the
-switch causes compiling errors and has to be removed.  Look at the readme.txt file in the paml/src directory.</p>
 
-<p><b>PowerMacs (PPC or G3). </b>Download the compressed
-self-extracting archive for the PowerMac.  When you
-get the archive by <code>fetch</code>, the file will change its
-name into <code>paml*.*.G3.sea</code>. Move it to a subdirectory
-on your hard disk and double-click on it so that it explodes into
-a directory containing all files in the package (source codes,
-example data files, control files, documentation, and
-executables). When you run the PowerMac programs, a command-line
-window will pop up. You can then type in the name of the control
-file. You can also hit Enter to use the default control file
-names (<code>baseml.ctl</code> for <code>baseml</code> and <code>basemlg</code>,
-<code>codeml.ctl</code> for <code>codeml</code>). The sequence
-data files and tree structure files do not have fixed names and
-can be specified in the control files.  Thanks to Andrew Rambaut for preparing the archive.</p>
+<p><b>PowerMacs (PPC or G3 prior to OS X). </b>
+Download the compressed self-extracting archive for the PowerMac.
+  There is usually a time lag before the Mac version is made
+  available.  When you run the PowerMac programs, a command-line
+  window will pop up. You can then type in the name of the control
+  file. You can also hit Enter to use the default control file names
+  (<code>baseml.ctl</code> for <code>baseml</code> and
+  <code>basemlg</code>, <code>codeml.ctl</code> for
+  <code>codeml</code>). The sequence data files and tree structure
+  files do not have fixed names and can be specified in the control
+  files. Thanks to Andrew Rambaut for preparing the archive.</p>
 
-<p><b>Windows 95/98/NT/2000. </b>Download the compressed archive <code>for
-Windows</code>. This has all the files for the package (source
-codes, example data files, control files, documentation, and
-executables). This is a self-extracting archive. You can run it
-and it will explode into a directory with all the files. Programs
-in the package (the <code>.EXE</code> files) are simple Win32
-Console applications, and do not support mice or menues. When you
-run a program, open a &quot;command prompt&quot; box and type the
-name of the program rather than double-clicking the program name
-from Windows Explorer. </p>
-
-<h2><a name="Running">Running Programs in PAML </a></h2>
+<h2><a name="running">Running Programs in PAML </a></h2>
 
 <p>The programs in distribution are essentially the copies I work
 on every day, as I make only minor changes before release to the
@@ -331,13 +294,18 @@ programs from a command prompt by </p>
 can do this on a Windows machine too, but it is better if you
 open a command box and run the program from there. 
 
-<h2><a name="History">History and Bug Fixes </a></h2>
+<h2><a name="history">History and Bug Fixes </a></h2>
 
-<p><a href="PamlHistory.txt">Update history and bug fixes </a>
+<p><a href="pamlHistory.txt">Update history and bug fixes </a>
 collected here. </p>
 
-<p>Your suggestions and criticisms are appreciated. Send a message
-to <a href="mailto:z.yang@ucl.ac.uk">z.yang@ucl.ac.uk</a>. </p>
+<p>Your suggestions and criticisms are appreciated. Send a message to <a href="mailto:z.yang@ucl.ac.uk">z.yang@ucl.ac.uk</a>. 
+</p>
+<p>When you have a problem, try to identify where the problem lies. Most of programs 
+  in paml read your control file and sequence file before doing any calculation. 
+  You can ask questions such as &quot;Does the program read the sequences correctly?&quot;, 
+  &quot;Does it read my tree file correctly&quot;. Problems at this stage can 
+  mostly be solved by your editing the files.</p>
 
 <p><b>When reporting problems, please mention the version number of
 the package you use (for example, 3.0c for UNIX) and include a copy of
@@ -346,16 +314,77 @@ the control file (</b><code><b>baseml.ctl</b></code><b> or
 what happened and when, and inlcude screen output generated by the
 program, especially the last few lines on the screen.  I would also
 like to know the number of sequences and the sequence length in case
-the problem has to do with the size of the data set.</b> <p>
+the problem has to do with the size of the data set.</b> 
+<p> Try to provide enough information for me to understand and reproduce the problem. 
+  The most frustrating email I get says "PAML does not work on my data. Can you 
+  help?", without any explanation about what the problem is. <p> <p>
 
-Try to provide enough information for me to understand and reproduce the
-problem.  The most frustrating email I get says "PAML does not work on
-my data.  Can you help?", without any explanation about what the
-problem is.
+The nice buttons below do not work.  So don't click on them.<p>
 
-<hr>
+<table width="100%" border="0" cellpadding="2">
+  <tr> 
+    <td> 
+      <div align="center"><object classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=4,0,2,0" width="100" height="22" name="introduction">
+          <param name=movie value="introductionButton.swf">
+          <param name=quality value=high>
+          <param name="BGCOLOR" value="">
+          <embed src="introductionButton.swf" quality=high pluginspage="http://www.macromedia.com/shockwave/download/index.cgi?P1_Prod_Version=ShockwaveFlash" type="application/x-shockwave-flash" width="100" height="22" bgcolor="" name="Introduction">
+          </embed> 
+        </object><object classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=4,0,2,0" width="100" height="22" name="Download">
+          <param name=movie value="downloadButton.swf">
+          <param name=quality value=high>
+          <param name="BGCOLOR" value="">
+          <embed src="downloadButton.swf" quality=high pluginspage="http://www.macromedia.com/shockwave/download/index.cgi?P1_Prod_Version=ShockwaveFlash" type="application/x-shockwave-flash" width="100" height="22" bgcolor="" name="Download" base="">
+          </embed> 
+        </object><object classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=4,0,2,0" width="100" height="22" name="running">
+          <param name=movie value="runningButton.swf">
+          <param name=quality value=high>
+          <param name="BGCOLOR" value="">
+          <embed src="runningButton.swf" quality=high pluginspage="http://www.macromedia.com/shockwave/download/index.cgi?P1_Prod_Version=ShockwaveFlash" type="application/x-shockwave-flash" width="100" height="22" bgcolor="" name="running">
+          </embed> 
+        </object><object classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=4,0,2,0" width="100" height="22" name="Manual">
+          <param name="BASE" value=".">
+          <param name=movie value="manualButton.swf">
+          <param name=quality value=high>
+          <param name="BGCOLOR" value="#FF0000">
+          <embed src="manualButton.swf" quality=high pluginspage="http://www.macromedia.com/shockwave/download/index.cgi?P1_Prod_Version=ShockwaveFlash" type="application/x-shockwave-flash" width="100" height="22" bgcolor="#FF0000" name="Manual" base=".">
+          </embed> 
+        </object><object classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=4,0,2,0" width="100" height="22" name="FAQs">
+          <param name="BASE" value=".">
+          <param name=movie value="faqsButton.swf">
+          <param name=quality value=high>
+          <param name="BGCOLOR" value="">
+          <embed src="faqsButton.swf" quality=high pluginspage="http://www.macromedia.com/shockwave/download/index.cgi?P1_Prod_Version=ShockwaveFlash" type="application/x-shockwave-flash" width="100" height="22" bgcolor="" name="FAQs" base=".">
+          </embed> 
+        </object><object classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=4,0,2,0" width="100" height="22">
+          <param name=movie value="bugButton.swf">
+          <param name=quality value=high>
+          <param name="BGCOLOR" value="">
+          <embed src="bugButton.swf" quality=high pluginspage="http://www.macromedia.com/shockwave/download/index.cgi?P1_Prod_Version=ShockwaveFlash" type="application/x-shockwave-flash" width="100" height="22" bgcolor="">
+          </embed> 
+        </object></div>
+    </td>
+  </tr>
+</table>
+<p><object classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=4,0,2,0" width="280" height="35">
+    <param name=movie value="speedButton.swf">
+    <param name=quality value=high>
+    <param name="BASE" value=".">
+    <param name="BGCOLOR" value="">
+    <param name="SCALE" value="exactfit">
+    <embed src="speedButton.swf" base="."  quality=high pluginspage="http://www.macromedia.com/shockwave/download/index.cgi?P1_Prod_Version=ShockwaveFlash" type="application/x-shockwave-flash" scale="exactfit" width="280" height="35" bgcolor="">
+    </embed> 
+  </object></p>
 
-<p>Last modified by Ziheng Yang<br>
-15 July, 2001 </p>
+<p>
+
+Counter since 8 March 2002. </p>
+
+
+<!--Begin Ultimate Counter code--><center>
+<a target="_top" href="http://www.UltimateCounter.com/link.cgi?id=495833">
+<img src = "http://www.UltimateCounter.com/count/count.cgi?495833">
+</a></center><!--End Ultimate Counter code--> 
+
 </body>
 </html>

@@ -1,6 +1,6 @@
-      seqfile = lysozymeSmall.txt   * sequence data file name
-     treefile = lysozyme.trees      * tree structure file name
-      outfile = mlc                 * main result file name
+      seqfile = lysozymeSmall.txt
+     treefile = lysozymeSmall.trees
+      outfile = mlc
 
         noisy = 9   * 0,1,2,3,9: how much rubbish on the screen
       verbose = 0   * 1: detailed output, 0: concise output

@@ -65,13 +65,13 @@ struct TREEB {
    double lnL;
 }  tree;                
 struct TREEN {
-   int father, nson, sons[NS], ibranch, label;
-   double branch, divtime, *lkl;
+   int father, nson, sons[NS], ibranch;
+   double branch, divtime, label, *lkl;
 }  nodes[2*NS-1];
 
 FILE *frub, *frst;
-char *models[]={"JC69", "K80", "F81", "F84", "HKY85", "TN93", "REV"};
-enum {JC69, K80, F81, F84, HKY85, TN93, REV} MODELS;
+char *models[]={"JC69","K80","F81","F84","HKY85","T92","TN93","REV"};
+enum {JC69, K80, F81, F84, HKY85, T92, TN93, REV} MODELS;
 
 int nR=4, nreplicateMC;
 double lnpBestTree, PMat[16], Cijk[64], Root[4];
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
    char ctlf[]="mcmctree.ctl", rstf[96]="rst";
    char *priorTt[]={"Coalescent", "Yule", "Birth-death"};
    int idata, ndata=1;
-   double *space;
+   double space[50000];
    FILE  *fout, *fseq;
 
 #ifdef __MWERKS__
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
    com.ncode=4;      com.clock=1;
    com.print=1;
 
-   frub=fopen ("rub", "w");   frst=fopen (rstf, "w");
+   frub=gfopen ("rub", "w");   frst=gfopen (rstf, "w");
 /*
    printf ("\nNumber of data sets? ");
    scanf ("%d", &ndata);
@@ -118,13 +118,8 @@ int main(int argc, char *argv[])
    if (argc>1) 
       { strcpy(ctlf, argv[1]); printf ("\nctlfile reset to %s.\n", ctlf); }
    GetOptions (ctlf);
-   if ((fout=fopen(com.outf,"w"))==NULL) error2("outfile creation err.");
-   if((fseq=fopen (com.seqf,"r"))==NULL)  {
-      printf ("\n\nSequence file %s not found!\n", com.seqf);
-      exit (-1);
-   }
-
-   if ((space=(double*)malloc(50000*sizeof(double)))==NULL) error2("oom");
+   fout=gfopen(com.outf,"w");
+   fseq=fopen (com.seqf,"r");
 
    for (idata=0; idata<ndata; idata++) {
       if (ndata>1) {
@@ -148,7 +143,7 @@ int main(int argc, char *argv[])
       printf ("\n birth & death & sample & mut: %9.4f%9.4f%9.4f%9.4f",
           com.birth, com.death, com.sample, com.mut);
       
-      Initialize (fout, space);
+      Initialize (fout);
       if (com.model==JC69) PatternJC69like (fout);
       if (com.lkl) free(com.lkl);
       com.lkl=(double*)malloc((com.ns-1)*com.ncode*com.npatt*sizeof(double));
@@ -447,15 +442,16 @@ void MCMCtrees (FILE* fout, double space[])
       printf ("\nRun MCMC to generate candidate labeled histories.\n");
    else {
       printf("\nLabeled histories read from the file %s.\n", com.LHf);
-      if ((fLH=fopen(com.LHf,"r"))==NULL) error2("LHs file open error2");
+      fLH=gfopen(com.LHf,"r");
       EvaluateLHs(fout, fLH, IofLHs, lnPLHs, ntreekept, com.delta1);
       free(lnPLHs);
       return ;
    }
-   if ((ftree=fopen(com.treef,"r"))==NULL) error2 ("no treefile");
+   ftree=gfopen(com.treef,"r");
    fscanf(ftree, "%d%d", &i, &irun);  /* irun (ntree) ignored */
    if (i!=com.ns) error2 ("ns in the tree file");
-   if (ReadaTreeN (ftree, &i, 1)) error2 ("err tree..");  fclose(ftree);
+   if (ReadaTreeN (ftree, &i, &j, 1)) error2 ("err tree..");  
+   fclose(ftree);
    OutaTreeN (F0, 0, 0);  FPN(F0);   OutaTreeB (F0);  FPN(F0);
    if (com.ns*2-1!=tree.nnode) error2("Use a rooted tree to start.");
    nLHj=CountLHistory(LH_NNI, space);
@@ -541,7 +537,7 @@ void MCMCtrees (FILE* fout, double space[])
    }
    ntreekept=j;
 
-   fLH=fopen(com.LHf, "w");
+   fLH=gfopen(com.LHf, "w");
    fprintf (fLH, "%6d%6d\n", com.ns, ntreekept);
    for (j=0; j<ntreekept; j++) {
       GetLHistoryI (IofLHs[j]);

@@ -40,6 +40,7 @@ struct CommonInfo {
    char *z[NS], *spname[NS], seqf[32],outf[32],treef[32];
    int seqtype, ns, ls, ngene, posG[NGENE+1],lgene[NGENE],*pose,npatt,nhomo;
    int np, ntime, ncode,fix_kappa,fix_rgene,fix_alpha, clock, model, ncatG, cleandata;
+   int print;
    double *fpatt, *lkl;
    double lmax,pi[NCODE], kappa,alpha,rou, rgene[NGENE],piG[NGENE][NCODE];
    int npi0;
@@ -50,8 +51,8 @@ struct TREEB {
    double lnL;
 }  tree;
 struct TREEN {
-   int father, nson, sons[NS], ibranch, label;
-   double branch, divtime, *lkl;
+   int father, nson, sons[NS], ibranch;
+   double branch, divtime, label, *lkl;
 }  *nodes;
 
 
@@ -74,7 +75,7 @@ int main (int argc, char *argv[])
    FILE *ftree, *fout, *fseq;
    char ctlf[32]="pamp.ctl";
    char *Seqstr[]={"nucleotide", "", "amino-acid", "Binary"};
-   int itree, ntree, i, s3;
+   int itree, ntree, i, j, s3;
    double *space, *Ft;
 
 #ifdef __MWERKS__
@@ -84,7 +85,7 @@ int main (int argc, char *argv[])
 	argc=ccommand(&argv);
 #endif
 
-   com.nhomo=1;
+   com.nhomo=1;  com.print=1;
    noisy=2;  com.ncatG=8;   com.clock=0; com.cleandata=1;
    GetOptions (ctlf);
    if(argc>1) { strcpy(ctlf, argv[1]); printf("\nctlfile set to %s.\n",ctlf);}
@@ -99,7 +100,7 @@ int main (int argc, char *argv[])
    fprintf (fout,"PAMP %15s, %s sequences\n", com.seqf, Seqstr[com.seqtype]);
    if (com.nhomo) fprintf (fout, "nonhomogeneous model\n");
 
-   space = (double*)malloc(10000*sizeof(double));  /* *** */
+   space = (double*)malloc(50000*sizeof(double));  /* *** */
    SeqDistance=(double*)malloc(com.ns*(com.ns-1)/2*sizeof(double));
    ancestor=(int*)malloc(com.ns*(com.ns-1)/2*sizeof(int));
    if (SeqDistance==NULL||ancestor==NULL) error2("oom");
@@ -111,7 +112,7 @@ int main (int argc, char *argv[])
    Ft = (double*) malloc(s3);
    if (space==NULL || Ft==NULL)  error2 ("oom space");
 
-   Initialize (fout, space);
+   Initialize (fout);
    if (com.ngene>1) error2 ("option G not allowed yet");
 
 /*
@@ -119,7 +120,7 @@ int main (int argc, char *argv[])
    printf ("\nPairwise estimation of rate matrix done..\n");
    fflush(fout);
 */
-   if ((ftree=fopen (com.treef,"r"))==NULL) error2 ("no treefile");
+   ftree=gfopen (com.treef,"r");
    fscanf (ftree, "%d%d", &i, &ntree);
    if (i!=com.ns) error2 ("ns in the tree file");
 
@@ -128,7 +129,7 @@ int main (int argc, char *argv[])
       printf ("\nTREE # %2d\n", itree+1);
       fprintf (fout,"\nTREE # %2d\n", itree+1);
 
-      if (ReadaTreeN (ftree, &i, 1)) error2 ("err tree..");
+      if (ReadaTreeN (ftree, &i,&j, 1)) error2 ("err tree..");
       OutaTreeN (F0, 0, 0);    FPN (F0); 
       OutaTreeN (fout, 0, 0);  FPN (fout);
 
@@ -571,7 +572,7 @@ int PatternLS (FILE *fout, double Ft[], double alpha,double space[],int *cond)
    int n=com.ncode, i,j,k,h, it;
    double *Q=Ft,*Qt=Q+n*n,*Qm=Qt+n*n;
    double *pi,*Root,*U, *V, *T1=space, *branch, t;
-   FILE *fdist=fopen("Distance", "w");
+   FILE *fdist=gfopen("Distance", "w");
    
    if((pi=(double*)malloc((n*n*3+tree.nbranch)*sizeof(double)))==NULL)
       error2("PatternLS: oom");

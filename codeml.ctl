@@ -28,7 +28,6 @@
         icode = 0  * 0:universal code; 1:mammalian mt; 2-10:see below
         Mgene = 0  * 0:rates, 1:separate; 
 
-
     fix_kappa = 0  * 1: kappa fixed, 0: kappa to be estimated
         kappa = 2  * initial or fixed kappa
     fix_omega = 0  * 1: omega or omega_1 fixed, 0: estimate 
@@ -46,6 +45,7 @@
    Small_Diff = .5e-6
 *    cleandata = 0  * remove sites with ambiguity data (1:yes, 0:no)?
 *        ndata = 10
+*  fix_blength = -1  * 0: ignore, -1: random, 1: initial, 2: fixed
         method = 0   * 0: simultaneous; 1: one branch at a time
 
 
