@@ -11,7 +11,7 @@
   Routines in the two files should not be mixed.
 */
 #include "tools.h"
-#define NS            1000
+#define NS            500
 #define LSPNAME       30
 #define NCODE         64
 #define NGENE         1
@@ -240,7 +240,7 @@ int GetOptions (char *ctlf)
          else if (line[i]==comment) break;
       if (t==0) continue;
       sscanf (line, "%s%*s%lf", opt, &t);
-      if ((pline=strstr(line, "= "))==NULL) error("option file.");
+      if ((pline=strstr(line, "="))==NULL) error("option file.");
 
       for (i=0; i<nopt; i++) {
          if (strncmp(opt, optstr[i], 8)==0)  {

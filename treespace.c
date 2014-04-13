@@ -26,18 +26,18 @@ int MakeTreeIb (int ns, int Ib[], int rooted)
       tree.branches[tree.nbranch][0]=is+1;
       tree.branches[tree.nbranch++][1]=is;
    }
-   tree.origin=tree.branches[0][0];
+   tree.root=tree.branches[0][0];
    BranchToNode ();
    
    if (rooted) {
       it=tree.branches[Ib[k]][0];
       tree.branches[Ib[k]][0]=tree.branches[tree.nbranch][0]=2*com.ns-2;
       tree.branches[tree.nbranch][1]=it;
-      for (; it!=tree.origin;  it=nodes[it].father) {
+      for (; it!=tree.root;  it=nodes[it].father) {
          tree.branches[nodes[it].ibranch][0]=it;
          tree.branches[nodes[it].ibranch][1]=nodes[it].father;
       }
-      tree.origin=2*com.ns-2;  tree.nbranch++;
+      tree.root=2*com.ns-2;  tree.nbranch++;
       BranchToNode ();
    }
    return (0);
@@ -141,14 +141,14 @@ int GetIofTree (int rooted, int keeptree, double space[])
    for (it=com.ns; it<com.ns+nid; it++) if (Ib[it-com.ns]==3) break;
    ReRootTree (it);
    for (i=0,tree.nbranch=3; i<3; i++)  {
-      tree.branches[i][0]=tree.origin;  tree.branches[i][1]=i;
-      for (it=nodes[i].father,k=0; it!=tree.origin; it=nodes[it].father)
+      tree.branches[i][0]=tree.root;  tree.branches[i][1]=i;
+      for (it=nodes[i].father,k=0; it!=tree.root; it=nodes[it].father)
          bA[i*ns2+k++]=(char)it;
       bA[i*ns2+k]=0;
    }
    
    for (is=3; is<com.ns; is++) { /* add species (is) on branch b at node it */
-      for (it=nodes[is].father; it!=tree.origin; it=nodes[it].father) {
+      for (it=nodes[is].father; it!=tree.root; it=nodes[it].father) {
     for (b=0; b<tree.nbranch; b++) if (strchr(bA+b*ns2,it)) break;
     if (b<tree.nbranch) break;
       }
@@ -169,7 +169,7 @@ int GetIofTree (int rooted, int keeptree, double space[])
       }
    }  /* for (is) */
    if (rooted) {
-      a1=nodes[k=tree0.origin].sons[0];  a2=nodes[tree0.origin].sons[1];
+      a1=nodes[k=tree0.root].sons[0];  a2=nodes[tree0.root].sons[1];
       if (nodes[a1].father==k)      k=a1;
       else if (nodes[a2].father==k) k=a2;
       else error ("rooooot");
@@ -190,7 +190,7 @@ int GetIofTree (int rooted, int keeptree, double space[])
 /* reroot tree at newroot.  oldroot forgotten
    The order of branches is not changed.  Branch lengths are updated too.
 */
-   int oldroot=tree.origin, a,b;  /* a->b becomes b->a */
+   int oldroot=tree.root, a,b;  /* a->b becomes b->a */
 
    if (newroot==oldroot) return;
    for (b=newroot,a=nodes[b].father; b!=oldroot; b=a,a=nodes[b].father) {
@@ -202,7 +202,7 @@ int GetIofTree (int rooted, int keeptree, double space[])
 #endif
 
    }
-   tree.origin=newroot;
+   tree.root=newroot;
    BranchToNode ();
    for (b=oldroot,a=nodes[b].father; b!=newroot; b=a,a=nodes[b].father)
       nodes[b].branch=nodes[a].branch;
@@ -224,7 +224,7 @@ int NeighborNNI (int i_tree)
 */ 
    int i, a,b,c,d, ib=i_tree/2, ip=i_tree%2;
 
-   if (tree.nbranch!=com.ns*2-2-(nodes[tree.origin].nson==3)) 
+   if (tree.nbranch!=com.ns*2-2-(nodes[tree.root].nson==3)) 
       error ("err NeighborNNI: multificating tree.");
 
    /* locate a,b,c,d */
@@ -248,7 +248,7 @@ int GetLHistoryI (int iLH)
    GetTreeI which returns the I_th rooted or unrooted tree topology.
    The labeled history is recorded in the numbering of nodes: 
    node # increases as the node gets older: 
-   node d corresponds to time 2*ns-2-d; tree.origin=ns*2-2;
+   node d corresponds to time 2*ns-2-d; tree.root=ns*2-2;
    t0=1 > t1 > t2 > ... > t[ns-2]
    k ranges from 0 to i(i-1)/2 and indexes the pair (s1 & s2, with s1<s2),
    out of i lineages, that coalesce.
@@ -273,7 +273,7 @@ int GetLHistoryI (int iLH)
       nodea[s1]=inode;  nodea[s2]=nodea[i-1]; 
       inode++;
    }
-   tree.origin=inode-1;
+   tree.root=inode-1;
    NodeToBranch();
    return (0);
 }
@@ -283,13 +283,13 @@ int GetIofLHistory (void)
 /* Get the index of the labelled history (rooted tree with nodes ordered
    according to time).  
    Numbering of nodes: node # increases as the node gets older:
-   node d corresponds to time 2*ns-2-d; tree.origin=ns*2-2;
+   node d corresponds to time 2*ns-2-d; tree.root=ns*2-2;
    t0=1 > t1 > t2 > ... > t[ns-2]
 */
    int index, i,j,k[NS+1], inode,nnode, nodea[NS], s[2];
 
-   if (nodes[tree.origin].nson!=2 || tree.nnode!=com.ns*2-1
-     || tree.origin!=com.ns*2-2)  error("IofLH");
+   if (nodes[tree.root].nson!=2 || tree.nnode!=com.ns*2-1
+     || tree.root!=com.ns*2-2)  error("IofLH");
    for (i=0; i<com.ns; i++) nodea[i]=i;
    for (inode=nnode=com.ns,index=0; inode<com.ns*2-1; inode++,nnode--) {
       FOR (i,2) FOR (j,nnode)  
@@ -322,9 +322,9 @@ int CountLHistory(char LHistories[], double space[])
    if (com.ns-1!=tree.nnode-com.ns)  error ("binary tree?");
    FOR (i,com.ns-1) iA[i]=0;
 /*
-printf ("nlevel %2d\troot %2d\n", nlevel, tree.origin+1);
+printf ("nlevel %2d\troot %2d\n", nlevel, tree.root+1);
 */
-   nA[0]=1;  ipn=AA[0*ns1+0]=tree.origin;
+   nA[0]=1;  ipn=AA[0*ns1+0]=tree.root;
    for (level=1,nLH=0; ; level++) {
       nA[level]=0;
        /* inherate possiblities of level-1 */
@@ -367,8 +367,8 @@ int ReorderNodes (char LHistory[])
 */
    int i, j, k;
 
-   if (tree.origin!=com.ns*2-2 || LHistory[0]!=com.ns*2-2) {
-      tree.origin=com.ns*2-2;
+   if (tree.root!=com.ns*2-2 || LHistory[0]!=com.ns*2-2) {
+      tree.root=com.ns*2-2;
 /*      printf("\nRoot changed to %d in ReorderNodes..\n", com.ns*2-2+1); */
    }
    FOR (i, tree.nbranch) FOR (j,2) 

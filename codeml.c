@@ -27,13 +27,13 @@
 #endif
 
 #include "tools.h"
-#define NS            500
+#define NS            1000
 #define NBRANCH       (NS*2-2)
 #define NNODE         (NS*2-1)
-#define NGENE         80
+#define NGENE         100
 #define LSPNAME       30
 #define NCODE         64
-#define NCATG         20
+#define NCATG         40
 
 #define NP            (NBRANCH*2+NGENE-1+2)
 /*
@@ -44,13 +44,14 @@ extern int GenetCode[][64];
 extern int noisy, NFunCall, *ancestor;
 extern double *SeqDistance;
 
-int Forestry (FILE *fout, double space[]);
+int Forestry (FILE *fout);
 int sortwM3(double x[]);
 void DetailOutput (FILE *fout, double x[], double var[]);
 int GetOptions (char *ctlf);
 int testx (double x[], int np);
 int SetxBound (int np, double xb[][2]);
-int GetInitials (double x[]);
+int SetxInitials (double x[]);
+int GetInitials (double x[], int*fromfile);
 int SetParameters (double x[]);
 int SetPGene (int igene, int _pi, int _UVRoot, int _alpha, double xcom[]);
 int SetPSiteClass(int iclass, double xcom[]);
@@ -63,9 +64,10 @@ int AA2Codonf (double faa[20], double fcodon[]);
 int DistanceMatAA (FILE *fout);
 int DistanceMatNG86 (FILE *fout, double alpha);
 int GetDaa(FILE *fout, double daa[]);
+void getpcodonClass(double x[], double pcodonClass[]);
 int EigenQc (int getstats, double branchl, double *S, double *dS, double *dN,
     double Root[], double U[], double V[],
-    double kappa, double omega, double Q[64*64]);
+    double kappa, double omega, double Q[]);
 int EigenQaa(FILE *fout, double Root[], double U[], double V[],double rate[]);
 int Qcodon2aa (double Qc[], double pic[], double Qaa[], double piaa[]);
 int SetAA1STEP (void);
@@ -93,13 +95,13 @@ struct common_info {
    int method, icode, ncode, Mgene, ndata;
    int fix_rgene, fix_kappa, fix_omega, fix_alpha, fix_rho, getSE, fix_branch;
    int np, ntime, nrgene, nrate, nalpha, ncatG, sspace, slkl1;
-   double *fpatt;
+   double *fpatt, *space;
    double pi[NCODE],fb61[64],piG[NGENE][64],kappa,omega,alpha,rho,rgene[NGENE];
    double freqK[NCATG], rK[NCATG], MK[NCATG*NCATG],daa[20*20], *lkl,*lkl0,*fhK;
    double (*plfun)(double x[],int np);
 }  com;
 struct TREEB {
-   int  nbranch, nnode, origin, nlabel, branches[NBRANCH][2];
+   int  nbranch, nnode, root, nlabel, branches[NBRANCH][2];
    double lnL;
 }  tree; 
 struct TREEN {
@@ -111,9 +113,12 @@ struct TREEN {
 extern double Small_Diff;
 int FROM61[64], FROM64[64];
 double PMat[NCODE*NCODE],U[NCODE*NCODE],V[NCODE*NCODE],Root[NCODE];
+double xcom[NP-NBRANCH];
 double *POMEGA;
   /* communication between SetParameters & PartialLikelihood & EigenQc.  
      Remove it? */
+double pcodon0[64],paa0[20], *pcodonClass;  /* for aaDist=FIT1 or FIT2 */
+
 int LASTROUND;
 
 double OMEGA_FIX=-1;  
@@ -162,6 +167,8 @@ enum {NSneutral=1, NSselection, NSdiscrete, NSfreqs, NSgamma, NS2gamma,
 char *NSsitesmodels[]={"one-ratio","neutral", "selection","discrete","freqs", 
      "gamma","2gamma","beta","beta&w","beta&gamma", "beta&gamma+1", 
      "beta&normal>1", "0&2normal>0", "3normal>0"};
+enum {FIT1=11, FIT2=12} SiteClassModels;
+
 
 #ifdef SITELABELS
 char *sitelabels[]={"-17", "-16", "-15"};
@@ -183,7 +190,7 @@ int main(int argc, char *argv[])
                      "diff. rate & kappa", "diff. rate & pi & kappa"};
    char *clockstr[]={"", "global clock", "local clock", "clock with dated seqs"};
    int i, slkl0=0,s2=0, idata;
-   double *space=NULL,t;
+   double t;
    clock_t clock_start, clock_end;
 
    int ncatG0=10, im=0, nmodels=3, nsmodels[13]={0};
@@ -208,10 +215,9 @@ int main(int argc, char *argv[])
    com.fix_alpha=1;   com.alpha=0.;   com.ncatG=4;   /* alpha=0 := inf */
    com.fix_rho=0;     com.rho=0.4; 
    com.getSE=0;       com.print=0;    com.verbose=1;
-   com.method=0;
+   com.method=0;      com.space=NULL;
 
    frub=fopen("rub","w");   frst=fopen("rst","w");  frst1=fopen("rst1","w");
-   fin=fopen("in.codeml","r");
    SetSeed(13213);
 /*
 mergeSeqs(frst);  exit(0);
@@ -257,8 +263,10 @@ SimulateData2s61();
       /* BootstrapSeq("boot");  exit(0); */
 
       if(com.ngene>1 && com.Mgene==1)  printSeqsMgenes ();
-      if(com.Mgene==1 && com.print) 
-         { puts("Mgene & RateAncestor not tested.  Do not use?"); getchar(); }
+      if(com.Mgene==1 && com.print)
+         { puts("Mgene==1 & RateAncestor not tested. Do not use?"); getchar();}
+      if(com.ngene>1 && com.aaDist>=FIT1)  /* because of pcodon0[] */
+         { error("ngene for fitness models");}
 
       if(com.seqtype==CODONseq && (com.model==NSbranchB||com.model==NSbranch2))
         if((OmegaBranch=(int*)realloc(OmegaBranch,NBRANCH*sizeof(int)))==NULL)
@@ -302,7 +310,7 @@ SimulateData2s61();
          if(com.NSsites>=NSdiscrete)fprintf(fout," (%d categories)",com.ncatG);
          FPN(fout);
          if(com.aaDist)
-            fprintf(fout,"\nSpecial models: aaDist: %d\n",com.aaDist);
+            fprintf(fout,"\nFitness models: aaDist: %d\n",com.aaDist);
       }
 
       if(com.clock==2 && 
@@ -315,19 +323,20 @@ SimulateData2s61();
       com.sspace=max2(com.sspace,
         (int)sizeof(double)*((com.ns*2-2)*(com.ns*2-2+4+i)+i));
 */
-      if((space=(double*)realloc(space,com.sspace))==NULL) error("oom space");
+      if((com.space=(double*)realloc(com.space,com.sspace))==NULL)
+         error("oom space");
 
       SeqDistance=(double*)realloc(SeqDistance, i*sizeof(double));
       ancestor=(int*)realloc(ancestor, i*sizeof(int));
       if(SeqDistance==NULL||ancestor==NULL) error("oom distance&ancestor");
 
-      if(com.seqtype==AAseq) { 
-         Initialize (fout, space, com.seqtype);
+      if(com.seqtype==AAseq) {
+         Initialize (fout, com.space, com.seqtype);
          if (com.model==FromCodon||com.model==AAClasses) 
             AA2Codonf(com.pi, com.fb61);  /* get codon freqs from aa freqs */ 
       }
       else
-         if(InitializeCodon(fout,space)) error("giving up on stop codons");
+         if(InitializeCodon(fout,com.space)) error("giving up on stop codons");
       if(com.ns<200)
          if(com.seqtype==CODONseq) DistanceMatNG86(fout,0);
          else                      DistanceMatAA(fout);
@@ -345,7 +354,7 @@ SimulateData2s61();
 
 
       if(com.runmode==-2 && com.Mgene!=1) {
-         if(com.seqtype==CODONseq) PairwiseCodon(fout,space);  
+         if(com.seqtype==CODONseq) PairwiseCodon(fout,com.space);  
          else                      PairwiseAA(fout);  
       }
       else {
@@ -362,7 +371,7 @@ SimulateData2s61();
          printf ("%9d bytes for fhK\n%9d bytes for space\n",s2,com.sspace);
 
 /*
-SlidingWindow(fout,space);
+SlidingWindow(fout,com.space);
 exit(0);
 */
 #ifdef NSSITESBATCH
@@ -391,7 +400,7 @@ exit(0);
             fprintf(frub,"\n\nModel %d: %s",com.NSsites,NSsitesmodels[com.NSsites]);
             if(com.NSsites) fprintf(fout," (%d categories)",com.ncatG);
             FPN(fout);
-            Forestry (fout, space);
+            Forestry (fout);
 
             clock_end=clock(); i=(int)(t=(clock_end*1.0-clock_start)/CLOCKS_PER_SEC);
             fprintf(fout,"Time used: %02d:%02d:%02.1f.\n", i/3600,(i%3600)/60, t-(i/60)*60);
@@ -400,11 +409,11 @@ exit(0);
          }
          exit(0);
 #endif
-         if (com.Mgene==1)         MultipleGenes (fout, space);
-         else if (com.runmode==0)  Forestry(fout,space);
-         else if (com.runmode==3)  StepwiseAddition (fout, space);
-         else if (com.runmode>=4)  Perturbation(fout, (com.runmode==4), space);
-         else                      StarDecomposition(fout, space);
+         if (com.Mgene==1)         MultipleGenes (fout, com.space);
+         else if (com.runmode==0)  Forestry(fout);
+         else if (com.runmode==3)  StepwiseAddition (fout, com.space);
+         else if (com.runmode>=4)  Perturbation(fout, (com.runmode==4), com.space);
+         else                      StarDecomposition(fout, com.space);
       }
       FPN(frst);
       fflush(frst);  fflush(frst1);
@@ -421,14 +430,14 @@ exit(0);
         { alpha(for NSsites) !! alpha, rho || rK[], fK[] || rK[], MK[] }
 */
 
-int Forestry (FILE *fout, double space[])
+int Forestry (FILE *fout)
 {
    static int times=0;
    FILE *ftree, *frate=NULL;
    int  i,j=0,k, itree, ntree, np, iteration=1;
    int pauptree=0, length_label;
-   double x[NP],xcom[NP-NBRANCH],xb[NP][2], lnL=0,lnL0=0, e=1e-7,tl=0;
-   double *var=space+NP, nchange=-1;
+   double x[NP],xb[NP][2], lnL=0,lnL0=0, e=1e-7,tl=0;
+   double *var=com.space+NP, nchange=-1;
 
    if(com.clock==3) GetSeqTimes();
 
@@ -444,11 +453,18 @@ int Forestry (FILE *fout, double space[])
    if(com.verbose>=2) {
       fputs("codon freqs. under model.",fout); matout(fout,com.pi,16,4);
    }
-
    if((flnf=fopen("lnf","w+"))==NULL) error("lnf file open error");
    fprintf (flnf,"%6d%6d%6d\n", ntree, com.ls, com.npatt);
 
+   if(com.seqtype==1 && com.aaDist>=FIT1) {
+      xtoy(com.pi,pcodon0,64);
+      zero(paa0,20);
+      FOR(i,com.ncode) paa0[GenetCode[com.icode][FROM61[i]]]+=pcodon0[i];
+      pcodonClass=(double*)malloc(com.ncatG*64*sizeof(double));
+      if(pcodonClass==NULL) error("oom pcodonClass");
+   }
    if(!com.cleandata) InitPartialLikelihood();
+
    for(itree=0; pauptree||itree<ntree; iteration=1,itree++) {
       if(pauptree && PaupTreeRubbish(ftree)) 
          { puts("err or end of tree file."); break; }
@@ -456,11 +472,11 @@ int Forestry (FILE *fout, double space[])
       printf("\nTREE # %2d\n", itree+1);
       fprintf(fout,"\nTREE # %2d:  ", itree+1);
       fprintf(flnf,"\n\n%2d\n", itree+1);
-      fprintf(frst,"\n\nTREE #%2d", itree+1);
+      if(com.print) fprintf (frst,"\n\nTREE # %2d\n", itree+1);
       fprintf(frub,"\n\nTREE #%2d\n", itree+1);
 
       LASTROUND=0;
-      if(com.cleandata) nchange=MPScore(space);
+      if(com.cleandata) nchange=MPScore(com.space);
       if(com.ns<40) { OutaTreeN(F0,0,0); printf("   MP score: %.0f",nchange); }
       OutaTreeN(fout,0,0); fprintf(fout,"   MP score: %.0f",nchange);
 
@@ -472,26 +488,29 @@ int Forestry (FILE *fout, double space[])
             /* com.fix_branch=2; */
             if(com.fix_branch==1) {
                FOR(i,tree.nnode) 
-                  if(i!=tree.origin && (x[nodes[i].ibranch]=nodes[i].branch)<0)
+                  if(i!=tree.root && (x[nodes[i].ibranch]=nodes[i].branch)<0)
                      error("branch length in tree < 0");
             }
          }
       }
-      if(!com.clock && nodes[tree.origin].nson<=2 && com.ns>2) {
+      if(!com.clock && nodes[tree.root].nson<=2 && com.ns>2) {
          puts("\nThis is a rooted tree, without clock.  Check.");
          if(com.verbose) fputs("\nThis is a rooted tree.  Please check!",fout);
       }
       fflush(fout),  fflush(flnf);
 
-      GetInitials(x);
+      GetInitials(x, &i);
+      if(i==-1) iteration=0;
+      if(iteration) SetxInitials (x); /* start within the feasible region */
+
       if((np=com.np)>NP || np-com.ntime>NP-NBRANCH) error("raise NP");
       if((i=spaceming2(np))>com.sspace) {
-         if((space=(double*)realloc(space,com.sspace=i))==NULL) 
+         if((com.space=(double*)realloc(com.space,com.sspace=i))==NULL) 
             error("oom space");
          printf ("\n%9d bytes for space, adjusted\n",com.sspace);
       }
 
-      printf("\nntime & nrate & np: %d  %d  %d ", com.ntime,com.nrate,com.np);
+      printf("\nntime & nrate & np:%6d%6d%6d\n",com.ntime,com.nrate,com.np);
       if(itree) for(i=0;i<np-com.ntime;i++) x[com.ntime+i]=xcom[i];
 
       if(com.seqtype==CODONseq&&(com.model==NSbranchB||com.model==NSbranch2)){
@@ -507,36 +526,27 @@ int Forestry (FILE *fout, double space[])
          FPN(fout);
       }
 
-      if(fin) {
-         puts("\nInitials from in.codeml.  Stop if incorrect.");
-         fscanf(fin,"%lf",&x[i=0]);
-         if (x[0]==-1) { iteration=0; LASTROUND=1; }  else i++;
-         /* LASTROUND=1; may affect some calculations.  Check! */
-         for( ;i<np;i++) if(fscanf(fin,"%lf",&x[i])!=1) break;
-         if (i<np)  {
-            printf("err at #%d in in.codeml. Edit or remove it.\n",i+1);
-            exit(-1);
-         }
-      }
-      PointLklnodes ();  
+      PointLklnodes ();
       NFunCall=0;
       lnL = com.plfun (x,np);
+
       if(noisy) {
          printf("\nnp =%6d", np);
-         if(noisy>2 && np<50) matout(F0,x,1,np);
+         if(noisy>2 && np<100) matout(F0,x,1,np);
          printf("\nlnL0 = %12.6f\n",-lnL);
+
 /*
-         gradient (np, x, lnL, space, com.plfun, space+np, 1);
-         FOR(i,np) printf("%12.6f", space[i]);  FPN(F0);
+         gradient (np, x, lnL, com.space, com.plfun, space+np, 1);
+         FOR(i,np) printf("%12.6f", com.space[i]);  FPN(F0);
 */
       }
 
       if(iteration) {
          SetxBound(np,xb);
          if(com.method==0 || com.ntime==0 || com.clock)
-            j=ming2(noisy>2?frub:NULL,&lnL,com.plfun,NULL,x,xb, space,e,np);
+            j=ming2(noisy>2?frub:NULL,&lnL,com.plfun,NULL,x,xb,com.space,e,np);
          else
-            minB(noisy>2?frub:NULL, &lnL,x,xb, space);
+            minB(noisy>2?frub:NULL, &lnL,x,xb, com.space);
          if(j) fprintf(fout,"\ncheck convergence..");
       }
 
@@ -555,7 +565,7 @@ int Forestry (FILE *fout, double space[])
          for(i=0,tl=1; i<j-1; i++)  tl+=(x[k+i]=exp(x[k+i]));
          FOR(i,j-1)  x[k+i]/=tl;
       }
-      if(com.NSsites==NSdiscrete) sortwM3(x);
+      if(com.NSsites==NSdiscrete && com.aaDist==0) sortwM3(x);
 
       fprintf (fout,"\nlnL(ntime:%3d  np:%3d):%14.6f%+14.6f\n",
          com.ntime, np, -lnL, -lnL+lnL0);
@@ -564,7 +574,7 @@ int Forestry (FILE *fout, double space[])
 
       if (com.getSE) {
          if(np>20) puts("Calculating SE's");
-         Hessian (np, x, lnL, space, var, com.plfun, var+np*np);
+         Hessian (np, x, lnL, com.space, var, com.plfun, var+np*np);
          matinv (var, np, np, var+np*np);
          fprintf(fout,"SEs for parameters:\n");
          FOR(i,np) fprintf(fout," %8.5f",var[i*np+i]>0.?sqrt(var[i*np+i]):-0);
@@ -575,7 +585,7 @@ int Forestry (FILE *fout, double space[])
          fputs("\nNote: This model may have multiple optima. See doc.\n",fout);
 
       if (com.clock) SetBranch (x);
-      for(i=0,tl=0;i<tree.nnode;i++) if(i!=tree.origin) tl+=nodes[i].branch;
+      for(i=0,tl=0;i<tree.nnode;i++) if(i!=tree.root) tl+=nodes[i].branch;
       fprintf(fout,"\ntree length = %9.5f%s\n",tl,com.ngene>1?" (1st gene)":"");
 /*
 if(com.NSsites) {
@@ -598,10 +608,11 @@ fflush(frst1);
       if (com.seqtype==AAseq && com.model>=2 /* AAClasses */)
          EigenQaa(fout, Root, U, V, x+com.ntime+com.nrgene); /* S & PAM */
 
-      if (com.NSsites)                        lfunNSsites_rate(frst,x,np);
+      if (com.NSsites) 
+         lfunNSsites_rate(frst,x,np);
       else if (com.print) {
-         if(com.rho==0)                       AncestralSeqs(frst,x,space);
-         if(com.NSsites==0&& com.plfun!=lfun) lfunRates(frate,x,np);
+         if(com.rho==0)                        AncestralSeqs(frst,x);
+         if(com.NSsites==0&& com.plfun!=lfun)  lfunRates(frate,x,np);
       }
       com.print-=9;
       com.plfun(x,np);
@@ -613,7 +624,12 @@ fflush(frst1);
    if (com.aaDist && com.aaDist<10 
       && (com.seqtype==CODONseq||com.model==FromCodon))
       printf("\n%s, %s.\n",com.daafile,(com.aaDist>0?"geometric":"linear"));
-   if(noisy && ntree>1) { rewind(flnf);  rell(flnf,fout,ntree,space); }
+   if(com.seqtype==1 && com.aaDist>=FIT1) free(pcodonClass);
+
+   if(noisy && ntree>1) {
+      rewind(flnf);
+      rell(flnf,fout,ntree);
+   }
    fclose(flnf);
 
    return (0);
@@ -656,7 +672,7 @@ void DetailOutput (FILE *fout, double x[], double var[])
 */
    int i,j,k=com.ntime, np=com.np,npclass;
    double om=-1,N=-1,S=0,dN=0,dS=0,dSt,dNt, vtw[4],vSN[4], omclass[NCATG];
-   double phi1=0,phi2=0, tnode,t;
+   double phi1=0,phi2=0, tnode,t, *dSdNb;
    double mu[3]={0,1,2},sig[3]={-1}; /* 3normal: mu0=0 fixed. mu2 estimated */
 
    /* date estimation under molecular clocks */
@@ -704,9 +720,11 @@ void DetailOutput (FILE *fout, double x[], double var[])
             freqK_NS=com.freqK[j];
             if(com.aaDist) {
                k=com.ntime+com.nrgene+!com.fix_kappa;
-               if(com.aaDist<10)       POMEGA=x+k+com.ncatG-1+2*j;
-               else if(com.aaDist==11) POMEGA=x+k+com.ncatG-1+4*j;
-               else if(com.aaDist==12) POMEGA=x+k+com.ncatG-1+5*j;
+               if(com.aaDist<10)         POMEGA=x+k+com.ncatG-1+2*j;
+               else if(com.aaDist>=FIT1) {
+                  POMEGA=x+k+com.ncatG-1+j*(4+(com.aaDist==FIT2));
+                  xtoy(pcodonClass+j*64, com.pi, com.ncode);
+               }
             }
             EigenQc(1,1,&S,&dSt,&dNt,NULL,NULL,NULL,com.kappa,com.rK[j],PMat);
             /* t=1 used here, and dS & dN used later for each branch */
@@ -752,7 +770,7 @@ void DetailOutput (FILE *fout, double x[], double var[])
 
 
       if (com.NSsites==NSdiscrete && com.aaDist) { /* structural site classes */
-         npclass=(com.aaDist<10 ? 2 : (com.aaDist==11?4:5));
+         npclass=(com.aaDist<10 ? 2 : (com.aaDist==FIT1?4:5));
          fprintf(fout,"\nParameters in each class (%d)",npclass);
          fprintf(fout,"%s:\n\n",
             (com.aaDist<10 ? "(b, a)" : "(a_p, p*, a_v, v*, b)"));
@@ -762,7 +780,7 @@ void DetailOutput (FILE *fout, double x[], double var[])
             fprintf(fout," dN/dS =%8.5f",omclass[j]);
          }
       }
-      else if (com.NSsites && !com.aaDist) {
+      else if (com.NSsites && com.aaDist==0) {
          fprintf(fout,"\n\ndN/dS for site classes (K=%d)\np: ",com.ncatG);
          FOR(i,com.ncatG) fprintf(fout,"%9.5f",com.freqK[i]);
          fputs("\nw: ",fout);
@@ -774,24 +792,23 @@ void DetailOutput (FILE *fout, double x[], double var[])
          if (com.seqtype==CODONseq)  fprintf (fout,"\na = %9.5f\n", x[k++]);
       }
       else if(com.aaDist && com.aaDist>=11) { /* fitness, one class */
-         fprintf (fout,"\nfitness model (a_p, p*, a_v, v*, b): \n");
+         fprintf (fout,"\nfitness model (a_p, p*, a_v, v*, (and w0 for FIT2):\n");
          k=com.ntime+com.nrgene+!com.fix_kappa;
-         FOR(i,4+(com.aaDist==12)) fprintf(fout," %9.5f",x[k++]);  FPN(fout);
+         FOR(i,4+(com.aaDist==FIT2)) fprintf(fout," %9.5f",x[k++]);  FPN(fout);
       }
    }
-
-   if (!com.fix_alpha) {
-      if (com.nalpha<=1) fprintf (fout, "gamma parameter alpha:");
-      else  fprintf (fout, "gamma parameter alpha for %d genes:", com.ngene);
-      for (i=0; i<com.nalpha; i++) fprintf (fout, " %8.5f", x[k++]);
-      FPN (fout);
-      DiscreteGamma(com.freqK,com.rK,com.alpha,com.alpha,com.ncatG,0);
-      fprintf (fout, "r (%2d):",com.ncatG);
+    FOR(j,com.nalpha) {
+      if (!com.fix_alpha)  
+         fprintf(fout,"\nalpha (gamma) = %8.5f",(com.alpha=x[k++]));
+      if(com.nalpha>1) 
+         DiscreteGamma(com.freqK,com.rK,com.alpha,com.alpha,com.ncatG,0);
+      fprintf (fout, "\nr (%2d):",com.ncatG);
       FOR (i,com.ncatG) fprintf (fout, " %8.5f", com.rK[i]);
       fprintf (fout, "\nf:     ");
       FOR (i,com.ncatG) fprintf (fout, " %8.5f", com.freqK[i]);
       FPN (fout);
    }
+
    if (com.rho) {
       if (!com.fix_rho) fprintf (fout, "rho (correlation) = %8.5f\n", x[k]);
       fprintf (fout, "transition probabilities between rate categories:\n");
@@ -877,7 +894,11 @@ void DetailOutput (FILE *fout, double x[], double var[])
 #endif
 
    /* Calculate dN and dS for each branch in the tree */
-   if(com.seqtype==CODONseq /*||com.model==FromCodon||com.model==AAClasses */) {
+   if(com.seqtype==CODONseq /*||com.model==FromCodon||com.model==AAClasses */){
+      if(com.model) {
+         dSdNb=(double*)malloc(tree.nnode*2*sizeof(double));
+         if(dSdNb==NULL) error("oom DetailOutput");
+      }
       fputs("\ndN & dS for each branch\n\n",fout);
       fprintf(fout,"%7s%12s%9s%9s%9s%9s%9s %6s %6s\n\n",
               "branch","t","S","N","dN/dS","dN","dS","S*dS","N*dN");
@@ -899,7 +920,9 @@ void DetailOutput (FILE *fout, double x[], double var[])
             EigenQc(1,t,&S,&dS,&dN, NULL,NULL,NULL,com.kappa,om,PMat); /* */
             if(om==-1 && dS>1e-10) om=dN/dS;
             N=com.ls*3-S;
-                         /* om not used in AAClasses model */
+            if(com.model) {  dSdNb[i]=dS; dSdNb[tree.nnode+i]=dN; }
+
+            /* om not used in AAClasses model */
             if(com.getSE>1&&com.fix_branch<2&&!com.clock&&com.model!=AAClasses){
                puts ("calculate the SEs for dN & dS for each branch");
                vtw[0]=var[i*np+i];  vtw[3]=var[k*np+k]; 
@@ -918,6 +941,13 @@ void DetailOutput (FILE *fout, double x[], double var[])
                           t,S,N,om,dN*t,dS*t, S*dS*t,N*dN*t);
             /* fprintf(frst,"%8.1f%8.1f %9.5f%9.4f%9.4f",N,S,om,dN*t,dS*t); */
          }
+      }  /* for (i) */
+      if(com.model) {  
+         FOR(i,tree.nbranch) nodes[tree.branches[i][1]].branch=dSdNb[i]; 
+         fprintf(fout,"\ndS tree:\n");  OutaTreeN(fout,1,1);
+         FOR(i,tree.nbranch) nodes[tree.branches[i][1]].branch=dSdNb[tree.nnode+i];
+         fprintf(fout,"\ndN tree:\n");  OutaTreeN(fout,1,1);  FPN(fout);
+         free(dSdNb);
       }
    } 
    FPN(fout);
@@ -950,16 +980,16 @@ int GetOptions(char *ctlf)
          else if (line[i]==comment) break;
       if (t==0) continue;
       sscanf (line, "%s%*s%lf", opt,&t);
-      if ((pline=strstr(line, "= "))==NULL) 
-         error("err: option file. add space around the equal sign =");
+      if ((pline=strstr(line, "="))==NULL) 
+         error("err: option file. add space around the equal sign?");
       for (i=0; i<nopt; i++) {
          if (strncmp(opt, optstr[i], 8)==0)  {
             if (noisy>2)
                printf ("\n%3d %15s | %-20s %6.2f", i+1,optstr[i],opt,t);
             switch (i) {
-               case ( 0): sscanf(pline+2, "%s", com.seqf);    break;
-               case ( 1): sscanf(pline+2, "%s", com.outf);    break;
-               case ( 2): sscanf(pline+2, "%s", com.treef);   break;
+               case ( 0): sscanf(pline+1, "%s", com.seqf);    break;
+               case ( 1): sscanf(pline+1, "%s", com.outf);    break;
+               case ( 2): sscanf(pline+1, "%s", com.treef);   break;
                case ( 3): com.seqtype=(int)t;     break;
                case ( 4): noisy=(int)t;           break;
                case ( 5): com.cleandata=(int)t;   break;
@@ -1018,8 +1048,8 @@ int GetOptions(char *ctlf)
       case (REVaa):   com.fix_kappa=0; com.kappa=0; com.nrate=189; break;
       default: error ("model unavailable");
       }
-      if ((com.Mgene>=2 && com.model==Fequal) 
-        || (com.Mgene>=3 && com.model!=FromCodon)) error ("Mgene");
+      if (com.Mgene>=3 || (com.Mgene>=2 && (com.model==Fequal||com.model==2))) 
+         error ("Mgene");
    }
    else if(com.seqtype==CODONseq) {
       com.ncode=Nsensecodon[com.icode];
@@ -1042,17 +1072,18 @@ int GetOptions(char *ctlf)
          if (com.Mgene>=3 && com.nrate==0)  error("Mgene");
          if(com.runmode==-2 && (com.NSsites||com.alpha||com.aaDist))
             error("err: incorrect model for pairwise comparison.");
+         if(com.runmode>0 && com.model==2) error("tree search & model");
          if(com.aaDist && com.NSsites!=0 && com.NSsites!=NSdiscrete)
             error("NSsites && aaDist.");
 
          com.nrate=!com.fix_kappa;
-         if(!com.aaDist)  com.nrate+=!com.fix_omega;
+         if(com.aaDist==0)  com.nrate+=!com.fix_omega;
          else {
             if(com.fix_omega) error("fix_omega & aaDist");
-            if(com.aaDist<=5)   com.nrate+=2;  /* a & b, PSB2000 */
-            else if(com.aaDist==11)  com.nrate+=4; /* fitness models: */
-            else if(com.aaDist==12)  com.nrate+=5; /* ap, p*, av, v*, b */
-            if(com.aaDist>=11) FOR(i,2) FOR(j,20) AAchem[i][j]/=AAchem[i][20];
+            if(com.aaDist<=5)        com.nrate+=2;   /* a & b, PSB2000 */
+            else if(com.aaDist==FIT1)  com.nrate+=4; /* fitness models: */
+            else if(com.aaDist==FIT2)  com.nrate+=5; /* ap, p*, av, v*, b */
+            if(com.aaDist>=FIT1) FOR(i,2) FOR(j,20) AAchem[i][j]/=AAchem[i][20];
          }
  
          if(com.NSsites) {
@@ -1073,10 +1104,9 @@ int GetOptions(char *ctlf)
                com.nrate+=com.ncatG;  /* omega's */
                if(com.aaDist) { 
                   if (com.aaDist<=5) com.nrate+=com.ncatG;  /* a&b PSB2000 */
-                  else {
+                  else {  /* fitness models */
                      com.nrate=!com.fix_kappa+4*com.ncatG;
-                     if(com.aaDist==12) com.nrate+=com.ncatG;
-                     FOR(i,2) FOR(j,20) AAchem[i][j]/=AAchem[i][20];
+                     if(com.aaDist==FIT2) com.nrate+=com.ncatG;
                   }
                }
             }
@@ -1086,6 +1116,9 @@ int GetOptions(char *ctlf)
    else
       error ("seqtype..");
 
+   if(com.runmode==-2 && com.cleandata==0) {
+      com.cleandata=1; puts("gaps are removed for pairwise comparison.");
+   }
    if(com.method==1 &&(com.clock||com.rho)) 
       { com.method=0; puts("\aiteration method reset"); }
 
@@ -1108,6 +1141,7 @@ int GetOptions(char *ctlf)
       && com.ncatG<10) error("need more categories for NSsites");
 #endif
 
+   fin=fopen("in.codeml","r");
    return (0);
 }
 
@@ -1140,6 +1174,38 @@ int testx (double x[], int np)
    if (!com.fix_rho) if (x[np-1]<rhob[0] || x[np-1]>rhob[1]) return (-1);
    return(0);
 }
+
+int SetxInitials (double x[])
+{
+/* This forces initial values into the boundary of the space
+*/
+   int i, k;
+   double tb[]={.0002,16}, rgeneb[]={0.1,9}, rateb[]={.0001,89};
+   double alphab[]={0.05,9}, rhob[]={0.01,0.9};
+
+   FOR (i,com.ntime)  
+      { if (x[i]>tb[1]) x[i]=tb[1];  if (x[i]<tb[0]) x[i]=tb[0]; }
+   FOR (i,com.nrgene) {
+      if (x[com.ntime+i]>rgeneb[1]) x[com.ntime+i]=rgeneb[1];
+      if (x[com.ntime+i]<rgeneb[0]) x[com.ntime+i]=rgeneb[0];
+   }
+   for (i=0,k=com.ntime+com.nrgene; i<com.nrate; i++,k++) {
+      if (x[k]>rateb[1]) x[k]=rateb[1];
+      if (x[k]<rateb[0]) x[k]=rateb[0];
+   }
+   for (i=0; i<com.nalpha; i++,k++)  {
+      if (x[k]>alphab[1]) x[k]=alphab[1];
+      if (x[k]<alphab[0]) x[k]=alphab[0];
+   }
+   if (!com.fix_rho)
+      { if (x[k]>rhob[1]) x[k]=rhob[1]; if (x[k]<rhob[0]) x[k]=rhob[0]; }
+
+/*
+   FOR (i,com.np) if (x[i]<1e-4) printf("x[%d]=%.6f\n", i,x[i]);
+*/
+   return(0);
+}
+
 
 int SetxBound (int np, double xb[][2])
 {
@@ -1240,8 +1306,46 @@ int SetxBound (int np, double xb[][2])
    return(0);
 }
 
+void getpcodonClass(double x[], double pcodonClass[])
+{
+/* This uses pcodon0[], paa0[], and x[] to calculate pcodonclass[] and
+   com.pi[] for the fitness models.
+   pcodon0[] has the codon frequencies observed (codonFreq=3) or expected 
+   (codonFreq=2 or 1 or 0) rootally.  Under the fitness models, the expected 
+   codon frequencies pcodonClass[] differs among site classes and from the 
+   rootal pi[] (pcodon0[]).
+   This is called by SetParameters().
+*/
+   int i,iclass,naa=20,iaa, k, nclass=(com.NSsites==0?1:com.ncatG);
+   double paaClass[20], *w,fit;
 
-int GetInitials(double x[])
+   if(com.seqtype!=1 || com.aaDist<FIT1) error("getpcodonClass");
+   k=com.ntime+com.nrgene+!com.fix_kappa+nclass-1;
+   FOR(iclass, nclass) {
+      w=x+k+iclass*(4+(com.aaDist==FIT2));
+      FOR(iaa,20) {
+         fit=-w[0]*square(AAchem[0][iaa]-w[1])
+              -w[2]*square(AAchem[1][iaa]-w[3]);
+         paaClass[iaa]=exp(2*fit);
+      }
+      abyx(1/sum(paaClass,20), paaClass, 20);
+      FOR(i,com.ncode) {
+         iaa=GenetCode[com.icode][FROM61[i]];
+         pcodonClass[iclass*64+i]=pcodon0[i]/paa0[iaa]*paaClass[iaa];
+      }
+
+if(fabs(1-sum(pcodonClass+iclass*64,com.ncode))>1e-5) error("pcodon!=1");
+/*
+fprintf(frst,"\nSite class %d: ",iclass+1);
+matout (frst,paaClass,2, 10);
+matout (frst,pcodonClass+iclass*64,16,4);
+*/
+   }
+   if(nclass==1) FOR(i,com.ncode) com.pi[i]=pcodonClass[i];
+}
+
+
+int GetInitials(double x[], int* fromfile)
 {
 /* This caculates the number of parameters (com.np) and get initial values.
    Perhaps try to restruct the code and make two sections for amino acids 
@@ -1277,8 +1381,8 @@ int GetInitials(double x[])
 
    if(com.fix_branch==2)  com.ntime=0;
    else if(com.clock==0)  com.ntime=tree.nbranch;
-   else if(com.clock==1)  com.ntime=tree.nnode-com.ns+(tree.origin<com.ns);
-   else if(com.clock==3)  com.ntime=tree.nnode-com.ns+(tree.origin<com.ns)+1;
+   else if(com.clock==1)  com.ntime=tree.nnode-com.ns+(tree.root<com.ns);
+   else if(com.clock==3)  com.ntime=tree.nnode-com.ns+(tree.root<com.ns)+1;
    else {  /* if(com.clock==2) */
       for(i=0,k=0,N_rateBranch=0; i<tree.nbranch; i++) { 
          rateBranch[i]=j=nodes[tree.branches[i][1]].label;
@@ -1308,7 +1412,7 @@ int GetInitials(double x[])
    if (com.clock) {
       for(j=1,x[0]=1; j<tree.nnode-com.ns; j++) x[j]=0.8;
       for(; j<com.ntime; j++) x[j]=1;   /* rates for branches */
-      if(com.clock==3) SetDivTime_OldSon(tree.origin);
+      if(com.clock==3) SetDivTime_OldSon(tree.root);
    }
    else if(com.fix_branch==0) {
       FOR (j,com.ntime) x[j]=.1;
@@ -1364,12 +1468,12 @@ int GetInitials(double x[])
          if(!com.fix_omega) x[k-1]=max2(2,com.omega);
 #endif
          break;  
-      case(NSdiscrete):  /* p0...pK.  w's are counted in nrate  */
-         com.np+=com.ncatG-1; FOR(j,com.ncatG-1) x[k++]=0;
+      case(NSdiscrete):  /* p0...pK.  Note that w's are counted in nrate  */
+         com.np+=com.ncatG-1; FOR(j,com.ncatG-1) x[k++]=0;  /* p's */
          if(com.seqtype==CODONseq && com.aaDist) {
             if(com.aaDist<=5) FOR(i,com.ncatG) { x[k++]=1.1; x[k++]=1.2; }
-            FOR(i,com.ncatG)  FOR(j,4) x[k++]=.47+.1*j; /* site classes */
-            if(com.aaDist==12) FOR(i,com.ncatG)  x[k++]=1.;
+            FOR(i,com.ncatG) /* ap,p*,av,v*, and b for each site class */
+               FOR(j,4+(com.aaDist==FIT2)) x[k++]=rndu();
          }
          else  FOR(i,com.ncatG) x[k++]=com.omega; 
          break;
@@ -1466,6 +1570,12 @@ int GetInitials(double x[])
    else if (com.alpha && com.fix_alpha && !com.NSsites)
       DiscreteGamma(com.freqK,com.rK,com.alpha,com.alpha,com.ncatG,0);
 
+   *fromfile=0;
+   if(fin) {
+      readx(x,fromfile);
+      if(com.runmode>0 && fromfile && com.NSsites)  LASTROUND=1;
+   }
+
    return (0);
 }
 
@@ -1477,11 +1587,12 @@ int SetPGene (int igene, int _pi, int _UVRoot, int _alpha, double xcom[])
 
    if (_pi) xtoy (com.piG[igene], com.pi, com.ncode);
    if (_UVRoot) {
-      if (!com.fix_kappa)  com.kappa=xcom[k++];
-      if (!com.fix_omega) com.omega=xcom[k++];
-      if (com.seqtype==CODONseq)
+      if (com.seqtype==CODONseq) {
+         if(!com.fix_kappa) com.kappa=xcom[k++];
+         if(!com.fix_omega) com.omega=xcom[k++];
          if (!com.NSsites) 
             EigenQc(0,-1,NULL,NULL,NULL,Root,U,V, com.kappa,com.omega,PMat);
+      }
       else 
          EigenQaa(NULL, Root, U, V, xcom+k);
    }
@@ -1506,10 +1617,12 @@ int SetParameters (double x[])
    int K=com.ncatG, j,k;
    double t, S,dS,dN;
 
-   POMEGA=x+com.ntime+com.nrgene+!com.fix_kappa;
-
    if(com.fix_branch<2) SetBranch(x);
+   if(com.np<=com.ntime) return(0);
+
+   if(com.seqtype==1) POMEGA=x+com.ntime+com.nrgene+!com.fix_kappa;
    FOR(j,com.nrgene) com.rgene[j+1]=x[com.ntime+j];
+   if(com.seqtype==1 && com.aaDist>=FIT1) getpcodonClass(x, pcodonClass);
 
    k=com.ntime+com.nrgene;
    if (com.nrate) {
@@ -1522,7 +1635,8 @@ int SetParameters (double x[])
          EigenQc(0,-1,NULL,NULL,NULL,Root,U,V, com.kappa,com.omega,PMat);
       k=com.ntime+com.nrgene+com.nrate;
    }
-   if (com.NSsites) {              /* p's before w's in x[] */
+
+   if (com.NSsites) {   /* p's before w's in x[] */
       k=com.ntime+com.nrgene+!com.fix_kappa;
       switch(com.NSsites) {
       case(NSneutral):  
@@ -1546,7 +1660,7 @@ int SetParameters (double x[])
             if(com.ncatG!=5) error("NSfreqs, ncatG?");
             com.rK[0]=0; com.rK[1]=1./3; com.rK[2]=2./3; com.rK[3]=1; com.rK[4]=3;
          }
-         else if(!com.aaDist)
+         else if(com.aaDist==0)
             FOR(j,K) com.rK[j]=x[k++];
          break;
 
@@ -1566,9 +1680,11 @@ int SetParameters (double x[])
          freqK_NS=com.freqK[j];
          if(com.aaDist) {
             k=com.ntime+com.nrgene+!com.fix_kappa;
-            if(com.aaDist<10)       POMEGA=x+k+com.ncatG-1+2*j;
-            else if(com.aaDist==11) POMEGA=x+k+com.ncatG-1+4*j;
-            else if(com.aaDist==12) POMEGA=x+k+com.ncatG-1+5*j;
+            if(com.aaDist<10)         POMEGA=x+k+com.ncatG-1+2*j;
+            else if(com.aaDist>=FIT1) {
+               POMEGA=x+k+com.ncatG-1+j*(4+(com.aaDist==FIT2));
+               xtoy(pcodonClass+j*64, com.pi, com.ncode);
+            }
          }
          EigenQc(1,-1,&S,&dS,&dN,NULL,NULL,NULL,com.kappa,com.rK[j],PMat);
       }
@@ -1725,7 +1841,7 @@ double CDFdN_dS(double x,double p[])
 
 int EigenQc (int getstats, double branchl, double *S, double *dS, double *dN,
     double Root[], double U[], double V[],
-    double kappa, double omega, double Q[64*64])
+    double kappa, double omega, double Q[])
 {
 /* This contructs the rate matrix Q for codon substitution and get the eigen
    values and vectors if getstats==0, or get statistics (dS & dN) if 
@@ -1746,7 +1862,7 @@ int EigenQc (int getstats, double branchl, double *S, double *dS, double *dN,
    component, dS and dN are not scaled but are scaled in DetailOutput() 
    after Qfactor_NS is calculated.
 
-   aaDist=11 & 12 fitness models:  ap,p*,av,v*,b (aaDist=12)
+   aaDist=FIT1 & FIT2:  ap,p*,av,v*, (and w0 for FIT2)
 */
    int n=Nsensecodon[com.icode], i,j,k, ic1,ic2,aa1,aa2;
    int ndiff,pos=0,from[3],to[3];
@@ -1793,13 +1909,14 @@ int EigenQc (int getstats, double branchl, double *S, double *dS, double *dN,
             else                       Q[i*n+j] *= 1-w;      /* linear */
             if (com.seqtype==CODONseq) Q[i*n+j] *= POMEGA[1];
          }
-         else if (com.aaDist>=11) {   /* fitness: ap,p*,av,v*, and(?) b */
+         else if (com.aaDist>=FIT1) {   /* ap,p*,av,v* (and w0 for FIT2) */
             fit1=-POMEGA[0]*square(AAchem[0][aa1]-POMEGA[1])
                  -POMEGA[2]*square(AAchem[1][aa1]-POMEGA[3]);
             fit2=-POMEGA[0]*square(AAchem[0][aa2]-POMEGA[1])
                  -POMEGA[2]*square(AAchem[1][aa2]-POMEGA[3]);
-            Q[i*n+j] *= exp(fit2-fit1);
-            if(com.aaDist==12) Q[i*n+j]*=POMEGA[4];
+
+            Q[i*n+j] *= exp(-fit1-fit2);
+            if(com.aaDist==FIT2) Q[i*n+j]*=POMEGA[4];
          }
          ra+=t*Q[i*n+j];
       }
@@ -1816,7 +1933,9 @@ int EigenQc (int getstats, double branchl, double *S, double *dS, double *dN,
 
    if(!getstats) {  /* get Root, U, & V */
       if (com.seqtype==AAseq) return (0);
+
       FOR(i,n) FOR(j,n) Q[i*n+j]*=pi[j];
+      
       for (i=0,t=0; i<n; i++) 
         { Q[i*n+i]=-sum(Q+i*n,n); t-=pi[i]*Q[i*n+i]; }
       if(com.NSsites)  t=1/Qfactor_NS;  /* Qfactor_NS calculated in SetParameter */
@@ -1979,10 +2098,7 @@ int PartialLikelihood (int inode, int igene)
          EigenQc(0,-1,NULL,NULL,NULL,Root,U,V, com.kappa,com.omega,PMat);
       }
       t=nodes[ison].branch*com.rgene[igene]*_rateSite;
-      if (com.seqtype==AAseq && com.model==Poisson)
-         PMatJC69like(PMat,t,n);
-      else
-         PMatUVRoot(PMat,t,n,U,V,Root);
+      GetPMatBranch(PMat, t, ison);
 
       if(com.cleandata && nodes[ison].nson<1)       /* end node */
          for(h=pos0; h<pos1; h++)
@@ -2019,8 +2135,8 @@ int PMatJC69like (double P[], double t, int n)
 {
    int i;
    double pii=1./n+(1.-1./n)*exp(-n/(n-1.)*t), pij=(1.-pii)/(n-1.);
-   FOR (i, n*n) P[i]=pij;
-   FOR (i, n) P[i*n+i]=pii;
+   FOR(i,n*n) P[i]=pij;
+   FOR(i,n) P[i*n+i]=pii;
    return (0);
 }
 
@@ -2100,16 +2216,17 @@ int InitializeCodon (FILE *fout, double space[])
    double *fbsg=space, *fbs, fb3x4[3*4],fb3x4t[3*4],fb4[4],fb4t[4], t;
    char str[4]="";
 
-   if(com.seqtype!=CODONseq) error("not codon seq.");
    PatternWeight (fout, space);
    for(j=0,zero(fbsg,com.ngene*com.ns*nc); j<com.ns; j++) {
       for(h=0,ig=0,lt=0; h<com.npatt; h++) {
          for(k=0;k<3;k++)  NucListall(com.z[j][h*3+k], &nb[k], ib[k]);
-         if((k=nb[0]*nb[1]*nb[2])>1)  miss=1;   /* k = no. compatible codons */
-         if(k>1) continue;
+         k=nb[0]*nb[1]*nb[2];       /* k = no. compatible codons */
+         if(k>1)  { miss=1; continue; }
+
          ic=ib[0][0]*16+ib[1][0]*4+ib[2][0];
          fbsg[j*com.ngene*nc+ig*nc+ic]+=com.fpatt[h];
-/*       ambiguity codons are ignored.
+
+/*       ambiguity codons are ignored
          FOR(i0,nb[0])  FOR(i1,nb[1])  FOR(i2,nb[2]) {
             ic=ib[0][i0]*16+ib[1][i1]*4+ib[2][i2];
             fbsg[j*com.ngene*nc+ig*nc+ic] += com.fpatt[h]/(double)k;
@@ -2173,12 +2290,6 @@ int InitializeCodon (FILE *fout, double space[])
             fprintf(fout, "\nposition %2d:", j+1);
             FOR(k,4) fprintf (fout,"%5c:%7.5f", BASEs[k],fb3x4[j*4+k]);
          }
-/*
-if(fb3x4[2*4+0]+fb3x4[2*4+1]>0.6 || fb3x4[2*4+0]+fb3x4[2*4+1]<0.4) {
-   fprintf (fout," TC=%9.5f%9.5f", fb3x4[2*4+0],fb3x4[2*4+1]);
-   printf ("\n TC=%9.5f%9.5f\n", fb3x4[2*4+0],fb3x4[2*4+1]);
-}
-*/
       }
    }
 
@@ -2358,7 +2469,7 @@ int DistanceMatNG86 (FILE *fout, double alpha)
          fprintf(fout,"%7.4f (%5.4f %5.4f)", dN_dS, dN, dS);
          fprintf(frst,"%7.4f (%6.4f %6.4f)\n", dN_dS, dN, dS);
 
-/* fprintf(frst1,"%7.1f %7.1f%7.4f %6.4f %6.4f ", S,N,dN,dS,dN_dS);
+/* fprintf(frst1,"NG %7.1f %7.1f%7.4f %6.4f %6.4f ", S,N,dN,dS,dN_dS);
 */
          if(dN<0) dN=bigD; if(dS<0) dS=bigD;
          SeqDistance[is*(is-1)/2+js] = (S*dS+N*dN)*3/(S+N);
@@ -2633,7 +2744,7 @@ int TestModelQc (FILE * fout, double x[])
       for (isum=0,fh=0; isum<nsum; isum++) {
          for (j=0,it=isum; j<tree.nbranch-com.ns+1; j++)
             { nodeb[com.ns+j]=it%n; it/=n; }
-         for (j=0,y=com.pi[nodeb[tree.origin]]; j<tree.nbranch; j++) 
+         for (j=0,y=com.pi[nodeb[tree.root]]; j<tree.nbranch; j++) 
             y*=Pt[j][nodeb[tree.branches[j][0]]*n+nodeb[tree.branches[j][1]]];
          fh += y;
       }
@@ -2890,7 +3001,7 @@ if(noisy>2) printf("\n\nt_NG = %.4f\tt_ML = %.4f w_ML = %.4f",
          FOR(k,np) fprintf(frst," %8.4f",x[k]);  
 
 /* 
-fprintf(frst1,"%6d%6d %8.4f%8.4f %8.4f\n",is+1,js+1,dS,dN,com.omega);
+fprintf(frst1,"ML: %6d%6d %8.4f%8.4f %8.4f\n",is+1,js+1,dS,dN,com.omega);
 fprintf(frst1,"%8.4f%8.4f %8.4f\n", dS,dN,com.omega);
 */
 
@@ -3031,25 +3142,6 @@ int PairwiseAA (FILE *fout)
 
 
 
-double TreeScore(double x[], double space[])
-{
-   double xb[NP][2], e=1e-6, lnL=0;
-
-   PointLklnodes ();
-   com.ntime = com.clock ? tree.nnode-com.ns : tree.nbranch;  /* clock=2 */
-   GetInitials (x);
-   PointLklnodes ();
-   SetxBound (com.np, xb);
-   if(!com.cleandata) InitPartialLikelihood ();
-
-   if(com.method==0 || com.ntime==0)
-      ming2(NULL,&lnL,com.plfun,NULL,x,xb, space,e,com.np);
-   else
-      minB(NULL, &lnL,x,xb, space);
-
-   return (lnL);
-}
-
 
 int lfunNSsites_rate (FILE* frst, double x[], int np)
 {
@@ -3061,7 +3153,7 @@ int lfunNSsites_rate (FILE* frst, double x[], int np)
    double lnL=0, fh, t=0,momega=-1, *pselect;
    
    int ncolors=11;
-   double maxomega=3, omegas[11]={.1, .2, .3, .4, .5, .7, .8, 1, 2, 3,99};
+   double omegas[11]={.1, .2, .3, .4, .5, .7, .8, 1, 2, 3,99};
    char *colors[11]={"black",
                      "purple",
                      "blue",
@@ -3196,14 +3288,17 @@ int lfunNSsites_rate (FILE* frst, double x[], int np)
    13  3normal       6:    p0, p1, mu2, s0, s1, s2
 
 
-(*) Codon (perhaps aa as well) models for structural site classes 
-    NSsites=3, ncatG
-    aaDist: 1-6 for G1974,Miyata,c,p,v,a
-    aaDist = 11-12 for fitness model F_j = ap*(p-p*)^2+av*(v-v*)^2 and 
-    aaDist = 11:   w_ij = exp(F_j - F_i)
-    aaDist = 12:   w_ij = b*exp(F_j - F_i)
+(*) Codon (perhaps aa as well) models for site-class models
 
-    aaDist=11 & 12 is also implemented for NSsites=0
+    NSsites=3, ncatG=3 or 2 etc
+  
+    aaDist: 
+       1-6 for G1974,Miyata,c,p,v,a
+       FIT1 & FIT2 (11, 12): fitness model F_j = a_p*(p-p*)^2+a_v*(v-v*)^2
+       FIT1:   w_ij = exp(F_j - F_i)
+       FIT2:   w_ij = b*exp(F_j - F_i)
+
+       FIT1 & FIT2 are also implemented for NSsites=0
 
 
 (*) Amino acid models
@@ -3653,7 +3748,7 @@ int SlidingWindow(FILE*fout,double space[])
       fprintf(fout,"\nsites %3d -- %3d  %4d",wstart+1,wstart+wlen,com.npatt);
       fprintf(frst1,"sites %3d -- %3d  %4d",wstart+1,wstart+wlen,com.npatt);
 
-      Forestry(fout, space);
+      Forestry(fout);
 
    }
    FOR(h,com.npatt) com.fpatt[h]=fpatt0[h];

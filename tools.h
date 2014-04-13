@@ -102,11 +102,11 @@ int EigenREV (FILE* fout, double kapa[], double pi[],
               int *nR, double Root[], double Cijk[]);
 
 int BootstrapSeq (char* seqfilename);
-int rell(FILE*flnf, FILE*fout, int ntree, double space[]);
+int rell(FILE*flnf, FILE*fout, int ntree);
 int print1site (FILE*fout, int h);
 int MultipleGenes (FILE* fout, double space[]);
 int lfunRates (FILE* fout, double x[], int np);
-int AncestralSeqs (FILE *fout, double x[], double space[]);
+int AncestralSeqs (FILE *fout, double x[]);
 int InitPartialLikelihood (void);
 
 int NucListall(char b, int *nb, int ib[4]);
@@ -227,6 +227,7 @@ int StepwiseAdditionMP (double space[]);
 double MPScoreStepwiseAddition (int is, double space[], int save);
 int AddSpecies (int species, int ib);
 int StepwiseAddition (FILE* fout, double space[]);
+int readx(double x[], int *fromfile);
 double TreeScore(double x[], double space[]);
 
 int PopEmptyLines (FILE* fseq, int lline, char line[]);

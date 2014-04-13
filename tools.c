@@ -374,7 +374,7 @@ int PMatUVRoot (double P[], double t, int n, double U[], double V[],
 #if (DEBUG)
    if (t<-1e-4) printf ("\nt = %.5f in PMatUVRoot", t);
 #endif
-   if (t<1e-10) { identity (P, n); return(0); }
+   if (t<1e-100) { identity (P, n); return(0); }
    for (k=0,zero(P,n*n); k<n; k++)
       for (i=0,pP=P,expt=exp(t*Root[k]); i<n; i++)
           for (j=0,uexpt=U[i*n+k]*expt; j<n; j++)
@@ -400,7 +400,7 @@ int PMatK80 (double P[], double t, double kappa)
 #if DEBUG
    if (t<-1e-4)  printf ("\nt = %.5f in PMatK80..", t);
 #endif
-   if (t<1e-10) { identity (P, 4); return(0); }
+   if (t<1e-200) { identity (P, 4); return(0); }
    e1=exp(-4*t/(kappa+2));
    if (fabs(kappa-1)<1e-5) {
       FOR (i,4) FOR (j,4)
@@ -427,12 +427,10 @@ int PMatTN93 (double P[], double a1t, double a2t, double bt, double pi[])
    double T=pi[0],C=pi[1],A=pi[2],G=pi[3], Y=T+C, R=A+G;
    double e1, e2, e3, small=-1e-4;
 
-#if DEBUG
    if (a1t<small||a2t<small||bt<small)
       printf ("\nat=%12.6f %12.6f  bt=%12.6f", a1t,a2t,bt);
-#endif
 
-   if (a1t+a2t+bt<1e-10)  { identity (P, 4);  return (0); }
+   if (a1t+a2t+bt<1e-200)  { identity(P,4);  return(0); }
 
    e1=exp(-bt); e2=e3=exp(-(R*a2t+Y*bt));
    if (fabs(R*a2t+Y*bt -Y*a1t-R*bt)>1e-5)  e3=exp(-(Y*a1t+R*bt));
@@ -581,9 +579,10 @@ int Codon2AA(char codon[3], char aa[3], int icode, int *iaa)
       if(naa==0)  { iaa0=*iaa; naa++; }
       else if (*iaa!=iaa0)  naa=2;
    }
-   if(naa==2)  *iaa=20;
    if(naa==0) 
       { printf("\nstop codon %c%c%c\n",codon[0],codon[1],codon[2]); *iaa=20; }
+   else if(naa==2)  *iaa=20; 
+   else             *iaa=iaa0;
    strncpy(aa, AA3Str+*iaa*3, 3);
 
    return(naa==1?0: (naa==0?-1:1));
@@ -1753,7 +1752,7 @@ int mattransp2 (double x[], double y[], int n, int m)
    return (0);
 }
 
-int matinv( double x[], int n, int m, double space[])
+int matinv (double x[], int n, int m, double space[])
 {
 /* x[n*m]  ... m>=n
 */
@@ -2563,8 +2562,8 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
    g0=space;   g=g0+n;  p=g+n;   x0=p+n;
    y=x0+n;     s=y+n;   z=s+n;   H=z+n;  C=H+n*n, tv=C+n*n;
    xmark=(int*)(tv+2*n);  ix=xmark+n;
-   FOR (i,n)  { xmark[i]=0; ix[i]=i; }
 
+   FOR (i,n)  { xmark[i]=0; ix[i]=i; }
    for(i=0,nfree=0;i<n;i++) {
       if(x[i]<=xb[i][0]) { x[i]=xb[i][0]; xmark[i]=-1; continue; }
       if(x[i]>=xb[i][1]) { x[i]=xb[i][1]; xmark[i]= 1; continue; }

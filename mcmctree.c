@@ -58,7 +58,7 @@ struct CommonInfo {
    double rgene[NGENE],piG[NGENE][6], freqK[NCATG], rK[NCATG], *lkl, *fhK;
 }  com;
 struct TREEB {
-   int  nbranch, nnode, origin, branches[NBRANCH][2];
+   int  nbranch, nnode, root, branches[NBRANCH][2];
    double lnL;
 }  tree;                
 struct TREEN {
@@ -258,10 +258,10 @@ double lfundG (void)
    for (ig=0; ig<com.ngene; ig++) {
       for (ir=0; ir<com.ncatG; ir++) {
          _rateSite=com.rK[ir];
-         PartialLikelihood (tree.origin, ig);
+         PartialLikelihood (tree.root, ig);
          for (h=com.posG[ig]; h<com.posG[ig+1]; h++) {
             for (i=0,fh=0; i<com.ncode; i++)
-               fh += com.pi[i]*nodes[tree.origin].lkl[h*com.ncode+i];
+               fh += com.pi[i]*nodes[tree.root].lkl[h*com.ncode+i];
             com.fhK[h] += com.freqK[ir]*fh;
          }
       }
@@ -280,10 +280,10 @@ double lfun (void)
    double lnL=0, fh;
 
    for (ig=0; ig<com.ngene; ig++) {
-      PartialLikelihood (tree.origin, ig);
+      PartialLikelihood (tree.root, ig);
       for (h=com.posG[ig]; h<com.posG[ig+1]; h++) {
          for (i=0,fh=0; i<com.ncode; i++)
-            fh += com.pi[i]*nodes[tree.origin].lkl[h*com.ncode+i];
+            fh += com.pi[i]*nodes[tree.root].lkl[h*com.ncode+i];
          if (fh<=0) {
             printf ("  lfun: h=%4d fh=%9.4f: %8.4f%8.4f%8.4f\n",
                     h, fh, com.birth, com.death, com.mut);
@@ -314,7 +314,7 @@ int GetOptions (char *ctlf)
             else if (line[i]==comment) break;
          if (t==0) continue;
          sscanf (line, "%s%*s%lf", opt, &t);
-         if ((pline=strstr(line, "= "))==NULL) error ("option file.");
+         if ((pline=strstr(line, "="))==NULL) error ("option file.");
 
          for (i=0; i<nopt; i++) {
             if (strncmp(opt, optstr[i], 8)==0)  {
@@ -383,7 +383,7 @@ double OneTree (double delta)
          FOR(i,com.ns) nodes[i].branch=max2(1e-7,nodes[i].branch);
       }
       else
-         FOR(i,tree.nnode) if(i!=tree.origin) nodes[i].branch=rndu()*com.mut;
+         FOR(i,tree.nnode) if(i!=tree.root) nodes[i].branch=rndu()*com.mut;
       lnp=(com.alpha ? -lfundG() : -lfun());
       if (ir==0) ScaleF=lnp+scalegap;
       else if (lnp-ScaleF>scalegap) {

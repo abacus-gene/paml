@@ -26,7 +26,7 @@ struct CommonInfo {
    double freqK[NCATG],rK[NCATG];
 }  com;
 struct TREEB {
-   int nbranch, nnode, origin, branches[NBRANCH][2];
+   int nbranch, nnode, root, branches[NBRANCH][2];
 }  tree;
 struct TREEN {
    int father, nson, sons[3], ibranch, label;
@@ -219,7 +219,7 @@ void TreeDistances(FILE* fout)
          FOR(j,com.ns) if(partition[i*com.ns+j]) fprintf(fout,"%d ",j+1);
          fputs(")\n",fout);
       }
-      if(nodes[tree.origin].nson<=2) 
+      if(nodes[tree.root].nson<=2) 
          fputs("\nRooted tree, results may not be correct.\n",fout);
       fputs("\nCorrect internal branches compared with the 1st tree:\n",fout);
       FOR(k,nib[0]) nIBsame[k]=0;
@@ -410,7 +410,7 @@ void MakeSeq(char*z, int ls)
 
 void Evolve1 (int inode)
 {
-/* evolve sequence com.z[tree.origin] along the tree to generate com.z[], 
+/* evolve sequence com.z[tree.root] along the tree to generate com.z[], 
    using nodes[].branch, nodes[].omega, & com.model
    Needs com.z[0,1,...,nnode-1], while com.z[0] -- com.z[ns-1] constitute
    the data.
@@ -499,9 +499,9 @@ void Simulate (char*ctlf)
       }
       if(tlength>0) {
          for(i=0,T=0; i<tree.nnode; i++) 
-            if(i!=tree.origin) T+=nodes[i].branch;
+            if(i!=tree.root) T+=nodes[i].branch;
          for(i=0; i<tree.nnode; i++) 
-            if(i!=tree.origin) nodes[i].branch*=tlength/T;
+            if(i!=tree.root) nodes[i].branch*=tlength/T;
       }
       if(com.ns<100) {
          printf("\nModel tree & branch lengths:\n"); OutaTreeN(F0,0,1); FPN(F0);
@@ -635,7 +635,7 @@ void Simulate (char*ctlf)
          else                     printf ("\ntree used: "); 
          OutaTreeN(F0,0,1);  puts(";");
       }
-      MakeSeq(com.z[tree.origin],com.ls);
+      MakeSeq(com.z[tree.root],com.ls);
 
       if (com.alpha)
          Rates4Sites (com.rates,com.alpha,com.ncatG,com.ls, 0,space);
@@ -645,7 +645,7 @@ void Simulate (char*ctlf)
             for (j=0; j<counts[i]; j++) com.rates[h++]=com.rK[i];
       }
 
-      Evolve1(tree.origin);
+      Evolve1(tree.root);
 
       if (format==PAUP) fprintf(fseq,"\n\n[Replicate # %d]\n", ir+1);
       printSeqs(fseq, NULL, NULL, format);
@@ -655,7 +655,7 @@ void Simulate (char*ctlf)
          fprintf(fseq,"end;\n\n");
       }
       if(format==PAUP) appendfile(fseq,paupblock);
-      printf ("did data set %d.\n", ir+1);
+      printf ("\rdid data set %d.", ir+1);
    }   /* for (ir) */
 
    if(format==PAUP) appendfile(fseq,paupend);

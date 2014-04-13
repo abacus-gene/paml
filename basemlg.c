@@ -55,7 +55,7 @@ struct CommonInfo {
    double rho;                           /* unused */
 }  com;
 struct TREEB {
-   int  nbranch, nnode, origin, branches[NBRANCH][2];
+   int  nbranch, nnode, root, branches[NBRANCH][2];
    double lnL;
 }  tree;                
 struct TREEN {
@@ -377,7 +377,7 @@ double GetBmx (int ninter, int nsum, int im, int M[], int nodeb[])
    for (j=0,it=im; j<tree.nbranch;  M[j]=it%nR,it/=nR,j++) ;
    for (isum=0,Bmx=0; isum<nsum; isum++) {
       for (j=0,it=isum; j<ninter; nodeb[com.ns+j]=it&3,it>>=2,j++) ;
-      for (j=0,y=com.pi[nodeb[tree.origin]]; j<tree.nbranch; j++) {
+      for (j=0,y=com.pi[nodeb[tree.root]]; j<tree.nbranch; j++) {
          i = nodeb[tree.branches[j][0]]*nR4
            + nodeb[tree.branches[j][1]]*nR + M[j];
          if (CijkIs0[i]) goto nextone;
@@ -730,7 +730,7 @@ int GetOptions (char *ctlf)
             else if (line[i]==comment) break;
          if (t==0) continue;
          sscanf (line, "%s%*s%lf", opt, &t);
-         if ((pline=strstr(line, "= "))==NULL) error("option file.");
+         if ((pline=strstr(line, "="))==NULL) error("option file.");
 
          for (i=0; i<nopt; i++) {
             if (strncmp(opt, optstr[i], 8)==0)  {

@@ -5,12 +5,11 @@
 </head>
 
 <body link="#0000FF" vlink="#800080">
-
 <h1 align="center"><font color="#008000" size="5"
 face="Bookman Old Style">Phylogenetic Analysis by Maximum
 Likelihood (PAML) </font></h1>
 
-<p align="center"><font color="#FF0000" size="4">Version 3.0, May
+<p align="center"><font color="#FF0000" size="4">Version 3.0a, June
 2000</font></p>
 
 <p align="center"><font size="4"><strong>© </strong></font><a
@@ -24,11 +23,12 @@ href="mailto:z.yang@ucl.ac.uk"><strong>z.yang@ucl.ac.uk</strong></a><strong>)</s
 
 <ul>
     <li><a href="#Intro">Introduction </a></li>
+    <li><blink><font size="5"><a href="speed.pdf">How fast is my new computer?</a></font></blink></li>
     <li><a href="#PAMLorNot">What does PAML do?</a> </li>
     <li><a href="#GetPAML">Downloading and Compiling PAML</a> </li>
     <li><a href="#Running">Running Programs in PAML </a></li>
     <li><a href="#Bug">Bugs and Problems noted. Check this.</a> </li>
-    <li><a href="pamlDOC.pdf">Viewing and printing the Manual</a>
+    <li><a href="pamlDOC.pdf">Viewing and printing the Manual (pamlDOC.pdf)</a>
     </li>
 </ul>
 
@@ -40,12 +40,9 @@ distributed for academic use free of charge by Ziheng Yang. ANSI
 C source codes as well as PowerMAC and Windows 95/NT executables
 are provided. </p>
 
-<p>This document is about downloading and compiling PAML and
-getting started. The manual for the package (<a
-href="pamlDOC.pdf">pamlDOC.pdf</a>) is an acrobat file and
-included in the distribution packages. You can use a web browser
-(Netscape or Internet Exploror) or MS Word to view and/or print
-it. These two documents will print to about 30 pages. </p>
+<p>This document is about downloading and compiling PAML and getting
+started. See the manual (<a href="pamlDOC.pdf">pamlDOC.pdf</a>) for
+more information about running programs in the package.  </p>
 
 <p>Possible uses of the programs are </p>
 
@@ -205,26 +202,27 @@ and through world wide web at <a
 href="http://abacus.gene.ucl.ac.uk/software/paml.html">http://abacus.gene.ucl.ac.uk/software/paml.html</a>
 </p>
 
-<p>The current version is 3.0. The following files are posted: </p>
+<p>The current version is 3.0a. The following files are posted: </p>
 
 <ul>
     <li><a
         href="ftp://abacus.gene.ucl.ac.uk/pub/paml/paml.readme">The
         readme file</a>. </li>
     <li><a
-        href="ftp://abacus.gene.ucl.ac.uk/pub/paml/paml2.0l.tar.Z">Source
+        href="ftp://abacus.gene.ucl.ac.uk/pub/paml/paml3.0a.tar.Z">Source
         codes for UNIX machines, which you need to compile
-        yourself (paml3.0.tar.Z)</a>. </li>
+        yourself (paml3.0a.tar.Z)</a>. </li>
     <li><a
-        href="ftp://abacus.gene.ucl.ac.uk/pub/paml/paml2.0k.G3.sea.bin">PowerMac
-        PPC or G3 executables, self-extracting archive (paml3.0.G3.sea.bin)</a>
+        href="ftp://abacus.gene.ucl.ac.uk/pub/paml/paml3.0a.G3.sea.bin">PowerMac
+        PPC or G3 executables, self-extracting archive (paml3.0a.G3.sea.bin, available soon)</a>
         (This supports command-line arguments, and so you can
         type in the name of the control file in the command-line
         box when you run the programs. Thanks to Dr Andrew
-        Rambaut for preparing this.) </li>
+        Rambaut for preparing this.) (3.0 is available soon.  Here is <a
+        href="ftp://abacus.gene.ucl.ac.uk/pub/paml/paml2.0k.G3.sea.bin">Old version 2.0k </a>) </li>
     <li><a
-        href="ftp://abacus.gene.ucl.ac.uk/pub/paml/paml2.0l.win32.exe">Win95/NT
-        executables, self-extracting archive (paml3.0.win32.exe)</a>.
+        href="ftp://abacus.gene.ucl.ac.uk/pub/paml/paml3.0a.win32.exe">Win95/NT
+        executables, self-extracting archive (paml3.0a.win32.exe)</a>.
     </li>
 </ul>
 
@@ -268,7 +266,7 @@ compiler (say cc) by typing <br>
 </p>
 
 <dir>
-    <li>man cc </li>
+    man cc 
 </dir>
 
 <p>The page will be very long, but look for options for
@@ -361,13 +359,13 @@ On UNIX or Windows systems, you run the programs from a command
 prompt by </p>
 
 <dir>
-    <li><i>ProgramName</i> [for example, baseml]</li>
+    <i>ProgramName</i> [for example, baseml]
 </dir>
 
 <p>or </p>
 
 <dir>
-    <li><i>ProgramName</i> <i>ControlFileName </i></li>
+    <i>ProgramName  ControlFileName </i>
 </dir>
 
 <p>On the Mac, you simply click on the program name or icon. You
@@ -380,17 +378,15 @@ for codon sequences. Then you can define new commands <code>aaml</code>
 and <code>codonml</code> as following </p>
 
 <dir>
-    <li><code>alias aaml 'codeml aaml.ctl' <br>
-        alias codonml 'codeml codonml.ctl' </code></li>
+    <code>alias aaml 'codeml aaml.ctl' <br>
+        alias codonml 'codeml codonml.ctl' </code>
 </dir>
 
-<p>More information is given in the Manual (pamlDOC.pdf) about
-running the programs. </p>
 
 <h2><a name="Bug">Bugs and Problems </a></h2>
 
 <p><a href="paml.bugfix">Notes and bugs since the last release</a>
-are collected here. </p>
+will be collected here. </p>
 
 <p>Your suggestions and criticisms are appreciated. If you are
 struggling with the output format for example, please let me

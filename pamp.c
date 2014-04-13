@@ -14,7 +14,6 @@
 
 #include "tools.h"
 #define NS            5000
-
 #define NBRANCH       (NS*2-2)
 #define NNODE         (NS*2-1)
 #define NGENE         2
@@ -44,7 +43,7 @@ struct CommonInfo {
    double lmax,pi[NCODE], kappa,alpha,rou, rgene[NGENE],piG[NGENE][NCODE];
 }  com;
 struct TREEB {
-   int nbranch, nnode, origin, branches[NBRANCH][2];
+   int nbranch, nnode, root, branches[NBRANCH][2];
    double lnL;
 }  tree;
 struct TREEN {
@@ -161,7 +160,7 @@ int GetOptions (char *ctlf)
             else if (line[i]==comment) break;
          if (t==0) continue;
          sscanf (line, "%s%*s%d", opt, &t);
-         if ((pline=strstr(line, "= "))==NULL) error ("option file.");
+         if ((pline=strstr(line, "="))==NULL) error ("option file.");
 
          for (i=0; i<nopt; i++) {
             if (strncmp(opt, optstr[i], 8)==0)  {
@@ -399,7 +398,7 @@ int PathwayMP1 (FILE *fout, int *maxchange, int NSiteChange[],
       FOR (j,com.ns) zz[j]=com.z[j];
       if (pnode==NULL) error ("oom");
    }
-   for (j=0,visit[i=0]=tree.origin-com.ns; j<tree.nbranch; j++) 
+   for (j=0,visit[i=0]=tree.root-com.ns; j<tree.nbranch; j++) 
       if (tree.branches[j][1]>=com.ns) visit[++i]=tree.branches[j][1]-com.ns;
 
    for (h=0; h<com.npatt; h++) {
@@ -413,21 +412,21 @@ int PathwayMP1 (FILE *fout, int *maxchange, int NSiteChange[],
       if (job==0) FOR (j,n*n*tree.nbranch) Ftt[j]=0;
 
       InteriorStatesMP (1, h, &nchange, NCharaCur, CharaCur, space); 
-      ICharaCur[j=tree.origin-com.ns]=0;  PATHWay[j]=CharaCur[j*n+0];
+      ICharaCur[j=tree.root-com.ns]=0;  PATHWay[j]=CharaCur[j*n+0];
       FOR (j,nid) Equivoc[j]=(NCharaCur[j]>1);
 
       if (nchange>*maxchange) *maxchange=nchange;
       if (nchange>NCATCHANGE-1) error ("raise NCATCHANGE");
       NSiteChange[nchange]+=(int)com.fpatt[h];
 
-      DownStates (tree.origin);
+      DownStates (tree.root);
       for (npath=0,sumpr=bestpr=0; ;) {
          for (j=0,k=visit[nid-1]; j<NCharaCur[k]; j++) {
             PATHWay[k]=CharaCur[k*n+j]; npath++;
             FOR (i,nid) nodeb[i+com.ns]=PATHWay[i];
             if (job==1) {
                FOR (i,nid) fprintf(fout,"%c",pch[PATHWay[i]]); fputc(' ',fout);
-               pr=com.pi[(int)nodeb[tree.origin]];
+               pr=com.pi[(int)nodeb[tree.root]];
                for (i=0; i<tree.nbranch; i++) {
                   i1=nodeb[tree.branches[i][0]]; i2=nodeb[tree.branches[i][1]];
                   pr*=Ft[i*n*n+i1*n+i2];
@@ -456,8 +455,8 @@ int PathwayMP1 (FILE *fout, int *maxchange, int NSiteChange[],
                for (i=j-1; i>=0; i--) if (Equivoc[(int)visit[i]]) break;
                if (i>=0) { 
                   for (it=k+com.ns,i=visit[i]+com.ns; ; it=nodes[it].father)
-                     if (it==tree.origin || nodes[it].father==i) break;
-                  if (it==tree.origin)
+                     if (it==tree.root || nodes[it].father==i) break;
+                  if (it==tree.root)
                      DownStatesOneNode (k+com.ns, nodes[k+com.ns].father);
                }
             }
