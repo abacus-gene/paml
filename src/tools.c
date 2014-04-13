@@ -75,6 +75,10 @@ int GeneticCode[][64] =
 
 
 
+int noisy=0, Iround=0, NFunCall=0, NEigenQ, NPMatUVRoot;
+double SIZEp=0;
+
+
 int picksite (char *z, int l, int begin, int gap, char *result)
 {
 /* pick every gap-th site, e.g., the third codon position for example.
@@ -283,7 +287,7 @@ int difcodonNG(char codon1[], char codon2[], double *SynSite,double *AsynSite,
          }
       }
       iaa[i]=GeneticCode[icode][iy[i]];
-      if(iaa[i]==-1) printf("\nNG86: End codon %s.\n",getcodon(str,iy[i]));
+      if(iaa[i]==-1) printf("\nNG86: stop codon %s.\n",getcodon(str,iy[i]));
       for(j=0; j<3; j++) 
          FOR (k,4) {
             if (k==b[i][j]) continue;
@@ -371,9 +375,8 @@ int PMatUVRoot (double P[], double t, int n, double U[], double V[],
    int i,j,k;
    double expt, uexpt, *pP;
 
-#if (DEBUG)
-   if (t<-1e-4) printf ("\nt = %.5f in PMatUVRoot", t);
-#endif
+   NPMatUVRoot++;
+   if (t<-0.1) printf ("\nt = %.5f in PMatUVRoot", t);
    if (t<1e-100) { identity (P, n); return(0); }
    for (k=0,zero(P,n*n); k<n; k++)
       for (i=0,pP=P,expt=exp(t*Root[k]); i<n; i++)
@@ -400,10 +403,8 @@ int PMatK80 (double P[], double t, double kappa)
    int i,j;
    double e1, e2;
 
-#if DEBUG
-   if (t<-1e-4)  printf ("\nt = %.5f in PMatK80..", t);
-#endif
-   if (t<1e-200) { identity (P, 4); return(0); }
+   if (t<-0.1) printf ("\nt = %.5f in PMatUVRoot", t);
+   if (t<1e-100) { identity (P, 4); return(0); }
    e1=exp(-4*t/(kappa+2));
    if (fabs(kappa-1)<1e-5) {
       FOR (i,4) FOR (j,4)
@@ -1252,7 +1253,7 @@ double CDFNormal (double x)
 
 double LnGamma (double x)
 {
-/* returns ln(gamma(x)) for alpha>0, accurate to 10 decimal places.  
+/* returns ln(gamma(x)) for x>0, accurate to 10 decimal places.  
    Stirling's formula is used for the central polynomial part of the procedure.
 
    Pike MC & Hill ID (1966) Algorithm 291: Logarithm of the gamma function.
@@ -1387,10 +1388,8 @@ l3:
    if (ch>2.2*v+6)  ch=-2*(log(1-p)-c*log(.5*ch)+g);
 l4:
    q=ch;   p1=.5*ch;
-   if ((t=IncompleteGamma (p1, xx, g))<0) {
-      printf ("\nerr IncompleteGamma");
-      return (-1);
-   }
+   if ((t=IncompleteGamma (p1, xx, g))<0)
+      error2 ("\nIncompleteGamma");
    p2=p-t;
    t=p2*exp(xx*aa+g+p1-c*log(ch));   
    b=t/ch;  a=0.5*t-b*c;
@@ -1484,12 +1483,14 @@ int AutodGamma (double M[], double freqK[], double rK[], double *rho1,
    return (0);
 }
 
+
 double CDFBinormal (double h1, double h2, double r)
 {
 /* F(h1,h2,r) = prob(x<h1, y<h2), where x and y are standard binormal, 
 */
    return (LBinormal(h1,h2,r)+CDFNormal(h1)+CDFNormal(h2)-1);
 }    
+
 
 double LBinormal (double h1, double h2, double r)
 {
@@ -1592,9 +1593,6 @@ double CDFBeta(double x, double pin, double qin, double lnbeta)
       ans = 1 - ans;
    }
    else {
-      /*___ FIXME ___:  This takes forever (or ends wrongly)
-      when (one or) both p & q  are huge
-      */
       /* evaluate the infinite sum first.  term will equal */
       /* y^p / beta(ps, p) * (1 - ps)-sub-i * y^i / fac(i) */
       ps = q - floor(q);
@@ -1618,7 +1616,7 @@ double CDFBeta(double x, double pin, double qin, double lnbeta)
       }
    }
 
-   /* now evaluate the finite sum, maybe. */
+   /* evaluate the finite sum. */
    if (q > 1) {
       xb = p * log(y) + q * log(1 - y) - lnbeta - log(q);
       ib = (int) (xb/alnsml);  if(ib<0) ib=0;
@@ -1770,7 +1768,7 @@ double InverseCDFBeta(double prob, double p, double q, double lnbeta)
       xinbta = tx;
       yprev = y;
    }
-   error2("not converged");
+   error2("InverseCDFBeta: not converged");
 
    L_converged:
    if (swap_tail)
@@ -2041,6 +2039,7 @@ int matinv (double x[], int n, int m, double space[])
 
 
 /* eigen solution for real symmetric matrix */
+
 void HouseholderRealSym(double a[], int n, double d[], double e[]);
 int EigenTridagQLImplicit(double d[], double e[], int n, double z[]);
 void EigenSort(double d[], double U[], int n);
@@ -2239,6 +2238,8 @@ int EigenTridagQLImplicit(double d[], double e[], int n, double z[])
 
 
 
+
+
 int MeanVar (double x[], int n, double *m, double *v)
 {
    int i;
@@ -2267,18 +2268,18 @@ int variance (double x[], int n, int nx, double mx[], double vx[])
    return(0);
 }
 
-int correl (double *x, double *y, int n, double *mx, double *my,
+int correl (double x[], double y[], int n, double *mx, double *my,
     double *v11, double *v12, double *v22, double *r)
 {
    int i;
 
    *mx=*my=*v11=*v12=*v22=0.0;
-   for (i=0; i<n; i++,x++,y++) {
-       *v11 += square(*x - *mx)*i/(i+1.);
-       *v22 += square(*y - *my) * i/(i+1.);
-       *v12 += (*x - *mx) * (*y - *my)*i/(i+1.);
-       *mx=(*mx * i + *x)/(i+1.);
-       *my=(*my * i + *y)/(i+1.);
+   for (i=0; i<n; i++) {
+       *v11 += square(x[i] - *mx)*i/(i+1.);
+       *v22 += square(y[i] - *my) * i/(i+1.);
+       *v12 += (x[i] - *mx) * (y[i] - *my)*i/(i+1.);
+       *mx=(*mx * i + x[i])/(i+1.);
+       *my=(*my * i + y[i])/(i+1.);
    }
    *v11/=n;   *v22/=n;   *v12/=n;
 
@@ -2465,9 +2466,6 @@ int nls2 (FILE *fout, double *sx, double * x0, int nx,
    return (istate);
 }
 
-
-int noisy=0, Iround=0, NFunCall=0;
-double SIZEp=0;
 
 
 double bound (int nx, double x0[], double p[], double x[],
@@ -2663,7 +2661,6 @@ double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[],
    pp. 62-73.
    step is used to find the bracket and is increased or reduced as necessary, and is 
    not terribly important.
-
 */
    int ii=0, maxround=10;
    double *x=space, factor=2, small=1e-10, e1=e*1e-3, e2=1e-5;
@@ -2778,7 +2775,8 @@ double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[],
    if (f2>f0 && f4>f0)  a4=0;
    if (f2<=f4)  { *f=f2; a4=a2; }
    else         *f=f4;
-   if (noisy>2) printf ("%14.6f%3d%7.4f%6d", *f, ii, a4, NFunCall);
+   if (noisy>2) printf ("%14.6f%3d%7.4f%6d", *f,ii, a4, NFunCall);
+
    return (a4);
 }
 
@@ -2853,7 +2851,7 @@ int Newton (FILE *fout, double *f, double (* fun)(double x[], int n),
 int gradientB (int n, double x[], double f0, double g[], 
     double (*fun)(double x[],int n), double space[], int xmark[]);
 
-extern int noisy, Iround, NFunCall;
+extern int noisy, Iround;
 extern double SIZEp;
 
 int gradientB (int n, double x[], double f0, double g[], 
@@ -3020,6 +3018,7 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
          H[i*nfree+j] += ((1+w/v)*s[i]*s[j]-z[i]*s[j]-s[i]*z[j])/v;
    }    /* for (Iround,maxround)  */
 
+   *f=(*fun)(x,n);  /* try to remove this after updating LineSearch2() */
    if (noisy>2) FPN(F0);
    if (Iround==maxround) {
       if (fout) fprintf (fout,"\ncheck convergence!\n");

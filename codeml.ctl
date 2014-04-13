@@ -3,7 +3,7 @@
      treefile = stewart.trees      * tree structure file name
 
         noisy = 9  * 0,1,2,3,9: how much rubbish on the screen
-      verbose = 0  * 1: detailed output, 0: concise output
+      verbose = 0  * 0: concise; 1: detailed, 2: too much
       runmode = 0  * 0: user tree;  1: semi-automatic;  2: automatic
                    * 3: StepwiseAddition; (4,5):PerturbationNNI; -2: pairwise
 
@@ -27,6 +27,7 @@
 
         icode = 0  * 0:universal code; 1:mammalian mt; 2-10:see below
         Mgene = 0  * 0:rates, 1:separate; 
+
 
     fix_kappa = 0  * 1: kappa fixed, 0: kappa to be estimated
         kappa = 2  * initial or fixed kappa

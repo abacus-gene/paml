@@ -1,0 +1,49 @@
+PRGS =  baseml codeml codemlsites basemlg pamp evolver mcmctree yn00 chi2 
+CC = cc # cc, gcc, cl
+
+CFLAGS = -fast
+#CFLAGS = -O2
+#CFLAGS = -O3
+#CFLAGS = -w0 -warnprotos -newc -std -fast
+
+LIBS = -lm # -lM
+
+all : $(PRGS)
+
+baseml : baseml.o eigen.o tools.o
+	$(CC) $(CFLAGS) -o $@ baseml.o eigen.o tools.o $(LIBS)
+basemlg : basemlg.o tools.o
+	$(CC) $(CFLAGS) -o $@ basemlg.o tools.o $(LIBS)
+codeml : codeml.o eigen.o tools.o
+	$(CC) $(CFLAGS) -o $@ codeml.o eigen.o tools.o $(LIBS)
+codemlsites : codemlsites.o eigen.o tools.o
+	$(CC) $(CFLAGS) -o $@ codemlsites.o tools.o eigen.o $(LIBS)
+evolver : evolver.o tools.o eigen.o
+	$(CC) $(CFLAGS) -o $@ evolver.o tools.o eigen.o $(LIBS)
+pamp : pamp.o tools.o eigen.o
+	$(CC) $(CFLAGS) -o $@ pamp.o tools.o eigen.o $(LIBS)
+mcmctree : mcmctree.o tools.o
+	$(CC) $(CFLAGS) -o $@ mcmctree.o tools.o $(LIBS)
+yn00: yn00.c tools.o
+	$(CC) $(CFLAGS) -o $@ yn00.c tools.o $(LIBS)
+chi2 : chi2.c
+	$(CC) $(CFLAGS) -o $@ chi2.c $(LIBS)
+
+eigen.o : paml.h eigen.c
+	$(CC) $(CFLAGS) -c eigen.c
+tools.o : paml.h tools.c
+	$(CC) $(CFLAGS) -c tools.c
+baseml.o : paml.h baseml.c treesub.c treespace.c
+	$(CC) $(CFLAGS) -c baseml.c
+basemlg.o : paml.h basemlg.c treesub.c
+	$(CC) $(CFLAGS) -c basemlg.c
+codeml.o : paml.h codeml.c treesub.c treespace.c
+	$(CC) $(CFLAGS) -c codeml.c
+codemlsites.o : paml.h codeml.c treesub.c treespace.c
+	$(CC) $(CFLAGS) -DNSSITESBATCH -o codemlsites.o -c codeml.c
+evolver.o: evolver.c treesub.c treespace.c
+	$(CC) $(CFLAGS) -c evolver.c
+pamp.o : paml.h pamp.c treesub.c treespace.c
+	$(CC) $(CFLAGS) -c pamp.c
+mcmctree.o : paml.h mcmctree.c treesub.c treespace.c
+	$(CC) $(CFLAGS) -c mcmctree.c

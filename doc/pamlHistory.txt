@@ -1,10 +1,43 @@
 History and bug fixes of PAML (Phylogenetic Analysis by Maximum Likelihood)
 Ziheng Yang
 
+
 Please report any bugs or comments to Ziheng Yang at z.yang@ucl.ac.uk.
 
 
-Version 3.1
+Version 3.11, September 2001
+
+(1) baseml and codeml (clock = 1 or clock = 2) sometimes print out
+ridiculous (e.g., large negative) tree lengths and branch lengths.  I
+thought this was fixed in version 3.1, but it was not.  Hopefully it
+is now fixed.
+
+(2) baseml and codeml: Malpha (a separate alpha for each site
+partition) does not work with Mgene = 0.  The output will give you the
+same alpha value for each gene as you specify in the control file.
+This is now fixed.
+
+(3) baseml: When the REV or UNREST models (model = 6 or 7) are used
+together with Mgene = 2, 3, 4, the program outputs one Q matrix, when
+each site partition should have a different Q matrix.  The ML parameter 
+estimates are correct, but I did not bother to format the output correctly.  
+The single Q matrix in the output is the one for the first partition.  
+I have added the output for the other matrices now.
+
+(4) baseml and codeml.  Ancestral reconstruction was disabled for
+large trees with more than 100 or 200 sequences in previous versions.
+It is now allowed.  On large trees, the multiplication of transition
+probabilities across branches in the tree cause the product to become
+too small to be represented in the computer.  This is known as
+underflows.  I implemented a scaling algorithm to avoid underflows some 
+time ago but did not bother to do it with the ancestral reconstruction 
+algorithm at the time.  The algorithm should now work, up to the upper 
+limit set in the program, that is, 1000 or 2000 sequences.
+
+
+
+Version 3.1, June 2001
+
 
 Changed the way of counting base or amino acid frequencies so that
 this version of baseml or codeml might generate different results from
@@ -14,8 +47,8 @@ previous versions under the following model specifications.
    frequencies in the model for the different site partitions.  
 
    . codonml:
-   if you have ambiguity characters at all.  Ambiguity characters were ignored 
-   when counting frequencies in previous versions but are used now.
+   if you have ambiguity characters at all.  Ambiguity characters were
+   ignored when counting frequencies in previous versions but are used now.
 
 There is no difference if your data do not contain any alignment gaps
 or ambiguity characters or if you choose to remove them before any
@@ -43,7 +76,7 @@ correct.  I believe this is now corrected.
 
 
 
-14 May 2001, version 3.0e
+Version 3.0e, 14 May 2001
 
 codonml (codeml with seqtype = 1) with model = 1: The program crashes
 when you have a small tree with <= 5 branches.  This is a new error
@@ -56,7 +89,7 @@ yn00 in version 3.0c ignores icode and uses the universal code only.
 It was correct in vesion 3.0b.  This is fixed in version 3.0d.
 
 
-20 February 2001, versions 3.0c-3.0d
+Versions 3.0c-3.0d, 20 February 2001
 
 We bought a Pentium III cluster running redhat linux 6.2.  The gcc
 compiler 2.61 seems to have bugs and codeml does not run for NSsites =
@@ -79,8 +112,7 @@ Many values are larger than 1.  Fixed in version 3.0c.
 
 
 
-30 October 2000
-Version 3.0c
+Version 3.0c, 30 October 2000
 
 (1) Changed parameterization of clock models (clock = 1, 2, or 3), so that
 the output now lists node ages, and the SEs are for node ages as well.
@@ -98,8 +130,8 @@ options for codons and amino acids:
 
 
 
-6 October 2000
-Version 3.0b
+Version 3.0b, 6 October 2000
+
 The local clock models (clock = 2) are not implemented correctly in paml3.0 or 3.0a. 
 
 Yoder, A. D., and Z. Yang.  2000.  Estimation of primate speciation
@@ -122,8 +154,7 @@ Many thanks to Toby Johnson and Philip Awadalla for spotting the error.
 
 
 
-Feb 4, 2000
-Version 3
+Version 3, 4 February 2000
 
 The program evolver may not generate sequences correctly if branch
 lengths are very large, say >10.  
@@ -145,8 +176,7 @@ will become manageable, and this scaling will become important.
 
 
 
-Oct 14, 1999
-Version 2.0h
+Version 2.0h, Oct 14, 1999
 
 Fixed the following errors, all simple errors.
 
@@ -166,8 +196,7 @@ This is now fixed.
 
 
 
-Sept 21, 1999
-Version 2.0g
+Version 2.0g, Sept 21, 1999
 
 Fixed a bug in 2.0f that causes crash in codeml when getSE = 1.  
 
@@ -179,8 +208,7 @@ iteration.
 
 
 
-June 30, 1999
-Version 2.0d
+Version 2.0d, June 30, 1999
 Fixed some convergence problems in ML pairwise estimation of dS and 
 dN, in particular, in presence of data partitions (the G option).
 
@@ -192,8 +220,7 @@ the calculation.
 
 
 
-May 12, 1999
-Version 2.0c
+Version 2.0c, May 12, 1999
 Corrected a few problems with the evolver program, and with running 
 multiple data sets using baseml.  Added REV in MCbase.dat.
 Thanks to John Mercer.
@@ -218,8 +245,7 @@ the trouble.
 
 
 
-31 Mar 31 1999
-version 2.0
+version 2.0, 31 March 1999
 Added back the faster calculation when there is no missing data.
 Enabled the programs/analysis that broke in the temporary versions, 
 such as pamp, joint reconstruction.
@@ -228,8 +254,8 @@ Renamed listtree as evolver, and added simulation options.
 
 
 
-Dec98 & Jan99 
 PAML 1.4 Temporary versions
+Dec98 & Jan99 
 
   pamlTMP.Jan99.notes
   ===================
@@ -353,8 +379,8 @@ PAML 1.4 Temporary versions
 
 
 
-July 1998 
 Version 1.4 (UCL)
+July 1998 
 
      1.Most of the changes are in the program codeml (aaml for amino
   acid sequences and codonml for codon sequences). A few new models of
@@ -394,10 +420,11 @@ Version 1.4 (UCL)
      6.The documentation is now changed into the html format. 
 
 
-June 1998 
-Version 1.3a,b,c (UCL)
 
-  1. Basemlg was put back at the request a user.
+Version 1.3a,b,c (UCL)
+June 1998 
+
+  1. Basemlg was put back at the request of a user.
 
   2. Some changes are made to codeml concerning codon-substitution
   models (Yang and Nielsen 1998 JME; Yang 1998 MBE; Nielsen and Yang
@@ -405,8 +432,8 @@ Version 1.3a,b,c (UCL)
 
 
 
-July 1997 
 PAML Version 1.3: (UC Berkeley)
+July 1997 
 
   1. Starting with this version, the program basemlg will not be
   included in the package.  This program implements the (continuous)
@@ -453,8 +480,8 @@ PAML Version 1.3: (UC Berkeley)
 
 
 
-1995-1996 
 Version 1.1a-d: (UC Berkeley)
+1995-1996 
 
 1.1a No records of changes remain.
 
@@ -607,4 +634,4 @@ the package:
   3. tripml implements the codon-based model of Goldman and Yang (1994).
   Trees are represented by the "branch notation".
 
-
+// end of file

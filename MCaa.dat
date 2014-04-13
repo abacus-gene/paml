@@ -3,7 +3,7 @@
 6 100 1000
 
 -1
-(((1:0.1, 2:0.1):0.1, 3:0.2):0.1, 4:0.2, (5:0.1, 6:0.1):0.1)
+(((1:0.1, 2:0.1):0.1, 3:0.2):0.1, 4:0.2, (5:0.1, 6:0.1):0.1);
 
 .5 8
 2 mtmam.dat
@@ -20,7 +20,8 @@
 
 Notes for using the option in evolver to simulate amino acid sequences. 
 
-<format,0=paml,1=paup>
+=============================================================================
+<format: 0=paml format, data into mc.paml; 1=paup format, data into mc.paup>
 <random number seed>
 <# seqs>  <# amino acid sites>  <# replicates>
 <tree length, use -1 if tree has absolute branch lengths>

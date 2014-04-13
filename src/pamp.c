@@ -12,11 +12,9 @@
    (1) Brings up dialog box to allow command line parameters.
    (2) Reduces the size of statically allocated data.    */
 #include <console.h>
-#define NS            500
-#else
-#define NS            5000
 #endif
 
+#define NS            2000
 #define NBRANCH       (NS*2-2)
 #define NNODE         (NS*2-1)
 #define NGENE         2

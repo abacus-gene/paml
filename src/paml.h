@@ -20,6 +20,7 @@
 #define min2(a,b) ((a)<(b)?(a):(b))
 #define max2(a,b) ((a)>(b)?(a):(b))
 #define PI 3.141592653
+typedef struct { double re, im; } complex;
 
 #define beep putchar('\a')
 #define spaceming2(n) ((n)*((n)*2+9+2)*(int)sizeof(double))
@@ -106,6 +107,8 @@ int EvolveHKY85 (char source[], char target[], int ls, double t,
 int DistanceMatNuc (FILE *fout, int model, double alfa);
 int EigenREVbase (FILE* fout, double kapa[], double pi[], 
                   int *nR, double Root[], double Cijk[]);
+int EigenQunrest(FILE *fout, double kappa[], double pi[], 
+    int *nR, complex cRoot[], complex cU[], complex cV[]);
 
 int BootstrapSeq (char* seqfilename);
 int rell(FILE*flnf, FILE*fout, int ntree);
@@ -164,9 +167,7 @@ int correl (double x[], double y[], int n, double *mx, double *my,
             double *v11, double *v12, double *v22, double *r);
 
 /* complex functions */
-typedef struct { double re, im; } complex;
 #define csize(a) (fabs(a.re)+fabs(a.im))
-
 complex compl (double re,double im);
 complex conj (complex a);
 complex cplus (complex a, complex b);
@@ -300,6 +301,6 @@ void EvolveJC (int inode);
 #define DEBUG 9
 */
 
-#define VerStr "paml 3.1 July 2001"
+#define VerStr "paml 3.11 September 2001"
 
 #endif

@@ -185,11 +185,12 @@ int GetIofTree (int rooted, int keeptree, double space[])
 }
 
 
- void ReRootTree (int newroot)
+void ReRootTree (int newroot)
 {
 /* reroot tree at newroot.  oldroot forgotten
    The order of branches is not changed.  
    Branch lengths, and other parameters for branches are updated are updated.
+   Note that node inode needs to be updated if _oldlkl[inode] == 0.
 */
    int oldroot=tree.root, a,b;  /* a->b becomes b->a */
 
@@ -198,7 +199,7 @@ int GetIofTree (int rooted, int keeptree, double space[])
       tree.branches[nodes[b].ibranch][0]=b;
       tree.branches[nodes[b].ibranch][1]=a;
 #if (BASEML || CODEML)
-      if(a>=com.ns && com.method==1) _oldlkl[a]=0;
+      if(a>=com.ns /* && com.method==1 */) _oldlkl[a]=0;  /* update the node */
 #endif
    }
 

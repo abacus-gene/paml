@@ -32,11 +32,12 @@
 
 // codon freqs under the F3x4 table from sperm lysin of 25 abalone species
 
-
+=============================================================================
 MCcodonNSsites.dat (modified from MCcodon.dat)
 Notes for using the option in evolver to simulate codon sequences. 
 
-<format,0=paml,1=paup>
+=============================================================================
+<format: 0=paml format, data into mc.paml; 1=paup format, data into mc.paup>
 <random number seed>
 <# seqs> <# codons> <# replicates>
 <tree length, use -1 if tree has absolute branch lengths>
