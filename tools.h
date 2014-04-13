@@ -14,10 +14,14 @@
 #define FOR(i,n) for(i=0; i<n; i++)
 #define FPN(file) fputc('\n', file)
 #define F0 stdout
-#define min(a,b) ((a)<(b)?(a):(b))
-#define max(a,b) ((a)>(b)?(a):(b))
+#define min2(a,b) ((a)<(b)?(a):(b))
+#define max2(a,b) ((a)>(b)?(a):(b))
 #define PI 3.141592653
+#define MACHINEPRESICISION 1e-328
+#define logMACHINEPRESICISION -747
+
 #define beep putchar('\a')
+#define spaceming2(n) ((n)*((n)*2+9+2)*(int)sizeof(double))
 
 int ReadSeq (FILE *fout, FILE *fseq, int seqtype);
 int Initialize (FILE *fout, double space[], int seqtype);
@@ -46,6 +50,9 @@ double PointChi2 (double prob, double v);
 #define PointGamma(prob,alpha,beta) PointChi2(prob,2.0*(alpha))/(2.0*(beta))
 #define CDFGamma(x,alpha,beta) IncompleteGamma((beta)*(x),alpha,LnGamma(alpha))
 #define CDFChi2(x,v) CDFGamma(x,(v)/2.0,0.5)
+double CDFBeta(double x, double p, double q, double lnbeta);
+double InverseCDF(double(*cdf)(double x,double par[]),
+       double p,double x,double par[],double xb[2]);
 double PointNormal (double prob);
 double CDFNormal (double x);
 double LnGamma (double alpha);
@@ -55,7 +62,10 @@ double LBinormal(double h, double k, double r);
 double CDFBinormal (double h, double k, double r);
 double probBinomial (int n, int k, double p);
 long factorial(int n);
-double NchooseK(int n, int k);
+double Binomial(double n, double k, double *scale);
+
+int ScatterPlot (int n, int nseries, int yLorR[], double x[], double y[],
+    int nrow, int ncol, int ForE);
 
 char CodeChara (char b, int seqtype);
 int dnamaker (char z[], int ls, double pi[]);
@@ -91,9 +101,10 @@ int DistanceMatNuc (FILE *fout, int model, double alfa);
 int EigenREV (FILE* fout, double kapa[], double pi[], 
               int *nR, double Root[], double Cijk[]);
 
+int BootstrapSeq (char* seqfilename);
+int rell(FILE*flnf, FILE*fout, int ntree, double space[]);
 int print1site (FILE*fout, int h);
 int MultipleGenes (FILE* fout, double space[]);
-int PartialLikelihood (int inode, int igene);
 int lfunRates (FILE* fout, double x[], int np);
 int AncestralSeqs (FILE *fout, double x[], double space[]);
 int InitPartialLikelihood (void);
@@ -108,6 +119,7 @@ int printcums (FILE *fout, int ns, double fcodons[], int code);
 int PtoPi (double P[], double Pi[], int n, double *space);
 int PtoX(double P1[], double P2[], double Pi[], double X[]);
 
+void sleep(clock_t wait);
 char *strc (int n, char c);
 void strcase (char *str, int direction);
 void error(char * message);
@@ -179,15 +191,13 @@ double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[],
     double p[], double h, double limit, double e, double space[], int n);
 
 void xtoFreq(double x[], double freq[], int n);
+
+
+int minB (FILE*fout, double *lnL,double x[],double xb[][2],double space[]);
 int SetxBound (int np, double xb[][2]);
 int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
     int (*dfun)(double x[], double *f, double dx[], int n),
     double x[], double xb[][2], double space[], double e, int n);
-
-int ming1 (FILE *fout, double *f, double (* fun)(double x[], int n),
-    int (* dfun) (double x[], double *f, double dx[], int n),
-    int (*testx) (double x[], int n),
-    double x0[], double space[], double e, int n);
 
 int Newton (FILE *fout, double *f, double (* fun)(double x[], int n),
     int (* ddfun) (double x[], double *fx, double dx[], double ddx[], int n),
@@ -198,13 +208,13 @@ int nls2 (FILE *fout, double *sx, double * x0, int nx,
     int (* fun)(double x[], double y[], int nx, int ny),
     int (* jacobi)(double x[], double J[], int nx, int ny),
     int (*testx) (double x[], int nx),
-    int ny, double e1, double e2);
+    int ny, double e);
 
 /* tree structure functions in treesub.c */
 void NodeToBranch (void);
 void BranchToNode (void);
 void ClearNode (int inode);
-int ReadaTreeN (FILE *ftree, int *hasbranch, int popline);
+int ReadaTreeN (FILE *ftree, int *length_label, int popline);
 int ReadaTreeB (FILE *ftree, int popline);
 int OutaTreeN (FILE *fout, int spnames, int branchlen);
 int OutaTreeB (FILE *fout);
@@ -215,7 +225,6 @@ int LSDistance (double * ss, double x[], int (*testx)(double x[],int np));
 
 int StepwiseAdditionMP (double space[]);
 double MPScoreStepwiseAddition (int is, double space[], int save);
-int TreeSearch (FILE *fout, double space[]);
 int AddSpecies (int species, int ib);
 int StepwiseAddition (FILE* fout, double space[]);
 double TreeScore(double x[], double space[]);
@@ -266,7 +275,6 @@ int Rates4Sites (double rates[],double alfa,int ncatG,int ls, int cdf,
 void Evolve (int inode);
 void EvolveJC (int inode);
 
-extern char BASEs[], AAs[];
 #define  BASEseq     0
 #define  CODONseq    1
 #define  AAseq       2

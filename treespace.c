@@ -92,9 +92,9 @@ int ListTrees (FILE* fout, int ns, int rooted)
    }
    for (i=0;i<nM;i++) Ib[i]=0;
    for (NTrees=0; ; ) {
-      MakeTreeIb (ns, Ib, rooted);
-      OutaTreeN (fout, 0, 0);
-      fprintf (fout, " %7d\n", NTrees++);
+      MakeTreeIb(ns, Ib, rooted);
+      OutaTreeN(fout, 0, 0);
+      fprintf(fout, " %7d\n", NTrees++);
 
       for (i=nM-1,Ib[nM-1]++,finish=0; i>=0; i--) {
          if (Ib[i]<2*i+3) break;
@@ -103,6 +103,7 @@ int ListTrees (FILE* fout, int ns, int rooted)
       }
       if (finish) break;
    }
+   FPN(fout);
    return (0);
 }
 
@@ -195,6 +196,11 @@ int GetIofTree (int rooted, int keeptree, double space[])
    for (b=newroot,a=nodes[b].father; b!=oldroot; b=a,a=nodes[b].father) {
       tree.branches[nodes[b].ibranch][0]=b;
       tree.branches[nodes[b].ibranch][1]=a;
+
+#if (CODEML || BASEML)
+      if(a>=com.ns) _oldlkl[a]=0;
+#endif
+
    }
    tree.origin=newroot;
    BranchToNode ();
@@ -288,7 +294,7 @@ int GetIofLHistory (void)
    for (inode=nnode=com.ns,index=0; inode<com.ns*2-1; inode++,nnode--) {
       FOR (i,2) FOR (j,nnode)  
          if (nodes[inode].sons[i]==nodea[j]) { s[i]=j; break; }
-      k[nnode]=max(s[0],s[1]); s[0]=min(s[0],s[1]); s[1]=k[nnode];
+      k[nnode]=max2(s[0],s[1]); s[0]=min2(s[0],s[1]); s[1]=k[nnode];
       k[nnode]=s[1]*(s[1]-1)/2+s[0];
       nodea[s[0]]=inode; nodea[s[1]]=nodea[nnode-1];
    }

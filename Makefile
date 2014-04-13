@@ -1,53 +1,50 @@
-PRGS =  baseml codeml basemlg pamp evolver mcmctree # mljc3s dsdn
-CC = cc # cc, gcc, cl
-
-CFLAGS = -w0 -warnprotos -newc -std -fast
-
-#CFLAGS = -w0 -warnprotos -newc -std -fast
-#CFLAGS = -g -w0 -warnprotos -newc -std -edit1 #
-#CFLAGS = -g -w0 -warnprotos -newc -std  #
-
-
+PRGS =  baseml basemlg codeml codemlsites evolver mcmctree pamp yn00
+CC = cl # cc, gcc, cl
+CFLAGS = -W3 -O2
+ 
+ 
 DEFINE = #
-LIBS = -lm # -lM
-
-OBJbaseml = baseml.o eigen.o tools.o
-OBJcodeml = codeml.o eigen.o tools.o
-
+LIBS = #-lm -lM
+ 
+ 
+OBJbaseml = baseml.obj eigen.obj tools.obj
+OBJcodeml = codeml.obj eigen.obj tools.obj
+ 
 all : $(PRGS)
-
-dsdn: dsdn.c tools.o eigen.o
-	$(CC) $(CFLAGS) -o $@ dsdn.c tools.o eigen.o $(LIBS)
-
-mljc3s: mljc3s.c tools.o
-	$(CC) $(CFLAGS) -o $@ mljc3s.c tools.o $(LIBS)
-
+ 
 baseml : $(OBJbaseml)
-	$(CC) $(CFLAGS) -o $@ $(OBJbaseml) $(LIBS)
-basemlg : basemlg.o tools.o
-	$(CC) $(CFLAGS) -o $@ basemlg.o tools.o $(LIBS)
+        $(CC) $(CFLAGS) $(OBJbaseml) $(LIBS)
+basemlg : basemlg.obj tools.obj
+        $(CC) $(CFLAGS) basemlg.obj tools.obj $(LIBS)
 codeml : $(OBJcodeml)
-	$(CC) $(CFLAGS) -o $@ $(OBJcodeml) $(LIBS)
-evolver : evolver.o tools.o 
-	$(CC) $(CFLAGS) -o $@ tools.o evolver.o $(LIBS)
-pamp : pamp.o tools.o eigen.o
-	$(CC) $(CFLAGS) -o $@ pamp.o tools.o eigen.o $(LIBS)
-mcmctree : mcmctree.o tools.o
-	$(CC) $(CFLAGS) -o $@ mcmctree.o tools.o $(LIBS)
+        $(CC) $(CFLAGS) $(OBJcodeml) $(LIBS)
+codemlsites : $(OBJcodeml)
+        $(CC) -Fecodemlsites.exe -DNSSITESBATCH codeml.c $(CFLAGS) tools.obj eigen.obj $(LIBS)
+evolver : evolver.obj tools.obj eigen.obj
+        $(CC) $(CFLAGS) evolver.obj tools.obj eigen.obj $(LIBS)
+mcmctree : mcmctree.obj tools.obj
+        $(CC) $(CFLAGS) mcmctree.obj tools.obj $(LIBS)
+pamp : pamp.obj tools.obj eigen.obj
+        $(CC) $(CFLAGS) pamp.obj tools.obj eigen.obj $(LIBS)
+yn00 : yn00.obj tools.obj
+        $(CC) $(CFLAGS) yn00.obj tools.obj $(LIBS)
 
-eigen.o : tools.h eigen.c
-	$(CC) $(CFLAGS) -c eigen.c
-tools.o : tools.h tools.c
-	$(CC) $(CFLAGS) -c tools.c
-baseml.o : tools.h baseml.c treesub.c treespace.c
-	$(CC) $(CFLAGS) -c baseml.c
-basemlg.o : tools.h basemlg.c treesub.c
-	$(CC) $(CFLAGS) -c basemlg.c
-codeml.o : tools.h codeml.c treesub.c treespace.c
-	$(CC) $(CFLAGS) -c codeml.c
-evolver.o: evolver.c treesub.c treespace.c
-	$(CC) $(CFLAGS) -c evolver.c
-pamp.o : tools.h pamp.c treesub.c treespace.c
-	$(CC) $(CFLAGS) -c pamp.c
-mcmctree.o : tools.h mcmctree.c treesub.c treespace.c
-	$(CC) $(CFLAGS) -c mcmctree.c
+
+eigen.obj : tools.h eigen.c
+        $(CC) $(CFLAGS) -c eigen.c
+tools.obj : tools.h tools.c
+        $(CC) $(CFLAGS) -c tools.c
+baseml.obj : tools.h baseml.c treesub.c treespace.c
+        $(CC) $(CFLAGS) -c baseml.c
+basemlg.obj : tools.h basemlg.c treesub.c
+        $(CC) $(CFLAGS) -c basemlg.c
+codeml.obj : tools.h codeml.c treesub.c treespace.c
+        $(CC) $(CFLAGS) -c codeml.c
+evolver.obj: evolver.c treesub.c treespace.c
+        $(CC) $(CFLAGS) -c evolver.c
+mcmctree.obj : tools.h mcmctree.c treesub.c treespace.c
+        $(CC) $(CFLAGS) -c mcmctree.c
+pamp.obj : tools.h pamp.c treesub.c treespace.c
+        $(CC) $(CFLAGS) -c pamp.c
+yn00.obj : tools.h yn00.c 
+        $(CC) $(CFLAGS) -c yn00.c

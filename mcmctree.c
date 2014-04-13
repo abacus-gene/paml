@@ -12,6 +12,13 @@
      x[birth, death, mut, kappa etc.]  
 */
 
+#ifdef __MWERKS__
+/* Added by Andrew Rambaut to accommodate Macs -
+   Brings up dialog box to allow command line parameters.
+*/
+#include <console.h>
+#endif
+
 #define NS            9
 #define NBRANCH      (NS*2-2)
 #define NNODE        (NS*2-1)
@@ -48,14 +55,14 @@ struct CommonInfo {
    int priTt,hier, model, clock, fix_alpha, fix_kappa, fix_rgene, Mgene;
    double *fpatt;
    double pi[6],lmax, birth,death,sample, mut, kappa,alpha, beta,delta0,delta1;
-   double rgene[NGENE],piG[NGENE][6], freqK[NCATG], rK[NCATG], *chunk, *fhK;
+   double rgene[NGENE],piG[NGENE][6], freqK[NCATG], rK[NCATG], *lkl, *fhK;
 }  com;
 struct TREEB {
    int  nbranch, nnode, origin, branches[NBRANCH][2];
    double lnL;
 }  tree;                
 struct TREEN {
-   int father, nson, sons[NS], ibranch;
+   int father, nson, sons[NS], ibranch, label;
    double branch, divtime, *lkl;
 }  nodes[2*NS-1];
 
@@ -65,6 +72,7 @@ enum {JC69, K80, F81, F84, HKY85, TN93, REV} MODELS;
 
 static int nR=4, nreplicateMC;
 static double lnpBestTree, PMat[16], Cijk[64], Root[4];
+double _rateSite=1;
 
 #define REALSEQUENCE
 #define PARSIMONY
@@ -80,6 +88,13 @@ int main(int argc, char *argv[])
    int idata, ndata=1;
    double *space;
    FILE  *fout, *fseq;
+
+#ifdef __MWERKS__
+/* Added by Andrew Rambaut to accommodate Macs -
+   Brings up dialog box to allow command line parameters.
+*/
+	argc=ccommand(&argv);
+#endif
 
    noisy=3;          
    com.model=F84;    com.kappa=1.63;
@@ -131,14 +146,14 @@ int main(int argc, char *argv[])
       
       Initialize (fout, space, 0);
       if (com.model==JC69) PatternJC69like (fout);
-      if (com.chunk) free(com.chunk);
-      com.chunk=(double*)malloc((com.ns-1)*com.ncode*com.npatt*sizeof(double));
+      if (com.lkl) free(com.lkl);
+      com.lkl=(double*)malloc((com.ns-1)*com.ncode*com.npatt*sizeof(double));
       if(com.alpha){
          if (com.fhK) free(com.fhK);
          com.fhK=(double*)malloc(com.npatt*com.ncatG*sizeof(double));
          DiscreteGamma (com.freqK, com.rK, com.alpha, com.alpha, com.ncatG, 0);
       }
-      if (com.chunk==NULL || (com.alpha && com.fhK==NULL)) error ("oom");
+      if (com.lkl==NULL || (com.alpha && com.fhK==NULL)) error ("oom");
       
       if (com.model>1)
          EigenTN93(com.model,com.kappa,com.kappa,com.pi,&nR,Root,Cijk);
@@ -180,7 +195,7 @@ int InitPartialLikelihood (void)
    int n=com.ncode, is,j,k,h, b;
    char *pch=BASEs;
 
-   FOR(is,com.ns) nodes[is].lkl=com.chunk+n*com.npatt*is;
+   FOR(is,com.ns) nodes[is].lkl=com.lkl+n*com.npatt*is;
    for (is=0;is<com.ns;is++) {
       zero(nodes[is].lkl, com.npatt*n);
       for (h=0;h<com.npatt;h++) {
@@ -213,7 +228,7 @@ int PartialLikelihood (int inode, int igene)
 
    FOR (i, nodes[inode].nson) {
       ison=nodes[inode].sons[i];
-      t=nodes[ison].branch*com.rgene[igene];
+      t=nodes[ison].branch*com.rgene[igene]*_rateSite;
       if (com.model<=K80)       PMatK80 (PMat, t, com.kappa);
       else if (com.model<=REV)  PMatCijk (PMat, t);
 
@@ -242,8 +257,7 @@ double lfundG (void)
    zero (com.fhK, com.npatt);
    for (ig=0; ig<com.ngene; ig++) {
       for (ir=0; ir<com.ncatG; ir++) {
-         FOR (i, tree.nnode)
-            nodes[i].branch *= (ir==0?com.rK[ir]:com.rK[ir]/com.rK[ir-1]);
+         _rateSite=com.rK[ir];
          PartialLikelihood (tree.origin, ig);
          for (h=com.posG[ig]; h<com.posG[ig+1]; h++) {
             for (i=0,fh=0; i<com.ncode; i++)
@@ -251,7 +265,6 @@ double lfundG (void)
             com.fhK[h] += com.freqK[ir]*fh;
          }
       }
-      FOR (i, tree.nnode)  nodes[i].branch/=com.rK[com.ncatG-1];
    }
    for (h=0,lnL=0; h<com.npatt; h++) {
       if (com.fhK[h]<=0)
@@ -318,8 +331,8 @@ int GetOptions (char *ctlf)
                   case ( 7): com.delta0=t;          break;
                   case ( 8): com.delta1=t;          break;
                   case ( 9): com.model=(int)t;      break;
-                  case (10): com.kappa=(int)t;      break;
-                  case (11): com.alpha=(int)t;      break;
+                  case (10): com.kappa=t;           break;
+                  case (11): com.alpha=t;           break;
                   case (12): com.ncatG=(int)t;      break;
                   case (13): com.hier=(int)t;       break;
                   case (14): com.birth=t;           break;
@@ -367,7 +380,7 @@ double OneTree (double delta)
       if (com.clock) {
          /* check whether rooted or unrooted tree should be used here */
          BranchLengthBD (1, birth, death, com.sample, com.mut);
-         FOR(i,com.ns) nodes[i].branch=max(1e-7,nodes[i].branch);
+         FOR(i,com.ns) nodes[i].branch=max2(1e-7,nodes[i].branch);
       }
       else
          FOR(i,tree.nnode) if(i!=tree.origin) nodes[i].branch=rndu()*com.mut;
@@ -386,12 +399,12 @@ double OneTree (double delta)
 
          d=lnpBestTree-ScaleF-log(mp); 
          if (d>100) break;
-         d=(d<10?1:1+d/50.);  d=min(d,20);
+         d=(d<10?1:1+d/50.);  d=min2(d,20);
          /* if (sqrt(slnp/ir/(ir+1.))<delta*d)  break; */
          if (sqrt(sp/ir/(ir+1.))/mp<delta*d)  break;
       }
    }
-   nreplicateMC=min(ir+1,maxnr);
+   nreplicateMC=min2(ir+1,maxnr);
    if ((mp=ScaleF+log(mp))>lnpBestTree) lnpBestTree=mp;
 
    /* printf ("mlnp: %14.4f%14.4f\n", mp, mlnp); */
@@ -462,7 +475,7 @@ void MCMCtrees (FILE* fout, double space[])
          if ((nLHi==1 || rndu()>com.beta) && !wantL) { /* change topology*/
             TL='T';
             NeighborNNI((int)(ntreeNNI*rndu()));
-	 }
+         }
          else  TL='L';                                 /* change LH */
          nLHj=CountLHistory(LH_NNI, space);  jLH=(int)(nLHj*rndu());
          if (nLHj>norder) { printf("%9d>%9d",nLHj,norder); error("norder"); }
@@ -484,7 +497,7 @@ void MCMCtrees (FILE* fout, double space[])
          lnP=OneTree(com.delta0);
          IofLHs[ntreekept]=jLH; lnPLHs[ntreekept++]=lnP;
          if(ntreekept>=MAXTREEKEPT)  
-           { puts("\n\nReached max number of trees kept.");  break; }
+           { puts("\n\nReached max2 number of trees kept.");  break; }
       }
       alpha=(irun==-burnin ? 1 : exp(lnP-lnPcur)*nLHj/(double)nLHi);
       if (alpha>1) alpha=1;
@@ -500,10 +513,10 @@ void MCMCtrees (FILE* fout, double space[])
       else   printf (" N");
 
       if (irun>=0) {
-         for (i=0;i<ntreekept;i++) if (iLH==IofLHs[i]) break;
+         for(i=0;i<ntreekept;i++) if (iLH==IofLHs[i]) break;
          counts[i]++;
       }
-      printf ("%8d%5d\n", nreplicateMC, ntreekept);
+      printf("%8d%5d\n", nreplicateMC, ntreekept);
    }  /* for (irun) */
 
    printf ("\n\n%d LHs collected into the file %s\n", ntreekept,com.LHf);

@@ -1,7 +1,8 @@
 
     seqfile = mtprim9.nuc  * sequence data file name
     outfile = mcmctree.out * main result file name
-   treefile = trees.9s     * tree file for initial rooted tree topology
+   treefile = 9s.trees     * tree file for initial rooted tree topology
+
      LHfile = LHs  * LH file name, read (MCMC=0) or rewritten (MCMC=1)
        MCMC = 1     * 0: read LHs from LHfile, 1: use MCMC to generate LHs
        beta = 0.15  * prob{labeled history change}, used only if MCMC=1

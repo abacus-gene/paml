@@ -27,7 +27,7 @@
 /*
 #define DIGITS     53
 */
-#define MAXITER    30    /* max. no. of iterations to converge */
+#define MAXITER    30    /* max2. no. of iterations to converge */
 
 #define pos(i,j,n)      ((i)*(n)+(j))
 
@@ -491,7 +491,7 @@ int realeig(int job,double mat[],int n,int low, int hi, double valr[],
    }
       /* store isolated roots and calculate norm */
    for (norm = 0,i = 0; i < n; i++) {
-      for (j = max(0,i-1); j < n; j++) {
+      for (j = max2(0,i-1); j < n; j++) {
          norm += fabs(mat[pos(i,j,n)]);
       }
       if (i < low || i > hi) valr[i] = mat[pos(i,i,n)];
@@ -635,7 +635,7 @@ int realeig(int job,double mat[],int n,int low, int hi, double valr[],
                mat[pos(k+1,j,n)] -= p * y;
                mat[pos(k,j,n)] -= p * x;
             }
-            j = min(en,k+3);
+            j = min2(en,k+3);
               /* column modification */
             for (i = (!job ? l : 0); i <= j; i++) {
                p = x * mat[pos(i,k,n)] + y * mat[pos(i,k+1,n)];
@@ -777,7 +777,7 @@ int realeig(int job,double mat[],int n,int low, int hi, double valr[],
        /* multiply by transformation matrix */
 
       for (j = n-1; j >= low; j--) {
-         m = min(j,hi);
+         m = min2(j,hi);
          for (i = low; i <= hi; i++) {
             for (z = 0,k = low; k <= m; k++) {
                z += vr[pos(i,k,n)] * mat[pos(k,j,n)];

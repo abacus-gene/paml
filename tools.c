@@ -16,61 +16,61 @@ char AA3Str[]=
 char BINs[] ="TC";
 char Nsensecodon[]={61, 60, 61, 62, 62, 63, 62, 62, 61, 62, 62};
 char GenetCode[][64] = 
-     {{14,14,11,11,16,16,16,16,19,19, 0, 0, 5, 5, 0,18,
-       11,11,11,11,15,15,15,15, 9, 9, 6, 6, 2, 2, 2, 2,
-       10,10,10,13,17,17,17,17, 3, 3,12,12,16,16, 2, 2,
-       20,20,20,20, 1, 1, 1, 1, 4, 4, 7, 7, 8, 8, 8, 8}, /* universal */
+     {{13,13,10,10,15,15,15,15,18,18,-1,-1, 4, 4,-1,17,
+       10,10,10,10,14,14,14,14, 8, 8, 5, 5, 1, 1, 1, 1,
+        9, 9, 9,12,16,16,16,16, 2, 2,11,11,15,15, 1, 1,
+       19,19,19,19, 0, 0, 0, 0, 3, 3, 6, 6, 7, 7, 7, 7}, /* 0:universal */
 
-      {14,14,11,11,16,16,16,16,19,19, 0, 0, 5, 5,18,18,
-       11,11,11,11,15,15,15,15, 9, 9, 6, 6, 2, 2, 2, 2,
-       10,10,13,13,17,17,17,17, 3, 3,12,12,16,16, 0, 0,
-       20,20,20,20, 1, 1, 1, 1, 4, 4, 7, 7, 8, 8, 8, 8}, /* mammalian mtDNA */
+      {13,13,10,10,15,15,15,15,18,18,-1,-1, 4, 4,17,17,
+       10,10,10,10,14,14,14,14, 8, 8, 5, 5, 1, 1, 1, 1,
+        9, 9,12,12,16,16,16,16, 2, 2,11,11,15,15,-1,-1,
+       19,19,19,19, 0, 0, 0, 0, 3, 3, 6, 6, 7, 7, 7, 7}, /* 1:vertebrate mt.*/
 
-      {14,14,11,11,16,16,16,16,19,19, 0, 0, 5, 5, 0,18,
-       17,17,17,17,15,15,15,15, 9, 9, 6, 6, 2, 2, 2, 2,
-       10,10,13,13,17,17,17,17, 3, 3,12,12,16,16, 2, 2,
-       20,20,20,20, 1, 1, 1, 1, 4, 4, 7, 7, 8, 8, 8, 8}, /* yeast mt. */
+      {13,13,10,10,15,15,15,15,18,18,-1,-1, 4, 4,-1,17,
+       16,16,16,16,14,14,14,14, 8, 8, 5, 5, 1, 1, 1, 1,
+        9, 9,12,12,16,16,16,16, 2, 2,11,11,15,15, 1, 1,
+       19,19,19,19, 0, 0, 0, 0, 3, 3, 6, 6, 7, 7, 7, 7}, /* 2:yeast mt. */
 
-      {14,14,11,11,16,16,16,16,19,19, 0, 0, 5, 5,18,18,
-       11,11,11,11,15,15,15,15, 9, 9, 6, 6, 2, 2, 2, 2,
-       10,10,10,13,17,17,17,17, 3, 3,12,12,16,16, 2, 2,
-       20,20,20,20, 1, 1, 1, 1, 4, 4, 7, 7, 8, 8, 8, 8}, /* mold mt. */
+      {13,13,10,10,15,15,15,15,18,18,-1,-1, 4, 4,17,17,
+       10,10,10,10,14,14,14,14, 8, 8, 5, 5, 1, 1, 1, 1,
+        9, 9, 9,12,16,16,16,16, 2, 2,11,11,15,15, 1, 1,
+       19,19,19,19, 0, 0, 0, 0, 3, 3, 6, 6, 7, 7, 7, 7}, /* 3:mold mt. */
 
-      {14,14,11,11,16,16,16,16,19,19, 0, 0, 5, 5,18,18,
-       11,11,11,11,15,15,15,15, 9, 9, 6, 6, 2, 2, 2, 2,
-       10,10,13,13,17,17,17,17, 3, 3,12,12,16,16,16,16,
-       20,20,20,20, 1, 1, 1, 1, 4, 4, 7, 7, 8, 8, 8, 8}, /* invertebrate mt. */
+      {13,13,10,10,15,15,15,15,18,18,-1,-1, 4, 4,17,17,
+       10,10,10,10,14,14,14,14, 8, 8, 5, 5, 1, 1, 1, 1,
+        9, 9,12,12,16,16,16,16, 2, 2,11,11,15,15,15,15,
+       19,19,19,19, 0, 0, 0, 0, 3, 3, 6, 6, 7, 7, 7, 7}, /* 4:invertebrate mt. */
 
-      {14,14,11,11,16,16,16,16,19,19, 6, 6, 5, 5, 0,18,
-       11,11,11,11,15,15,15,15, 9, 9, 6, 6, 2, 2, 2, 2,
-       10,10,10,13,17,17,17,17, 3, 3,12,12,16,16, 2, 2,
-       20,20,20,20, 1, 1, 1, 1, 4, 4, 7, 7, 8, 8, 8, 8}, /* ciliate nuclear */
+      {13,13,10,10,15,15,15,15,18,18, 5, 5, 4, 4,-1,17,
+       10,10,10,10,14,14,14,14, 8, 8, 5, 5, 1, 1, 1, 1,
+        9, 9, 9,12,16,16,16,16, 2, 2,11,11,15,15, 1, 1,
+       19,19,19,19, 0, 0, 0, 0, 3, 3, 6, 6, 7, 7, 7, 7}, /* 5:ciliate nuclear*/
 
-      {14,14,11,11,16,16,16,16,19,19, 0, 0, 5, 5,18,18,
-       11,11,11,11,15,15,15,15, 9, 9, 6, 6, 2, 2, 2, 2,
-       10,10,10,13,17,17,17,17, 3, 3, 3,12,16,16,16,16,
-       20,20,20,20, 1, 1, 1, 1, 4, 4, 7, 7, 8, 8, 8, 8}, /* echinoderm mt. */
+      {13,13,10,10,15,15,15,15,18,18,-1,-1, 4, 4,17,17,
+       10,10,10,10,14,14,14,14, 8, 8, 5, 5, 1, 1, 1, 1,
+        9, 9, 9,12,16,16,16,16, 2, 2, 2,11,15,15,15,15,
+       19,19,19,19, 0, 0, 0, 0, 3, 3, 6, 6, 7, 7, 7, 7}, /* 6:echinoderm mt.*/
 
-      {14,14,11,11,16,16,16,16,19,19, 0, 0, 5, 5, 5,18,
-       11,11,11,11,15,15,15,15, 9, 9, 6, 6, 2, 2, 2, 2,
-       10,10,10,13,17,17,17,17, 3, 3,12,12,16,16, 2, 2,
-       20,20,20,20, 1, 1, 1, 1, 4, 4, 7, 7, 8, 8, 8, 8}, /* euplotid mt. */
+      {13,13,10,10,15,15,15,15,18,18,-1,-1, 4, 4, 4,17,
+       10,10,10,10,14,14,14,14, 8, 8, 5, 5, 1, 1, 1, 1,
+        9, 9, 9,12,16,16,16,16, 2, 2,11,11,15,15, 1, 1,
+       19,19,19,19, 0, 0, 0, 0, 3, 3, 6, 6, 7, 7, 7, 7}, /* 7:euplotid mt. */
 
-      {14,14,11,11,16,16,16,16,19,19, 0, 0, 5, 5, 0,18,
-       11,11,11,16,15,15,15,15, 9, 9, 6, 6, 2, 2, 2, 2,
-       10,10,10,13,17,17,17,17, 3, 3,12,12,16,16, 2, 2,
-       20,20,20,20, 1, 1, 1, 1, 4, 4, 7, 7, 8, 8, 8, 8},
-                                                 /* alternative yeast nu. */
+      {13,13,10,10,15,15,15,15,18,18,-1,-1, 4, 4,-1,17,
+       10,10,10,15,14,14,14,14, 8, 8, 5, 5, 1, 1, 1, 1,
+        9, 9, 9,12,16,16,16,16, 2, 2,11,11,15,15, 1, 1,
+       19,19,19,19, 0, 0, 0, 0, 3, 3, 6, 6, 7, 7, 7, 7},
+                                                 /* 8:alternative yeast nu.*/
 
-      {14,14,11,11,16,16,16,16,19,19, 0, 0, 5, 5,18,18,
-       11,11,11,11,15,15,15,15, 9, 9, 6, 6, 2, 2, 2, 2,
-       10,10,13,13,17,17,17,17, 3, 3,12,12,16,16, 8, 8,
-       20,20,20,20, 1, 1, 1, 1, 4, 4, 7, 7, 8, 8, 8, 8}, /* ascidian mt. */
+      {13,13,10,10,15,15,15,15,18,18,-1,-1, 4, 4,17,17,
+       10,10,10,10,14,14,14,14, 8, 8, 5, 5, 1, 1, 1, 1,
+        9, 9,12,12,16,16,16,16, 2, 2,11,11,15,15, 7, 7,
+       19,19,19,19, 0, 0, 0, 0, 3, 3, 6, 6, 7, 7, 7, 7}, /* 9:ascidian mt. */
 
-      {14,14,11,11,16,16,16,16,19,19, 0, 6, 5, 5, 0,18,
-       11,11,11,11,15,15,15,15, 9, 9, 6, 6, 2, 2, 2, 2,
-       10,10,10,13,17,17,17,17, 3, 3,12,12,16,16, 2, 2,
-       20,20,20,20, 1, 1, 1, 1, 4, 4, 7, 7, 8, 8, 8, 8} /* blepharisma nu. */
+      {13,13,10,10,15,15,15,15,18,18,-1, 5, 4, 4,-1,17,
+       10,10,10,10,14,14,14,14, 8, 8, 5, 5, 1, 1, 1, 1,
+        9, 9, 9,12,16,16,16,16, 2, 2,11,11,15,15, 1, 1,
+       19,19,19,19, 0, 0, 0, 0, 3, 3, 6, 6, 7, 7, 7, 7} /* 10:blepharisma nu.*/
      } ;                                         /* GenetCode[icode][#codon] */
 
 
@@ -87,8 +87,8 @@ int picksite (char *z, int l, int begin, int gap, char *result)
 
 char CodeChara (char b, int seqtype)
 {
-/* used to code characters by 1,2,..., and after recent change, now code
-   as 0,1,...,
+/* This codes characters into 0, 1, 2, ...
+   It used to code characters as 1,2,..., and has been changed
 */
    int i, n=(seqtype==0?4:(seqtype==2?20:2));
    char *pch=(seqtype==0?BASEs:(seqtype==2?AAs:BINs));
@@ -100,7 +100,7 @@ char CodeChara (char b, int seqtype)
          case 'A':              return(2);
          case 'G':              return(3);
       }
-   else 
+   else
       FOR(i,n) if (b==pch[i]) return (char)i;
    printf ("\nerr: strange character '%c' ", b);
    return (-1);
@@ -268,26 +268,28 @@ int difcodonNG(char codon1[], char codon2[], double *SynSite,double *AsynSite,
    step[j] (=0,1,2) is the codon position to be changed at step j (j=0,1,ndiff)
    b[i][j] (=0,1,2,3) is the nucleotide at position j (0,1,2) in codon i (0,1)
 */
-   int i,j,k, i1,i2, iy[2], iaa[2];
+   int i,j,k, i1,i2, iy[2], iaa[2],ic[2];
    int ndiff,npath,nstop,sdpath,ndpath,dmark[3],step[3],b[2][3],bt1[3],bt2[3];
    int by[3] = {16, 4, 1};
+   char str[4]="";
 
    for (i=0,*SynSite=0,nstop=0; i<2; i++) {
       for (j=0,iy[0]=iy[1]=0; j<3; j++)   {
-         if (transfed)  b[i][j]=(i?codon1[j]:codon2[j]);
-         else           b[i][j]=(int)CodeChara((i?codon1[j]:codon2[j]),0);
+         if (transfed) b[i][j]=(i?codon1[j]:codon2[j]);
+         else          b[i][j]=(int)CodeChara((char)(i?codon1[j]:codon2[j]),0);
          iy[i]+=by[j]*b[i][j];
          if(b[i][j]<0||b[i][j]>3) { 
             printf("\nb[%d][%d] = %d ", i,j,b[i][j]);
             error("err: difcodonNG");
-	      }
+         }
       }
       iaa[i]=GenetCode[icode][iy[i]];
+      if(iaa[i]==-1) printf("\nNG86: End codon %s.\n",getcodon(str,iy[i]));
       for(j=0; j<3; j++) 
          FOR (k,4) {
             if (k==b[i][j]) continue;
             i1=GenetCode[icode][iy[i] + (k-b[i][j])*by[j]];
-            if (i1==0)            nstop++;
+            if (i1==-1)            nstop++;
             else if (i1==iaa[i])  (*SynSite)++;
          }
    }
@@ -297,7 +299,6 @@ int difcodonNG(char codon1[], char codon2[], double *SynSite,double *AsynSite,
 #if 0    /* MEGA 1.1 error */
    *AsynSite=3 - *SynSite;
 #endif
-   if (iaa[0]*iaa[1]==0)    printf ("\nEnd codon %d %d..\n",iy[0],iy[1]);
 
    ndiff=0;  *SynDif=*AsynDif=0;
    FOR (k,3) dmark[k]=-1;
@@ -319,24 +320,24 @@ int difcodonNG(char codon1[], char codon2[], double *SynSite,double *AsynSite,
                  step[2]=3-step[0]-step[1];
               }
               FOR (i1,3) bt1[i1]=bt2[i1]=b[0][i1];
-              sdpath=ndpath=0;                  /* mutations for each path */
-         FOR (i1, ndiff) {                      /* mutation steps for each path */
-            bt2[step[i1]] = b[1][step[i1]];
-            for (i2=0,iaa[0]=iaa[1]=0; i2<3; i2++) {
-               iaa[0]+=bt1[i2]*by[i2];
-               iaa[1]+=bt2[i2]*by[i2];
-            }
-       FOR (i2,2) iaa[i2]=GenetCode[icode][iaa[i2]];
-            if (iaa[1]==0)  { nstop++;  sdpath=ndpath=0; break; }
-            if (iaa[0]==iaa[1])  sdpath++;
-            else                 ndpath++;
-            FOR (i2,3) bt1[i2]=bt2[i2];
+              sdpath=ndpath=0;       /* mutations for each path */
+              FOR (i1, ndiff) {      /* mutation steps for each path */
+                 bt2[step[i1]] = b[1][step[i1]];
+                 for (i2=0,ic[0]=ic[1]=0; i2<3; i2++) {
+                    ic[0]+=bt1[i2]*by[i2];
+                    ic[1]+=bt2[i2]*by[i2];
+                 }
+                 FOR (i2,2) iaa[i2]=GenetCode[icode][ic[i2]];
+                 if (iaa[1]==-1)  { nstop++;  sdpath=ndpath=0; break; }
+                 if (iaa[0]==iaa[1])  sdpath++;
+                 else                 ndpath++;
+                 FOR (i2,3) bt1[i2]=bt2[i2];
          }
          *SynDif+=(double)sdpath;    *AsynDif+=(double)ndpath;
       }
    } 
    if (npath==nstop) {
-      puts ("All paths are through stop codons..");
+      puts ("NG86: All paths are through stop codons..");
       if (ndiff==2) { *SynDif=0; *AsynDif=2; }
       else          { *SynDif=1; *AsynDif=2; }
    }
@@ -373,7 +374,7 @@ int PMatUVRoot (double P[], double t, int n, double U[], double V[],
 #if (DEBUG)
    if (t<-1e-4) printf ("\nt = %.5f in PMatUVRoot", t);
 #endif
-   if (t<1e-40) { identity (P, n); return(0); }
+   if (t<1e-10) { identity (P, n); return(0); }
    for (k=0,zero(P,n*n); k<n; k++)
       for (i=0,pP=P,expt=exp(t*Root[k]); i<n; i++)
           for (j=0,uexpt=U[i*n+k]*expt; j<n; j++)
@@ -399,7 +400,7 @@ int PMatK80 (double P[], double t, double kappa)
 #if DEBUG
    if (t<-1e-4)  printf ("\nt = %.5f in PMatK80..", t);
 #endif
-   if (t<1e-40) { identity (P, 4); return(0); }
+   if (t<1e-10) { identity (P, 4); return(0); }
    e1=exp(-4*t/(kappa+2));
    if (fabs(kappa-1)<1e-5) {
       FOR (i,4) FOR (j,4)
@@ -431,7 +432,7 @@ int PMatTN93 (double P[], double a1t, double a2t, double bt, double pi[])
       printf ("\nat=%12.6f %12.6f  bt=%12.6f", a1t,a2t,bt);
 #endif
 
-   if (a1t+a2t+bt<1e-40)  { identity (P, 4);  return (0); }
+   if (a1t+a2t+bt<1e-10)  { identity (P, 4);  return (0); }
 
    e1=exp(-bt); e2=e3=exp(-(R*a2t+Y*bt));
    if (fabs(R*a2t+Y*bt -Y*a1t-R*bt)>1e-5)  e3=exp(-(Y*a1t+R*bt));
@@ -517,18 +518,18 @@ int Rates4Sites (double rates[],double alpha,int ncatG,int ls, int cdf,
 }
 
 
-
-
 char *getcodon(char codon[], int icodon)
 {
 /* id : (0,63) */
-   if (icodon<0||icodon>63) error("err: getcodon.");
+   if (icodon<0||icodon>63) 
+      error("getcodon.");
    codon[0]=BASEs[icodon/16]; 
    codon[1]=BASEs[(icodon%16)/4];
    codon[2]=BASEs[icodon%4];
    codon[3]=0;
    return (codon);
 }
+
 
 char *getAAstr(char *AAstr, int iaa)
 {
@@ -561,10 +562,14 @@ int NucListall(char b, int *nb, int ib[4])
 int Codon2AA(char codon[3], char aa[3], int icode, int *iaa)
 {
 /* translate a triplet codon[] into amino acid (aa[] and iaa), using
-   genetic code icode.  This deals with ambiguity nucleotides
+   genetic code icode.  This deals with ambiguity nucleotides.
    *iaa=(0,...,19),  20 for stop or missing data.
    Distinquish between stop codon and missing data? 
    naa=0: only stop codons; 1: one AA; 2: more than 1 AA.
+
+   Returns 0: if one amino acid
+           1: if multiple amino acids (ambiguity data)
+           -1: if stop codon
 */
    int nb[3],ib[3][4], ic, i, i0,i1,i2, iaa0=-1,naa=0;
    char aa3[4]="";
@@ -572,16 +577,17 @@ int Codon2AA(char codon[3], char aa[3], int icode, int *iaa)
    for(i=0;i<3;i++)  NucListall(codon[i], &nb[i], ib[i]);
    FOR(i0,nb[0])  FOR(i1,nb[1])  FOR(i2,nb[2]) {
       ic=ib[0][i0]*16+ib[1][i1]*4+ib[2][i2];         
-      *iaa=GenetCode[icode][ic]-1;
+      *iaa=GenetCode[icode][ic];
       if(*iaa==-1) continue;
       if(naa==0)  { iaa0=*iaa; naa++; }
       else if (*iaa!=iaa0)  naa=2;
    }
    if(naa==2)  *iaa=20;
-   if(naa==0) { puts("\nstop codons inside\n"); *iaa==20; }
-   strncpy(aa, AA3Str+*iaa*3, 3);      
+   if(naa==0) 
+      { printf("\nstop codon %c%c%c\n",codon[0],codon[1],codon[2]); *iaa=20; }
+   strncpy(aa, AA3Str+*iaa*3, 3);
 
-   return(0);
+   return(naa==1?0: (naa==0?-1:1));
 }
 
 int DNA2protein(char dna[], char protein[], int lc, int icode)
@@ -589,11 +595,12 @@ int DNA2protein(char dna[], char protein[], int lc, int icode)
 /* translate a DNA into a protein, using genetic code icode, with lc codons.
    dna[] and protein[] can be the same string.
 */
-   int h, iaa;
+   int h, iaa, k;
    char aa3[4];
 
    for(h=0; h<lc; h++) {
-      Codon2AA(dna+h*3, aa3, icode, &iaa);
+      k=Codon2AA(dna+h*3,aa3,icode,&iaa);
+      if(k==-1) printf(" stop codon at %d out of %d\n",h+1,lc);
       protein[h]=AAs[iaa];
    }
    return(0);
@@ -608,7 +615,7 @@ int printcu (FILE *fout, double fcodon[], int icode)
 */
    int wc=8, wf=7, wd=0;  /* wc: for codon, wf: for wt, wd: decimal  */
    int it, i,j,k, iaa;
-   double faa[21], fb3x4[3*5], wt; /* chi34, Ic, lc, */
+   double faa[21], fb3x4[3*5], wt=0; /* chi34, Ic, lc, */
    char *word="|-", aa3[4]="",codon[4]="", ss3[4][4], *noodle;
    static double aawt[]={89.1, 174.2, 132.1, 133.1, 121.2, 146.2,
          147.1,  75.1, 155.2, 131.2, 131.2, 146.2, 149.2, 165.2, 115.1,
@@ -623,7 +630,8 @@ int printcu (FILE *fout, double fcodon[], int icode)
       FOR (j,4)  {
          FOR (k,4)  {
             it=i*16+k*4+j;   
-            iaa=GenetCode[icode][it]-1;  if(iaa==-1) iaa=20;
+            iaa=GenetCode[icode][it];
+            if(iaa==-1) iaa=20;
             getcodon(codon, it);  getAAstr(aa3,iaa);
             if (!strcmp(ss3[k],aa3) && j>0)   fprintf(fout, "     ");
             else  { 
@@ -659,7 +667,8 @@ int printcums (FILE *fout, int ns, double fcodons[], int icode)
          FOR (j,4)  {
             FOR (k,4)  {
                it = i*16+k*4+j;   
-               iaa=GenetCode[icode][it]-1;  if(iaa==-1) iaa=20;
+               iaa=GenetCode[icode][it]; 
+               if(iaa==-1) iaa=20;
                getcodon(codon, it);  getAAstr(aa3,iaa);
                if ( ! strcmp(ss3[k], aa3) && j>0)   fprintf(fout, "   ");
                else  { fprintf(fout, "%s", aa3); strcpy(ss3[k], aa3);  }
@@ -732,6 +741,7 @@ int printsma(FILE*fout, char*spname[], char*z[],
    use spname==NULL if no seq names available.
    pose[h] marks the position of the h_th site in z[], useful for 
    printing out the original sequences after site patterns are collapsed. 
+   Sequences z[] are not coded.
 */
    int igroup, ngroup, lt, h, i, b,b0=-1, igap, lspname=20, lseqlen=7;
    char indel='-', ambi='?', equal='.';
@@ -739,13 +749,17 @@ int printsma(FILE*fout, char*spname[], char*z[],
    if (gap==0) gap=lline+1;
    ngroup=(l-1)/lline+1;
    for (igroup=0,FPN(fout); igroup<ngroup; igroup++,FPN(fout))  {
-      lt=min(l,(igroup+1)*lline);  /* seqlen mark at the end of block */
+      lt=min2(l,(igroup+1)*lline);  /* seqlen mark at the end of block */
       igap=lline+(lline/gap)+lspname+1-lseqlen-1; /* spaces */
       if(igroup+1==ngroup)
          igap=(l-igroup*lline)+(l-igroup*lline)/gap+lspname+1-lseqlen-1;
       /* fprintf (fout,"%*s[%*d]\n", igap, "", lseqlen,lt); */
       FOR(i,ns)  {
+
          if(spname) fprintf(fout,"%-*s  ", lspname,spname[i]);
+/*
+if(spname) fprintf(fout,"\n>\n%-10s\n", spname[i]);
+*/
          for (h=igroup*lline,lt=0,igap=0; lt<lline && h<l; h++,lt++) {
             b=(int)z[i][pose?pose[h]:h];  b0=(int)z[0][pose?pose[h]:h];
             if(i&&simple && b==b0 && b!=indel && b!=ambi)  b=equal;
@@ -753,16 +767,27 @@ int printsma(FILE*fout, char*spname[], char*z[],
             if (++igap==gap)  { fputc(' ', fout); igap=0; }
          }
          FPN (fout);
+
+/* fprintf(fout,"*\n"); */
+
       }
    }
-   FPN (fout);
-   return (0);
+   FPN(fout);
+   return(0);
 }
 
 
 /* ***************************
         Simple tools
 ******************************/
+
+void sleep(clock_t wait)
+{
+/* Pauses for a specified number of milliseconds. */
+   clock_t goal;
+   goal=wait+clock();
+   while(goal>clock()) ;
+}
 
 char * strc (int n, char c)
 {
@@ -778,8 +803,8 @@ void strcase (char *str, int direction)
 {
 /* direction = 0: to lower; 1: to upper */
    char *p=str;
-   if(direction)  while(*p) { *p=toupper(*p); p++; }
-   else           while(*p) { *p=tolower(*p); p++; }
+   if(direction)  while(*p) { *p=(char)toupper(*p); p++; }
+   else           while(*p) { *p=(char)tolower(*p); p++; }
 }
 
 
@@ -795,7 +820,7 @@ int appendfile(FILE*fout, char*filename)
 }
 
 void error (char * message)
-{ printf("\n%s.\n", message);    exit (-1); }
+{ printf("\nerror: %s.\n", message); exit(-1); }
 
 int zero (double x[], int n)
 { int i; FOR (i,n) x[i]=0; return (0);}
@@ -902,25 +927,21 @@ double rndu (void)
 
 double rndnorm (void)
 {
-/* standard normal variate, using the Polar Box-Muller method
+/* standard normal variate, using the -Muller method (1958), improved by 
+   Marsaglia and Bray (1964).  The method generates a pair of random
+   variates, and only one used.
+   See N. L. Johnson et al. (1994), Continuous univariate distributions, 
+   vol 1. p.153.
 */
-   static int it=0;
-   static double b, u2;
-   double u1, r,s;
+   double u1,u2, sumsquare=0;
 
-   if (it) r=b*u2;
-   else  {
-      for (; ;) {
-         u1=2*rndu()-1;
-         u2=2*rndu()-1;
-         s=u1*u2+u2*u2;
-         if (s>0 && s<1) break;
-      }
-      b=sqrt (-2*log(s)/s);
-      r=b*u1;
-    }
-    it=!it;
-    return (r);
+   for (; ;) {
+      u1=2*rndu()-1;
+      u2=2*rndu()-1;
+      sumsquare=u1*u1+u2*u2;
+      if (sumsquare>=0 && sumsquare<=1) break;
+   }
+   return (u1*sqrt(-2*log(sumsquare)/sumsquare));
 }
 
 #define rndexp(mean) (-mean*log(rndu()))
@@ -1078,7 +1099,7 @@ int MultiNomial (int n, int ncat, double prob[], int nobs[], double space[])
    int i, j, crude=(ncat>20), ncrude, lcrude[200];
    double r, *pcdf=(space==NULL?prob:space);
 
-   ncrude=max(5,ncat/20); ncrude=min(200,ncrude);
+   ncrude=max2(5,ncat/20); ncrude=min2(200,ncrude);
    FOR(i,ncat) nobs[i]=0;
    if (space) {
       xtoy(prob, pcdf, ncat);
@@ -1128,10 +1149,11 @@ double PointNormal (double prob)
    double y, z=0, p=prob, p1;
 
    p1 = (p<0.5 ? p : 1-p);
-   if (p1<1e-20) return (-9999);
-
-   y = sqrt (log(1/(p1*p1)));   
-   z = y + ((((y*a4+a3)*y+a2)*y+a1)*y+a0) / ((((y*b4+b3)*y+b2)*y+b1)*y+b0);
+   if (p1<1e-20) z=999;
+   else {
+      y = sqrt (log(1/(p1*p1)));   
+      z = y + ((((y*a4+a3)*y+a2)*y+a1)*y+a0) / ((((y*b4+b3)*y+b2)*y+b1)*y+b0);
+   }
    return (p<0.5 ? -z : z);
 }
 
@@ -1147,7 +1169,7 @@ double CDFNormal (double x)
     int invers=0;
     double p, limit=10, t=1.28, y=x*x/2;
 
-    if (x<0) {  invers=1;  x*=-1; }
+    if (x<0) {  invers=1;  x=-x; }
     if (x>limit)  return (invers?0:1);
     if (x<t)  
        p = .5 - x * (    .398942280444 - .399903438504 * y
@@ -1165,22 +1187,29 @@ double CDFNormal (double x)
     return (invers ? p : 1-p);
 }
 
-double LnGamma (double alpha)
+double LnGamma (double x)
 {
-/* returns ln(gamma(alpha)) for alpha>0, accurate to 10 decimal places.  
+/* returns ln(gamma(x)) for alpha>0, accurate to 10 decimal places.  
    Stirling's formula is used for the central polynomial part of the procedure.
    Pike MC & Hill ID (1966) Algorithm 291: Logarithm of the gamma function.
    Communications of the Association for Computing Machinery, 9:684
 */
-   double x=alpha, f=0, z;
+   double f=0, fneg=0, z;
 
+   if(x<=0) {
+      error("lnGamma not implemented for x<0");
+      if((int)x-x==0) { puts("lnGamma undefined"); return(-1); }
+      for (fneg=1; x<0; x++) fneg/=x;
+      if(fneg<0) error("strange!! check lngamma");
+      fneg=log(fneg);
+   }
    if (x<7) {
       f=1;  z=x-1;
       while (++z<7)  f*=z;
       x=z;   f=-log(f);
    }
    z = 1/(x*x);
-   return  f + (x-0.5)*log(x) - x + .918938533204673 
+   return  fneg+ f + (x-0.5)*log(x) - x + .918938533204673 
           + (((-.000595238095238*z+.000793650793651)*z-.002777777777778)*z
                +.083333333333333)/x;  
 }
@@ -1210,7 +1239,8 @@ double IncompleteGamma (double x, double alpha, double ln_gamma_alpha)
 */
    int i;
    double p=alpha, g=ln_gamma_alpha;
-   double accurate=1e-8, overflow=1e30;
+   /* double accurate=1e-8, overflow=1e30; */
+   double accurate=1e-10, overflow=1e60;
    double factor, gin=0, rn=0, a=0,b=0,an=0,dif=0, term=0, pn[6];
 
    if (x==0) return (0);
@@ -1263,10 +1293,12 @@ double PointChi2 (double prob, double v)
        Chi2 distribution.  Applied Statistics 24: 385-388.  (AS91)
    Converted into C by Ziheng Yang, Oct. 1993.
 */
-   double e=.5e-6, aa=.6931471805, p=prob, g;
+   double e=.5e-6, aa=.6931471805, p=prob, g, small=1e-6;
    double xx, c, ch, a=0,q=0,p1=0,p2=0,t=0,x=0,b=0,s1,s2,s3,s4,s5,s6;
 
-   if (p<.000002 || p>.999998 || v<=0) return (-1);
+   if (p<small)   return(0);
+   if (p>1-small) return(9999);
+   if (v<=0)      return (-1);
 
    g = LnGamma (v/2);
    xx=v/2;   c=xx-1;
@@ -1318,12 +1350,12 @@ int DiscreteGamma (double freqK[], double rK[],
    category
 */
    int i;
-   double gap05=1.0/(2.0*K), t, factor=alfa/beta*K, lnga1;
+   double t, factor=alfa/beta*K, lnga1;
 
    if (median) {
-      for (i=0; i<K; i++) rK[i]=PointGamma((i*2.0+1)*gap05, alfa, beta);
-      for (i=0,t=0; i<K; i++) t+=rK[i];
-      for (i=0; i<K; i++)     rK[i]*=factor/t;
+      FOR(i,K) rK[i]=PointGamma((i*2.+1)/(2.*K), alfa, beta);
+      for(i=0,t=0; i<K; i++) t+=rK[i];
+      FOR(i,K) rK[i]*=factor/t;
    }
    else {
       lnga1=LnGamma(alfa+1);
@@ -1421,7 +1453,7 @@ double LBinormal (double h1, double h2, double r)
             Lh-=w[i]*exp(-h5/rr)*(exp(-h3/(1+r2))/r2/h7-1-aa*rr);
          }
       }
-      if (r>0) Lh = Lh*r3*h7+(1-CDFNormal(max(h1,h2)));
+      if (r>0) Lh = Lh*r3*h7+(1-CDFNormal(max2(h1,h2)));
       else if (r<0) Lh = (h1<h2?CDFNormal(h2)-CDFNormal(h1):0) - Lh*r3*h7;
    }
    else {
@@ -1444,7 +1476,7 @@ double probBinomial (int n, int k, double p)
    double C, up, down;
 
    if (n<40 || (n<1000&&k<10)) {
-      for (down=min(k,n-k),up=n,C=1; down>0; down--,up--) C*=up/down;
+      for (down=min2(k,n-k),up=n,C=1; down>0; down--,up--) C*=up/down;
       if (fabs(p-.5)<1e-6) C *= pow(p,(double)n);
       else                 C *= pow(p,(double)k)*pow((1-p),(double)(n-k));
    }
@@ -1455,6 +1487,165 @@ double probBinomial (int n, int k, double p)
    return C;
 }
 
+
+double CDFBeta(double x, double p, double q, double lnbeta)
+{
+/* This returns the cdf of the standard form of the beta distribution, 
+   which is the incomplete beta ratio.  x is the argument between 0 and 1, 
+   and p and q are positive.
+   lnbeta is log of complete beta function; provide it if it is known,
+   and otherwise use 0.
+   returns -1 if in error
+
+   Algorithm AS 63  Appl. Statist. (1973), vol.22, no.3
+*/
+   int indx, ns;
+/*   double acu=1e-9, in_beta=x, small=1e-10; */
+   double acu=1e-15, in_beta=x, small=1e-15;
+   double psq=p+q, cx, xx, pp, qq, temp, term, ai, rx;
+
+   if(x<small)        return 0;
+   else if(x>1-small) return 1;
+   if(p<=0 || q<=0)  { 
+      printf("p=%.4f q=%.4f: par err CDFBeta",p,q); return -1; 
+   }
+
+   if(lnbeta==0) lnbeta=LnGamma(p)+LnGamma(q)-LnGamma(p+q);
+
+   /* change tail if necessary and determine s; */
+   psq=p+q;
+   cx=1-x;
+   if(p>=psq*x) goto line1;
+   xx=cx; cx=x; pp=q;  qq=p; indx=1;
+   goto line2;
+   line1: xx=x;   pp=p; qq=q;  indx=0;
+   line2: term=ai=in_beta=1; ns=(int)(qq+cx*psq);
+
+   /*  user soper's reduction formulae */
+   rx=xx/cx;
+   line3:    temp=qq-ai;  if(ns==0) rx=xx;
+   for (; ;) {
+      term*=temp*rx/(pp+ai);
+      in_beta+=term;  temp=fabs(term);
+      if(temp<=acu && temp<=acu*in_beta) break;
+      ai++;   ns--;
+      if(ns>=0)  goto line3;
+      temp=psq;  psq++;
+      /* printf("in_beta & temp: %12.9f %12.9f\n",in_beta,temp); */
+  }
+  in_beta=in_beta*exp(pp*log(xx)+(qq-1)*log(cx)-lnbeta)/pp;
+  if(indx) in_beta=1-in_beta;
+
+  return in_beta;    
+}
+
+static double prob_InverseCDF, *par_InverseCDF;
+static double (*cdf_InverseCDF)(double x,double par[]);
+double diff_InverseCDF(double x);
+
+double diff_InverseCDF(double x)
+{
+/* This is the difference between the given p and the CDF(x), the 
+   objective function to be minimized.
+*/
+   double px=(*cdf_InverseCDF)(x,par_InverseCDF);
+   return(square(prob_InverseCDF-px));
+}
+
+double InverseCDF(double(*cdf)(double x,double par[]),
+       double p,double x,double par[],double xb[2])
+{
+/* Use x for initial value if in range
+*/
+   double sdiff,step=min2(0.05,(xb[1]-xb[0])/100);
+
+   prob_InverseCDF=p;  par_InverseCDF=par; cdf_InverseCDF=cdf;
+   if(x<=xb[0]||x>=xb[1]) x=0.5;
+   LineSearch(diff_InverseCDF, &sdiff, &x, xb, step);
+   return(x);
+}
+
+
+int ScatterPlot (int n, int nseries, int yLorR[], double x[], double y[],
+    int nrow, int ncol, int ForE)
+{
+/* This plots a scatter diagram.  There are nseries of data (y) 
+   for the same x.  nrow and ncol specifies the #s of rows and cols 
+   in the text output.
+   Use ForE=1 for floating format
+   yLorR[nseries] specifies which y axis (L or R) to use, if nseries>1.
+*/
+   char *chart,ch, *fmt[2]={"%*.*e ", "%*.*f "}, symbol[]="*~^@",overlap='&';
+   int i,j,is,iy,ny=1, ncolr=ncol+3, irow=0, icol=0, w=10, wd=2;
+   double large=1e32, xmin, xmax, xgap, ymin[2], ymax[2], ygap[2];
+
+   for (i=1,xmin=xmax=x[0]; i<n; i++) 
+      { if(xmin>x[i]) xmin=x[i]; if(xmax<x[i]) xmax=x[i]; }
+   for (i=0; i<2; i++) { ymin[i]=large; ymax[i]=-large; }
+   for (j=0; j<(nseries>1)*nseries; j++)
+      if (yLorR[j]==1) ny=2;
+      else if (yLorR[j]!=0) printf ("err: y axis %d", yLorR[j]);
+   for (j=0; j<nseries; j++) {
+      for (i=0,iy=(nseries==1?0:yLorR[j]); i<n; i++) {
+         if (ymin[iy]>y[j*n+i])  ymin[iy]=y[j*n+i];
+         if (ymax[iy]<y[j*n+i])  ymax[iy]=y[j*n+i];
+      }
+   }
+   if (xmin==xmax) { puts("no variation in x?"); }
+   xgap=(xmax-xmin)/ncol;   
+   for (iy=0; iy<ny; iy++) ygap[iy]=(ymax[iy]-ymin[iy])/nrow;
+
+   printf ("\n%10s", "legend: ");
+   for (is=0; is<nseries; is++) printf ("%2c", symbol[is]);
+   printf ("\n%10s", "y axies: ");
+   if (ny==2)  for(is=0; is<nseries; is++) printf ("%2d", yLorR[is]);
+
+   printf ("\nx   : (%10.2e, %10.2e)", xmin, xmax);
+   printf ("\ny[1]: (%10.2e, %10.2e)\n", ymin[0], ymax[0]);
+   if (ny==2) printf ("y[2]: (%10.2e, %10.2e)  \n", ymin[1], ymax[1]);
+
+   chart=(char*)malloc((nrow+1)*ncolr*sizeof(char));
+   for (i=0; i<nrow+1; i++) {
+      for (j=1; j<ncol; j++) chart[i*ncolr+j]=' ';
+      if (i%5==0) chart[i*ncolr+0]=chart[i*ncolr+j++]='+'; 
+      else        chart[i*ncolr+0]=chart[i*ncolr+j++]='|'; 
+      chart[i*ncolr+j]='\0'; 
+      if (i==0||i==nrow) 
+         FOR(j,ncol+1) chart[i*ncolr+j]=(char)(j%10==0?'+':'-');
+   }
+
+   for (is=0; is<nseries; is++) {
+      for (i=0,iy=(nseries==1?0:yLorR[is]); i<n; i++) {
+         for(j=0; j<ncol+1; j++) if(x[i]<=xmin+(j+0.5)*xgap) { icol=j; break; }
+         for(j=0; j<nrow+1; j++) 
+            if(y[is*n+i]<=ymin[iy]+(j+0.5)*ygap[iy]) { irow=nrow-j; break;}
+
+/*
+         chart[irow*ncolr+icol]=symbol[is];
+*/
+         if ((ch=chart[irow*ncolr+icol])==' ' || ch=='-' || ch=='+') 
+            chart[irow*ncolr+icol]=symbol[is];
+         else
+            chart[irow*ncolr+icol]=overlap;
+
+      }
+   }
+   printf ("\n");
+   for (i=0; i<nrow+1; i++) {
+     if (i%5==0) printf (fmt[ForE], w-1, wd, ymin[0]+(nrow-i)*ygap[0]);
+     else        printf ("%*s", w, "");
+     printf ("%s", chart+i*ncolr); 
+     if (ny==2 && i%5==0) printf(fmt[ForE], w-1, wd, ymin[1]+(nrow-i)*ygap[1]);
+     printf ("\n");
+   }
+   printf ("%*s", w-6, "");
+   for (j=0; j<ncol+1; j++) if(j%10==0) printf(fmt[ForE], 10-1,wd,xmin+j*xgap);
+   printf ("\n%*s\n", ncol/2+1+w, "x");
+   free(chart);
+   return(0);
+}
+
+
 long factorial(int n)
 {
    long f, i;
@@ -1463,14 +1654,27 @@ long factorial(int n)
    return (f);
 }
 
-double NchooseK(int n, int k)
+double Binomial(double n, double k, double *scale)
 {
-   double c, i;
+/* this should give n choose k, but currently only works for int k>0
+   n can be any real number.
+   If(*scale!=0) the result should be c+exp(*scale).
+*/
 
-   if (n>500) error("large n");
-   k=min(k,n-k);
-   for (i=1,c=1; i<=k; i++) c*=(n-k+i)/i;
-   return (c);
+   double c, i, large=1e99;
+
+   *scale=0;
+   if(k==0) return(1);
+   if(k<0 || (int)k!=k) 
+      error("k is not a whole number in Binomial.");
+
+   if(n>0 && (int)n==n) k=min2(k,n-k);
+   for (i=1,c=1; i<=k; i++) {
+      c*=(n-k+i)/i;
+      if(c>large)
+         { *scale+=log(c); c=1; } 
+   }
+   return(c);
 }
 
 /****************************
@@ -1601,7 +1805,7 @@ int QRdecomp (double A[], int m, int n, double Q[])
    J. C. Nash 1979.  Compact numerical methods for computers: linear
    algebra and funciton minimisation.  Wiley, New York.  pp.42-43.
 */
-   int mn=min(m,n), i,j,k;
+   int mn=min2(m,n), i,j,k;
    double small=1e-20, c, s, b,p;
 
    identity (Q, m);
@@ -1751,15 +1955,17 @@ int H_end (double x0[], double x1[], double f0, double f1,
 */
 {
    double r;
-   if ( (r=norm(x0,n))<e2)  r=1;   r *= e1;
-   if ( distance(x1,x0,n) >= r)  return (0);
-   r=fabs(f0);  if (r<e2) r=1;     r *= e1;
-   if ( fabs(f1-f0) >= r) return (0);
+   if((r=norm(x0,n))<e2)  r=1;
+   r*=e1;
+   if(distance(x1,x0,n)>=r)  return(0);
+   r=fabs(f0);  if(r<e2) r=1;     
+   r*=e1;
+   if (fabs(f1-f0)>=r) return (0);
    return (1);
 }
 
 int AlwaysCenter=0;
-double SmallDiff=5e-6;  /* reasonable values 1e-5, 1e-7 */
+double Small_Diff=5e-6;  /* reasonable values 1e-5, 1e-7 */
 
 int gradient (int n, double x[], double f0, double g[], 
     double (*fun)(double x[],int n), double space[], int Central)
@@ -1767,7 +1973,7 @@ int gradient (int n, double x[], double f0, double g[],
 /*  f0=fun(x) is always given
 */
    int i,j;
-   double *x0=space, *x1=space+n, eh0=SmallDiff, eh;  /* 1e-7 */
+   double *x0=space, *x1=space+n, eh0=Small_Diff, eh;  /* 1e-7 */
 
    if (Central) {
       FOR(i,n)  {
@@ -1795,7 +2001,7 @@ int Hessian (int n, double x[], double f0, double g[], double H[],
    # of function calls: (1+2*n*n)
 */
    int i,j,k;
-   double *x1=space, eh0=SmallDiff*2, *eh=x1+n, f11,f22,f12,f21;  
+   double *x1=space, eh0=Small_Diff*2, *eh=x1+n, f11,f22,f12,f21;  
 /* eh0=1e-5 or 1e-6                              1:+  2:-  */
 
    FOR (k,n) eh[k] = eh0*(1+fabs(x[k]));
@@ -1847,20 +2053,20 @@ int nls2 (FILE *fout, double *sx, double * x0, int nx,
       int (*fun)(double x[], double y[], int nx, int ny),
       int (*jacobi)(double x[], double J[], int nx, int ny),
       int (*testx) (double x[], int nx),
-      int ny, double e1, double e2)
+      int ny, double e)
 {
 /* non-linear least squares: minimization of s=f(x)^2.
    by the damped NLS, or Levenberg-Marguard-Morrison(LMM) method.
    x[n] C[n,n+1] J[ny,n] y[ny] iworker[n]
 */
-   int n=nx, ii, i, i1, j, istate=0, increase=0, maxround=500;
+   int n=nx, ii, i, i1, j, istate=0, increase=0, maxround=500,sspace;
    double s0=0.0, s=0.0, t;
-   double v=0.0, vmax=1.0/e1, bigger=2.5, smaller=0.75;
+   double v=0.0, vmax=1.0/e, bigger=2.5, smaller=0.75;
        /* v : Marguardt factor, suggested factors in SSL II (1.5,0.5)  */
    double *x, *g, *p, *C, *J, *y, *space, *space_J;
 
-   if((space=(double*)malloc((n*(n+4+ny)+ny+2*(n+ny))*sizeof(double)))==NULL) 
-      error("oom in nls2");
+   sspace=(n*(n+4+ny)+ny+2*(n+ny))*sizeof(double);
+   if((space=(double*)malloc(sspace))==NULL) error("oom in nls2");
    zero (space, n*(n+4+ny)+ny);
    x=space;  g=x+n;  p=g+n;  C=p+n;  J=C+n*(n+1);  y=J+ny*n; space_J=y+ny;
 
@@ -1899,12 +2105,12 @@ int nls2 (FILE *fout, double *sx, double * x0, int nx,
       for (i=0, s=0.0; i<ny; i++)   s += y[i]*y[i];
 
       if (fout) {
-         fprintf (fout,"\n%4d%10.6f\tx =",ii+1,s);
-         FOR(i,n) fprintf(fout,"%8.4f",x[i]);
+         fprintf (fout,"\n%4d%10.6f",ii+1,s);
+         /* FOR(i,n) fprintf(fout,"%8.4f",x[i]); */
       }
 
       if (s0 < s) increase = 1;
-      if (H_end(x0,x,s0,s,e1,e2,n)) break;
+      if (H_end(x0,x,s0,s,e,e,n)) break;
 
       if (increase)  {  v*=bigger;  if (v>vmax)  { istate=1; break; } }
       else    {         v*=smaller; xtoy (x, x0, n); s0=s; }
@@ -1947,6 +2153,11 @@ double bound (int nx, double x0[], double p[], double x[],
    return(factor);
 }
 
+
+
+
+
+
 double LineSearch(double(*fun)(double x),double *f,double *x0,double xb[2],double step)
 {
 /* linear search using quadratic interpolation 
@@ -1954,53 +2165,68 @@ double LineSearch(double(*fun)(double x),double *f,double *x0,double xb[2],doubl
    From Wolfe M. A.  1978.  Numerical methods for unconstrained
    optimization: An introduction.  Van Nostrand Reinhold Company, New York.
    pp. 62-73.
-   step is used to find the bracket and is increased or reduced as necessary, and is 
-   not terribly important.
+   step is used to find the bracket (a1,a2,a3)
 */
-   int ii=0, maxround=100;
-   double e=1e-8, small=1e-10,factor=2, a0,a1,a2,a3,a4,a5,a6, f0,f1,f2,f3,f4,f5,f6;
-   double limit=xb[1];
+   int ii=0, maxround=100, i;
+   double e=1e-15, small=1e-20,factor=1.2, step1, percentUse=0;
+   double a0,a1,a2,a3,a4=-1,a5,a6, f0,f1,f2,f3,f4=-1,f5,f6;
+/*
+int debug=0;
+*/
+/* find a bracket (a1,a2,a3) with function values (f1,f2,f3)
+   so that a1<a2<a3 and f2<f1 and f2<f3
+*/
 
-/* bracket (a1, a2, a3) with function values (f1, f2, f3) given by xb[0], xb[1], 
-   and their average.
-*/
-   a0=a1=xb[0]; f1=f0=fun(a1); a2=a0+step; f2=fun(a2);
-   if (f2>f1) {
-      for (; ;) {
-         step/=factor;
-         if (step<small) return (0);
-         a3=a2;    f3=f2;
-         a2=a0+step;  f2=fun(a2);
-         if (f2<=f1) break;
+   if(step<=0) return(*x0);
+   a0=a1=a2=a3=f0=f1=f2=f3=-1;
+   if(*x0<xb[0]||*x0>xb[1]) error("err LineSearch: x0 out of range");
+   f2=f0=fun(a2=a0=*x0);
+   step1=min2(step,(a0-xb[0])/4);
+   step1=max2(step1,e);
+   for(i=0,a1=a0,f1=f0; ; i++) {
+      a1-=(step1*=factor); 
+      if(a1>xb[0]) {
+         f1=fun(a1);
+         if(f1>f2)  break;
+         else 
+            { a3=a2; f3=f2; a2=a1; f2=f1; }
+      }
+      else {
+         a1=xb[0];  f1=fun(a1);
+         if(f1<f2) { a2=a1; f2=f1; }
+         break;
       }
    }
-   else {
-      for (; ;) {
-         step*=factor;
-         if (step>limit) step=limit;
-         a3=a0+step;  f3=fun(a3);
-         if (f3>=f2) break;
-         a1=a2; f1=f2;    a2=a3; f2=f3;
-         if (step>=limit)  { *f=f3; return(a3); }
+   if(!i) { /* *x0 is the best point during the previous search */
+      step1=min2(step,(xb[1]-a0)/4);
+      for(i=0,a3=a2,f3=f2; ; i++) {
+         a3+=(step1*=factor); 
+         if(a3<xb[1]) {
+            f3=fun(a3);
+            if(f3>f2)  break;
+            else 
+               { a1=a2; f1=f2; a2=a3; f2=f3; }
+         }
+         else {
+            a3=xb[1];  f3=fun(a3);
+            if(f3<f2) { a2=a3; f2=f3; }
+            break;
+         }
       }
    }
-
-
-   a4=(a2+a3)/2; f4=fun(a4);
-   if (f4<f2) { a1=a2; f1=f2;   a2=a4; f2=f4; }
-   else { a3=a4; f3=f4; }
 
    /* iteration by quadratic interpolation, fig 2.2.9-10 (pp 71-71) */
-
    for (ii=0; ii<maxround; ii++) {
       /* a4 is the minimum from the parabola over (a1,a2,a3)  */
 
-      if (a1>a2 || a3<a2 || f2>f1 || f2>f3) { puts ("\npoints out of order!"); break; }
+      if (a1>a2 || a3<a2 || f2>f1 || f2>f3)
+         { puts ("\npoints out of order!"); break; }
       a4 = 2*((a2-a3)*f1+(a3-a1)*f2+(a1-a2)*f3);
-      if (a4>small*.01)
-         a4 = ((a2*a2-a3*a3)*f1+(a3*a3-a1*a1)*f2+(a1*a1-a2*a2)*f3)/a4;
-      if (a4>a3 || a4<a1)  a4=(a1+2*a2+a3)/4;
-      f4 = fun(a4);
+      if (fabs(a4)>small)
+         a4=((a2*a2-a3*a3)*f1+(a3*a3-a1*a1)*f2+(a1*a1-a2*a2)*f3)/a4;
+      if (a4>a3 || a4<a1)  a4=(a1+2*a2+a3)/4;  /* not useful */
+      else                 percentUse++;
+      f4=fun(a4);
 
       if (fabs(f2-f4)*(1+fabs(f2))<=e && fabs(a2-a4)*(1+fabs(a2))<=e)  break;
 
@@ -2053,12 +2279,15 @@ double LineSearch(double(*fun)(double x),double *f,double *x0,double xb[2],doubl
          }
       }
    }   /*  for (ii) */
-   if (f2>f0 && f4>f0)  a4=0;
    if (f2<=f4)  { *f=f2; a4=a2; }
-   else         *f=f4;
+   else           *f=f4;
 
-   return (*x0=a4);
+if(noisy>9 && (a6=percentUse/ii)<.5)
+ printf("\nLineSearch: only %6.2f%% useful?\n",a6*100);
+
+   return (*x0=(a4+a2)/2);
 }
+
 
 
 double fun_ls (double t, double (*fun)(double x[],int n), 
@@ -2099,7 +2328,7 @@ double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[],
 
    if (step<=0 || limit<small || step>=limit) {
       if (noisy>2) 
-         printf ("\nh-lim-p:%20.8e%20.8e%20.8e%12.6f\n",step,limit,norm(p,n),*f);
+         printf ("\nh-lim-p:%20.8e%20.8e%20.8e %12.6f\n",step,limit,norm(p,n),*f);
       return (0);
    }
    a0=a1=0; f1=f0=*f;
@@ -2214,7 +2443,7 @@ int Newton (FILE *fout, double *f, double (* fun)(double x[], int n),
     int (*testx) (double x[], int n),
     double x0[], double space[], double e, int n)
 {
-   int i,j, maxround=50;
+   int i,j, maxround=500;
    double f0=1e40, /*small=1e-10,*/ h, SIZEp, t, *H, *x, *g, *p, *tv;
 
    H=space,  x=H+n*n;   g=x+n;   p=g+n, tv=p+n;
@@ -2234,7 +2463,7 @@ int Newton (FILE *fout, double *f, double (* fun)(double x[], int n),
        FOR (i,n) for (j=0,p[i]=0; j<n; j++)  p[i]-=H[i*n+j]*g[j];
 
        h=bound (n, x0, p, tv, testx);
-       t=min(h,1);
+       t=min2(h,1);
        SIZEp=norm(p,n);
 
 #ifdef Safeguard_Newton
@@ -2245,7 +2474,7 @@ int Newton (FILE *fout, double *f, double (* fun)(double x[], int n),
                else t/=2;
            }
        }
-       if (t<small) t=min(h, .5);
+       if (t<small) t=min2(h, .5);
 #endif
 
        FOR (i,n)  x[i]=x0[i]+t*p[i];
@@ -2284,9 +2513,9 @@ int gradientB (int n, double x[], double f0, double g[],
    xmark=0: central; 1: upper; -1: down
 */
    int i,j;
-   double *x0=space, *x1=space+n, eh0=SmallDiff, eh;  /* eh0=1e-6 || 1e-7 */
+   double *x0=space, *x1=space+n, eh0=Small_Diff, eh;  /* eh0=1e-6 || 1e-7 */
 
-   FOR (i,n)  {
+   FOR(i,n) {
       eh=eh0*(fabs(x[i])+1);
       if (xmark[i]==0 && (AlwaysCenter || SIZEp<1)) {   /* central */
          FOR (j, n)  x0[j]=x1[j]=x[j];
@@ -2315,79 +2544,89 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
     double x[], double xb[][2], double space[], double e, int n)
 {
 /* n-D minimization with bounds using the BFGS algorithm
-   g0[n] g[n] p[n] x[n] y[n] s[n] z[n] H[n*n] tv[2*n]
+     g0[n] g[n] p[n] x0[n] y[n] s[n] z[n] H[n*n] C[n*n] tv[2*n]
+     xmark[n],ix[n]
+   Size of space should be (check carefully?)
+      #define spaceming2(n) ((n)*((n)*2+9+2)*sizeof(double))
+   nfree: # free variables
+   xmark[i]=0 for inside space; -1 for lower boundary; 1 for upper boundary
+   ix[i] specifies the i-th free parameter
+
 */
-   int i,j, i1,i2,it, maxround=1000, fail=0, *xmark, *ix, nfr=n;
+   int i,j, i1,i2,it, maxround=5000, fail=0, *xmark, *ix, nfree;
    double small=1.e-20;     /* small value for checking |w|=0   */
    double f0, *g0, *g, *p, *x0, *y, *s, *z, *H, *C, *tv;
    double w,v, alfa, am, h;
 
-   FOR(i,n) if(xb[i][0]>xb[i][1]) error("bounds strange");
-
-   f0=*f=(*fun)(x,n);
-   if (noisy>2) {
-      printf ("\n\nIterating by ming2\nInitial: fx= %12.6f\nx=", f0);
-      FOR (i,n) printf ("%8.4f", x[i]);   FPN (F0);
-   }
+   if(n==0) return(0);
    g0=space;   g=g0+n;  p=g+n;   x0=p+n;
    y=x0+n;     s=y+n;   z=s+n;   H=z+n;  C=H+n*n, tv=C+n*n;
    xmark=(int*)(tv+2*n);  ix=xmark+n;
    FOR (i,n)  { xmark[i]=0; ix[i]=i; }
-   xtoy (x, x0, n);
+
+   for(i=0,nfree=0;i<n;i++) {
+      if(x[i]<=xb[i][0]) { x[i]=xb[i][0]; xmark[i]=-1; continue; }
+      if(x[i]>=xb[i][1]) { x[i]=xb[i][1]; xmark[i]= 1; continue; }
+      ix[nfree++]=i;
+   }
+   if(/* nfree<n && */ n<50) {
+      FPN(F0);  FOR(j,n) printf(" %9.6f", x[j]);  FPN(F0);
+      FOR(j,n) printf(" %9.6f", xb[j][0]);  FPN(F0);
+      FOR(j,n) printf(" %9.6f", xb[j][1]);  FPN(F0);
+      if(nfree<n) printf("warning: ming2, %d para at boundary.",n-nfree);
+   }
+
+   f0=*f=(*fun)(x,n);
+   if (noisy>2) {
+      printf ("\n\nIterating by ming2\nInitial: fx= %12.6f\nx=",f0);
+      FOR(i,n) printf("%9.5f",x[i]);   FPN(F0);
+   }
+   xtoy(x,x0,n);
 
    if (dfun)  (*dfun) (x0, &f0, g0, n);
    else       gradientB (n, x0, f0, g0, fun, tv, xmark);
 
-   SIZEp=0; identity (H,nfr);
+   SIZEp=0; identity (H,nfree);
    FOR (Iround, maxround) {
-      for (i=0,zero(p,n); i<nfr; i++)  FOR (j,nfr)
-         p[ix[i]] -= H[i*nfr+j]*g0[ix[j]];
+      for (i=0,zero(p,n); i<nfree; i++)  FOR (j,nfree)
+         p[ix[i]] -= H[i*nfree+j]*g0[ix[j]];
       SIZEp=norm(p,n);      /* check this */
-/*
-matout (F0, g0, 1, n);
-matout (F0, p, 1, n);
-*/
-      for (i=0,am=20; i<n; i++) {  /* max step length */
+
+      for (i=0,am=20; i<n; i++) {  /* max2 step length */
          if (p[i]>0 && (xb[i][1]-x0[i])/p[i]<am) am=(xb[i][1]-x0[i])/p[i];
          else if (p[i]<0 && (xb[i][0]-x0[i])/p[i]<am) am=(xb[i][0]-x0[i])/p[i];
       }
 
       if (Iround==0)    h=fabs(2*f0*.01/innerp(g0,p,n));  /* check this?? */
-      else              h=norm(s,nfr)/SIZEp;
-      h=max(h,1e-5);    h=min(h,am/8);
+      else              h=norm(s,nfree)/SIZEp;
+      h=max2(h,1e-5);   h=min2(h,am/8);
       *f=f0;
-      alfa = LineSearch2(fun,f,x0,p,h,am,1e-5,tv,n); /* n or nfr? */
+      alfa = LineSearch2(fun,f,x0,p,h,am,1e-5,tv,n); /* n or nfree? */
 
       if (alfa<=0) {
-              if (fail) {
-                 if (SIZEp>.1 && noisy>2)
+         if (fail) {
+            if (SIZEp>.1 && noisy>2)
                printf("\nSIZEp:%9.4f  Iround:%5d", SIZEp, Iround+1);
             if (AlwaysCenter) { Iround=maxround;  break; }
             else { AlwaysCenter=1; identity(H,n); fail=1; }
-              }
-              else   
-            { if(noisy>2) printf("\a.. ");  identity(H,nfr); fail=1; }
+         }
+         else   
+            { if(noisy>2) printf("\a.. ");  identity(H,nfree); fail=1; }
       }
       else  {
-              fail=0;
-              FOR(i,n)  x[i]=x0[i]+alfa*p[i];
-
-              if (fout) {
-                 fprintf (fout, "\n%3d %7.4f%14.6f  x", Iround+1, SIZEp, *f);
-                 FOR (i,n) fprintf (fout, "%8.5f  ", x[i]);
-                 fflush (fout);
-              }
-              if (SIZEp<0.0001 && H_end (x0,x,f0,*f,e,e,n))
-              { xtoy(x,x0,n); break; }
+         fail=0;
+         FOR(i,n)  x[i]=x0[i]+alfa*p[i];
+         if (fout) {
+            fprintf (fout, "\n%3d %7.4f%14.6f  x: ", Iround+1, SIZEp, *f);
+            FOR (i,n) fprintf (fout, "%8.5f  ", x[i]);
+            fflush (fout);
+         }
+         w=.1;  if(e<1e-4) w=0.01;  if(e<1e-6) w=.001;
+         if (SIZEp<w && H_end (x0,x,f0,*f,e,e,n))
+            { xtoy(x,x0,n); break; }
       }
-
       if (dfun)  (*dfun) (x, f, g, n);
       else       gradientB (n, x, *f, g, fun, tv, xmark);
-/*
-FPN(F0);
-FOR(i,n) printf ("%9.5f  ", x[i]); FPN(F0);
-FOR(i,n) printf ("%9.5f  ", g[i]); FPN(F0);
-*/
 
       /* modify the working set */
       FOR (i, n) {         /* add constraints, reduce H */
@@ -2395,39 +2634,39 @@ FOR(i,n) printf ("%9.5f  ", g[i]); FPN(F0);
          if (fabs(x[i]-xb[i][0])<1e-6 && -g[i]<0)  xmark[i]=-1;
          else if (fabs(x[i]-xb[i][1])<1e-6 && -g[i]>0)  xmark[i]=1;
          if (xmark[i]==0) continue;
-         xtoy (H, C, nfr*nfr);
-         FOR (it, nfr) if (ix[it]==i) break;
-         for (i1=it; i1<nfr-1; i1++) ix[i1]=ix[i1+1];
-         for (i1=0,nfr--; i1<nfr; i1++) FOR (i2,nfr)
-            H[i1*nfr+i2]=C[(i1+(i1>=it))*(nfr+1) + i2+(i2>=it)];
+         xtoy (H, C, nfree*nfree);
+         FOR (it, nfree) if (ix[it]==i) break;
+         for (i1=it; i1<nfree-1; i1++) ix[i1]=ix[i1+1];
+         for (i1=0,nfree--; i1<nfree; i1++) FOR (i2,nfree)
+            H[i1*nfree+i2]=C[(i1+(i1>=it))*(nfree+1) + i2+(i2>=it)];
       }
       for (i=0,it=0,w=0; i<n; i++) {  /* delete a constraint, enlarge H */
          if (xmark[i]==-1 && -g[i]>w)     { it=i; w=-g[i]; }
          else if (xmark[i]==1 && -g[i]<-w) { it=i; w=g[i]; }
       }
-      if (w>10*SIZEp/nfr) {          /* *** */
-         xtoy (H, C, nfr*nfr);
-         FOR (i1,nfr) FOR (i2,nfr) H[i1*(nfr+1)+i2]=C[i1*nfr+i2];
-         FOR (i1,nfr+1) H[i1*(nfr+1)+nfr]=H[nfr*(nfr+1)+i1]=0;
-         H[(nfr+1)*(nfr+1)-1]=1;
-         xmark[it]=0;   ix[nfr++]=it;
+      if (w>10*SIZEp/nfree) {          /* *** */
+         xtoy (H, C, nfree*nfree);
+         FOR (i1,nfree) FOR (i2,nfree) H[i1*(nfree+1)+i2]=C[i1*nfree+i2];
+         FOR (i1,nfree+1) H[i1*(nfree+1)+nfree]=H[nfree*(nfree+1)+i1]=0;
+         H[(nfree+1)*(nfree+1)-1]=1;
+         xmark[it]=0;   ix[nfree++]=it;
       }
 
       if (noisy>2) {
-         printf (" |%3d/%d", n-nfr, n);
+         printf (" |%3d/%d", n-nfree, n);
          /* FOR (i,n)  if (xmark[i]) printf ("%4d", i+1); */
       }
-      for (i=0,f0=*f; i<nfr; i++)
+      for (i=0,f0=*f; i<nfree; i++)
         {  y[i]=g[ix[i]]-g0[ix[i]];  s[i]=x[ix[i]]-x0[ix[i]]; }
       FOR (i,n) { g0[i]=g[i]; x0[i]=x[i]; }
 
-      for (i=0,w=v=0.; i<nfr; i++) {
-         for (j=0,z[i]=0.; j<nfr; j++) z[i]+=H[i*nfr+j]*y[j];
+      for (i=0,w=v=0.; i<nfree; i++) {
+         for (j=0,z[i]=0.; j<nfree; j++) z[i]+=H[i*nfree+j]*y[j];
          w+=y[i]*z[i];    v+=y[i]*s[i];
       }
-      if (fabs(v)<small)   { identity(H,nfr); fail=1; continue; }
-      FOR (i,nfr)  FOR (j,nfr)
-         H[i*nfr+j] += ((1+w/v)*s[i]*s[j]-z[i]*s[j]-s[i]*z[j])/v;
+      if (fabs(v)<small)   { identity(H,nfree); fail=1; continue; }
+      FOR (i,nfree)  FOR (j,nfree)
+         H[i*nfree+j] += ((1+w/v)*s[i]*s[j]-z[i]*s[j]-s[i]*z[j])/v;
    }    /* for (Iround,maxround)  */
 
    if (Iround==maxround) {

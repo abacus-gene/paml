@@ -1,0 +1,90 @@
+Bugs notes since paml version 2.0
+=======================
+(6) date
+
+Scaling by nodes to avoid underflow.  When there are many sequences in
+the data (say > 200 or 300), the probability of observing data at a
+site can become too small to represent in the machine.  This is
+because the probabilities are multiplied along branches in the tree
+and a large tree has many branches.  Since version 2.0, this underflow
+is dealt with by scaling, and it works with both the one-rate and
+gamma-rates models.  It did not work with the NSsites models in
+codonml, but probably nobody has analysed large data sets to notice
+this.  Anyway, this version hopefully fixes that problem, when I was
+analysing the data set of Bush et al. (1999 MBE 16:1457-1465), which
+has about 350 sequences.  If you use the program on very large data
+sets, watch out for anything strange and let me know.  I suppose with
+the option of using supplied branch lengths, data sets of such sizes
+will become manageable, and this scaling will become important.
+
+
+
+(5) Oct 14, 1999
+paml2.0h
+
+Fixed the following errors, all simple errors.
+
+The RemoveIndel routine in 2.0e and 20.f has a bug that removes most
+sites in the sequence except those with all T's and C's for baseml.
+The same routine in 2.0g has a different bug that removes most sites
+except those will all T's and C's in the sequence for aaml.  In either
+case, the results will be grossly wrong.  The bugs affect the analysis
+only if you have gaps or ambiguity characters in the data and use
+runmode = 1 for aaml in 2.0e and 2.0f, and runmode = 1 for codonml for
+2.0g.
+
+The newly introduced option for amino acid reconstruction by baseml
+(icode) does not work.  The program aborts with an error message.
+This is now fixed.
+
+
+
+=======================
+
+(4) Sept 21, 1999
+paml2.0g
+
+Fixed a bug in 2.0f that causes crash in codeml when getSE = 1.  
+
+If the tree has branch lengths, codeml and baseml in 2.0f will simply
+use the branch lengths rather than estimating them by iteration.  I
+have added a question for the user to choose to ignore the branch
+lengths, use them as fixed or use them as initial values for the
+iteration.
+
+
+(3) June 30, 1999
+paml2.0d
+Fixed some convergence problems in ML pairwise estimation of dS and 
+dN, in particular, in presence of data partitions (the G option).
+
+Fixed a bug in evolver.  The bug means that no sensible data are
+generated if the tree has branch lengths smaller than 1e-7.  At some
+point, I did something "clever" (taking advantage of the fact that at
+such small branch lengths, no evolution would occur), which destroyed
+the calculation.  
+
+
+(2) May 12, 1999
+paml2.0c
+Corrected a few problems with the evolver program, and with running 
+multiple data sets using baseml.  Added REV in MCbase.dat.
+Thanks to John Mercer.
+
+Note--Uncomment ndata in baseml or codeml to analyse multiple
+data sets generated from evolver.
+
+(1) April 16, 1999
+
+Although posted only a few days ago, paml2.0 has an error in the
+program codeml, which invalidates most analyses based on codon
+substitution models.  The symptom is relatively easy to spot and is
+indicated by one of the parameters (say omega) not being estimated at
+all and in the output you will have exactly the same number as you
+specified in the control file.
+
+Amino acid-based analysis or pairwise comparison of codon sequences
+are not affected.  Use paml2.0a to redo the analysis.  Apologies for
+the trouble.
+
+Ziheng Yang

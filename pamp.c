@@ -3,11 +3,18 @@
 
                     gcc -o pamp pamp.c tools.o eigen.o
                            pamp <SequenceFileName>
-
 */
 
+#ifdef __MWERKS__
+/* Added by Andrew Rambaut to accommodate Macs -
+   Brings up dialog box to allow command line parameters.
+*/
+#include <console.h>
+#endif
+
 #include "tools.h"
-#define NS            1000
+#define NS            500
+
 #define NBRANCH       (NS*2-2)
 #define NNODE         (NS*2-1)
 #define NGENE         2
@@ -33,7 +40,7 @@ struct CommonInfo {
    char *z[NS], *spname[NS], seqf[32],outf[32],treef[32];
    int seqtype, ns, ls, ngene, posG[NGENE+1],lgene[NGENE],*pose,npatt,nhomo;
    int np, ntime, ncode,fix_kappa,fix_rgene,fix_alpha, clock, model, ncatG, cleandata;
-   double *fpatt, *chunk;
+   double *fpatt, *lkl;
    double lmax,pi[NCODE], kappa,alpha,rou, rgene[NGENE],piG[NGENE][NCODE];
 }  com;
 struct TREEB {
@@ -41,7 +48,7 @@ struct TREEB {
    double lnL;
 }  tree;
 struct TREEN {
-   int father, nson, sons[NS], ibranch;
+   int father, nson, sons[NS], ibranch, label;
    double branch, divtime, *lkl;
 }  nodes[2*NS-1];
 
@@ -67,6 +74,13 @@ int main (int argc, char *argv[])
    int itree, ntree, i, s3;
    double *space, *Ft;
 
+#ifdef __MWERKS__
+/* Added by Andrew Rambaut to accommodate Macs -
+   Brings up dialog box to allow command line parameters.
+*/
+	argc=ccommand(&argv);
+#endif
+
    com.nhomo=1;
    noisy=2;  com.ncatG=8;   com.clock=0; com.cleandata=1;
    GetOptions (ctlf);
@@ -79,16 +93,16 @@ int main (int argc, char *argv[])
    fprintf (fout,"PAMP %15s, %s sequences\n", com.seqf, Seqstr[com.seqtype]);
    if (com.nhomo) fprintf (fout, "nonhomogeneous model\n");
 
-   space = (double*) malloc (10000*sizeof(double));  /* *** */
+   space = (double*)malloc(10000*sizeof(double));  /* *** */
    SeqDistance=(double*)malloc(com.ns*(com.ns-1)/2*sizeof(double));
    ancestor=(int*)malloc(com.ns*(com.ns-1)/2*sizeof(int));
    if (SeqDistance==NULL||ancestor==NULL) error("oom");
 
    i = com.ns*(com.ns-1)/2;
    s3 = sizeof(double)*((com.ns*2-2)*(com.ns*2-2 + 4 + i) + i);
-   s3 = max(s3, com.ncode*com.ncode*(2*com.ns-2+1)*sizeof(double));
+   s3 = max2(s3, com.ncode*com.ncode*(2*com.ns-2+1)*(int)sizeof(double));
 
-   Ft = (double*) malloc (s3);
+   Ft = (double*) malloc(s3);
    if (space==NULL || Ft==NULL)  error ("oom space");
 
    Initialize (fout, space, com.seqtype);
@@ -314,8 +328,12 @@ int PatternMP (FILE *fout, double Ft[])
 /* Ft[]: input counts for the F(t) matrix for each branch, output P(t) 
 */
    int n=com.ncode, i,j,k;
-   double Q[NCODE*NCODE], pi[NCODE],Root[NCODE],U[NCODE*NCODE],V[NCODE*NCODE];
-   double branch[NBRANCH], space[NCODE*NCODE*2], *T1=space, t;
+   double *Q, *pi, *Root, *U, *V, *branch, *space, *T1, t;
+
+   if((Q=(double*)malloc((n*n*6+tree.nbranch)*sizeof(double)))==NULL)
+      error("PathwayMP: oom");
+   pi=Q+n*n; Root=pi+n; U=Root+n; V=U+n*n; branch=V+n*n; 
+   space=T1=branch+tree.nbranch;
 
    for (k=0; k<tree.nbranch; k++) {  /* branch lengths */
       xtoy(Ft+k*n*n, Q, n*n);
@@ -345,7 +363,7 @@ int PatternMP (FILE *fout, double Ft[])
          }
       }
    }
-
+   free(Q);
    return (0); 
 }
 
@@ -360,10 +378,13 @@ int PathwayMP1 (FILE *fout, int *maxchange, int NSiteChange[],
    job=1: 2nd pass: reconstructs ancestral character states (->fout)
 */
    char *pch=(com.seqtype==0?BASEs:(com.seqtype==2?AAs:BINs));
-   char *zz[NNODE], visit[NS-1], nodeb[NNODE], bestPath[NNODE-NS], Equivoc[NS-1];
+   char *zz[NNODE], visit[NS-1],nodeb[NNODE],bestPath[NNODE-NS],Equivoc[NS-1];
    int n=com.ncode, nid=tree.nbranch-com.ns+1, it,i1,i2, i,j,k, h, npath;
    int *Ftt=NULL, nchange, nchange0;
-   double sumpr, bestpr, pr, *pnode=NULL, pnsite[(NS-1)*NCODE];
+   double sumpr, bestpr, pr, *pnode=NULL, *pnsite;
+
+   if((pnsite=(double*)malloc((com.ns-1)*n*sizeof(double)))==NULL)
+      error("PathwayMP1: oom");
 
    PATHWay=(char*)malloc(nid*(n+3)*sizeof(char));
    NCharaCur=PATHWay+nid;  ICharaCur=NCharaCur+nid;  CharaCur=ICharaCur+nid;
@@ -477,15 +498,16 @@ int PathwayMP1 (FILE *fout, int *maxchange, int NSiteChange[],
       fprintf (fout,"\n\nlist of extant and reconstructed sequences\n\n");
       for(j=0;j<tree.nnode;j++,FPN(fout)) {
          if(j<com.ns) fprintf(fout,"%-20s", com.spname[j]);
-         else         fprintf(fout,"node #%-14d", j+com.ns+1);
+         else         fprintf(fout,"node #%-14d", j+1);
          print1seq (fout, zz[j], com.ls, 1, com.pose);
       }
       free (pnode);
    }
+   free(pnsite);
    return (0);
 }
 
-double DistanceREV (double Ft[], int n, double alpha, double Root[], double U[],
+double DistanceREV (double Ft[], int n,double alpha,double Root[],double U[],
    double V[], double pi[], double space[], int *cond)
 {
 /* input:  Ft, n, alpha
@@ -530,22 +552,25 @@ matout (F0, Root, 4, n/4);   getchar();
    if (t<=0) puts ("err: DistanceREV");
 
    FOR (i,n) Root[i]/=t;
-   FOR (i, n) FOR (j,n)  { Q[i*n+j]/=t; if (i-j) Q[i*n+j]=max(0,Q[i*n+j]); }
+   FOR (i, n) FOR (j,n)  { Q[i*n+j]/=t; if (i-j) Q[i*n+j]=max2(0,Q[i*n+j]); }
 
    return (t);
 }
 
 
-int PatternLS (FILE *fout, double Ft[], double alpha, double space[], int *cond)
+int PatternLS (FILE *fout, double Ft[], double alpha,double space[],int *cond)
 {
 /* space[n*n*2]
 */
    int n=com.ncode, i,j,k,h, it;
    double *Q=Ft,*Qt=Q+n*n,*Qm=Qt+n*n;
-   double pi[NCODE],Root[NCODE],U[NCODE*NCODE],V[NCODE*NCODE], *T1=space, t;
-   double branch[NBRANCH];
+   double *pi,*Root,*U, *V, *T1=space, *branch, t;
    FILE *fdist=fopen("Distance", "w");
    
+   if((pi=(double*)malloc((n*n*3+tree.nbranch)*sizeof(double)))==NULL)
+      error("PatternLS: oom");
+   Root=pi+n;  U=Root+n; V=U+n*n; branch=V+n*n;
+
    *cond=0;
    for (i=0,zero(Qt,n*n),zero(Qm,n*n); i<com.ns; i++) {
       for (j=0; j<i; j++) {
@@ -561,14 +586,14 @@ int PatternLS (FILE *fout, double Ft[], double alpha, double space[], int *cond)
             *cond=-1; printf("\n%d&%d: F(t) modified in DistanceREV",i+1,j+1);
          }
 
-	 fprintf (fdist, "%9.5f", SeqDistance[it]);
+	 fprintf(fdist,"%9.5f",SeqDistance[it]);
 /*
 FOR (k,n) 
 if (Q[k*n+k]>0) { printf ("%d %d %.5f\n", i+1, j+1, Q[k*n+k]); }
 */
          FOR (k,n*n) Qm[k]+=Q[k]/(com.ns*(com.ns-1)/2); 
       }
-      FPN (fdist);
+      FPN(fdist);
    }
    fclose (fdist);
    DistanceREV (Qt, n, alpha, Root, U, V, pi, space, &k);
@@ -587,6 +612,7 @@ if (Q[k*n+k]>0) { printf ("%d %d %.5f\n", i+1, j+1, Q[k*n+k]); }
       FOR (i,tree.nbranch) fprintf(fout,"%9.5f", branch[i]);
       PMatBranch (Ft, com.ncode, branch, Root, U, V, space);
    }
+   free(pi);
    return (0);
 }
 

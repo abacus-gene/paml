@@ -1,6 +1,6 @@
 0
 1234567
-6 100000 2
+6 300 10
 
 (((1:0.1, 2:0.1):0.1, 3:0.2):0.1, 4:0.2, (5:0.1, 6:0.1):0.1)
 
@@ -28,7 +28,7 @@
 
 
 MCcodon.dat
-Notes for using the option in listtree to simulate codon sequences. 
+Notes for using the option in evolver to simulate codon sequences. 
 
 <format,0=paml,1=paup>
 <random number seed>
@@ -57,3 +57,5 @@ Notes for using the option in listtree to simulate codon sequences.
   0.00667787  0.02260204  0.01737181  0.00452975
 
 // observed codon freqs from 6 hominoid seqs (mtCDNAape.nuc)
+
+=================!! Check screen output carefully!! ========================

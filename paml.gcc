@@ -1,6 +1,7 @@
-gcc -c -O2 tools.c 
+gcc -c -O2 tools.c
 gcc -c -O2 eigen.c
 gcc -o baseml -O2 baseml.c tools.o eigen.o 
+gcc -o basemlg -O2 basemlg.c tools.o
 gcc -o codeml -O2  codeml.c tools.o eigen.o
 gcc -o pamp -O2 pamp.c tools.o eigen.o
 gcc -o mcmctree -O2 mcmctree.c tools.o 

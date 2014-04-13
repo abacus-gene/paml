@@ -7,6 +7,13 @@
                         basemlg <ControlFileName>
 */
 
+#ifdef __MWERKS__
+/* Added by Andrew Rambaut to accommodate Macs -
+   Brings up dialog box to allow command line parameters.
+*/
+#include <console.h>
+#endif
+
 #define NS       9
 #define NTREE    20    
 #define NBRANCH  (NS*2-2)      
@@ -25,7 +32,7 @@ int Forestry (FILE *fout, double space[]);
 int GetOptions (char *ctlf);
 int SetxBound (int np, double xb[][2]);
 int testx (double x[], int np);
-int GetInitials (double x[], double space[]);
+int GetInitials (double x[]);
 void TestFunction (FILE *fout, double x[], double space[]);
 int GetMem (int nbranch, int nR, int nitem);
 void GetSave (int nitem, int *nm, int M[], double alpha, double c);
@@ -42,7 +49,7 @@ struct CommonInfo {
    int  clock,fix_alpha,fix_kappa,fix_rgene,Malpha,print,verbose;
    int  model, runmode, cleandata, ndata;
    int np, ntime, nrate, nrgene, ncode;
-   double *fpatt, pi[4], lmax, alpha,kappa, rgene[NGENE],piG[NGENE][6], *chunk;
+   double *fpatt, pi[4], lmax, alpha,kappa, rgene[NGENE],piG[NGENE][6],*lkl;
    double *SSave, *ErSave, *EaSave;
    int  nhomo, nparK, ncatG, fix_rho, getSE;  /* unused */
    double rho;                           /* unused */
@@ -52,7 +59,7 @@ struct TREEB {
    double lnL;
 }  tree;                
 struct TREEN {
-   int father, nson, sons[NS], ibranch;
+   int father, nson, sons[NS], ibranch, label;
    double branch, divtime, *lkl;
 }  nodes[2*NS-1];
 
@@ -75,6 +82,13 @@ int main(int argc, char *argv[])
    char ctlf[32]="baseml.ctl";
    double  *space, kappat=0;
    FILE *fout, *fseq;
+
+#ifdef __MWERKS__
+/* Added by Andrew Rambaut to accommodate Macs -
+   Brings up dialog box to allow command line parameters.
+*/
+	argc=ccommand(&argv);
+#endif
 
    noisy=2;  com.cleandata=1;
    com.runmode=0;
@@ -150,7 +164,7 @@ int Forestry (FILE *fout, double space[])
       i=(com.clock||com.model>HKY85 ? 2 : 2+!com.fix_alpha);
       GetMem(tree.nbranch, nR, i);
 
-      GetInitials (x, space);
+      GetInitials (x);
       np = com.np;
       printf ("\nnp =%6d", np);
       NFunCall=0;
@@ -158,7 +172,7 @@ int Forestry (FILE *fout, double space[])
       TestFunction (fout, x, space);
 */
       if (finbasemlg) {
-         printf ("\n\nReading initial values from in.basemlg.. Enter if OK?");
+         printf ("\n\nReading initial values from in.basemlg.. Stop if wrong.");
          FOR (j, np)
             if (fscanf(finbasemlg,"%lf",&x[j])!=1) error ("err in.basemlg");
       }
@@ -244,7 +258,7 @@ int SetxBound (int np, double xb[][2])
    return(0);
 }
 
-int GetInitials (double x[], double space[])
+int GetInitials (double x[])
 {
    int i,j;
    double t;
@@ -320,14 +334,14 @@ int GetMem (int nbranch, int nR, int nitem)
    int nm, j;
 
    for(j=0,nm=1; j<nbranch; j++)   nm*=nR;
-   if (nm*nitem>size && size) free (com.chunk);
+   if (nm*nitem>size && size) free(com.lkl);
    if (nm*nitem>size) {
       size=nm*nitem;
       printf ("\n\nSave %12ld bytes\n", size*sizeof(double));
-      com.chunk = (double*)malloc(size*sizeof(double));
-      if (com.chunk==NULL) error("oom");
+      com.lkl = (double*)malloc(size*sizeof(double));
+      if (com.lkl==NULL) error("oom");
    }
-   com.ErSave  = com.chunk;
+   com.ErSave  = com.lkl;
    if (nitem>1) com.SSave=com.ErSave+nm;
    if (nitem>2) com.EaSave=com.SSave+nm;
    return(0);

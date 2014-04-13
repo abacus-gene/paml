@@ -1,9 +1,9 @@
       seqfile = brown.nuc * sequence data file name
       outfile = mlb       * main result file
-     treefile = trees.5s   * tree structure filename
+     treefile = brown.trees  * tree structure filename
 
-        noisy = 2   * 0,1,2,3: how much rubbish on the screen
-      verbose = 1   * 1: detailed output, 0: concise output
+        noisy = 3   * 0,1,2,3: how much rubbish on the screen
+      verbose = 0   * 1: detailed output, 0: concise output
       runmode = 0   * 0: user tree;  1: semi-automatic;  2: automatic
                     * 3: StepwiseAddition; (4,5):PerturbationNNI 
 
@@ -30,3 +30,5 @@
 *   Small_Diff = 4e-7
 *    cleandata = 0  * remove sites with ambiguity data (1:yes, 0:no)?
 *        ndata = 1
+
+*        icode = 0  * (with RateAncestor=1. try "GC" in data,model=4,Mgene=4)
