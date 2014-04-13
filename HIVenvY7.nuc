@@ -1,0 +1,75 @@
+   12  231
+
+Y7a
+ttcacagacaatactaaaaccataatagtacagctgaataaatctgtagtaattacttgtacaagaccca 
+acaacaatacaagaaaaaggatatatataggaccagggagagcagtttatacaacagatcaaataatagg 
+aaatataagacaagcacattgtaacattagtagagcaaaatggaatgaaactttaaaacagatagttata 
+aaattaagagaacagtttaag
+Y7b
+ttcacagacaatgctaaaaccataatagtacagctgaatgaatctgtagtaattaattgtacaagaccca 
+acaacaatacaagaaaaggtatacatataggaccagggagtgcattttatgcaacaggagacataatagg 
+agatataagacaagcacattgtaacattagtagagcaaaatggaatgaaactttagaaaagatagttata 
+aaattaagagaacaatttggg
+Y7c
+ttcacagacaatgctaaaaccataatagtacagctgaatgaatctgtagtaattaattgtacaagaccca 
+acaacaatacaagaaaaggtatacatataggaccagggagtgcattttatgcaacaggagacataatagg 
+agatataaggcaagcacattgtaacattagtagagcaaaatggaataaaactttagaacagatagttata 
+aaattaagagaacaatttgag
+Y7d
+ttcacggacaatgctaagaccataatagtacagctgaatgaatctgtagtaattaattgtacaagaccca 
+ataacaatacaagaaaaggtatacatataggaccagggagtgcattttatgcaacaggagacataatagg 
+agatataaggcaagcacattgtaacattagtagagcaaaatggaataaaactttagaacagatagttaca 
+aaattaagagaacaatttgag
+Y7eg
+ ttcacagacaatgctaaaaccataatagtacagctgaatgaatctgtagtaattaattgtacaagaccca
+ acaacaatacaagaaaaggtatacatataggaccagggagtgcattttatgcaacaggagacataatagg
+ agatataagacaagcacattgtaacattagtagagcaaaatggaataaaactttagaacagatagttaca
+ aaattaagagaacaatttgag
+
+Y7f
+ttcacagacaatgctaaaaccataatagtacagctgaatgaatctgtagtaattaattgtacaagaccca 
+acaacaatacaagaaaaggtatacatataggaccagggagtgcattttatgcaacaggagacataatagg 
+agatataaggcaagcacattgtaacattagtagagcaaaatggaataaaactttagaacagatagttata 
+aaattaagagaacaatttggg
+Y7h
+ttcacagacaatgctaaaactataatagtactgctgaataaatctgtagtaattaattgtacaagaccca 
+acaacaatacaagaaaaggtatacatataggaccagggagtgcattttatgcaacaggagacataatagg 
+agatataaggcaagcacattgtaacattagtagagcaaaatggaatgaaactttaaaacagatagttata 
+aaattaagagaacaatttggg
+Y7i
+ttcacagacaatgctaaaaccataatagtacagctgaatgaatctgtagtaattaattgtacaagaccca 
+acaacaatacaagaaaaggtatacatataggaccaggaagtgcattttatgcaacaggagacataatagg 
+agatataagacaagcacattgtaacattagtagagcaaaatggaataaaactttagaacagatagttaca 
+aaattaagagaacaatttgag
+Y7j
+ttcacagacaatactaaaaccataatagtacagctgaatgaatctgtagtaattaattgtacaagaccca 
+acaactatacaagaaaaaggattggtataggaccagggagatcagtttatacagcagaacaaataatagg 
+aaatataagacaagcacattgtaacattagtagagccaaatggaatgaaactttaagacagatagttcta 
+aaattaagagaacaatttaag
+Y7k
+ttcacagacaatgctaaaaccataatagtacagctgaatgaatctgtagtaattaattgtacaagaccca 
+ataacaatacaagaaaaggtatacatataggaccagggagtgcattttatgcaacaggagacataatagg 
+agatataagacaagcacattgtaacattagtagagcaaaatggaataaaactttagaacagatagttaca 
+aaattaagagaacaatttgag
+Y7l
+ttcacagacaatgctaaaaccataatagtacagctgaatgaatctgtagtaattaattgtacaagaccca 
+acaacaatacaagaaaaagtatacatataggaccagggagagcattttacacaacaggaggaataatagg 
+agatataagacaagcacattgtaacattagtagagcaaaatggaatgaaactttaaaacagatagttata 
+aaattaagagaacaatttgga
+Y7m
+ttcacagacaatgctaaaaccataatagtacagctgaatgaatctgtagtaattaattgtacaagaccca 
+acaacaatacaagaaaaggtatacatataggaccaggaagtgcattttatgcaacaggagacataatagg 
+agatataagacaagcacattgtaacattagtagagcaaaatggaataaaactttagaacagatagttaca 
+aaattaagagaacaatttgga
+
+13 sequences, but 7e and 7g are identical.
+
+
+===============
+Trees for year7
+===============
+  12  2
+((((1,9),11),2),7,(6,(3,((10,4),(5,(12,8))))))  #1 JC69, after NNI
+((((1,9),11),7),2,((3,6),(12,((5,(10,4)),8))))  #3 HKY+C, after NNI
+((((1,9),11),7),2,(((3,6),(4,10)),(5,(8,12))))  #2 JC69, star decomposition
+(((1,9),11),((2,7),6),(3,((4,10),(5,(8,12)))))  #4 HKY+C, star decomposition
