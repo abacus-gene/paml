@@ -121,7 +121,7 @@ int main (int argc, char *argv[])
    if (SeqDistance==NULL||ancestor==NULL) error2("oom");
 
    Initialize (fout);
-   if (com.model==JC69) PatternJC69like (fout);
+   if (com.model==JC69) PatternWeightJC69like(fout);
 
    DistanceMatNuc (fout, fpair[0], com.model, com.alpha);
    if (com.model<=HKY85)

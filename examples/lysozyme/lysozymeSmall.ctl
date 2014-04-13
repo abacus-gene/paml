@@ -20,7 +20,7 @@
     fix_kappa = 0   * 1: kappa fixed, 0: kappa to be estimated
         kappa = 2   * initial or fixed kappa
     fix_omega = 0   * 1: omega or omega_1 fixed, 0: estimate 
-        omega = 1   * initial or fixed omega, for codons or codon-transltd AAs
+        omega = 2   * initial or fixed omega, for codons or codon-transltd AAs
 
     fix_alpha = 1   * 0: estimate gamma shape parameter; 1: fix it at alpha
         alpha = .0  * initial or fixed alpha, 0:infinity (constant rate)

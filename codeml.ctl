@@ -13,7 +13,7 @@
 *        ndata = 10
         clock = 0  * 0:no clock, 1:clock; 2:local clock; 3:CombinedAnalysis
        aaDist = 0  * 0:equal, +:geometric; -:linear, 1-6:G1974,Miyata,c,p,v,a
-   aaRatefile = dat/lg.dat  * only used for aa seqs with model=empirical(_F)
+   aaRatefile = dat/jones.dat  * only used for aa seqs with model=empirical(_F)
                    * dayhoff.dat, jones.dat, wag.dat, mtmam.dat, or your own
 
         model = 2

@@ -1,4 +1,4 @@
-Notes by Ziheng, 12 August 2003, modified in March 2008
+Notes by Ziheng, 12 August 2003, modified in October 2008
 
 (A) This is about codon models for McDonald & Kreithman-style test using
 the ape mt data used in Hasegawa et al. (1998).

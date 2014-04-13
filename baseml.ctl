@@ -2,17 +2,17 @@
      treefile = brown.trees
 
       outfile = mlb       * main result file
-        noisy = 9   * 0,1,2,3: how much rubbish on the screen
+        noisy = 2   * 0,1,2,3: how much rubbish on the screen
       verbose = 0   * 1: detailed output, 0: concise output
       runmode = 0   * 0: user tree;  1: semi-automatic;  2: automatic
                     * 3: StepwiseAddition; (4,5):PerturbationNNI 
 
-        model = 4   * 0:JC69, 1:K80, 2:F81, 3:F84, 4:HKY85
+        model = 7   * 0:JC69, 1:K80, 2:F81, 3:F84, 4:HKY85
                     * 5:T92, 6:TN93, 7:REV, 8:UNREST, 9:REVu; 10:UNRESTu
-        
+
         Mgene = 0   * 0:rates, 1:separate; 2:diff pi, 3:diff kapa, 4:all diff
 
-*        ndata = 5
+*        ndata = 100
         clock = 0   * 0:no clock, 1:clock; 2:local clock; 3:CombinedAnalysis
     fix_kappa = 0   * 0: estimate kappa; 1: fix kappa at value below
         kappa = 5  * initial or fixed kappa
@@ -25,7 +25,7 @@
 
         nhomo = 0   * 0 & 1: homogeneous, 2: kappa for branches, 3: N1, 4: N2
         getSE = 0   * 0: don't want them, 1: want S.E.s of estimates
- RateAncestor = 1   * (0,1,2): rates (alpha>0) or ancestral states
+ RateAncestor = 0   * (0,1,2): rates (alpha>0) or ancestral states
 
    Small_Diff = 7e-6
     cleandata = 1  * remove sites with ambiguity data (1:yes, 0:no)?

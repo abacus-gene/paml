@@ -9,6 +9,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <math.h>
+#include <search.h>
 #include <limits.h>
 #include <float.h>
 #include <time.h>
@@ -22,15 +23,15 @@
 #define Pi  3.1415926535897932384626433832795
 
 #define beep putchar('\a')
-#define spaceming2(n) ((n)*((n)*2+9+2)*(int)sizeof(double))
+#define spaceming2(n) ((n)*((n)*2+9+2)*sizeof(double))
 
 int ReadSeq (FILE *fout, FILE *fseq, int cleandata);
-void EncodeSeqs (void);
+void EncodeSeqs (int length);
 void ReadPatternFreq (FILE* fout, char* fpattf);
 int Initialize (FILE *fout);
 int MoveCodonSeq (int ns, int ls, char *z[]);
 int PatternWeight (void);
-int PatternJC69like (FILE *fout);
+int PatternWeightJC69like (FILE *fout);
 int PatternWeightSimple (int CollapsJC);
 int Site2Pattern (FILE *fout);
 
@@ -57,18 +58,18 @@ int MultiNomial2 (int n, int ncat, double prob[], int nobs[], double space[]);
 int AutodGamma (double Mmat[], double freqK[], double rK[], double *rho1, double alfa, double rho, int K);
 int DiscreteGamma (double freqK[], double rK[], double alpha, double beta, int K, int dgammamean);
 
-double InverseCDFChi2 (double prob, double v);
-#define InverseCDFGamma(prob,alpha,beta) InverseCDFChi2(prob,2.0*(alpha))/(2.0*(beta))
+double QuantileChi2 (double prob, double v);
+#define QuantileGamma(prob,alpha,beta) QuantileChi2(prob,2.0*(alpha))/(2.0*(beta))
 double PDFGamma(double x, double alpha, double beta);
 #define CDFGamma(x,alpha,beta) IncompleteGamma((beta)*(x),alpha,LnGamma(alpha))
-double  PDF_IGamma(double x, double alpha, double beta);
-#define CDF_IGamma(x,alpha,beta) (1-CDFGamma(1/(x),alpha,beta))
+double  PDF_InverseGamma(double x, double alpha, double beta);
+#define CDF_InverseGamma(x,alpha,beta) (1-CDFGamma(1/(x),alpha,beta))
 #define CDFChi2(x,v) CDFGamma(x,(v)/2.0,0.5)
 double PDFBeta(double x, double p, double q);
 double CDFBeta(double x, double p, double q, double lnbeta);
-double InverseCDFBeta(double prob, double p, double q, double lnbeta);
-double InverseCDF(double(*cdf)(double x,double par[]), double p, double x, double par[], double xb[2]);
-double InverseCDFNormal (double prob);
+double QuantileBeta(double prob, double p, double q, double lnbeta);
+double Quantile(double(*cdf)(double x,double par[]), double p, double x, double par[], double xb[2]);
+double QuantileNormal (double prob);
 double PDFNormal (double x, double mu, double sigma2);
 double CDFNormal (double x);
 double logCDFNormal (double x);
@@ -215,6 +216,7 @@ int gradient (int n, double x[], double f0, double g[],
     double (* fun)(double x[],int n), double space[], int Central);
 int Hessian (int nx, double x[], double f, double g[], double H[],
     double (*fun)(double x[], int n), double space[]);
+int HessianSKT2004 (double xmle[], double lnLm, double g[], double H[]);
 
 int H_end (double x0[], double x1[], double f0, double f1,
     double e1, double e2, int n);
@@ -330,7 +332,7 @@ void printSptree(void);
 
 
 enum {BASEseq=0, CODONseq, AAseq, CODON2AAseq} DataTypes;
-enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrAge=8} OutTreeOptions;
+enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrAge=8, PrOmega=16} OutTreeOptions;
 
 
 /* use mean (0) for discrete gamma instead of median (1) */
@@ -342,8 +344,11 @@ enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrAge=8} OutTreeOptions;
 
 #define MAXNFIELDS 10000
 
+#define p_LOWERBOUND 0.1
+#define c_LOWERBOUND 1.0
+
 #define PAML_RELEASE      0
 
-#define VerStr "paml version 4.1, August 2008"
+#define VerStr "paml version 4.3, August 2009"
 
 #endif

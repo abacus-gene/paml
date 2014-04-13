@@ -96,7 +96,7 @@ int ListTrees (FILE* fout, int ns, int rooted)
 
    if(com.ns<=26) {
       for (i=0; i<com.ns; i++)
-         sprintf(com.spname[i], "%d\0", i+1);
+         sprintf(com.spname[i], "%d", i+1);
    }
 
    for (i=0;i<nM;i++) Ib[i]=0;

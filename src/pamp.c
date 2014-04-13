@@ -144,7 +144,7 @@ int main (int argc, char *argv[])
 
 int GetOptions (char *ctlf)
 {
-   int i, nopt=6, lline=4096, t;
+   int iopt, nopt=6, i, lline=4096, t;
    char line[4096], *pline, opt[20], *comment="*#";
    char *optstr[] = {"seqfile","outfile","treefile", "seqtype", "ncatG", "nhomo"};
    FILE  *fctl=gfopen (ctlf, "r");
@@ -159,11 +159,11 @@ int GetOptions (char *ctlf)
          sscanf (line, "%s%*s%d", opt, &t);
          if ((pline=strstr(line, "="))==NULL) error2 ("option file.");
 
-         for (i=0; i<nopt; i++) {
-            if (strncmp(opt, optstr[i], 8)==0)  {
+         for (iopt=0; iopt<nopt; iopt++) {
+            if (strncmp(opt, optstr[iopt], 8)==0)  {
                if (noisy>2)
-                  printf ("\n%3d %15s | %-20s %6d", i+1,optstr[i],opt,t);
-               switch (i) {
+                  printf ("\n%3d %15s | %-20s %6d", iopt+1,optstr[iopt],opt,t);
+               switch (iopt) {
                   case ( 0): sscanf(pline+2, "%s", com.seqf);    break;
                   case ( 1): sscanf(pline+2, "%s", com.outf);    break;
                   case ( 2): sscanf(pline+2, "%s", com.treef);    break;
@@ -174,7 +174,7 @@ int GetOptions (char *ctlf)
                break;
             }
          }
-         if (i==nopt)
+         if (iopt==nopt)
             { printf ("\nopt %s in %s\n", opt, ctlf);  exit (-1); }
       }
       fclose (fctl);

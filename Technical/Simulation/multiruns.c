@@ -7,7 +7,7 @@
 
   Examples (comparing three runs with lnL in column 19 in rst1):
 
-     multiruns rst1.a rst1.b rst1.c 19
+     multiruns rst1.r1 rst1.r2 rst1.r3 19
      multiruns a/rst1 b/rst1 c/rst1 19
 
    March 2003, Ziheng Yang
@@ -51,7 +51,7 @@ int splitline (char line[], int fields[]);
 int main(int argc, char* argv[])
 {
    FILE *fout, *fin[MAXNFIILES];
-   char infile[MAXNFIILES][96]={"rst1.a", "rst1.b"}, outfile[96]="out.txt";
+   char infile[MAXNFIILES][96]={"rst1.r1", "rst1.r2"}, outfile[96]="out.txt";
    int index=0, nfile, nfileread, lnLcolumn=13, i, nrecords=0, lline=MAXLLINE;
    int nfields[MAXNFIILES],fields[MAXNFIELDS], minf, maxf, miss[MAXNFIILES];
    char *line[MAXNFIILES];
@@ -83,16 +83,16 @@ int main(int argc, char* argv[])
          if(nfields[i]>lnLcolumn) {
             sscanf(line[i]+fields[lnLcolumn], "%lf", &lnL[i]);
             miss[i]=0;
-            nfileread++; 
+            nfileread++;
          }
       }
       if(nfileread==0) break;
       for(i=0,y=-1; i<nfile; i++) {
-		  if(!miss[i]) {
+         if(!miss[i]) {
            if(y==-1) y=indexfield[i];
            else if(y!=indexfield[i]) error2("index field different");
-		  }
-	  }
+         }
+      }
       for(i=0,lnLmin=1e300,lnLmax=-1e300; i<nfile; i++) {
          if(miss[i]) continue;
          if(lnL[i]<lnLmin) { lnLmin=lnL[i];  minf=i; }

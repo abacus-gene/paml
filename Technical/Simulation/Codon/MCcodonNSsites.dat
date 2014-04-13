@@ -1,4 +1,4 @@
-0          * 0,1:seqs or patterns in paml format (mc.paml); 2:paup format (mc.nex)
+0          * 0: paml format (mc.paml); 1:paup format (mc.nex)
 113147       * random number seed (odd number)
 10 10000 10   * <# seqs>  <# codons>  <# replicates>
 

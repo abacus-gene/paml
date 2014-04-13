@@ -15,12 +15,13 @@
     CodonFreq = 7  * 0:1/61 each, 1:F1X4, 2:F3X4, 3:codon table
                    * 4:F1x4MG, 5:F3x4MG, 6:FMutSel0, 7:FMutSel
       estFreq = 1
+*      hkyREV = 0  * 0: HKY-like; 1: GTR(REV)-like
 
         model = 0
       NSsites = 0  * 0:one w;1:neutral;2:selection; 3:discrete;4:freqs;
                    * 5:gamma;6:2gamma;7:beta;8:beta&w;9:beta&gamma;
                    * 10:beta&gamma+1; 11:beta&normal>1; 12:0&2normal>1;
-                   * 13:3normal>0; 
+                   * 13:3normal>0;
 
         icode = 1  * 0:universal code; 1:mammalian mt; 2-10:see below
 

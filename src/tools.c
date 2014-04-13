@@ -10,7 +10,7 @@ char BASEs[]="TCAGUYRMKSWHBVDN?-";
 char nBASEs[]={1,1,1,1, 1,2,2,2,2,2,2, 3,3,3,3, 4,4,4};
 char *EquateNUC[]={"T","C","A","G", "T", "TC","AG","CA","TG","CG","TA",
      "TCA","TCG","CAG","TAG", "TCAG","TCAG","TCAG"};
-char AAs[] = "ARNDCQEGHILKMFPSTWYV*-?x";
+char AAs[] = "ARNDCQEGHILKMFPSTWYV*-?X";
 char AA3Str[]=
      {"AlaArgAsnAspCysGlnGluGlyHisIleLeuLysMetPheProSerThrTrpTyrVal***"};
 char BINs[] ="TC";
@@ -98,7 +98,7 @@ int PopEmptyLines (FILE* fseq, int lline, char line[])
    int i;
 
    for (i=0; ;i++) {
-      p=fgets (line, lline, fseq);
+      p = fgets (line, lline, fseq);
       if (p==NULL) return(-1);
       while (*p) 
          if (*p==eqdel[0] || *p==eqdel[1] || *p==eqdel[2] || isalpha(*p)) 
@@ -163,10 +163,11 @@ int transform (char *z, int ls, int direction, int seqtype)
    char *p, *pch=((seqtype==0||seqtype==1)?BASEs:(seqtype==2?AAs:BINs));
 
    if (direction)
-      for (il=0,p=z; il<ls; il++,p++)
-         { if ((*p=(char)CodeChara(*p, seqtype))==(char)(-1))  status=-1; }
+      for (il=0,p=z; il<ls; il++,p++) {
+         if ((*p=(char)CodeChara(*p, seqtype)) == (char)(-1))  status=-1;
+      }
    else 
-      for (il=0,p=z; il<ls; il++,p++)  *p=pch[(int) (*p)];
+      for (il=0,p=z; il<ls; il++,p++)  *p = pch[(int) (*p)];
    return (status);
 }
 
@@ -664,9 +665,9 @@ int Rates4Sites (double rates[],double alpha,int ncatG,int ls, int cdf,
             for (j=0; j<counts[ir]; j++)  rates[h++]=rK[ir];
       }
       else 
-         for (h=0; h<ls; h++) rates[h]=rndgamma(alpha)/alpha;
+         for (h=0; h<ls; h++) rates[h] = rndgamma(alpha)/alpha;
       if (cdf) {
-         for (h=1; h<ls; h++) rates[h]+=rates[h-1];
+         for (h=1; h<ls; h++) rates[h] += rates[h-1];
          abyx (1/rates[ls-1], rates, ls);
       }
    }
@@ -1056,8 +1057,10 @@ int appendfile(FILE*fout, char*filename)
    int ch;
 
    if(fin) {
-      while((ch=fgetc(fin))!=EOF) fputc(ch,fout);
+      while((ch=fgetc(fin))!=EOF) 
+         fputc(ch,fout);
       fclose(fin);
+      fflush(fout);
    }
    return(0);
 }
@@ -1067,7 +1070,7 @@ void error2 (char * message)
 { printf("\nError: %s.\n", message); exit(-1); }
 
 int zero (double x[], int n)
-{ int i; FOR (i,n) x[i]=0; return (0);}
+{ int i; for(i=0; i<n; i++) x[i]=0; return (0);}
 
 double sum (double x[], int n)
 { int i; double t=0;  for(i=0; i<n; i++) t += x[i];    return(t); }
@@ -1085,10 +1088,10 @@ int axtoy(double a, double x[], double y[], int n)
 { int i; for (i=0; i<n; y[i] = a*x[i],i++) ;  return(0);}
 
 int axbytoz(double a, double x[], double b, double y[], double z[], int n)
-{ int i; FOR (i,n)  z[i] = a*x[i]+b*y[i];  return (0); }
+{ int i; for(i=0; i<n; i++)   z[i] = a*x[i]+b*y[i];  return (0); }
 
 int identity (double x[], int n)
-{ int i,j;  FOR (i,n)  { FOR(j,n)  x[i*n+j]=0;  x[i*n+i]=1; }  return (0); }
+{ int i,j;  for(i=0; i<n; i++)  { for(j=0; j<n; j++)   x[i*n+j]=0;  x[i*n+i]=1; }  return (0); }
 
 double distance (double x[], double y[], int n)
 {  int i; double t=0;
@@ -1097,10 +1100,10 @@ double distance (double x[], double y[], int n)
 }
 
 double innerp (double x[], double y[], int n)
-{ int i; double t=0;  FOR (i,n) t += x[i]*y[i];  return(t); }
+{ int i; double t=0;  for(i=0; i<n; i++)  t += x[i]*y[i];  return(t); }
 
 double norm (double x[], int n)
-{ int i; double t=0;  FOR (i,n) t+=x[i]*x[i];  return sqrt(t); }
+{ int i; double t=0;  for(i=0; i<n; i++)  t += x[i]*x[i];  return sqrt(t); }
 
 
 int Add2Ptree (int counts[3], double Ptree[3])
@@ -1123,7 +1126,7 @@ int Add2Ptree (int counts[3], double Ptree[3])
 
 int indexing (double x[], int n, int index[], int descending, int space[])
 {
-/* bubble sort to calculate the indeces for the vector x[].  
+/* bubble sort to calculate the indecies for the vector x[].  
    x[index[2]] will be the third largest or smallest number in x[].
    This does not change x[].     
 */
@@ -1241,22 +1244,24 @@ double reflect(double x, double a, double b)
 {
 /* This returns a variable in the range (a,b) by reflecting x back into the range
 */
-   int rounds=0, maxround=10000;
-   double x0=x, small=1e-12;
+   int rounds=0;
+   double x0=x, nroundsVirtual, small=1e-50;
 
-   if(b-a<small)
+   if(b-a<small) {
       printf("\nimproper range x0=%.6g (%.6g, %.6g)\n", x0,a,b);
-   /* small *= min2(0.5, fabs(a+b)/2); */
-   small=0;
-   for ( ; ; rounds++) {
-      if(x>a && x<b) return x;  /* note strict inequality */
-      if(x<=a)       x = a + a - x + small;
-      else if(x>=b)  x = b - (x - b) - small;
+      exit(-1);
    }
-   if(rounds>maxround) 
-      printf("\nx=%.6g (%.6g, %.6g), reflected %d rounds.\n", x0,a,b, maxround);
+   nroundsVirtual = floor((x-a)/(2*(b-a)));
+   x -= nroundsVirtual *2*(b-a);
+   for ( ; ; rounds++) {
+      if(x<=a)       x = a*2 - x;
+      else if(x>=b)  x = b*2 - x;
+      else break;
+   }
    return(x);
 }
+
+
 
 void randorder(int order[], int n, int space[])
 {
@@ -1378,82 +1383,41 @@ int rndpoisson (double m)
    return ((int) em);
 }
 
-double rndgamma1 (double s);
-double rndgamma2 (double s);
 
-double rndgamma (double s)
+double rndgamma (double a)
 {
-/* random standard gamma (Mean=Var=s,  with shape parameter=s, scale para=1)
-      r^(s-1)*exp(-r)
-   J. Dagpunar (1988) Principles of random variate generation,
-   Clarendon Press, Oxford
-   calling rndgamma1() if s<1 or
-           rndgamma2() if s>1 or
-           exponential if s=1
+/* This returns a random variable from gamma(a, 1).
+   Marsaglia and Tsang (2000) A Simple Method for generating gamma variables", 
+   ACM Transactions on Mathematical Software, 26 (3): 363-372.
+   This is not entirely safe and is noted to produce zero when a is small (0.001).
+ */
+   double x, v, u;
+   double d = a - 1.0/3.0;
+   double c = (1.0/3.0) / sqrt(d);
 
-   This is unsafe, and is found to return 0 when s is very small.
-*/
-   double r=0;
-
-   if (s<=0)      puts ("jgl gamma..");
-   else if (s<1)  r=rndgamma1 (s);
-   else if (s>1)  r=rndgamma2 (s);
-   else           r=-log(rndu());
-   return (r);
-}
-
-
-double rndgamma1 (double s)
-{
-/* random standard gamma for s<1
-   switching method
-*/
-   double r, x=0,small=1e-37,w;
-   static double a,p,uf,ss=10,d;
-
-   if (s!=ss) {
-      a=1-s;
-      p=a/(a+s*exp(-a));
-      uf=p*pow(small/a,s);
-      d=a*log(a);
-      ss=s;
+   if (a < 1) {   /*  get rid of this recursion  */
+      return rndgamma(a+1) * pow(rndu(), 1/a);
    }
-   for (;;) {
-      r=rndu();
-      if (r>p)        x=a-log((1-r)/(1-p)), w=a*log(x)-d;
-      else if (r>uf)  x=a*pow(r/p,1/s), w=x;
-      else            return (0);
-      r=rndu ();
-      if (1-r<=w && r>0)
-         if (r*(w+1)>=1 || -log(r)<=w)  continue;
-      break;
-   }
-   return (x);
-}
 
-double rndgamma2 (double s)
-{
-/* random standard gamma for s>1
-   Best's (1978) t distribution method
-*/
-   double r,d,f,g,x;
-   static double b,h,ss=0;
-   if (s!=ss) {
-      b=s-1;
-      h=sqrt(3*s-0.75);
-      ss=s;
+   for ( ; ; ) {
+      do {
+         x = rndNormal();
+         v = 1.0 + c * x;
+      }
+      while (v <= 0);
+ 
+      v *= v * v;
+      u = rndu();
+
+      if (u < 1 - 0.0331 * x * x * x * x) 
+         break;
+      if (log(u) < 0.5 * x * x + d * (1 - v + log(v)))
+         break;
    }
-   for (;;) {
-      r=rndu ();
-      g=r-r*r;
-      f=(r-0.5)*h/sqrt(g);
-      x=b+f;
-      if (x <= 0) continue;
-      r=rndu();
-      d=64*r*r*g*g*g;
-      if (d*x < x-2*f*f || log(d) < 2*(b*log(x/b)-f))  break;
-   }
-   return (x);
+   v *= d;
+   if(v==0) 
+      printf("\nrndgamma returning 0.\n");
+   return v;
 }
 
 
@@ -1574,7 +1538,7 @@ int MultiNomial2 (int n, int ncat, double prob[], int nobs[], double space[])
 /* functions concerning the CDF and percentage points of the gamma and
    Chi2 distribution
 */
-double InverseCDFNormal (double prob)
+double QuantileNormal (double prob)
 {
 /* returns z so that Prob{x<z}=prob where x ~ N(0,1) and (1e-12)<prob<1-(1e-12)
    returns (-9999) if in error
@@ -1750,20 +1714,23 @@ double LnGamma (double x)
    double f=0, fneg=0, z, lng;
    int nx=(int)x;
 
-   if((double)nx==x && nx>1 && nx<12)
-      lng=log((double)factorial(nx-1));
+   if((double)nx==x && nx>1 && nx<=11)
+      lng = log((double)factorial(nx-1));
    else {
       if(x<=0) {
-         error2("lnGamma not implemented for x<0");
+         printf("LnGamma(%.6f) not implemented", x);
          if((int)x-x==0) { puts("lnGamma undefined"); return(-1); }
-         for (fneg=1; x<0; x++) fneg/=x;
+         for (fneg=1; x<0; x++) fneg /= x;
          if(fneg<0) error2("strange!! check lngamma");
          fneg=log(fneg);
       }
       if (x<7) {
-         f=1;  z=x-1;
-         while (++z<7)  f*=z;
-         x=z;   f=-log(f);
+         f = 1;
+         z = x-1;
+         while (++z<7)  
+            f *= z;
+         x = z;   
+         f = -log(f);
       }
       z = 1/(x*x);
       lng = fneg+ f + (x-0.5)*log(x) - x + .918938533204673 
@@ -1781,11 +1748,12 @@ double PDFGamma (double x, double alpha, double beta)
       printf("x=%.6f a=%.6f b=%.6f", x, alpha, beta);
       error2("x a b outside range in PDFGamma()");
    }
-   if (alpha>100)           error2("large alpha in PDFGamma()");
+   if (alpha>100)
+      error2("large alpha in PDFGamma()");
    return pow(beta*x,alpha)/x * exp(-beta*x - LnGamma(alpha));
 }
 
-double PDF_IGamma (double x, double alpha, double beta)
+double PDF_InverseGamma (double x, double alpha, double beta)
 {
 /* inverse-gamma density: 
    mean=beta/(alpha-1); var=beta^2/[(alpha-1)^2*(alpha-2)]
@@ -1806,15 +1774,14 @@ double IncompleteGamma (double x, double alpha, double ln_gamma_alpha)
            limit of the integration and alpha is the shape parameter.
    returns (-1) if in error
    ln_gamma_alpha = ln(Gamma(alpha)), is almost redundant.
-   (1) series expansion     if (alpha>x || x<=1)
-   (2) continued fraction   otherwise
+   (1) series expansion,     if (alpha>x || x<=1)
+   (2) continued fraction,   otherwise
    RATNEST FORTRAN by
    Bhattacharjee GP (1970) The incomplete gamma integral.  Applied Statistics,
    19: 285-287 (AS32)
 */
    int i;
    double p=alpha, g=ln_gamma_alpha;
-   /* double accurate=1e-8, overflow=1e30; */
    double accurate=1e-10, overflow=1e60;
    double factor, gin=0, rn=0, a=0,b=0,an=0,dif=0, term=0, pn[6];
 
@@ -1827,39 +1794,43 @@ double IncompleteGamma (double x, double alpha, double ln_gamma_alpha)
    gin=1;  term=1;  rn=p;
  l20:
    rn++;
-   term*=x/rn;   gin+=term;
-
+   term *= x/rn;   gin += term;
    if (term > accurate) goto l20;
-   gin*=factor/p;
+   gin *= factor/p;
    goto l50;
  l30:
    /* (2) continued fraction */
-   a=1-p;   b=a+x+1;  term=0;
-   pn[0]=1;  pn[1]=x;  pn[2]=x+1;  pn[3]=x*b;
-   gin=pn[2]/pn[3];
+   a = 1-p;   b = a+x+1;  term = 0;
+   pn[0] = 1;  pn[1] = x;  pn[2] = x+1;  pn[3] = x*b;
+   gin = pn[2]/pn[3];
  l32:
-   a++;  b+=2;  term++;   an=a*term;
-   for (i=0; i<2; i++) pn[i+4]=b*pn[i+2]-an*pn[i];
+   a++;  
+   b += 2;
+   term++;
+   an = a*term;
+   for (i=0; i<2; i++) 
+      pn[i+4] = b*pn[i+2] - an*pn[i];
    if (pn[5] == 0) goto l35;
-   rn=pn[4]/pn[5];   dif=fabs(gin-rn);
-   if (dif>accurate) goto l34;
-   if (dif<=accurate*rn) goto l42;
+   rn = pn[4]/pn[5];
+   dif = fabs(gin-rn);
+   if (dif > accurate) goto l34;
+   if (dif <= accurate*rn) goto l42;
  l34:
-   gin=rn;
+   gin = rn;
  l35:
-   for (i=0; i<4; i++) pn[i]=pn[i+2];
+   for (i=0; i<4; i++) pn[i] = pn[i+2];
    if (fabs(pn[4]) < overflow) goto l32;
-   for (i=0; i<4; i++) pn[i]/=overflow;
+   for (i=0; i<4; i++) pn[i] /= overflow;
    goto l32;
  l42:
-   gin=1-factor*gin;
+   gin = 1-factor*gin;
 
  l50:
    return (gin);
 }
 
 
-double InverseCDFChi2 (double prob, double v)
+double QuantileChi2 (double prob, double v)
 {
 /* returns z so that Prob{x<z}=prob where x is Chi2 distributed with df=v
    returns -1 if in error.   0.000002<prob<0.999998
@@ -1893,7 +1864,7 @@ l2:
    else                       goto l2;
   
 l3: 
-   x = InverseCDFNormal(p);
+   x = QuantileNormal(p);
    p1 = 0.222222/v;
    ch = v*pow((x*sqrt(p1)+1-p1), 3.0);
    if (ch>2.2*v+6)
@@ -1930,7 +1901,7 @@ int DiscreteGamma (double freqK[], double rK[], double alpha, double beta, int K
    if (dgammamean==0) {
       lnga1=LnGamma(alpha+1);
       for (i=0; i<K-1; i++) /* cutting points, Eq. 9 */
-         freqK[i]=InverseCDFGamma((i+1.0)/K, alpha, beta);
+         freqK[i]=QuantileGamma((i+1.0)/K, alpha, beta);
       for (i=0; i<K-1; i++) /* Eq. 10 */
          freqK[i]=IncompleteGamma(freqK[i]*beta, alpha+1, lnga1);
 
@@ -1939,7 +1910,7 @@ int DiscreteGamma (double freqK[], double rK[], double alpha, double beta, int K
       for (i=1; i<K-1; i++)  rK[i] = (freqK[i]-freqK[i-1])*factor;
    }
    else {
-      for(i=0; i<K; i++) rK[i]=InverseCDFGamma((i*2.+1)/(2.*K), alpha, beta);
+      for(i=0; i<K; i++) rK[i]=QuantileGamma((i*2.+1)/(2.*K), alpha, beta);
       for(i=0,t=0; i<K; i++) t+=rK[i];
       for(i=0; i<K; i++) rK[i]*=factor/t;
    }
@@ -1962,7 +1933,7 @@ int AutodGamma (double M[], double freqK[], double rK[], double *rho1, double al
    if (fabs(rho)>1-1e-4) error2("rho out of range");
 */
    for(i=0; i<K-1; i++) 
-      point[i]=InverseCDFNormal((i+1.0)/K);
+      point[i]=QuantileNormal((i+1.0)/K);
    for (i=0; i<K; i++) {
       for (j=0; j<K; j++) {
          x = (i<K-1?point[i]:large);
@@ -2022,7 +1993,7 @@ double LBinormal2Delete (double h, double k, double r)
      <1     (eq. 6)      20       20
 */
    int nGL = (fabs(r)<0.3 ? 10 : 20), i,j, signr = (r>=0 ? 1 : -1);
-   double *x, *w;  /* Gauss-Legendre quadrature points */
+   double *x=NULL, *w=NULL;  /* Gauss-Legendre quadrature points */
    double hk=h*k, h0=h,k0=k, L=0, t[2], hk2, y, a=0,b,c,d, bs, as, rs, smallr=1e-10;
 
    h=min2(h0,k0);  k=max2(h0,k0);
@@ -2098,7 +2069,7 @@ double logLBinormal2Delete (double h, double k, double r)
    Check the routine logCDFNormal() to see the idea.
 */
    int nGL = (fabs(r)<0.3 ? 10 : 20), i,j, signr = (r>=0 ? 1 : -1);
-   double *x, *w;  /* Gauss-Legendre quadrature points */
+   double *x=NULL, *w=NULL;  /* Gauss-Legendre quadrature points */
    double hk=h*k, h0=h,k0=k, L, t[2], hk2, a,b,c,d, bs, as, rs;
    double S1,S2=-1e300,S3=-1e300, y,L2=0,L3=0, largeneg=-1e300, smallr=1e-10;
 
@@ -2209,7 +2180,7 @@ double LBinormal (double h, double k, double r)
      <1     (eq. 6)      20       20
 */
    int nGL = (fabs(r)<0.3 ? 10 : 20), i,j;
-   double *x, *w;  /* Gauss-Legendre quadrature points */
+   double *x=NULL, *w=NULL;  /* Gauss-Legendre quadrature points */
    double shk, h0=h,k0=k, sk, L=0, t[2], hk2, y, a=0,b,c,d, bs, as, rs, smallr=1e-10;
 
    h=min2(h0,k0);  k=max2(h0,k0);
@@ -2292,7 +2263,7 @@ double logLBinormal (double h, double k, double r)
    See logCDFNormal() for more details of the idea.
 */
    int nGL = (fabs(r)<0.3 ? 10 : 20), i,j;
-   double *x, *w;  /* Gauss-Legendre quadrature points */
+   double *x=NULL, *w=NULL;  /* Gauss-Legendre quadrature points */
    double shk, h0=h,k0=k, sk, L, t[2], hk2, a,b,c,d, bs, as, rs, signr=(r>=0?1:-1);
    double S1=0,S2=-1e300,S3=-1e300, y,L1=0,L2=0,L3=0, largeneg=-1e300, smallr=1e-10;
 
@@ -2447,10 +2418,10 @@ double probBetaBinomial (int n, int k, double p, double q)
    double a=p,b=q, C1,C2,C3,scale1,scale2,scale3;
 
    if(a<=0 || b<=0) return(0);
-   C1=Binomial(-a, k, &scale1);
-   C2=Binomial(-b, n-k, &scale2);
-   C3=Binomial(-a-b, n, &scale3);
-   C1*=C2/C3;
+   C1 = Binomial(-a, k, &scale1);
+   C2 = Binomial(-b, n-k, &scale2);
+   C3 = Binomial(-a-b, n, &scale3);
+   C1 *= C2/C3;
    if(C1<0) 
       error2("error in probBetaBinomial");
    return C1*exp(scale1+scale2-scale3);
@@ -2482,7 +2453,7 @@ double CDFBeta(double x, double pin, double qin, double lnbeta)
    lnbeta is log of the complete beta function; provide it if known,
    and otherwise use 0.
 
-   This is called from InverseCDFBeta() in a root-finding loop.
+   This is called from QuantileBeta() in a root-finding loop.
 
     This routine is a translation into C of a Fortran subroutine
     by W. Fullerton of Los Alamos Scientific Laboratory.
@@ -2583,9 +2554,9 @@ double CDFBeta(double x, double pin, double qin, double lnbeta)
    return ans;
 }
 
-double InverseCDFBeta(double prob, double p, double q, double lnbeta)
+double QuantileBeta(double prob, double p, double q, double lnbeta)
 {
-/* This calculates the inverseCDF of the beta distribution
+/* This calculates the Quantile of the beta distribution
 
    Cran, G. W., K. J. Martin and G. E. Thomas (1977).
    Remark AS R19 and Algorithm AS 109, Applied Statistics, 26(1), 111-114.
@@ -2604,7 +2575,7 @@ double InverseCDFBeta(double prob, double p, double q, double lnbeta)
    double a, adj, g, h, pp, prev=0, qq, r, s, t, tx=0, w, y, yprev;
    double acu, xinbta;
 
-   if(prob<0 || prob>1 || p<0 || q<0) error2("out of range in InverseCDFBeta");
+   if(prob<0 || prob>1 || p<0 || q<0) error2("out of range in QuantileBeta");
 
    /* define accuracy and initialize */
    xinbta = prob;
@@ -2697,7 +2668,7 @@ double InverseCDFBeta(double prob, double p, double q, double lnbeta)
       yprev = y;
    }
    if(!PAML_RELEASE) 
-      printf("\nInverseCDFBeta(%.2f, %.5f, %.5f) = %.6e\t%d rounds\n", 
+      printf("\nQuantileBeta(%.2f, %.5f, %.5f) = %.6e\t%d rounds\n", 
          prob,p,q, (swap_tail ? 1. - xinbta : xinbta), niterations);
 
    L_converged:
@@ -2705,20 +2676,20 @@ double InverseCDFBeta(double prob, double p, double q, double lnbeta)
 }
 
 
-static double prob_InverseCDF, *par_InverseCDF;
-static double (*cdf_InverseCDF)(double x,double par[]);
-double diff_InverseCDF(double x);
+static double prob_Quantile, *par_Quantile;
+static double (*cdf_Quantile)(double x,double par[]);
+double diff_Quantile(double x);
 
-double diff_InverseCDF(double x)
+double diff_Quantile(double x)
 {
 /* This is the difference between the given p and the CDF(x), the 
    objective function to be minimized.
 */
-   double px=(*cdf_InverseCDF)(x,par_InverseCDF);
-   return(square(prob_InverseCDF-px));
+   double px=(*cdf_Quantile)(x,par_Quantile);
+   return(square(prob_Quantile-px));
 }
 
-double InverseCDF(double(*cdf)(double x,double par[]),
+double Quantile(double(*cdf)(double x,double par[]),
        double p,double x,double par[],double xb[2])
 {
 /* Use x for initial value if in range
@@ -2727,9 +2698,9 @@ double InverseCDF(double(*cdf)(double x,double par[]),
    double sdiff,step=min2(0.05,(xb[1]-xb[0])/100), e=1e-15;
 
    noisy=0;
-   prob_InverseCDF=p;  par_InverseCDF=par; cdf_InverseCDF=cdf;
+   prob_Quantile=p;  par_Quantile=par; cdf_Quantile=cdf;
    if(x<=xb[0]||x>=xb[1]) x=.5;
-   LineSearch(diff_InverseCDF, &sdiff, &x, xb, step, e);
+   LineSearch(diff_Quantile, &sdiff, &x, xb, step, e);
    noisy=noisy0;
 
    return(x);
@@ -2740,28 +2711,28 @@ double InverseCDF(double(*cdf)(double x,double par[]),
 
 int GaussLegendreRule(double **x, double **w, int npoints)
 {
-/* this returns the Gauss-Legendre nodes and weights in x[] and w[].
+/* This returns the Gauss-Legendre nodes and weights in x[] and w[].
+   npoints = 10, 20, 32, 64, 128, 256, 512, 1024
 */
-   int status=0;
-   static double x10[]={0.148874338981631210884826001130, 0.433395394129247190799265943166,
-                        0.679409568299024406234327365115, 0.865063366688984510732096688423,
-                        0.973906528517171720077964012084};
-   static double w10[]={0.295524224714752870173892994651, 0.269266719309996355091226921569,
-                        0.219086362515982043995534934228, 0.149451349150580593145776339658,
-                        0.066671344308688137593568809893};
+   int status=0;   
+   static double x4[]  = {0.3399810435848562648026658, 0.8611363115940525752239465};
+   static double w4[]  = {0.6521451548625461426269361, 0.3478548451374538573730639};
 
-   static double x20[]={0.076526521133497333754640409399, 0.227785851141645078080496195369,
-                        0.373706088715419560672548177025, 0.510867001950827098004364050955,
-                        0.636053680726515025452836696226, 0.746331906460150792614305070356, 
-                        0.839116971822218823394529061702, 0.912234428251325905867752441203, 
-                        0.963971927277913791267666131197, 0.993128599185094924786122388471};
-   static double w20[]={0.152753387130725850698084331955, 0.149172986472603746787828737002, 
-                        0.142096109318382051329298325067, 0.131688638449176626898494499748, 
-                        0.118194531961518417312377377711, 0.101930119817240435036750135480, 
-                        0.083276741576704748724758143222, 0.062672048334109063569506535187, 
-                        0.040601429800386941331039952275, 0.017614007139152118311861962352};
+   static double x8[]  = {0.1834346424956498049394761, 0.5255324099163289858177390, 
+                         0.7966664774136267395915539, 0.9602898564975362316835609};
+   static double w8[]  = {0.3626837833783619829651504, 0.3137066458778872873379622, 
+                         0.2223810344533744705443560, 0.1012285362903762591525314};
 
-   static double x32[]={0.048307665687738316234812570441, 0.144471961582796493485186373599, 
+   static double x16[] = {0.0950125098376374401853193, 0.2816035507792589132304605, 
+                          0.4580167776572273863424194, 0.6178762444026437484466718, 
+                          0.7554044083550030338951012, 0.8656312023878317438804679, 
+                          0.9445750230732325760779884, 0.9894009349916499325961542};
+   static double w16[] = {0.1894506104550684962853967, 0.1826034150449235888667637, 
+                          0.1691565193950025381893121, 0.1495959888165767320815017, 
+                          0.1246289712555338720524763, 0.0951585116824927848099251, 
+                          0.0622535239386478928628438, 0.0271524594117540948517806};
+
+   static double x32[] = {0.048307665687738316234812570441, 0.144471961582796493485186373599, 
                         0.239287362252137074544603209166, 0.331868602282127649779916805730, 
                         0.421351276130635345364119436172, 0.506899908932229390023747474378, 
                         0.587715757240762329040745476402, 0.663044266930215200975115168663,
@@ -2769,7 +2740,7 @@ int GaussLegendreRule(double **x, double **w, int npoints)
                         0.849367613732569970133693004968, 0.896321155766052123965307243719, 
                         0.934906075937739689170919134835, 0.964762255587506430773811928118, 
                         0.985611511545268335400175044631, 0.997263861849481563544981128665};
-   static double w32[]={0.0965400885147278005667648300636, 0.0956387200792748594190820022041, 
+   static double w32[] = {0.0965400885147278005667648300636, 0.0956387200792748594190820022041, 
                         0.0938443990808045656391802376681, 0.0911738786957638847128685771116, 
                         0.0876520930044038111427714627518, 0.0833119242269467552221990746043, 
                         0.0781938957870703064717409188283, 0.0723457941088485062253993564785, 
@@ -2778,7 +2749,7 @@ int GaussLegendreRule(double **x, double **w, int npoints)
                         0.0342738629130214331026877322524, 0.0253920653092620594557525897892, 
                         0.0162743947309056706051705622064, 0.0070186100094700966004070637389};
 
-   static double x64[]={0.024350292663424432508955842854, 0.072993121787799039449542941940, 
+   static double x64[] = {0.024350292663424432508955842854, 0.072993121787799039449542941940, 
                         0.121462819296120554470376463492, 0.169644420423992818037313629748, 
                         0.217423643740007084149648748989, 0.264687162208767416373964172510, 
                         0.311322871990210956157512698560, 0.357220158337668115950442615046, 
@@ -2794,7 +2765,7 @@ int GaussLegendreRule(double **x, double **w, int npoints)
                         0.961008799652053718918614121897, 0.973326827789910963741853507352, 
                         0.983336253884625956931299302157, 0.991013371476744320739382383443, 
                         0.996340116771955279346924500676, 0.999305041735772139456905624346};
-   static double w64[]={0.0486909570091397203833653907347, 0.0485754674415034269347990667840, 
+   static double w64[] = {0.0486909570091397203833653907347, 0.0485754674415034269347990667840, 
                         0.0483447622348029571697695271580, 0.0479993885964583077281261798713,
                         0.0475401657148303086622822069442, 0.0469681828162100173253262857546, 
                         0.0462847965813144172959532492323, 0.0454916279274181444797709969713, 
@@ -2811,30 +2782,1004 @@ int GaussLegendreRule(double **x, double **w, int npoints)
                         0.0088467598263639477230309146597, 0.0065044579689783628561173604000, 
                         0.0041470332605624676352875357286, 0.0017832807216964329472960791450};
 
-   if(npoints==10)
-      { *x=x10;  *w=w10; }
-   else if(npoints==20)
-      { *x=x20;  *w=w20; }
-   else if(npoints==32)
-      { *x=x32;  *w=w32; }
-   else if(npoints==64)
-      { *x=x64;  *w=w64; }
-   else {
-      puts("use 10, 20, 32 or 64 nodes for legendre.");
-      status=-1;
+   static double x128[] = {0.0122236989606157641980521, 0.0366637909687334933302153, 
+                        0.0610819696041395681037870, 0.0854636405045154986364980, 
+                        0.1097942311276437466729747, 0.1340591994611877851175753, 
+                        0.1582440427142249339974755, 0.1823343059853371824103826, 
+                        0.2063155909020792171540580, 0.2301735642266599864109866, 
+                        0.2538939664226943208556180, 0.2774626201779044028062316, 
+                        0.3008654388776772026671541, 0.3240884350244133751832523, 
+                        0.3471177285976355084261628, 0.3699395553498590266165917, 
+                        0.3925402750332674427356482, 0.4149063795522750154922739, 
+                        0.4370245010371041629370429, 0.4588814198335521954490891, 
+                        0.4804640724041720258582757, 0.5017595591361444642896063, 
+                        0.5227551520511754784539479, 0.5434383024128103634441936, 
+                        0.5637966482266180839144308, 0.5838180216287630895500389, 
+                        0.6034904561585486242035732, 0.6228021939105849107615396, 
+                        0.6417416925623075571535249, 0.6602976322726460521059468, 
+                        0.6784589224477192593677557, 0.6962147083695143323850866, 
+                        0.7135543776835874133438599, 0.7304675667419088064717369, 
+                        0.7469441667970619811698824, 0.7629743300440947227797691, 
+                        0.7785484755064119668504941, 0.7936572947621932902433329, 
+                        0.8082917575079136601196422, 0.8224431169556438424645942, 
+                        0.8361029150609068471168753, 0.8492629875779689691636001, 
+                        0.8619154689395484605906323, 0.8740527969580317986954180, 
+                        0.8856677173453972174082924, 0.8967532880491581843864474, 
+                        0.9073028834017568139214859, 0.9173101980809605370364836, 
+                        0.9267692508789478433346245, 0.9356743882779163757831268, 
+                        0.9440202878302201821211114, 0.9518019613412643862177963, 
+                        0.9590147578536999280989185, 0.9656543664319652686458290, 
+                        0.9717168187471365809043384, 0.9771984914639073871653744, 
+                        0.9820961084357185360247656, 0.9864067427245862088712355, 
+                        0.9901278184917343833379303, 0.9932571129002129353034372, 
+                        0.9957927585349811868641612, 0.9977332486255140198821574, 
+                        0.9990774599773758950119878, 0.9998248879471319144736081};
+  static double w128[]  =  {0.0244461801962625182113259, 0.0244315690978500450548486, 
+                        0.0244023556338495820932980, 0.0243585572646906258532685, 
+                        0.0243002001679718653234426, 0.0242273192228152481200933, 
+                        0.0241399579890192849977167, 0.0240381686810240526375873, 
+                        0.0239220121367034556724504, 0.0237915577810034006387807, 
+                        0.0236468835844476151436514, 0.0234880760165359131530253, 
+                        0.0233152299940627601224157, 0.0231284488243870278792979, 
+                        0.0229278441436868469204110, 0.0227135358502364613097126, 
+                        0.0224856520327449668718246, 0.0222443288937997651046291, 
+                        0.0219897106684604914341221, 0.0217219495380520753752610, 
+                        0.0214412055392084601371119, 0.0211476464682213485370195, 
+                        0.0208414477807511491135839, 0.0205227924869600694322850, 
+                        0.0201918710421300411806732, 0.0198488812328308622199444, 
+                        0.0194940280587066028230219, 0.0191275236099509454865185, 
+                        0.0187495869405447086509195, 0.0183604439373313432212893, 
+                        0.0179603271850086859401969, 0.0175494758271177046487069, 
+                        0.0171281354231113768306810, 0.0166965578015892045890915, 
+                        0.0162550009097851870516575, 0.0158037286593993468589656, 
+                        0.0153430107688651440859909, 0.0148731226021473142523855, 
+                        0.0143943450041668461768239, 0.0139069641329519852442880, 
+                        0.0134112712886163323144890, 0.0129075627392673472204428, 
+                        0.0123961395439509229688217, 0.0118773073727402795758911, 
+                        0.0113513763240804166932817, 0.0108186607395030762476596, 
+                        0.0102794790158321571332153, 0.0097341534150068058635483, 
+                        0.0091830098716608743344787, 0.0086263777986167497049788, 
+                        0.0080645898904860579729286, 0.0074979819256347286876720, 
+                        0.0069268925668988135634267, 0.0063516631617071887872143, 
+                        0.0057726375428656985893346, 0.0051901618326763302050708, 
+                        0.0046045842567029551182905, 0.0040162549837386423131943, 
+                        0.0034255260409102157743378, 0.0028327514714579910952857, 
+                        0.0022382884309626187436221, 0.0016425030186690295387909, 
+                        0.0010458126793403487793129, 0.0004493809602920903763943};
+
+   static double x256[]  =  {0.0061239123751895295011702, 0.0183708184788136651179263, 
+                        0.0306149687799790293662786, 0.0428545265363790983812423, 
+                        0.0550876556946339841045614, 0.0673125211657164002422903, 
+                        0.0795272891002329659032271, 0.0917301271635195520311456, 
+                        0.1039192048105094036391969, 0.1160926935603328049407349, 
+                        0.1282487672706070947420496, 0.1403856024113758859130249, 
+                        0.1525013783386563953746068, 0.1645942775675538498292845, 
+                        0.1766624860449019974037218, 0.1887041934213888264615036, 
+                        0.2007175933231266700680007, 0.2127008836226259579370402, 
+                        0.2246522667091319671478783, 0.2365699497582840184775084, 
+                        0.2484521450010566668332427, 0.2602970699919425419785609, 
+                        0.2721029478763366095052447, 0.2838680076570817417997658, 
+                        0.2955904844601356145637868, 0.3072686197993190762586103, 
+                        0.3189006618401062756316834, 0.3304848656624169762291870, 
+                        0.3420194935223716364807297, 0.3535028151129699895377902, 
+                        0.3649331078236540185334649, 0.3763086569987163902830557, 
+                        0.3876277561945155836379846, 0.3988887074354591277134632, 
+                        0.4100898214687165500064336, 0.4212294180176238249768124, 
+                        0.4323058260337413099534411, 0.4433173839475273572169258, 
+                        0.4542624399175899987744552, 0.4651393520784793136455705, 
+                        0.4759464887869833063907375, 0.4866822288668903501036214, 
+                        0.4973449618521814771195124, 0.5079330882286160362319249, 
+                        0.5184450196736744762216617, 0.5288791792948222619514764, 
+                        0.5392340018660591811279362, 0.5495079340627185570424269, 
+                        0.5596994346944811451369074, 0.5698069749365687590576675, 
+                        0.5798290385590829449218317, 0.5897641221544543007857861, 
+                        0.5996107353629683217303882, 0.6093674010963339395223108, 
+                        0.6190326557592612194309676, 0.6286050494690149754322099, 
+                        0.6380831462729113686686886, 0.6474655243637248626170162, 
+                        0.6567507762929732218875002, 0.6659375091820485599064084, 
+                        0.6750243449311627638559187, 0.6840099204260759531248771, 
+                        0.6928928877425769601053416, 0.7016719143486851594060835, 
+                        0.7103456833045433133945663, 0.7189128934599714483726399, 
+                        0.7273722596496521265868944, 0.7357225128859178346203729, 
+                        0.7439624005491115684556831, 0.7520906865754920595875297, 
+                        0.7601061516426554549419068, 0.7680075933524456359758906, 
+                        0.7757938264113257391320526, 0.7834636828081838207506702, 
+                        0.7910160119895459945467075, 0.7984496810321707587825429, 
+                        0.8057635748129986232573891, 0.8129565961764315431364104, 
+                        0.8200276660989170674034781, 0.8269757238508125142890929, 
+                        0.8337997271555048943484439, 0.8404986523457627138950680, 
+                        0.8470714945172962071870724, 0.8535172676795029650730355, 
+                        0.8598350049033763506961731, 0.8660237584665545192975154, 
+                        0.8720825999954882891300459, 0.8780106206047065439864349, 
+                        0.8838069310331582848598262, 0.8894706617776108888286766, 
+                        0.8950009632230845774412228, 0.9003970057703035447716200, 
+                        0.9056579799601446470826819, 0.9107830965950650118909072, 
+                        0.9157715868574903845266696, 0.9206227024251464955050471, 
+                        0.9253357155833162028727303, 0.9299099193340056411802456, 
+                        0.9343446275020030942924765, 0.9386391748378148049819261, 
+                        0.9427929171174624431830761, 0.9468052312391274813720517, 
+                        0.9506755153166282763638521, 0.9544031887697162417644479, 
+                        0.9579876924111781293657904, 0.9614284885307321440064075, 
+                        0.9647250609757064309326123, 0.9678769152284894549090038, 
+                        0.9708835784807430293209233, 0.9737445997043704052660786, 
+                        0.9764595497192341556210107, 0.9790280212576220388242380, 
+                        0.9814496290254644057693031, 0.9837240097603154961666861, 
+                        0.9858508222861259564792451, 0.9878297475648606089164877, 
+                        0.9896604887450652183192437, 0.9913427712075830869221885, 
+                        0.9928763426088221171435338, 0.9942609729224096649628775, 
+                        0.9954964544810963565926471, 0.9965826020233815404305044, 
+                        0.9975192527567208275634088, 0.9983062664730064440555005, 
+                        0.9989435258434088565550263, 0.9994309374662614082408542, 
+                        0.9997684374092631861048786, 0.9999560500189922307348012};
+   static double w256[]  =  {0.0122476716402897559040703, 0.0122458343697479201424639, 
+                        0.0122421601042728007697281, 0.0122366493950401581092426, 
+                        0.0122293030687102789041463, 0.0122201222273039691917087, 
+                        0.0122091082480372404075141, 0.0121962627831147135181810, 
+                        0.0121815877594817721740476, 0.0121650853785355020613073, 
+                        0.0121467581157944598155598, 0.0121266087205273210347185, 
+                        0.0121046402153404630977578, 0.0120808558957245446559752, 
+                        0.0120552593295601498143471, 0.0120278543565825711612675, 
+                        0.0119986450878058119345367, 0.0119676359049058937290073, 
+                        0.0119348314595635622558732, 0.0119002366727664897542872, 
+                        0.0118638567340710787319046, 0.0118256971008239777711607, 
+                        0.0117857634973434261816901, 0.0117440619140605503053767, 
+                        0.0117005986066207402881898, 0.0116553800949452421212989, 
+                        0.0116084131622531057220847, 0.0115597048540436357726687, 
+                        0.0115092624770394979585864, 0.0114570935980906391523344, 
+                        0.0114032060430391859648471, 0.0113476078955454919416257, 
+                        0.0112903074958755095083676, 0.0112313134396496685726568, 
+                        0.0111706345765534494627109, 0.0111082800090098436304608, 
+                        0.0110442590908139012635176, 0.0109785814257295706379882, 
+                        0.0109112568660490397007968, 0.0108422955111147959952935, 
+                        0.0107717077058046266366536, 0.0106995040389797856030482, 
+                        0.0106256953418965611339617, 0.0105502926865814815175336, 
+                        0.0104733073841704030035696, 0.0103947509832117289971017, 
+                        0.0103146352679340150682607, 0.0102329722564782196569549, 
+                        0.0101497741990948656546341, 0.0100650535763063833094610, 
+                        0.0099788230970349101247339, 0.0098910956966958286026307, 
+                        0.0098018845352573278254988, 0.0097112029952662799642497, 
+                        0.0096190646798407278571622, 0.0095254834106292848118297, 
+                        0.0094304732257377527473528, 0.0093340483776232697124660, 
+                        0.0092362233309563026873787, 0.0091370127604508064020005, 
+                        0.0090364315486628736802278, 0.0089344947837582075484084, 
+                        0.0088312177572487500253183, 0.0087266159616988071403366, 
+                        0.0086207050884010143053688, 0.0085135010250224906938384, 
+                        0.0084050198532215357561803, 0.0082952778462352254251714, 
+                        0.0081842914664382699356198, 0.0080720773628734995009470, 
+                        0.0079586523687543483536132, 0.0078440334989397118668103, 
+                        0.0077282379473815556311102, 0.0076112830845456594616187, 
+                        0.0074931864548058833585998, 0.0073739657738123464375724, 
+                        0.0072536389258339137838291, 0.0071322239610753900716724, 
+                        0.0070097390929698226212344, 0.0068862026954463203467133, 
+                        0.0067616333001737987809279, 0.0066360495937810650445900, 
+                        0.0065094704150536602678099, 0.0063819147521078805703752, 
+                        0.0062534017395424012720636, 0.0061239506555679325423891, 
+                        0.0059935809191153382211277, 0.0058623120869226530606616, 
+                        0.0057301638506014371773844, 0.0055971560336829100775514, 
+                        0.0054633085886443102775705, 0.0053286415939159303170811, 
+                        0.0051931752508692809303288, 0.0050569298807868423875578, 
+                        0.0049199259218138656695588, 0.0047821839258926913729317, 
+                        0.0046437245556800603139791, 0.0045045685814478970686418, 
+                        0.0043647368779680566815684, 0.0042242504213815362723565, 
+                        0.0040831302860526684085998, 0.0039413976414088336277290, 
+                        0.0037990737487662579981170, 0.0036561799581425021693892, 
+                        0.0035127377050563073309711, 0.0033687685073155510120191, 
+                        0.0032242939617941981570107, 0.0030793357411993375832054, 
+                        0.0029339155908297166460123, 0.0027880553253277068805748, 
+                        0.0026417768254274905641208, 0.0024951020347037068508395, 
+                        0.0023480529563273120170065, 0.0022006516498399104996849, 
+                        0.0020529202279661431745488, 0.0019048808534997184044191, 
+                        0.0017565557363307299936069, 0.0016079671307493272424499, 
+                        0.0014591373333107332010884, 0.0013100886819025044578317, 
+                        0.0011608435575677247239706, 0.0010114243932084404526058, 
+                        0.0008618537014200890378141, 0.0007121541634733206669090, 
+                        0.0005623489540314098028152, 0.0004124632544261763284322, 
+                        0.0002625349442964459062875, 0.0001127890178222721755125};
+
+   static double x512[]  =  {0.0030649621851593961529232, 0.0091947713864329108047442, 
+                        0.0153242350848981855249677, 0.0214531229597748745137841, 
+                        0.0275812047119197840615246, 0.0337082500724805951232271, 
+                        0.0398340288115484476830396, 0.0459583107468090617788760, 
+                        0.0520808657521920701127271, 0.0582014637665182372392330, 
+                        0.0643198748021442404045319, 0.0704358689536046871990309, 
+                        0.0765492164062510452915674, 0.0826596874448871596284651, 
+                        0.0887670524624010326092165, 0.0948710819683925428909483, 
+                        0.1009715465977967786264323, 0.1070682171195026611052004, 
+                        0.1131608644449665349442888, 0.1192492596368204011642726, 
+                        0.1253331739174744696875513, 0.1314123786777137080093018, 
+                        0.1374866454852880630171099, 0.1435557460934960331730353, 
+                        0.1496194524497612685217272, 0.1556775367042018762501969, 
+                        0.1617297712181921097989489, 0.1677759285729161198103670, 
+                        0.1738157815779134454985394, 0.1798491032796159253350647, 
+                        0.1858756669698757062678115, 0.1918952461944840310240859, 
+                        0.1979076147616804833961808, 0.2039125467506523717658375, 
+                        0.2099098165200239314947094, 0.2158991987163350271904893, 
+                        0.2218804682825090362529109, 0.2278534004663095955103621, 
+                        0.2338177708287858931763260, 0.2397733552527061887852891, 
+                        0.2457199299509792442100997, 0.2516572714750633493170137, 
+                        0.2575851567233626262808095, 0.2635033629496102970603704, 
+                        0.2694116677712385990250046, 0.2753098491777350342234845, 
+                        0.2811976855389846383013106, 0.2870749556135979555970354, 
+                        0.2929414385572244074855835, 0.2987969139308507415853707, 
+                        0.3046411617090842500066247, 0.3104739622884204453906292, 
+                        0.3162950964954948840736281, 0.3221043455953188263048133, 
+                        0.3279014912994984240551598, 0.3336863157744371275728377, 
+                        0.3394586016495210024715049, 0.3452181320252866497799379, 
+                        0.3509646904815714220351686, 0.3566980610856456291665404, 
+                        0.3624180284003264285948478, 0.3681243774920730946589582, 
+                        0.3738168939390633631820054, 0.3794953638392505477003659, 
+                        0.3851595738184011246011504, 0.3908093110381124851478484, 
+                        0.3964443632038105531190080, 0.4020645185727269675414064, 
+                        0.4076695659618555307670286, 0.4132592947558876229222955, 
+                        0.4188334949151262845483445, 0.4243919569833786700527309, 
+                        0.4299344720958265754056529, 0.4354608319868747443376920, 
+                        0.4409708289979766581310498, 0.4464642560854375149423431, 
+                        0.4519409068281941054521446, 0.4574005754355712925046003, 
+                        0.4628430567550148032795831, 0.4682681462798000434299255, 
+                        0.4736756401567166435172692, 0.4790653351937284489919577, 
+                        0.4844370288676086658851277, 0.4897905193315498753147078, 
+                        0.4951256054227486308513615, 0.5004420866699643537454866, 
+                        0.5057397633010522419821678, 0.5110184362504699101074361, 
+                        0.5162779071667574777562819, 0.5215179784199908258105606, 
+                        0.5267384531092077401231844, 0.5319391350698066637637706, 
+                        0.5371198288809177797701793, 0.5422803398727461474300859, 
+                        0.5474204741338866161668468, 0.5525400385186102421644070, 
+                        0.5576388406541219339368088, 0.5627166889477890541289656, 
+                        0.5677733925943407059267120, 0.5728087615830374335557009, 
+                        0.5778226067048110674604360, 0.5828147395593744458765762, 
+                        0.5877849725623007456415722, 0.5927331189520721562306608, 
+                        0.5976589927970976321572046, 0.6025624090026994600382737, 
+                        0.6074431833180683777981926, 0.6123011323431869846644595, 
+                        0.6171360735357211818019505, 0.6219478252178793846326095, 
+                        0.6267362065832392490988318, 0.6315010377035416553494506, 
+                        0.6362421395354516935575740, 0.6409593339272863978194482, 
+                        0.6456524436257089753330001, 0.6503212922823892793136899, 
+                        0.6549657044606302753737317, 0.6595855056419602523685720, 
+                        0.6641805222326905300017078, 0.6687505815704384167754210, 
+                        0.6732955119306151731807642, 0.6778151425328787363350998, 
+                        0.6823093035475509635996236, 0.6867778261019991540425409, 
+                        0.6912205422869816079558685, 0.6956372851629569859851427, 
+                        0.7000278887663572307915895, 0.7043921881158238155354902, 
+                        0.7087300192184070848475163, 0.7130412190757284553416507, 
+                        0.7173256256901052441189100, 0.7215830780706378951153816, 
+                        0.7258134162392593745610389, 0.7300164812367465082373380, 
+                        0.7341921151286930346516885, 0.7383401610114441496854630, 
+                        0.7424604630179923197192207, 0.7465528663238341416942072, 
+                        0.7506172171527880300329109, 0.7546533627827725118134392, 
+                        0.7586611515515449130726824, 0.7626404328624002206015913, 
+                        0.7665910571898299050923647, 0.7705128760851404930018538, 
+                        0.7744057421820316760079998, 0.7782695092021337484565606, 
+                        0.7821040319605041647237048, 0.7859091663710830099561901, 
+                        0.7896847694521071791947507, 0.7934306993314830614379285, 
+                        0.7971468152521175267628422, 0.8008329775772070161862372, 
+                        0.8044890477954845355235412, 0.8081148885264243560855026, 
+                        0.8117103635254042266412553, 0.8152753376888249026732770, 
+                        0.8188096770591868005536242, 0.8223132488301235858819787, 
+                        0.8257859213513925068443721, 0.8292275641338212850768968, 
+                        0.8326380478542113781512150, 0.8360172443601974294381733, 
+                        0.8393650266750627227522641, 0.8426812690025104608329811, 
+                        0.8459658467313906883792422, 0.8492186364403826820199251, 
+                        0.8524395159026326312771384, 0.8556283640903464362590494, 
+                        0.8587850611793374495058711, 0.8619094885535289911058997, 
+                        0.8650015288094114678982387, 0.8680610657604539292849800, 
+                        0.8710879844414698938880857, 0.8740821711129372830049576, 
+                        0.8770435132652722985416439, 0.8799718996230570848337538, 
+                        0.8828672201492210155023745, 0.8857293660491754482355527, 
+                        0.8885582297749017921351663, 0.8913537050289927340242104, 
+                        0.8941156867686464718706125, 0.8968440712096138052506156, 
+                        0.8995387558300979345474886, 0.9021996393746068223597927, 
+                        0.9048266218577579723776075, 0.9074196045680354827749729, 
+                        0.9099784900714992329623006, 0.9125031822154460643436214, 
+                        0.9149935861320228175302595, 0.9174496082417910902748409, 
+                        0.9198711562572435822074657, 0.9222581391862718942794141, 
+                        0.9246104673355856526489486, 0.9269280523140828285786768, 
+                        0.9292108070361711277546193, 0.9314586457250403242837002, 
+                        0.9336714839158854164789745, 0.9358492384590804834007204, 
+                        0.9379918275233031229867813, 0.9400991705986093544775539, 
+                        0.9421711884994588697201555, 0.9442078033676905198230562, 
+                        0.9462089386754479255274304, 0.9481745192280551015654245, 
+                        0.9501044711668419871894147, 0.9519987219719197769813274, 
+                        0.9538572004649059479887372, 0.9556798368115988811866200, 
+                        0.9574665625246019772327448, 0.9592173104658971684737507, 
+                        0.9609320148493677311718534, 0.9626106112432703039637754, 
+                        0.9642530365726560206402068, 0.9658592291217406674540047, 
+                        0.9674291285362237773389233, 0.9689626758255565756615864, 
+                        0.9704598133651586944555050, 0.9719204848985835745206522, 
+                        0.9733446355396324773464471, 0.9747322117744170315712560, 
+                        0.9760831614633702416830300, 0.9773974338432058899681861, 
+                        0.9786749795288262664309572, 0.9799157505151781656726285, 
+                        0.9811197001790570947322311, 0.9822867832808596419166429, 
+                        0.9834169559662839640681455, 0.9845101757679783590716126, 
+                        0.9855664016071379024692622, 0.9865855937950491429603684, 
+                        0.9875677140345828729848910, 0.9885127254216350200148487, 
+                        0.9894205924465157453777048, 0.9902912809952868962106899, 
+                        0.9911247583510480415528399, 0.9919209931951714500244370, 
+                        0.9926799556084865573546763, 0.9934016170724147657859271, 
+                        0.9940859504700558793702825, 0.9947329300872282225027936, 
+                        0.9953425316134657151476031, 0.9959147321429772566997088, 
+                        0.9964495101755774022837600, 0.9969468456176038804367370, 
+                        0.9974067197828498321611183, 0.9978291153935628466036470, 
+                        0.9982140165816127953876923, 0.9985614088900397275573677, 
+                        0.9988712792754494246541769, 0.9991436161123782382453400, 
+                        0.9993784092025992514480161, 0.9995756497983108555936109, 
+                        0.9997353306710426625827368, 0.9998574463699794385446275, 
+                        0.9999419946068456536361287, 0.9999889909843818679872841};
+   static double w512[] = {0.0061299051754057857591564, 0.0061296748380364986664278, 
+                        0.0061292141719530834395471, 0.0061285231944655327693402, 
+                        0.0061276019315380226384508, 0.0061264504177879366912426, 
+                        0.0061250686964845654506976, 0.0061234568195474804311878, 
+                        0.0061216148475445832082156, 0.0061195428496898295184288, 
+                        0.0061172409038406284754329, 0.0061147090964949169991245, 
+                        0.0061119475227879095684795, 0.0061089562864885234199252, 
+                        0.0061057354999954793256260, 0.0061022852843330780981965, 
+                        0.0060986057691466529805468, 0.0060946970926976980917399, 
+                        0.0060905594018586731119147, 0.0060861928521074844014940, 
+                        0.0060815976075216427620556, 0.0060767738407720980583934, 
+                        0.0060717217331167509334394, 0.0060664414743936418598512, 
+                        0.0060609332630138177841916, 0.0060551973059538766317450, 
+                        0.0060492338187481899521175, 0.0060430430254808039978627, 
+                        0.0060366251587770195404584, 0.0060299804597946507400317, 
+                        0.0060231091782149633972884, 0.0060160115722332929281516, 
+                        0.0060086879085493424136484, 0.0060011384623571610896056, 
+                        0.0059933635173348036527221, 0.0059853633656336707715812, 
+                        0.0059771383078675312031423, 0.0059686886531012259272183, 
+                        0.0059600147188390547233923, 0.0059511168310128456267588, 
+                        0.0059419953239697077107922, 0.0059326505404594676575446, 
+                        0.0059230828316217905872556, 0.0059132925569729856313229, 
+                        0.0059032800843924967444267, 0.0058930457901090792634301, 
+                        0.0058825900586866627324847, 0.0058719132830099005255609, 
+                        0.0058610158642694068093892, 0.0058498982119466814015496, 
+                        0.0058385607437987230901727, 0.0058270038858423319934219, 
+                        0.0058152280723381015486124, 0.0058032337457741007324836, 
+                        0.0057910213568492471257818, 0.0057785913644563714469284, 
+                        0.0057659442356649741911390, 0.0057530804457036750229319, 
+                        0.0057400004779423555815070, 0.0057267048238739963699973, 
+                        0.0057131939830962084110906, 0.0056994684632924603629882, 
+                        0.0056855287802130018011102, 0.0056713754576554833823756, 
+                        0.0056570090274452746202723, 0.0056424300294154800102991, 
+                        0.0056276390113866542566918, 0.0056126365291462173626557, 
+                        0.0055974231464275703576030, 0.0055819994348889124461425, 
+                        0.0055663659740917603747899, 0.0055505233514791708235538, 
+                        0.0055344721623536666407146, 0.0055182130098548677502395, 
+                        0.0055017465049368275723757, 0.0054850732663450758090285, 
+                        0.0054681939205933684565648, 0.0054511091019401459196852, 
+                        0.0054338194523647001109732, 0.0054163256215430514316688, 
+                        0.0053986282668235365401123, 0.0053807280532021078251738, 
+                        0.0053626256532973455128155, 0.0053443217473251833447318, 
+                        0.0053258170230733487787774, 0.0053071121758755186716175, 
+                        0.0052882079085851914147269, 0.0052691049315492765055207, 
+                        0.0052498039625814025460136, 0.0052303057269349446719890, 
+                        0.0052106109572757724261988, 0.0051907203936547190996206, 
+                        0.0051706347834797735752665, 0.0051503548814879957194620, 
+                        0.0051298814497171563759039, 0.0051092152574771030281542, 
+                        0.0050883570813208522065339, 0.0050673077050154097256505, 
+                        0.0050460679195123198490183, 0.0050246385229179444874178, 
+                        0.0050030203204634735477834, 0.0049812141244746675595135, 
+                        0.0049592207543413337151533, 0.0049370410364865364724225, 
+                        0.0049146758043355438745290, 0.0048921258982845107556462, 
+                        0.0048693921656689000083132, 0.0048464754607316430993636, 
+                        0.0048233766445910410307843, 0.0048000965852084069516609, 
+                        0.0047766361573554516370718, 0.0047529962425814130594576, 
+                        0.0047291777291799312876071, 0.0047051815121556699579709, 
+                        0.0046810084931906855725376, 0.0046566595806105458869828, 
+                        0.0046321356893501986622283, 0.0046074377409195920619320, 
+                        0.0045825666633690479877601, 0.0045575233912543896535753, 
+                        0.0045323088656018247089130, 0.0045069240338725852313010, 
+                        0.0044813698499273259161146, 0.0044556472739902818017469, 
+                        0.0044297572726131868769073, 0.0044037008186389549258496, 
+                        0.0043774788911651239762643, 0.0043510924755070657234522, 
+                        0.0043245425631609613132305, 0.0042978301517665448748000, 
+                        0.0042709562450696162035304, 0.0042439218528843240022977, 
+                        0.0042167279910552210986262, 0.0041893756814190930634598, 
+                        0.0041618659517665616659011, 0.0041341998358034646067195, 
+                        0.0041063783731120129818357, 0.0040784026091117279353449, 
+                        0.0040502735950201579699371, 0.0040219923878133783908191, 
+                        0.0039935600501862743674273, 0.0039649776505126091053562, 
+                        0.0039362462628048786290012, 0.0039073669666739546834366, 
+                        0.0038783408472885172720108, 0.0038491689953342783540510, 
+                        0.0038198525069729982349166, 0.0037903924838012961884344, 
+                        0.0037607900328092568594835, 0.0037310462663388340021755, 
+                        0.0037011623020420531166926, 0.0036711392628390145554094, 
+                        0.0036409782768756986764252, 0.0036106804774815746300758, 
+                        0.0035802470031270143713799, 0.0035496789973805134987000, 
+                        0.0035189776088657205261605, 0.0034881439912182762045767, 
+                        0.0034571793030424645127888, 0.0034260847078676769483860, 
+                        0.0033948613741046917538288, 0.0033635104750017697209450, 
+                        0.0033320331886005682236783, 0.0033004306976918751358177, 
+                        0.0032687041897711642972145, 0.0032368548569939741987234, 
+                        0.0032048838961311115627642, 0.0031727925085236815030060, 
+                        0.0031405819000379459532169, 0.0031082532810200120618074, 
+                        0.0030758078662503522550163, 0.0030432468748981576780527, 
+                        0.0030105715304755267298129, 0.0029777830607914904130339, 
+                        0.0029448826979058762279357, 0.0029118716780830123435331, 
+                        0.0028787512417452737868732, 0.0028455226334264723964728, 
+                        0.0028121871017250922921949, 0.0027787458992573726197173, 
+                        0.0027452002826102393336092, 0.0027115515122940877888456, 
+                        0.0026778008526954179163600, 0.0026439495720293237639656, 
+                        0.0026099989422918391896635, 0.0025759502392121415000167, 
+                        0.0025418047422046148318992, 0.0025075637343207750815413, 
+                        0.0024732285022010581903898, 0.0024388003360264736029032, 
+                        0.0024042805294701247170072, 0.0023696703796485981535706, 
+                        0.0023349711870732236769383, 0.0023001842556012066042973, 
+                        0.0022653108923866345474810, 0.0022303524078313603367724, 
+                        0.0021953101155357629823745, 0.0021601853322493885355395, 
+                        0.0021249793778214727179358, 0.0020896935751513471947536, 
+                        0.0020543292501387313744068, 0.0020188877316339116255770, 
+                        0.0019833703513878098109153, 0.0019477784440019430461334, 
+                        0.0019121133468782766036998, 0.0018763764001689718921795, 
+                        0.0018405689467260314557679, 0.0018046923320508429542037, 
+                        0.0017687479042436241015783, 0.0017327370139527705642995, 
+                        0.0016966610143241088445575, 0.0016605212609500562072903, 
+                        0.0016243191118186897474239, 0.0015880559272627267421479, 
+                        0.0015517330699084184928942, 0.0015153519046243599371387, 
+                        0.0014789137984702174059640, 0.0014424201206453770259886, 
+                        0.0014058722424375164225552, 0.0013692715371711025869345, 
+                        0.0013326193801558190401403, 0.0012959171486349257824991, 
+                        0.0012591662217335559930561, 0.0012223679804069540808915, 
+                        0.0011855238073886605549070, 0.0011486350871386503607080, 
+                        0.0011117032057914329649653, 0.0010747295511041247428251, 
+                        0.0010377155124045074300544, 0.0010006624805390909706032, 
+                        0.0009635718478212056798501, 0.0009264450079791582697455, 
+                        0.0008892833561045005372012, 0.0008520882886004809402792, 
+                        0.0008148612031307819965602, 0.0007776034985686972438014, 
+                        0.0007403165749469818962867, 0.0007030018334087411433900, 
+                        0.0006656606761599343409382, 0.0006282945064244358390880, 
+                        0.0005909047284032230162400, 0.0005534927472403894647847, 
+                        0.0005160599690007674370993, 0.0004786078006679509066920, 
+                        0.0004411376501795405636493, 0.0004036509265333198797447, 
+                        0.0003661490400356268530141, 0.0003286334028523334162522, 
+                        0.0002911054302514885125319, 0.0002535665435705865135866, 
+                        0.0002160181779769908583388, 0.0001784618055459532946077, 
+                        0.0001408990173881984930124, 0.0001033319034969132362968, 
+                        0.0000657657316592401958310, 0.0000282526373739346920387};
+
+   static double x1024[] = {0.0015332313560626384065387, 0.0045996796509132604743248, 
+                        0.0076660846940754867627839, 0.0107324176515422803327458, 
+                        0.0137986496899844401539048, 0.0168647519770217265449962, 
+                        0.0199306956814939776907024, 0.0229964519737322146859283, 
+                        0.0260619920258297325581921, 0.0291272870119131747190088, 
+                        0.0321923081084135882953009, 0.0352570264943374577920498, 
+                        0.0383214133515377145376052, 0.0413854398649847193632977, 
+                        0.0444490772230372159692514, 0.0475122966177132524285687, 
+                        0.0505750692449610682823599, 0.0536373663049299446784129, 
+                        0.0566991590022410150066456, 0.0597604185462580334848567, 
+                        0.0628211161513580991486838, 0.0658812230372023327000985, 
+                        0.0689407104290065036692117, 0.0719995495578116053446277, 
+                        0.0750577116607543749280791, 0.0781151679813377563695878, 
+                        0.0811718897697013033399379, 0.0842278482828915197978074, 
+                        0.0872830147851321356094940, 0.0903373605480943146797811, 
+                        0.0933908568511667930531222, 0.0964434749817259444449839, 
+                        0.0994951862354057706638682, 0.1025459619163678143852404, 
+                        0.1055957733375709917393206, 0.1086445918210413421754502, 
+                        0.1116923886981416930665228, 0.1147391353098412365177689, 
+                        0.1177848030069850158450139, 0.1208293631505633191883714, 
+                        0.1238727871119809777282145, 0.1269150462733265659711591, 
+                        0.1299561120276415015747167, 0.1329959557791890421802183, 
+                        0.1360345489437231767245806, 0.1390718629487574087024745, 
+                        0.1421078692338334288514767, 0.1451425392507896747338214, 
+                        0.1481758444640297746894331, 0.1512077563507908736360111, 
+                        0.1542382464014118381930443, 0.1572672861196013386077717, 
+                        0.1602948470227058049622614, 0.1633209006419772551419632, 
+                        0.1663454185228409920472972, 0.1693683722251631675310675, 
+                        0.1723897333235182105457458, 0.1754094734074561169859457, 
+                        0.1784275640817695987127083, 0.1814439769667610892475458, 
+                        0.1844586836985096036255346, 0.1874716559291374498981239, 
+                        0.1904828653270767897777182, 0.1934922835773360459175133, 
+                        0.1964998823817661533215037, 0.1995056334593266523810493, 
+                        0.2025095085463516210358758, 0.2055114793968154435588961, 
+                        0.2085115177825984134657778, 0.2115095954937521680517391, 
+                        0.2145056843387649520596422, 0.2174997561448267079850562, 
+                        0.2204917827580939905255947, 0.2234817360439547026834844, 
+                        0.2264695878872926510320010, 0.2294553101927519176581055, 
+                        0.2324388748850010462953415, 0.2354202539089970401627982, 
+                        0.2383994192302491690277166, 0.2413763428350825830111093, 
+                        0.2443509967309017306575811, 0.2473233529464535787923793, 
+                        0.2502933835320906316905658, 0.2532610605600337470850902, 
+                        0.2562263561246347465424530, 0.2591892423426388177365829, 
+                        0.2621496913534467061535080, 0.2651076753193766937613805, 
+                        0.2680631664259263621824189, 0.2710161368820341379053566, 
+                        0.2739665589203406170790369, 0.2769144047974496674298651, 
+                        0.2798596467941893048479266, 0.2828022572158723421886958, 
+                        0.2857422083925568078394062, 0.2886794726793061316013119, 
+                        0.2916140224564490954412652, 0.2945458301298395466682397, 
+                        0.2974748681311158710926665, 0.3004011089179602237287060, 
+                        0.3033245249743575146018584, 0.3062450888108541472266190, 
+                        0.3091627729648165073212094, 0.3120775500006891993287636, 
+                        0.3149893925102530283167230, 0.3178982731128827248285835, 
+                        0.3208041644558044102645582, 0.3237070392143528003701590, 
+                        0.3266068700922281444141618, 0.3295036298217528976399056, 
+                        0.3323972911641281245763845, 0.3352878269096896307981228, 
+                        0.3381752098781638207253743, 0.3410594129189232790587667, 
+                        0.3439404089112420734451077, 0.3468181707645507759736923, 
+                        0.3496926714186912011050938, 0.3525638838441708576370887, 
+                        0.3554317810424171123150528, 0.3582963360460310626968790, 
+                        0.3611575219190411168852009, 0.3640153117571562777424605, 
+                        0.3668696786880191292071420, 0.3697205958714585223322883, 
+                        0.3725680364997419586702471, 0.3754119737978276686304337, 
+                        0.3782523810236163824397703, 0.3810892314682027913383487, 
+                        0.3839224984561266966457784, 0.3867521553456238443366159, 
+                        0.3895781755288764427662286, 0.3924005324322633611914264, 
+                        0.3952191995166100067331951, 0.3980341502774378774318886, 
+                        0.4008453582452137890482864, 0.4036527969855987732669841, 
+                        0.4064564400996966449616823, 0.4092562612243022361850445, 
+                        0.4120522340321492945489319, 0.4148443322321580436639788, 
+                        0.4176325295696824033106488, 0.4204167998267568670171117, 
+                        0.4231971168223430347225035, 0.4259734544125757982073747, 
+                        0.4287457864910091769763965, 0.4315140869888618022816824, 
+                        0.4342783298752620469783905, 0.4370384891574927989076034, 
+                        0.4397945388812358755048319, 0.4425464531308160773358662, 
+                        0.4452942060294448782650898, 0.4480377717394637499647905, 
+                        0.4507771244625871184774399, 0.4535122384401449505463744, 
+                        0.4562430879533249674337895, 0.4589696473234144839484647, 
+                        0.4616918909120418704091584, 0.4644097931214176352731591, 
+                        0.4671233283945751261630457, 0.4698324712156108470282980, 
+                        0.4725371961099243891820077, 0.4752374776444579739565725, 
+                        0.4779332904279356047259052, 0.4806246091111018260453658, 
+                        0.4833114083869600876643171, 0.4859936629910107111699206, 
+                        0.4886713477014884570245255, 0.4913444373395996897627612, 
+                        0.4940129067697591391182235, 0.4966767308998262548534419, 
+                        0.4993358846813411530706387, 0.5019903431097601517846292, 
+                        0.5046400812246908935430768, 0.5072850741101270528831987, 
+                        0.5099252968946826264179220, 0.5125607247518258033484145, 
+                        0.5151913329001124142038603, 0.5178170966034189556133159, 
+                        0.5204379911711751889184691, 0.5230539919585963104401304, 
+                        0.5256650743669146912153147, 0.5282712138436111840258187, 
+                        0.5308723858826459955432696, 0.5334685660246891214197081, 
+                        0.5360597298573503421568799, 0.5386458530154087775915395, 
+                        0.5412269111810419978382210, 0.5438028800840546885350993, 
+                        0.5463737355021068682427603, 0.5489394532609416558499039, 
+                        0.5515000092346125858442412, 0.5540553793457104693110943, 
+                        0.5566055395655897985264809, 0.5591504659145946930157566, 
+                        0.5616901344622843849532002, 0.5642245213276582417822586, 
+                        0.5667536026793803239405196, 0.5692773547360034755778519, 
+                        0.5717957537661929461605442, 0.5743087760889495408586850, 
+                        0.5768163980738322976184566, 0.5793185961411806888254667, 
+                        0.5818153467623363454697137, 0.5843066264598643017272666, 
+                        0.5867924118077737578782574, 0.5892726794317383594853053, 
+                        0.5917474060093159907610475, 0.5942165682701680800580147, 
+                        0.5966801429962784154186793, 0.5991381070221714681281111, 
+                        0.6015904372351302222163013, 0.6040371105754135078618616, 
+                        0.6064781040364728366534687, 0.6089133946651687366701116, 
+                        0.6113429595619865853458987, 0.6137667758812519380899084, 
+                        0.6161848208313453506363029, 0.6185970716749166931046915, 
+                        0.6210035057290989537555048, 0.6234041003657215304299416, 
+                        0.6257988330115230076688675, 0.6281876811483634175098794, 
+                        0.6305706223134359819666081, 0.6329476340994783351992008, 
+                        0.6353186941549832233898213, 0.6376837801844086803419153, 
+                        0.6400428699483876768269192, 0.6423959412639372417070377, 
+                        0.6447429720046670528676835, 0.6470839401009874959981582, 
+                        0.6494188235403171892641570, 0.6517476003672899719207013, 
+                        0.6540702486839613549191454, 0.6563867466500144315669620, 
+                        0.6586970724829652463040876, 0.6610012044583676196647058, 
+                        0.6632991209100174274984589, 0.6655908002301563325302097, 
+                        0.6678762208696749663426270, 0.6701553613383155598710345, 
+                        0.6724282002048740205051479, 0.6746947160974014538975312, 
+                        0.6769548877034051285838219, 0.6792086937700488815250166, 
+                        0.6814561131043529626873631, 0.6836971245733933167806834, 
+                        0.6859317071045003002812397, 0.6881598396854568318705713, 
+                        0.6903815013646959744270519, 0.6925966712514979467122689, 
+                        0.6948053285161865628996815, 0.6970074523903250980984011, 
+                        0.6992030221669115780303307, 0.7013920172005734910243170, 
+                        0.7035744169077619204963997, 0.7057502007669450960906928, 
+                        0.7079193483188013616608982, 0.7100818391664115582779368, 
+                        0.7122376529754508204546805, 0.7143867694743797837842896, 
+                        0.7165291684546352021941915, 0.7186648297708199730232898, 
+                        0.7207937333408925681355609, 0.7229158591463558692887801, 
+                        0.7250311872324454059827217, 0.7271396977083169940167956, 
+                        0.7292413707472337729927181, 0.7313361865867526410034676, 
+                        0.7334241255289100847554419, 0.7355051679404074033764222, 
+                        0.7375792942527953241676460, 0.7396464849626580085640129, 
+                        0.7417067206317964465721772, 0.7437599818874112379620360, 
+                        0.7458062494222847584928838, 0.7478455039949627094612890, 
+                        0.7498777264299350488635483, 0.7519028976178163024713854, 
+                        0.7539209985155252531253957, 0.7559320101464640065565832, 
+                        0.7579359136006964320521972, 0.7599326900351259762879594, 
+                        0.7619223206736728486546595, 0.7639047868074505764130149, 
+                        0.7658800697949419280166093, 0.7678481510621742029486694, 
+                        0.7698090121028938864243967, 0.7717626344787406673165402, 
+                        0.7737089998194208176678866, 0.7756480898228799321603470, 
+                        0.7775798862554750259163361, 0.7795043709521459890141759, 
+                        0.7814215258165863961053031, 0.7833313328214136695271245, 
+                        0.7852337740083385943114429, 0.7871288314883341834944720, 
+                        0.7890164874418038921405657, 0.7908967241187491784979139, 
+                        0.7927695238389364107105941, 0.7946348689920631175175217, 
+                        0.7964927420379235813750136, 0.7983431255065737724458586, 
+                        0.8001860019984956219039900, 0.8020213541847606330100649, 
+                        0.8038491648071928284194859, 0.8056694166785310321906380, 
+                        0.8074820926825904849673728, 0.8092871757744237908160400, 
+                        0.8110846489804811942036542, 0.8128744953987701856100790, 
+                        0.8146566981990144342734272, 0.8164312406228120465742028, 
+                        0.8181981059837931485700490, 0.8199572776677767911993239, 
+                        0.8217087391329271766780945, 0.8234524739099092046215225, 
+                        0.8251884656020433364270094, 0.8269166978854597764628854, 
+                        0.8286371545092519686128428, 0.8303498192956294067327593, 
+                        0.8320546761400697575830038, 0.8337517090114702948057846, 
+                        0.8354409019522986425235764, 0.8371222390787428271411563, 
+                        0.8387957045808606359402829, 0.8404612827227282810625704, 
+                        0.8421189578425883674826439, 0.8437687143529971635802028, 
+                        0.8454105367409711729261812, 0.8470444095681330059047621, 
+                        0.8486703174708565497995875, 0.8502882451604114359791023, 
+                        0.8518981774231068028225812, 0.8535000991204343530350070, 
+                        0.8550939951892107040056078, 0.8566798506417190298715048, 
+                        0.8582576505658499939545848, 0.8598273801252419702463831, 
+                        0.8613890245594205526224495, 0.8629425691839373504743648, 
+                        0.8644879993905080694542896, 0.8660253006471498760336444, 
+                        0.8675544584983180445842596, 0.8690754585650418856970762, 
+                        0.8705882865450599544602407, 0.8720929282129545374252050, 
+                        0.8735893694202854169962281, 0.8750775960957229119854680, 
+                        0.8765575942451801930826613, 0.8780293499519448719952049, 
+                        0.8794928493768098630212838, 0.8809480787582035158255322, 
+                        0.8823950244123190181935674, 0.8838336727332430675485994, 
+                        0.8852640101930838100201983, 0.8866860233420980458621863, 
+                        0.8880996988088177000235219, 0.8895050233001755566829532, 
+                        0.8909019836016302565651375, 0.8922905665772905558628607, 
+                        0.8936707591700388455969280, 0.8950425484016539302522575, 
+                        0.8964059213729330645356690, 0.8977608652638132471078410, 
+                        0.8991073673334917701488930, 0.9004454149205460236240486, 
+                        0.9017749954430525531228459, 0.9030960963987053701523781, 
+                        0.9044087053649335137720782, 0.9057128099990178624646022, 
+                        0.9070083980382071951444166, 0.9082954572998335002127549, 
+                        0.9095739756814265315746820, 0.9108439411608276105410847, 
+                        0.9121053417963026725455006, 0.9133581657266545576127977, 
+                        0.9146024011713345435238301, 0.9158380364305531206273175, 
+                        0.9170650598853900072573273, 0.9182834599979034047218800, 
+                        0.9194932253112384908353520, 0.9206943444497351509745089, 
+                        0.9218868061190349456451742, 0.9230705991061873135537215, 
+                        0.9242457122797550091847637, 0.9254121345899187738936182, 
+                        0.9265698550685812395293315, 0.9277188628294700636112689, 
+                        0.9288591470682402950895005, 0.9299906970625759697264543, 
+                        0.9311135021722909341445515, 0.9322275518394288975917975, 
+                        0.9333328355883627104845635, 0.9344293430258928687940732, 
+                        0.9355170638413452433503852, 0.9365959878066680331449597, 
+                        0.9376661047765279417201973, 0.9387274046884055757416456, 
+                        0.9397798775626900648558921, 0.9408235135027729019444869, 
+                        0.9418583026951410028915762, 0.9428842354094689849902736, 
+                        0.9439013019987106631201510, 0.9449094928991897628355911, 
+                        0.9459087986306898495121205, 0.9468992097965434727052183, 
+                        0.9478807170837205248834878, 0.9488533112629158137054760, 
+                        0.9498169831886358470168335, 0.9507717237992848297519245, 
+                        0.9517175241172498719314184, 0.9526543752489854069548347, 
+                        0.9535822683850968193944507, 0.9545011948004232815044368, 
+                        0.9554111458541197976665483, 0.9563121129897384560011695, 
+                        0.9572040877353088863799924, 0.9580870617034179240840996, 
+                        0.9589610265912884783587268, 0.9598259741808576051234879, 
+                        0.9606818963388537831043733, 0.9615287850168733926613630, 
+                        0.9623666322514563965930439, 0.9631954301641612222071790, 
+                        0.9640151709616388439537466, 0.9648258469357060659245549, 
+                        0.9656274504634180035311332, 0.9664199740071397636802195, 
+                        0.9672034101146173227737943, 0.9679777514190476018682591, 
+                        0.9687429906391477383350273, 0.9694991205792235533724866, 
+                        0.9702461341292372147270016, 0.9709840242648740939883669, 
+                        0.9717127840476088178328839, 0.9724324066247705125950353, 
+                        0.9731428852296072415565604, 0.9738442131813496343496072, 
+                        0.9745363838852737078785517, 0.9752193908327628781730396, 
+                        0.9758932276013691625928266, 0.9765578878548735718130775, 
+                        0.9772133653433456910269459, 0.9778596539032024498104955, 
+                        0.9784967474572660801033674, 0.9791246400148212617670490, 
+                        0.9797433256716714551911835, 0.9803527986101944204270933, 
+                        0.9809530530993969223366037, 0.9815440834949686212533729, 
+                        0.9821258842393351486632952, 0.9826984498617103674201996, 
+                        0.9832617749781478160230522, 0.9838158542915913364912672, 
+                        0.9843606825919248853856025, 0.9848962547560215275335618, 
+                        0.9854225657477916120303537, 0.9859396106182301300994116, 
+                        0.9864473845054632544104222, 0.9869458826347940594679517, 
+                        0.9874351003187474227003598, 0.9879150329571141058970610, 
+                        0.9883856760369940166627304, 0.9888470251328386495802522, 
+                        0.9892990759064927068006818, 0.9897418241072348978090276, 
+                        0.9901752655718179181502248, 0.9905993962245076069415402, 
+                        0.9910142120771212830473891, 0.9914197092290652598522332, 
+                        0.9918158838673715386394944, 0.9922027322667336806727008, 
+                        0.9925802507895418581838653, 0.9929484358859170846092543, 
+                        0.9933072840937446245820355, 0.9936567920387065844051246, 
+                        0.9939969564343136839997662, 0.9943277740819362116746914, 
+                        0.9946492418708341635125525, 0.9949613567781865697596566, 
+                        0.9952641158691200113800912, 0.9955575162967363309635588, 
+                        0.9958415553021395435525955, 0.9961162302144619548145649, 
+                        0.9963815384508894965215124, 0.9966374775166862927999356, 
+                        0.9968840450052184754903082, 0.9971212385979772738362093, 
+                        0.9973490560646014135491635, 0.9975674952628988745188845, 
+                        0.9977765541388680773265018, 0.9979762307267185998745420, 
+                        0.9981665231488915727109186, 0.9983474296160799746514418, 
+                        0.9985189484272491654281575, 0.9986810779696581776171579, 
+                        0.9988338167188825964389443, 0.9989771632388403756649803, 
+                        0.9991111161818228462260355, 0.9992356742885348165163858, 
+                        0.9993508363881507486653971, 0.9994566013984000492749057, 
+                        0.9995529683257070064969677, 0.9996399362654382464576482, 
+                        0.9997175044023747284307007, 0.9997856720116889628341744, 
+                        0.9998444384611711916084367, 0.9998938032169419878731474, 
+                        0.9999337658606177711221103, 0.9999643261538894550943330, 
+                        0.9999854843850284447675914, 0.9999972450545584403516182};
+   static double w1024[] = {0.0030664603092439082115513, 0.0030664314747171934849726, 
+                        0.0030663738059349007324470, 0.0030662873034393008056861, 
+                        0.0030661719680437936084028, 0.0030660278008329004477528, 
+                        0.0030658548031622538363679, 0.0030656529766585847450783, 
+                        0.0030654223232197073064431, 0.0030651628450145009692318, 
+                        0.0030648745444828901040266, 0.0030645574243358210601357, 
+                        0.0030642114875552366740338, 0.0030638367373940482295700, 
+                        0.0030634331773761048702058, 0.0030630008112961604635720, 
+                        0.0030625396432198379186545, 0.0030620496774835909559465, 
+                        0.0030615309186946633309249, 0.0030609833717310455112352, 
+                        0.0030604070417414288079918, 0.0030598019341451569616257, 
+                        0.0030591680546321751827342, 0.0030585054091629766484119, 
+                        0.0030578140039685464545661, 0.0030570938455503030247440, 
+                        0.0030563449406800369760227, 0.0030555672963998474425352, 
+                        0.0030547609200220758572342, 0.0030539258191292371925135, 
+                        0.0030530620015739486603347, 0.0030521694754788558725307, 
+                        0.0030512482492365564619779, 0.0030502983315095211653578, 
+                        0.0030493197312300123682482, 0.0030483124576000001133114, 
+                        0.0030472765200910755723677, 0.0030462119284443619831693, 
+                        0.0030451186926704230517109, 0.0030439968230491688209395, 
+                        0.0030428463301297590067471, 0.0030416672247305038021562, 
+                        0.0030404595179387621506312, 0.0030392232211108374894710, 
+                        0.0030379583458718709642643, 0.0030366649041157321154111, 
+                        0.0030353429080049070377385, 0.0030339923699703840142628, 
+                        0.0030326133027115366251721, 0.0030312057191960043331307, 
+                        0.0030297696326595705460252, 0.0030283050566060381583022, 
+                        0.0030268120048071025720655, 0.0030252904913022221991274, 
+                        0.0030237405303984864452325, 0.0030221621366704811776946, 
+                        0.0030205553249601516777118, 0.0030189201103766630786495, 
+                        0.0030172565082962582916016, 0.0030155645343621134195681, 
+                        0.0030138442044841906616068, 0.0030120955348390887083441, 
+                        0.0030103185418698906302495, 0.0030085132422860092601062, 
+                        0.0030066796530630300711306, 0.0030048177914425515522176, 
+                        0.0030029276749320230818149, 0.0030010093213045803019478, 
+                        0.0029990627485988779939449, 0.0029970879751189204574353, 
+                        0.0029950850194338893942123, 0.0029930539003779692985814, 
+                        0.0029909946370501703558363, 0.0029889072488141488505262, 
+                        0.0029867917552980250862041, 0.0029846481763941988183689, 
+                        0.0029824765322591622023349, 0.0029802768433133102577897, 
+                        0.0029780491302407488518214, 0.0029757934139891002022209, 
+                        0.0029735097157693059028890, 0.0029711980570554274731990, 
+                        0.0029688584595844444331918, 0.0029664909453560499065010, 
+                        0.0029640955366324437529314, 0.0029616722559381232326340, 
+                        0.0029592211260596712038487, 0.0029567421700455418562030, 
+                        0.0029542354112058439815854, 0.0029517008731121217846274, 
+                        0.0029491385795971332348581, 0.0029465485547546259626151, 
+                        0.0029439308229391107008170, 0.0029412854087656322747309, 
+                        0.0029386123371095381418860, 0.0029359116331062444843108, 
+                        0.0029331833221509998552933, 0.0029304274298986463828860, 
+                        0.0029276439822633785324025, 0.0029248330054184994301727, 
+                        0.0029219945257961747508486, 0.0029191285700871841705750, 
+                        0.0029162351652406703883623, 0.0029133143384638857180205, 
+                        0.0029103661172219362530391, 0.0029073905292375236068160, 
+                        0.0029043876024906842306667, 0.0029013573652185263120627, 
+                        0.0028982998459149642555740, 0.0028952150733304507490135, 
+                        0.0028921030764717064173001, 0.0028889638846014470665859, 
+                        0.0028857975272381085212091, 0.0028826040341555690560623, 
+                        0.0028793834353828694269858, 0.0028761357612039305018167, 
+                        0.0028728610421572684947521, 0.0028695593090357078067012, 
+                        0.0028662305928860914743281, 0.0028628749250089892305081, 
+                        0.0028594923369584031789413, 0.0028560828605414710856927, 
+                        0.0028526465278181672904478, 0.0028491833711010012402964, 
+                        0.0028456934229547136488796, 0.0028421767161959702837564, 
+                        0.0028386332838930533848701, 0.0028350631593655507170153, 
+                        0.0028314663761840422592303, 0.0028278429681697845340603, 
+                        0.0028241929693943925796601, 0.0028205164141795195677262, 
+                        0.0028168133370965340702726, 0.0028130837729661949782821, 
+                        0.0028093277568583240752928, 0.0028055453240914762689974, 
+                        0.0028017365102326074839556, 0.0027979013510967402185435, 
+                        0.0027940398827466267692845, 0.0027901521414924101257281, 
+                        0.0027862381638912825390663, 0.0027822979867471417676962, 
+                        0.0027783316471102450029635, 0.0027743391822768604783394, 
+                        0.0027703206297889167653083, 0.0027662760274336497592617, 
+                        0.0027622054132432473587211, 0.0027581088254944918412282, 
+                        0.0027539863027083999392661, 0.0027498378836498606195970, 
+                        0.0027456636073272705694208, 0.0027414635129921673927833, 
+                        0.0027372376401388605206822, 0.0027329860285040598383428, 
+                        0.0027287087180665020331547, 0.0027244057490465746667821, 
+                        0.0027200771619059379749851, 0.0027157229973471443987056, 
+                        0.0027113432963132558499974, 0.0027069380999874587163979, 
+                        0.0027025074497926766073634, 0.0026980513873911808464073, 
+                        0.0026935699546841987126055, 0.0026890631938115194351518, 
+                        0.0026845311471510979446691, 0.0026799738573186563850015, 
+                        0.0026753913671672833892344, 0.0026707837197870311237119, 
+                        0.0026661509585045101038391, 0.0026614931268824817854798, 
+                        0.0026568102687194489357814, 0.0026521024280492437872770, 
+                        0.0026473696491406139791397, 0.0026426119764968062894804, 
+                        0.0026378294548551481626046, 0.0026330221291866270351630, 
+                        0.0026281900446954674651512, 0.0026233332468187060677353, 
+                        0.0026184517812257642618999, 0.0026135456938180188319369, 
+                        0.0026086150307283703078113, 0.0026036598383208091684657, 
+                        0.0025986801631899798721388, 0.0025936760521607427178014, 
+                        0.0025886475522877335418257, 0.0025835947108549212540321, 
+                        0.0025785175753751632172710, 0.0025734161935897584747222, 
+                        0.0025682906134679988291122, 0.0025631408832067177780710, 
+                        0.0025579670512298373098703, 0.0025527691661879125638030, 
+                        0.0025475472769576743594882, 0.0025423014326415695994010, 
+                        0.0025370316825672995489502, 0.0025317380762873559984451, 
+                        0.0025264206635785553113127, 0.0025210794944415703629476, 
+                        0.0025157146191004603745948, 0.0025103260880021986466869, 
+                        0.0025049139518161981960773, 0.0024994782614338353016280, 
+                        0.0024940190679679709626349, 0.0024885364227524702745874, 
+                        0.0024830303773417197267843, 0.0024775009835101424263432, 
+                        0.0024719482932517112531633, 0.0024663723587794599504176, 
+                        0.0024607732325249921551741, 0.0024551509671379883737605, 
+                        0.0024495056154857109065099, 0.0024438372306525067265426, 
+                        0.0024381458659393083172574, 0.0024324315748631324732279, 
+                        0.0024266944111565770692147, 0.0024209344287673158020275, 
+                        0.0024151516818575909099866, 0.0024093462248037038747545, 
+                        0.0024035181121955041103265, 0.0023976673988358756439882, 
+                        0.0023917941397402217940673, 0.0023858983901359478493246, 
+                        0.0023799802054619417548485, 0.0023740396413680528093376, 
+                        0.0023680767537145683786720, 0.0023620915985716886306938, 
+                        0.0023560842322189992961374, 0.0023500547111449424606655, 
+                        0.0023440030920462853929883, 0.0023379294318275874140606, 
+                        0.0023318337876006648123684, 0.0023257162166840538103394, 
+                        0.0023195767766024715869239, 0.0023134155250862753614165, 
+                        0.0023072325200709195436049, 0.0023010278196964109553481, 
+                        0.0022948014823067621287099, 0.0022885535664494426857857, 
+                        0.0022822841308748288053830, 0.0022759932345356507817318, 
+                        0.0022696809365864386804193, 0.0022633472963829660967620, 
+                        0.0022569923734816920218464, 0.0022506162276392008214839, 
+                        0.0022442189188116403333494, 0.0022378005071541580875846, 
+                        0.0022313610530203356561684, 0.0022249006169616211363732, 
+                        0.0022184192597267597736437, 0.0022119170422612227292520, 
+                        0.0022053940257066339981005, 0.0021988502714001954820607, 
+                        0.0021922858408741102242558, 0.0021857007958550038097087, 
+                        0.0021790951982633439377969, 0.0021724691102128581719720, 
+                        0.0021658225940099498722195, 0.0021591557121531123157498, 
+                        0.0021524685273323410114303, 0.0021457611024285442134846, 
+                        0.0021390335005129516400021, 0.0021322857848465214018174, 
+                        0.0021255180188793451473363, 0.0021187302662500514289029, 
+                        0.0021119225907852072963166, 0.0021050950564987181231273, 
+                        0.0020982477275912256713511, 0.0020913806684495044002679, 
+                        0.0020844939436458560249764, 0.0020775876179375023304007, 
+                        0.0020706617562659762464561, 0.0020637164237565111901030, 
+                        0.0020567516857174286800274, 0.0020497676076395242297101, 
+                        0.0020427642551954515246552, 0.0020357416942391048895728, 
+                        0.0020286999908050000513193, 0.0020216392111076532034194, 
+                        0.0020145594215409583780096, 0.0020074606886775631310555, 
+                        0.0020003430792682425467160, 0.0019932066602412715667394, 
+                        0.0019860514987017956507927, 0.0019788776619311997736447, 
+                        0.0019716852173864757651327, 0.0019644742326995879988655, 
+                        0.0019572447756768374356240, 0.0019499969142982240274419, 
+                        0.0019427307167168074883601, 0.0019354462512580664378677, 
+                        0.0019281435864192559230531, 0.0019208227908687633255086, 
+                        0.0019134839334454626590447, 0.0019061270831580672642844, 
+                        0.0018987523091844809062265, 0.0018913596808711472808775, 
+                        0.0018839492677323979370705, 0.0018765211394497986196010, 
+                        0.0018690753658714940398285, 0.0018616120170115510799024, 
+                        0.0018541311630493004367905, 0.0018466328743286767122991, 
+                        0.0018391172213575569552912, 0.0018315842748070976623218, 
+                        0.0018240341055110702429247, 0.0018164667844651949558009, 
+                        0.0018088823828264733221690, 0.0018012809719125190225581, 
+                        0.0017936626232008872833327, 0.0017860274083284027592567, 
+                        0.0017783753990904859184165, 0.0017707066674404779358362, 
+                        0.0017630212854889641021349, 0.0017553193255030957535871, 
+                        0.0017476008599059107299616, 0.0017398659612756523665312, 
+                        0.0017321147023450870266539, 0.0017243471560008201813452, 
+                        0.0017165633952826110422716, 0.0017087634933826857546100, 
+                        0.0017009475236450491562317, 0.0016931155595647951096823, 
+                        0.0016852676747874154134422, 0.0016774039431081072989678, 
+                        0.0016695244384710795200224, 0.0016616292349688570408253, 
+                        0.0016537184068415843295541, 0.0016457920284763272637533, 
+                        0.0016378501744063736542136, 0.0016298929193105323938983, 
+                        0.0016219203380124312385075, 0.0016139325054798132252838, 
+                        0.0016059294968238317366751, 0.0015979113872983442154825, 
+                        0.0015898782522992045381361, 0.0015818301673635540527516, 
+                        0.0015737672081691112886347, 0.0015656894505334603439125, 
+                        0.0015575969704133379579831, 0.0015494898439039192754876, 
+                        0.0015413681472381023085203, 0.0015332319567857911038062, 
+                        0.0015250813490531776215856, 0.0015169164006820223329593, 
+                        0.0015087371884489335424584, 0.0015005437892646454426166, 
+                        0.0014923362801732949073323, 0.0014841147383516970308228, 
+                        0.0014758792411086194189814, 0.0014676298658840552399621, 
+                        0.0014593666902484950408286, 0.0014510897919021973371136, 
+                        0.0014427992486744579821480, 0.0014344951385228783230315, 
+                        0.0014261775395326321501237, 0.0014178465299157314469528, 
+                        0.0014095021880102909474427, 0.0014011445922797915073771, 
+                        0.0013927738213123422970256, 0.0013843899538199418218713, 
+                        0.0013759930686377377783877, 0.0013675832447232857518263, 
+                        0.0013591605611558067629844, 0.0013507250971354436709363, 
+                        0.0013422769319825164387192, 0.0013338161451367762689788, 
+                        0.0013253428161566586165863, 0.0013168570247185350852537, 
+                        0.0013083588506159642151809, 0.0012998483737589411687807, 
+                        0.0012913256741731463215379, 0.0012827908319991927650686, 
+                        0.0012742439274918727294554, 0.0012656850410194029319476, 
+                        0.0012571142530626688591208, 0.0012485316442144679896043, 
+                        0.0012399372951787519644928, 0.0012313312867698677125706, 
+                        0.0012227136999117975374834, 0.0012140846156373981740056, 
+                        0.0012054441150876388205601, 0.0011967922795108381551550, 
+                        0.0011881291902619003419159, 0.0011794549288015500353964, 
+                        0.0011707695766955663898644, 0.0011620732156140160807669, 
+                        0.0011533659273304853455891, 0.0011446477937213110513287, 
+                        0.0011359188967648107958214, 0.0011271793185405120501566, 
+                        0.0011184291412283803494364, 0.0011096684471080465391373, 
+                        0.0011008973185580330843445, 0.0010921158380549794491381, 
+                        0.0010833240881728665534171, 0.0010745221515822403144596, 
+                        0.0010657101110494342805238, 0.0010568880494357913638046, 
+                        0.0010480560496968846800697, 0.0010392141948817375023057, 
+                        0.0010303625681320423357186, 0.0010215012526813791214350, 
+                        0.0010126303318544325762649, 0.0010037498890662086758941, 
+                        0.0009948600078212502888805, 0.0009859607717128519688418, 
+                        0.0009770522644222739122264, 0.0009681345697179550890732, 
+                        0.0009592077714547255541688, 0.0009502719535730179460261, 
+                        0.0009413272000980781811114, 0.0009323735951391753507612, 
+                        0.0009234112228888108282347, 0.0009144401676219265933610, 
+                        0.0009054605136951127822476, 0.0008964723455458144695262, 
+                        0.0008874757476915376906225, 0.0008784708047290547115472, 
+                        0.0008694576013336085537138, 0.0008604362222581167813022, 
+                        0.0008514067523323745586954, 0.0008423692764622569855308, 
+                        0.0008333238796289207169173, 0.0008242706468880048763834, 
+                        0.0008152096633688312691343, 0.0008061410142736039032099, 
+                        0.0007970647848766078261514, 0.0007879810605234072847989, 
+                        0.0007788899266300432158601, 0.0007697914686822300749096, 
+                        0.0007606857722345520114971, 0.0007515729229096583980656, 
+                        0.0007424530063974587204051, 0.0007333261084543168373926, 
+                        0.0007241923149022446178008, 0.0007150517116280949619884, 
+                        0.0007059043845827542163241, 0.0006967504197803339882351, 
+                        0.0006875899032973623698204, 0.0006784229212719745780188, 
+                        0.0006692495599031030193850, 0.0006600699054496667875923, 
+                        0.0006508840442297606018626, 0.0006416920626198431946113, 
+                        0.0006324940470539251567018, 0.0006232900840227562488244, 
+                        0.0006140802600730121876541, 0.0006048646618064809156059, 
+                        0.0005956433758792483631993, 0.0005864164890008837132649, 
+                        0.0005771840879336241764943, 0.0005679462594915592881427, 
+                        0.0005587030905398147360662, 0.0005494546679937357307118, 
+                        0.0005402010788180699282026, 0.0005309424100261499182844, 
+                        0.0005216787486790752896494, 0.0005124101818848942860548, 
+                        0.0005031367967977850677401, 0.0004938586806172365939677, 
+                        0.0004845759205872291441124, 0.0004752886039954144966810, 
+                        0.0004659968181722957880391, 0.0004567006504904070755681, 
+                        0.0004474001883634926336095, 0.0004380955192456860150653, 
+                        0.0004287867306306889171352, 0.0004194739100509498966958, 
+                        0.0004101571450768429896514, 0.0004008365233158462997325, 
+                        0.0003915121324117206363681, 0.0003821840600436882993131, 
+                        0.0003728523939256121308821, 0.0003635172218051749865499, 
+                        0.0003541786314630598135175, 0.0003448367107121305776064, 
+                        0.0003354915473966143456333, 0.0003261432293912849189248, 
+                        0.0003167918446006485317858, 0.0003074374809581322877037, 
+                        0.0002980802264252762217455, 0.0002887201689909301727620, 
+                        0.0002793573966704570567274, 0.0002699919975049447012834, 
+                        0.0002606240595604292032823, 0.0002512536709271339139118, 
+                        0.0002418809197187298044384, 0.0002325058940716253739001, 
+                        0.0002231286821442978268308, 0.0002137493721166826096154, 
+                        0.0002043680521896465790359, 0.0001949848105845827899210, 
+                        0.0001855997355431850062940, 0.0001762129153274925249194, 
+                        0.0001668244382203495280013, 0.0001574343925265138930609, 
+                        0.0001480428665748079976500, 0.0001386499487219861751244, 
+                        0.0001292557273595155266326, 0.0001198602909254695827354, 
+                        0.0001104637279257437565603, 0.0001010661269730276014588, 
+                        0.0000916675768613669107254, 0.0000822681667164572752810, 
+                        0.0000728679863190274661367, 0.0000634671268598044229933, 
+                        0.0000540656828939400071988, 0.0000446637581285753393838, 
+                        0.0000352614859871986975067, 0.0000258591246764618586716, 
+                        0.0000164577275798968681068, 0.0000070700764101825898713};
+
+   switch(npoints) {
+   case (4): 
+      *x = x4;  *w = w4; break;
+   case (8):
+      *x = x8;  *w = w8; break;
+   case (16):
+      *x = x16;  *w = w16; break;
+   case (32):
+      *x = x32;  *w = w32; break;
+   case (64):
+      *x = x64;  *w = w64; break;
+   case (128):
+      *x = x128;  *w = w128; break;
+   case (256):
+      *x = x256;  *w = w256; break;
+   case (512):
+      *x = x512;  *w = w512; break;
+   case (1024):
+      *x = x1024;  *w = w1024; break;
+   default :
+      error2("use 10, 20, 32, 64, 128, 512, 1024 for npoints for legendre.");
    }
    return(status);
 }
 
 
 
-double NIntegrateGaussLegendre(double(*fun)(double x), double a, double b, int npoints)
+double NIntegrateGaussLegendre (double(*fun)(double x), double a, double b, int npoints)
 {
 /* this approximates the integral Nintegrate[fun[x], {x,a,b}].
    npoints is 10, 20, 32 or 64 nodes for legendre.");
 */
    int i,j;
-   double *x, *w, s, t[2];
+   double *x=NULL, *w=NULL, s, t[2];
 
    GaussLegendreRule(&x, &w, npoints);
 
@@ -2842,15 +3787,16 @@ double NIntegrateGaussLegendre(double(*fun)(double x), double a, double b, int n
       t[0]=(a+b)/2 + (b-a)/2*x[j];
       t[1]=(a+b)/2 - (b-a)/2*x[j];
       for(i=0; i<2; i++)
-         s+=w[j]*fun(t[i]);
+         s += w[j]*fun(t[i]);
    }
-   return s*=(b-a)/2;
+   return s *= (b-a)/2;
 }
 
 
 int GaussLaguerreRule(double **x, double **w, int npoints)
 {
 /* this returns the Gauss-Laguerre nodes and weights in x[] and w[].
+   npoints = 5, 10, 20.
 */
    int status=0;
    static double x5[]={0.263560319718140910203061943361E+00,
@@ -3074,16 +4020,16 @@ void GetIndexTernary(int *ix, int *iy, double *x, double *y, int itriangle, int 
 
 
 
-long factorial(int n)
+long factorial (int n)
 {
    long f=1, i;
-   if (n>10) error2("n>10 in factorial");
+   if (n>11) error2("n>10 in factorial");
    for (i=2; i<=(long)n; i++) f *= i;
    return (f);
 }
 
 
-double Binomial(double n, int k, double *scale)
+double Binomial (double n, int k, double *scale)
 {
 /* calculates n choose k. n is any real number, and k is integer.
    If(*scale!=0) the result should be c+exp(*scale).
@@ -3093,15 +4039,17 @@ double Binomial(double n, int k, double *scale)
    *scale=0;
    if((int)k!=k) 
       error2("k is not a whole number in Binomial.");
-   if(n<0 && k%2==1) c=-1;
+   if(n<0 && k%2==1) 
+      c = -1;
    if(k==0) return(1);
    if(n>0 && (k<0 || k>n)) return (0);
 
    if(n>0 && (int)n==n) k=min2(k,(int)n-k);
    for (i=1; i<=k; i++) {
-      c*=(n-k+i)/i;
-      if(c>large)
-         { *scale+=log(c); c=1; } 
+      c *= (n-k+i)/i;
+      if(c>large) { 
+         *scale += log(c); c=1; 
+      } 
    }
    return(c);
 }
@@ -3309,16 +4257,20 @@ int CholeskyDecomp (double A[], int n, double L[])
    int i,j,k;
    double t;
 
-   for (i=0; i<n; i++) for (j=i+1; j<n; j++) L[i*n+j]=0;
+   for (i=0; i<n; i++) 
+      for (j=i+1; j<n; j++)
+         L[i*n+j] = 0;
    for (i=0; i<n; i++) {
-      for (k=0,t=A[i*n+i]; k<i; k++) t-=square(L[i*n+k]);
+      for (k=0,t=A[i*n+i]; k<i; k++) 
+         t -= square(L[i*n+k]);
       if (t>=0)    
-         L[i*n+i]=sqrt(t);   
+         L[i*n+i] = sqrt(t);   
       else
          return (-1);
       for (j=i+1; j<n; j++) {
-         for (k=0,t=A[i*n+j]; k<i; k++) t-=L[i*n+k]*L[j*n+k];
-         L[j*n+i]=t/L[i*n+i];
+         for (k=0,t=A[i*n+j]; k<i; k++) 
+            t -= L[i*n+k]*L[j*n+k];
+         L[j*n+i] = t/L[i*n+i];
       }
    }
    return (0);
@@ -3476,7 +4428,7 @@ int eigenRealSym(double A[], int n, double Root[], double work[])
 */
    int status=0;
    HouseholderRealSym(A, n, Root, work);
-   status=EigenTridagQLImplicit(Root, work, n, A);
+   status = EigenTridagQLImplicit(Root, work, n, A);
    EigenSort(Root, A, n);
 
    return(status);
@@ -3717,7 +4669,7 @@ int bubblesort (float x[], int n)
 
    for(i=0;i<n;i++) {
       for(j=i;j<n;j++)
-         if(x[j]<x[i]) { t=x[i]; x[i]=x[j]; x[j]=t; }
+         if(x[j]<x[i]) { t = x[i]; x[i] = x[j]; x[j] = t; }
    }
    return (0);
 }
@@ -3766,7 +4718,9 @@ int scanfile (FILE*fin, int *nrecords, int *nx, int *ReadHeader, char line[], in
 
       if(*nrecords==0) {
          for(i=0; i<lline && line[i]; i++)
-            if(isalpha(line[i])) { *ReadHeader=1; break; }
+            if(isalpha(line[i])) { 
+               *ReadHeader=1; break; 
+            }
       }
       nxline = splitline(line, ifields);
       if(nxline == 0)
@@ -3779,7 +4733,6 @@ int scanfile (FILE*fin, int *nrecords, int *nx, int *ReadHeader, char line[], in
       if(*nx>MAXNFIELDS) error2("raise MAXNFIELDS?");
 
       (*nrecords)++;
-
       /* printf("line # %3d:  %3d variables\n", *nrecords+1, nxline); */
    }
    rewind(fin);
@@ -3788,6 +4741,9 @@ int scanfile (FILE*fin, int *nrecords, int *nx, int *ReadHeader, char line[], in
       fgets(line,lline,fin);
       splitline(line, ifields);
    }
+   if(*ReadHeader)    
+      (*nrecords) --;
+
    return(0);
 }
 
@@ -4035,12 +4991,12 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int nrho, int pr
    x005=maxx+p; x995=x005+p; x025=x995+p; x975=x025+p; x25=x975+p; x75=x25+p;
    var=x75+p;   gap=var+p*p; rho=gap+p;
    Tint=rho+p*nrho;
-/*
+
    if(p>1) {
-      printf("Great offer!  I can smooth a few 2-D densities for free.  How many do you want? ");
+      printf("\nGreat offer!  I can smooth a few 2-D densities for free.  How many do you want? ");
       scanf("%d", &nf2d);
    }
-*/
+
    if(nf2d>MAXNF2D) error2("I don't want to do that many!");
    for(i=0; i<nf2d; i++) {
       printf("pair #%d (e.g., type  1 3  to use variables #1 and #3)? ",i+1);
@@ -4115,6 +5071,7 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int nrho, int pr
    fprintf(fout,"\n2.5%%    "); for(j=Ignore1stColumn;j<p;j++) fprintf(fout,fmt,x025[j]);
    fprintf(fout,"\n97.5%%   "); for(j=Ignore1stColumn;j<p;j++) fprintf(fout,fmt,x975[j]);
    fprintf(fout,"\nESS*    ");  for(j=Ignore1stColumn;j<p;j++) fprintf(fout,fmt1,n/Tint[j]);
+   fflush(fout);
 
    /*
    FPN(F0); FPN(F0);
@@ -4138,6 +5095,7 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int nrho, int pr
       for(j=Ignore1stColumn; j<p; j++)
          fprintf(fout, "\t%.6f", rho[j*nrho+i]);
    }
+   fflush(fout);
 
 /*
 return(0);
@@ -4243,9 +5201,9 @@ int gradient (int n, double x[], double f0, double g[],
    if (Central) {
       for(i=0; i<n; i++)  {
          for(j=0; j<n; j++) 
-            x0[j]=x1[j]=x[j];
-         eh=pow(eh0*(fabs(x[i])+1), 0.67);
-         x0[i]-=eh; x1[i]+=eh;
+            x0[j] = x1[j] = x[j];
+         eh = pow(eh0*(fabs(x[i])+1), 0.67);
+         x0[i] -= eh; x1[i] += eh;
          g[i] = ((*fun)(x1,n) - (*fun)(x0,n))/(eh*2.0);
       }
    }
@@ -4268,23 +5226,29 @@ int Hessian (int n, double x[], double f0, double g[], double H[],
    # of function calls: 2*n*n
 */
    int i,j,k;
-   double *x1=space, *h=x1+n, h0=Small_Diff*10; /* h0=1e-5 or 1e-6 */ 
+   double *x1=space, *h=x1+n, h0=Small_Diff*2; /* h0=1e-5 or 1e-6 */ 
    double fpp,fmm,fpm,fmp;  /* p:+  m:-  */
 
-   FOR (k,n) h[k] = h0*(1+fabs(x[k]));
-   FOR (i,n) {
+   for(k=0; k<n; k++) {
+      h[k] = h0*(1 + fabs(x[k]));
+      if(h[k] > x[k]) 
+         printf("Hessian warning: x[%d] = %8.5g < h = %8.5g.\n", k+1, x[k],h[k]);
+   }
+   for(i=0; i<n; i++) {
       for (j=i; j<n; j++)  {
-         FOR (k,n) x1[k]=x[k];
-         x1[i]+=h[i];    x1[j]+=h[j];    fpp=(*fun)(x1,n);  /* (+hi, +hj) */
-         x1[i]-=h[i]*2;  x1[j]-=h[j]*2;  fmm=(*fun)(x1,n);  /* (-hi, -hj) */
+         for(k=0; k<n; k++) x1[k] = x[k];
+         x1[i] += h[i];    x1[j] += h[j];
+         fpp = (*fun)(x1,n);                  /* (+hi, +hj) */
+         x1[i] -= h[i]*2;  x1[j] -= h[j]*2;
+         fmm = (*fun)(x1,n);                  /* (-hi, -hj) */
          if (i==j)  {
-             H[i*n+i]=(fpp+fmm-2*f0)/(4*h[i]*h[i]);
-             g[i]=(fpp-fmm)/(h[i]*4);
+             H[i*n+i] = (fpp+fmm-2*f0)/(4*h[i]*h[i]);
+             g[i] = (fpp - fmm)/(h[i]*4);
          }
          else {
-            x1[i]+=2*h[i];                   fpm=(*fun)(x1,n);  /* (+hi, -hj) */
-            x1[i]-=2*h[i];   x1[j]+=2*h[j];  fmp=(*fun)(x1,n);  /* (-hi, +hj) */
-            H[i*n+j]=H[j*n+i] = (fpp+fmm-fpm-fmp)/(4*h[i]*h[j]);
+            x1[i] += 2*h[i];                     fpm = (*fun)(x1,n);  /* (+hi, -hj) */
+            x1[i] -= 2*h[i];   x1[j] += 2*h[j];  fmp = (*fun)(x1,n);  /* (-hi, +hj) */
+            H[i*n+j] = H[j*n+i] = (fpp+fmm-fpm-fmp)/(4*h[i]*h[j]);
          }
       }
    }

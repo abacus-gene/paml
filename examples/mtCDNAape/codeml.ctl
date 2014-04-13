@@ -11,7 +11,7 @@
                    * 4:F1x4MG, 5:F3x4MG, 6:FMutSel3x4, 7:FMutSelCodon
         clock = 0 * 0:no clock, 1:global clock; 2:local clock
        aaDist = 7  * 0:equal, +:geometric; -:linear, 1-6:G1974,Miyata,c,p,v,a
-   aaRatefile = wag.dat * only used for aa seqs with model=empirical(_F)
+   aaRatefile = ../../dat/wag.dat * only used for aa seqs with model=empirical(_F)
                    * dayhoff.dat, jones.dat, wag.dat, mtmam.dat, or your own
 
         model = 2
@@ -43,4 +43,3 @@
 *        ndata = 10
 *  fix_blength = -1  * 0: ignore, -1: random, 1: initial, 2: fixed
         method = 0   * 0: simultaneous; 1: one branch at a time
-

@@ -26,9 +26,9 @@
 
 #include "paml.h"
 
-#define NS            5000
+#define NS            7400
 #define NBRANCH       (NS*2-2)
-#define MAXNSONS      20
+#define MAXNSONS      100
 #define LSPNAME       50
 #define NCODE         64
 #define NCATG         40
@@ -73,13 +73,14 @@ int EigenQaa(double pi[],double Root[], double U[], double V[],double Q[]);
 void CladeProbabilities (char treefile[]);
 void CladeSupport (char tree1f[], char treesf[], int burnin);
 int between_f_and_x(void);
+void LabelClades(FILE *fout);
 
 void Rell2MLtree(int argc, char *argv[]);
 
 
 
 char *MCctlf0[]={"MCbase.dat","MCcodon.dat","MCaa.dat"};
-char *seqf[3]={"mc.paml", "mc.paml", "mc.nex"};
+char *seqf[2]={"mc.paml", "mc.nex"};
 
 enum {JC69, K80, F81, F84, HKY85, T92, TN93, REV} BaseModels;
 char *basemodels[]={"JC69","K80","F81","F84","HKY85","T92","TN93","REV"};
@@ -131,6 +132,7 @@ int main (int argc, char*argv[])
          printf("\t(7) Simulate amino acid data sets (use %s)?\n",MCctlf0[2]);
          printf("\t(8) Calculate identical bi-partitions between trees?\n");
          printf("\t(9) Calculate clade support values (read 2 treefiles)?\n");
+         printf("\t(11) Label clades?\n");
          printf("\t(0) Quit?\n");
 #if defined (CodonNSbranches)
          option=6;  com.model=1; 
@@ -143,9 +145,8 @@ int main (int argc, char*argv[])
          MCctlf = (argc==3 ? argv[2] : "MCcodonNSbranchsites.dat");
 #else
 
-         option=9;
+         option = 11;
          scanf("%d", &option);
-         
 #endif
          if(option==0) exit(0);
          if(option>=5 && option<=7) break;
@@ -196,6 +197,7 @@ int main (int argc, char*argv[])
          case(9):  CladeProbabilities("/papers/BPPJC3sB/Karol.trees");    break;
          */
          case(10): between_f_and_x();    break;
+         case(11): LabelClades(fout);        break;
          default:  exit(0);
          }
       }
@@ -226,6 +228,129 @@ int between_f_and_x (void)
 }
 
 
+void LabelClades(FILE *fout)
+{
+/* This reads in a tree and scan species names to check whether they form a 
+   paraphyletic group and then label the clade.
+   It assumes that the tree is unrooted, and so goes through two rounds to check
+   whether the remaining seqs form a monophyletic clade.
+*/
+   FILE *ftree;
+   int unrooted=1,iclade, sizeclade, mrca, paraphyl, is, imrca, i,j,k, lasts, haslength;
+   char key[96]="A", treef[64]="/A/F/flu/HA.all.prankcodon.tre", *p,chosen[NS], *endstr="end";
+   int *anc[NS-1], loc, bitmask, SI=sizeof(int)*8;
+   int debug;
+
+   printf("Tree file name? ");
+   scanf ("%s", treef);
+   printf("Treat tree as unrooted (0 no, 1 yes)? ");
+   scanf ("%d", &unrooted);
+
+   ftree = gfopen (treef,"r");
+   fscanf (ftree, "%d%d", &com.ns, &j);
+   if(com.ns<=0) error2("need ns in tree file");
+   debug = (com.ns<20);
+
+   i = (com.ns*2-1)*sizeof(struct TREEN);
+   if((nodes=(struct TREEN*)malloc(i))==NULL) error2("oom");
+   for(i=0; i<com.ns*2-1; i++)  nodes[i].nodeStr = NULL;
+   for(i=0; i<com.ns-1; i++) {
+      anc[i] = (int*)malloc((com.ns/SI+1)*sizeof(int));
+      if(anc[i]==NULL)  error2("oom");
+   }
+   ReadTreeN(ftree, &haslength, &j, 1, 0);
+   fclose(ftree);
+   if(debug) { OutTreeN(F0, 1, PrNodeNum);  FPN(F0); }
+
+   for(iclade=0; iclade<com.ns-1; iclade++) {
+      printf("\nString for selecting sequences (followed by non-digit) (end to end)? ");
+      scanf("%s", key);
+      if(strcmp(endstr, key) == 0)
+         break;
+      for(i=0; i<com.ns; i++) chosen[i] = '\0';
+
+
+      k = strlen(key);
+      for(i=0; i<com.ns; i++) {
+         if( (p=strstr(com.spname[i], key)) 
+            && !isdigit(p[k]) )
+               chosen[i] = 1;
+      }
+
+      /*
+      for(i=0; i<com.ns; i++) 
+         if(strstr(com.spname[i], key)) chosen[i] = 1;
+      */
+
+      /* look for MRCA, going through two rounds, assuming unrooted tree */
+      for(imrca=0; imrca<1+unrooted; imrca++) {
+         if(imrca) 
+            for(i=0; i<com.ns; i++) chosen[i] = 1 - chosen[i]; 
+
+         for(i=0,sizeclade=0; i<com.ns; i++) 
+            if(chosen[i]) {
+               sizeclade ++;
+               lasts = i;
+            }
+
+         if(sizeclade <= 1 || sizeclade >= com.ns-1) {
+            puts("unable to form a clade.  <2 seqs.");
+            break;
+         }
+         for(i=0; i<com.ns-1; i++) for(j=0; j<com.ns/SI+1; j++) 
+            anc[i][j] = 0;
+         for(is=0; is<com.ns; is++) {
+            if(chosen[is]==0) continue;
+            loc = is/SI;  bitmask = 1 << (is%SI);
+            for(j=nodes[is].father; j!=-1; j=nodes[j].father) {
+               anc[j-com.ns][loc] |= bitmask;
+               if(is==lasts) {
+                  for(i=0,k=0; i<com.ns; i++)
+                     if(anc[j-com.ns][i/SI] & (1<<(i%SI)))
+                        k ++;
+                  if(k==sizeclade) {
+                     mrca = j;  break;
+                  }
+               }
+            }
+         }
+         if(imrca==0 && mrca!=tree.root) /* 1st round is enough */
+            break;
+      }
+
+      if(sizeclade <= 1 || sizeclade >= com.ns-1 || mrca==tree.root) {
+         printf("Unable to label.  Ignored.");
+         continue;
+      }
+
+      if(debug) 
+         for(is=0; is<com.ns-1; is++) {
+            printf("\nnode %4d: ", is+com.ns);
+            for(j=0; j<com.ns; j++) {
+               loc = j/SI;  bitmask = 1 << (j%SI);
+               printf(" %d", (anc[is][loc] & bitmask) != 0);
+            }
+         }
+
+      printf("\nClade #%d (%s): %d seqs selected, MRCA is %d\n", iclade+1, key, sizeclade, mrca+1);
+      for(is=0,paraphyl=0; is<com.ns; is++) {
+         if(chosen[is] == 0)
+            for(j=nodes[is].father; j!=-1; j=nodes[j].father)
+               if(j==mrca) { paraphyl++;  break; }
+      }
+      if(paraphyl) 
+         printf("\nThis clade is paraphyletic, & includes %d other sequences\n", paraphyl);
+
+      nodes[mrca].label = iclade+1;
+      if(debug) OutTreeN(F0, 1, haslength|PrLabel);
+   }
+
+   for(i=0; i<com.ns-1; i++)  free(anc[i]);
+   OutTreeN(fout, 1, haslength|PrLabel);  FPN(fout);
+   printf("Printed final tree with labels in evolver.out\n");
+   exit(0);
+}
+
 void TreeDistanceDistribution (FILE* fout)
 {
 /* This calculates figure 3.7 of Yang (2006).
@@ -246,11 +371,11 @@ void TreeDistanceDistribution (FILE* fout)
    i=(com.ns*2-1)*sizeof(struct TREEN);
    if((nodes=(struct TREEN*)malloc(i))==NULL) error2("oom");
 
-   lenpart=(com.ns-1)*com.ns*sizeof(char);
-   i=ntree*lenpart;
+   lenpart = (com.ns-1)*com.ns*sizeof(char);
+   i = ntree*lenpart;
    printf("\n%d bytes of space requested.\n", i);
-   partition=(char*)malloc(i);
-   nib=(int*)malloc(ntree*sizeof(int));
+   partition = (char*)malloc(i);
+   nib = (int*)malloc(ntree*sizeof(int));
    if (partition==NULL || nib==NULL) error2("out of memory");
 
    puts("\ntree #: mean prop of tree pairs with 0 1 2 ... shared bipartitions\n");
@@ -608,7 +733,7 @@ void Evolve1 (int inode)
                PMatUVRoot(PMat, t*rw, com.ncode, U,V,Root);
                break;
             }
-            FOR(i,n) for(j=1;j<n;j++)  PMat[i*n+j]+=PMat[i*n+j-1];
+            for(i=0; i<n; i++) for(j=1;j<n;j++)  PMat[i*n+j] += PMat[i*n+j-1];
          }
          for(j=0,from=com.z[ison][h],rw=rndu(); j<n-1; j++)
             if(rw<PMat[from*n+j]) break;
@@ -633,7 +758,7 @@ void Simulate (char*ctlf)
    When com.alpha or com.ncatG>1, sites are randomized after sequences are 
    generated.
    space[com.ls] is used to hold site marks.
-   format (0: paml sites; 1: paml patterns; 2: paup nex)
+   format (0: paml; 1: paup nex)
 */
    char *ancf="ancestral.txt", *siteIDf="siterates.txt";
    FILE *fin, *fseq, *ftree=NULL, *fanc=NULL, *fsiteID=NULL;
@@ -653,7 +778,7 @@ void Simulate (char*ctlf)
    fin=(FILE*)gfopen(ctlf,"r");
    fscanf(fin, "%d", &format);  fgets(line, lline, fin);
    printf("\nSimulated data will go into %s.\n", seqf[format]);
-   if(format==2) printf("%s, %s, & %s will be appended if existent.\n",
+   if(format) printf("%s, %s, & %s will be appended if existent.\n",
                        paupstart,paupblock,paupend);
 
    fscanf (fin, "%d", &i);
@@ -753,10 +878,10 @@ void Simulate (char*ctlf)
             { nodes[i].branch=blengthBS[i];  nodes[i].label=nodes[i].omega=0; }
          for(i=0; i<tree.nnode; i++) {  /* print out omega as node labels. */
             nodes[i].nodeStr=pc=(char*)malloc(20*com.ncatG*sizeof(char));
-            sprintf(pc, "'[%.2f\0", com.omegaBS[i*com.ncatG+0]);
+            sprintf(pc, "'[%.2f", com.omegaBS[i*com.ncatG+0]);
             for(k=1,pc+=strlen(pc); k<com.ncatG; k++,pc+=strlen(pc)) 
-               sprintf(pc, ", %.2f\0", com.omegaBS[i*com.ncatG+k]);
-            sprintf(pc, "]'\0");
+               sprintf(pc, ", %.2f", com.omegaBS[i*com.ncatG+k]);
+            sprintf(pc, "]'");
          }
          FPN(F0);  OutTreeN(F0,1,PrBranch|PrLabel);  FPN(F0);
       }
@@ -854,9 +979,8 @@ void Simulate (char*ctlf)
       exit(-1);
    }
 
-   fseq=gfopen(seqf[format],"w");
-   if(format==2) appendfile(fseq,paupstart);
-
+   fseq = gfopen(seqf[format],"w");
+   if(format) appendfile(fseq,paupstart);
    
    fanc=(FILE*)gfopen(ancf,"w");
    if(fixtree) {
@@ -920,62 +1044,57 @@ void Simulate (char*ctlf)
       }
 
       /* print sequences*/
-      if(format==1)
-         PatternWeightSimple(0);
-      if(format==2) fprintf(fseq,"\n\n[Replicate # %d]\n", ir+1);
+      if(format) fprintf(fseq,"\n\n[Replicate # %d]\n", ir+1);
       printSeqs(fseq, NULL, NULL, format); /* printsma not usable as it codes into 0,1,...,60. */
-      if(format==2 && !fixtree) {
+      if(format && !fixtree) {
          fprintf(fseq,"\nbegin tree;\n   tree true_tree = [&U] "); 
          OutTreeN(fseq,1,1); fputs(";\n",fseq);
          fprintf(fseq,"end;\n\n");
       }
-      if(format==2) appendfile(fseq,paupblock);
+      if(format) appendfile(fseq,paupblock);
 
-      /* print ancestral seqs, rates for sites, only if format!=1. */
-      if(format!=1) {
-         j=(com.seqtype==CODONseq?3*com.ls:com.ls);
-         fprintf(fanc,"[replicate %d]\n",ir+1);
+      /* print ancestral seqs, rates for sites. */
+      j=(com.seqtype==CODONseq?3*com.ls:com.ls);
+      fprintf(fanc,"[replicate %d]\n",ir+1);
 
-
-         if(!fixtree) {
-            if(format<2)
-               { OutTreeN(fanc,1,1); FPN(fanc); FPN(fanc); }
+      if(!fixtree) {
+         if(!format)
+            { OutTreeN(fanc,1,1); FPN(fanc); FPN(fanc); }
+      }
+      else {
+         fprintf(fanc,"%6d %6d\n",tree.nnode-com.ns,j);
+         for(j=com.ns; j<tree.nnode; j++,FPN(fanc)) {
+            fprintf(fanc,"node%-26d  ", j+1);
+            print1seq(fanc,com.z[j],com.ls,1, NULL);
          }
-         else {
-            fprintf(fanc,"%6d %6d\n",tree.nnode-com.ns,j);
-            for(j=com.ns; j<tree.nnode; j++,FPN(fanc)) {
-               fprintf(fanc,"node%-26d  ", j+1);
-               print1seq(fanc,com.z[j],com.ls,1, NULL);
-            }
-            FPN(fanc);
+         FPN(fanc);
 
-            if(fsiteID) {
-               if(com.seqtype==CODONseq && com.NSsites && com.model==0) { /* site model */
-                  k=0;
-                  if(com.rK[com.ncatG-1]>1)
-                     FOR(h,com.ls) if(com.rK[com.siteID[h]]>1) k++;
-                  fprintf(fsiteID, "\n[replicate %d: %2d]\n",ir+1, k);
-                  if(k)  for(h=0,k=0; h<com.ls; h++) {
-                     if(com.rK[com.siteID[h]]>1) { 
-                        fprintf(fsiteID,"%4d ",h+1); 
-                        if(++k%15==0) FPN(fsiteID);
-                     }
-                  }
-                  FPN(fsiteID);
-               }
-               else if(com.seqtype==CODONseq && com.NSsites && com.model) { /* branchsite */
-                  fprintf(fsiteID, "\n[replicate %d]\n",ir+1);
-                  for(h=0; h<com.ls; h++) {
-                     fprintf(fsiteID," %4d ", com.siteID[h]+1);
-                     if(h==com.ls-1 || (h+1)%15==0) FPN(fsiteID);
+         if(fsiteID) {
+            if(com.seqtype==CODONseq && com.NSsites && com.model==0) { /* site model */
+               k=0;
+               if(com.rK[com.ncatG-1]>1)
+                  FOR(h,com.ls) if(com.rK[com.siteID[h]]>1) k++;
+               fprintf(fsiteID, "\n[replicate %d: %2d]\n",ir+1, k);
+               if(k)  for(h=0,k=0; h<com.ls; h++) {
+                  if(com.rK[com.siteID[h]]>1) { 
+                     fprintf(fsiteID,"%4d ",h+1); 
+                     if(++k%15==0) FPN(fsiteID);
                   }
                }
-               else {       /* gamma rates */
-                  fprintf(fsiteID,"\n[replicate %d]\n",ir+1);
-                  for(h=0; h<com.ls; h++) {
-                     fprintf(fsiteID,"%7.4f ",com.siterates[h]);
-                     if(h==com.ls-1 || (h+1)%10==0) FPN(fsiteID);
-                  }
+               FPN(fsiteID);
+            }
+            else if(com.seqtype==CODONseq && com.NSsites && com.model) { /* branchsite */
+               fprintf(fsiteID, "\n[replicate %d]\n",ir+1);
+               for(h=0; h<com.ls; h++) {
+                  fprintf(fsiteID," %4d ", com.siteID[h]+1);
+                  if(h==com.ls-1 || (h+1)%15==0) FPN(fsiteID);
+               }
+            }
+            else {       /* gamma rates */
+               fprintf(fsiteID,"\n[replicate %d]\n",ir+1);
+               for(h=0; h<com.ls; h++) {
+                  fprintf(fsiteID,"%7.4f ",com.siterates[h]);
+                  if(h==com.ls-1 || (h+1)%10==0) FPN(fsiteID);
                }
             }
          }
@@ -983,11 +1102,11 @@ void Simulate (char*ctlf)
 
       printf ("\rdid data set %d %s", ir+1, (com.ls>100000||nr<100? "\n" : ""));
    }   /* for (ir) */
-   if(format==2) appendfile(fseq,paupend);
+   if(format) appendfile(fseq,paupend);
 
    fclose(fseq);  if(!fixtree) fclose(fanc);  
    if(com.alpha || com.NSsites) fclose(fsiteID);
-   FOR(j,com.ns*2-1) free(com.z[j]);
+   for(j=0; j<com.ns*2-1; j++) free(com.z[j]);
    free(space);
    if(com.model && com.NSsites) /* branch-site model */
       for(i=0; i<tree.nnode; i++)  free(nodes[i].nodeStr);
@@ -1097,7 +1216,7 @@ void CladeProbabilities (char treefile[])
    FPN(F0);  OutTreeN(F0, 0, 0);  FPN(F0);  FPN(F0);
    nib=tree.nbranch-com.ns;
    for(i=0;i<tree.nnode;i++) {
-      nodes[i].nodeStr=NULL;
+      nodes[i].nodeStr = NULL;
       if(i>com.ns) nodes[i].nodeStr=(char*)malloc(100*sizeof(char));
    }
 

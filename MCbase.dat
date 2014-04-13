@@ -1,16 +1,17 @@
-0          * 0,1:seqs or patters in paml format (mc.paml); 2:paup format (mc.nex)
+ 0          * 0: paml format (mc.paml); 1:paup format (mc.nex)
 21234567   * random number seed (odd number)
 
-4 10000 1  * <# seqs>  <# nucleotide sites>  <# replicates>
+5 895 100  * <# seqs>  <# nucleotide sites>  <# replicates>
 -1         * <tree length, use -1 if tree below has absolute branch lengths>
-((human :0.1, chimpanzee :0.1) :0.12, gorilla :0.22, orangutan :0.4);
+
+((Human: 0.056647, Chimpanzee: 0.071554): 0.028080, Gorilla: 0.075518, (Orangutan: 0.259783, Gibbon: 0.400727): 0.100618);
 
 7          * model: 0:JC69, 1:K80, 2:F81, 3:F84, 4:HKY85, 5:T92, 6:TN93, 7:REV
-10 5 1 2 3 * kappa or rate parameters in model
-0.5  4     * <alpha>  <#categories for discrete gamma>
+0.88892  0.03190  0.00001  0.07102  0.02418 * kappa or rate parameters in model
+0.2500  5     * <alpha>  <#categories for discrete gamma>
 
-0.1 0.2 0.3 0.4    * base frequencies
-  T   C   A   G
+0.25318  0.32894  0.31196  0.10592    * base frequencies
+  T        C        A        G
 
 
 ==================================================
