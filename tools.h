@@ -23,7 +23,7 @@
 #define beep putchar('\a')
 #define spaceming2(n) ((n)*((n)*2+9+2)*(int)sizeof(double))
 
-int ReadSeq (FILE *fout, FILE *fseq, int seqtype);
+int ReadSeq (FILE *fout, FILE *fseq);
 int Initialize (FILE *fout, double space[], int seqtype);
 int MoveCodonSeq (int ns, int ls, char *z[]);
 int PatternWeight (FILE *fout, double space[]);
@@ -67,7 +67,7 @@ double Binomial(double n, double k, double *scale);
 int ScatterPlot (int n, int nseries, int yLorR[], double x[], double y[],
     int nrow, int ncol, int ForE);
 
-char CodeChara (char b, int seqtype);
+int CodeChara (char b, int seqtype);
 int dnamaker (char z[], int ls, double pi[]);
 int picksite (char z[], int ls, int begin, int gap, char buffer[]);
 int transform (char z[], int ls, int direction, int seqtype);
@@ -123,7 +123,7 @@ void sleep(clock_t wait);
 char *strc (int n, char c);
 void strcase (char *str, int direction);
 void error(char * message);
-int indexing (double x[], int n, int index[], int descending, double space[]);
+int sort1 (double x[], int n, int rank[], int descending, int space[]);
 int appendfile(FILE*fout, char*filename);
 
 int zero (double x[], int n);

@@ -7,7 +7,7 @@
       runmode = 0   * 0: user tree;  1: semi-automatic;  2: automatic
                     * 3: StepwiseAddition; (4,5):PerturbationNNI 
 
-        model = 4   * 0:JC69, 1:K80, 2:F81, 3:F84, 4:HKY85, 5:TN93, 6:REV
+        model = 4   * 0:JC69, 1:K80, 2:F81, 3:F84, 4:HKY85, 5:TN93, 6:REV, 7:UNREST
         Mgene = 0   * 0:rates, 1:separate; 2:diff pi, 3:diff kapa, 4:all diff
 
     fix_kappa = 0   * 0: estimate kappa; 1: fix kappa at value below
@@ -22,7 +22,7 @@
           rho = 0.  * initial or fixed rho,   0:no correlation
         nparK = 0   * rate-class models. 1:rK, 2:rK&fK, 3:rK&MK(1/K), 4:rK&MK 
 
-        clock = 0   * 0: no clock, unrooted tree, 1: clock, rooted tree
+        clock = 0   * 0:no clock, 1:clock; 2:local clock; 3:TipDate
         nhomo = 0   * 0 & 1: homogeneous, 2: kappa for branches, 3: N1, 4: N2
         getSE = 0   * 0: don't want them, 1: want S.E.s of estimates
  RateAncestor = 1   * (0,1,2): rates (alpha>0) or ancestral states
@@ -32,3 +32,4 @@
 *        ndata = 1
 
 *        icode = 0  * (with RateAncestor=1. try "GC" in data,model=4,Mgene=4)
+        method = 0   * 0: simultaneous; 1: one branch at a time

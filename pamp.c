@@ -13,7 +13,7 @@
 #endif
 
 #include "tools.h"
-#define NS            500
+#define NS            5000
 
 #define NBRANCH       (NS*2-2)
 #define NNODE         (NS*2-1)
@@ -89,7 +89,7 @@ int main (int argc, char *argv[])
    if ((fseq=fopen(com.seqf, "r"))==NULL) error ("seqfile err.");
    if ((fout=fopen (com.outf, "w"))==NULL) error("outfile creation err.");
    if((fseq=fopen (com.seqf,"r"))==NULL)  error("No sequence file!");
-   ReadSeq (NULL, fseq, 0);
+   ReadSeq (NULL, fseq);
    fprintf (fout,"PAMP %15s, %s sequences\n", com.seqf, Seqstr[com.seqtype]);
    if (com.nhomo) fprintf (fout, "nonhomogeneous model\n");
 
@@ -108,10 +108,11 @@ int main (int argc, char *argv[])
    Initialize (fout, space, com.seqtype);
    if (com.ngene>1) error ("option G not allowed yet");
 
+/*
    PatternLS (fout, Ft, 0., space, &i);
    printf ("\nPairwise estimation of rate matrix done..\n");
    fflush(fout);
-
+*/
    if ((ftree=fopen (com.treef,"r"))==NULL) error ("no treefile");
    fscanf (ftree, "%d%d", &i, &ntree);
    if (i!=com.ns) error ("ns in the tree file");
@@ -349,7 +350,7 @@ int PatternMP (FILE *fout, double Ft[])
    xtoy (Ft+tree.nbranch*n*n, Q, n*n);
    matout2 (fout, Q, n, n, 12, 2);
    DistanceREV (Q, n, 0, Root, U, V, pi, space, &j);
-   if (j==-1) { puts ("F(t) modified in DistanceREV"); }
+   if (noisy>=3&&j==-1) { puts("F(t) modified in DistanceREV"); }
 
    OutQ (fout, n, Q, pi, Root, U, V, T1);
    if (com.nhomo==0) 
@@ -422,7 +423,7 @@ int PathwayMP1 (FILE *fout, int *maxchange, int NSiteChange[],
       DownStates (tree.origin);
       for (npath=0,sumpr=bestpr=0; ;) {
          for (j=0,k=visit[nid-1]; j<NCharaCur[k]; j++) {
-            PATHWay[k]=CharaCur[k*n+j]; npath++; 
+            PATHWay[k]=CharaCur[k*n+j]; npath++;
             FOR (i,nid) nodeb[i+com.ns]=PATHWay[i];
             if (job==1) {
                FOR (i,nid) fprintf(fout,"%c",pch[PATHWay[i]]); fputc(' ',fout);
@@ -600,8 +601,8 @@ if (Q[k*n+k]>0) { printf ("%d %d %.5f\n", i+1, j+1, Q[k*n+k]); }
    if (k==-1) { puts ("F(t) modified in DistanceREV"); }
 
    fprintf (fout, "\n\nQ: from average F over pairwise comparisons");
-   OutQ (fout, n, Qt, pi, Root, U, V, T1);
-   fprintf (fout, "\nQ: average of Qs over pairwise comparisons\n");
+   OutQ(fout, n, Qt, pi, Root, U, V, T1);
+   fprintf (fout, "\n\nQ: average of Qs over pairwise comparisons\n");
    fprintf (fout, "(disregard this if very different from the previous Q)");
    OutQ (fout, n, Qm, pi, Root, U, V, T1);
 

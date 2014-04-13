@@ -15,7 +15,7 @@ char AA3Str[]=
      {"AlaArgAsnAspCysGlnGluGlyHisIleLeuLysMetPheProSerThrTrpTyrVal***"};
 char BINs[] ="TC";
 char Nsensecodon[]={61, 60, 61, 62, 62, 63, 62, 62, 61, 62, 62};
-char GenetCode[][64] = 
+int GenetCode[][64] = 
      {{13,13,10,10,15,15,15,15,18,18,-1,-1, 4, 4,-1,17,
        10,10,10,10,14,14,14,14, 8, 8, 5, 5, 1, 1, 1, 1,
         9, 9, 9,12,16,16,16,16, 2, 2,11,11,15,15, 1, 1,
@@ -85,7 +85,7 @@ int picksite (char *z, int l, int begin, int gap, char *result)
    return(0);
 }
 
-char CodeChara (char b, int seqtype)
+int CodeChara (char b, int seqtype)
 {
 /* This codes characters into 0, 1, 2, ...
    It used to code characters as 1,2,..., and has been changed
@@ -101,7 +101,7 @@ char CodeChara (char b, int seqtype)
          case 'G':              return(3);
       }
    else
-      FOR(i,n) if (b==pch[i]) return (char)i;
+      FOR(i,n) if (b==pch[i]) return (i);
    printf ("\nerr: strange character '%c' ", b);
    return (-1);
 }
@@ -132,7 +132,7 @@ int transform (char *z, int ls, int direction, int seqtype)
 
    if (direction)
       for (il=0,p=z; il<ls; il++,p++)
-         { if ((*p=CodeChara(*p, seqtype))==-1)  status=-1; }
+         { if ((*p=(char)CodeChara(*p, seqtype))==(char)(-1))  status=-1; }
    else 
       for (il=0,p=z; il<ls; il++,p++)  *p=pch[*p];
    return (status);
@@ -572,7 +572,6 @@ int Codon2AA(char codon[3], char aa[3], int icode, int *iaa)
            -1: if stop codon
 */
    int nb[3],ib[3][4], ic, i, i0,i1,i2, iaa0=-1,naa=0;
-   char aa3[4]="";
 
    for(i=0;i<3;i++)  NucListall(codon[i], &nb[i], ib[i]);
    FOR(i0,nb[0])  FOR(i1,nb[1])  FOR(i2,nb[2]) {
@@ -858,9 +857,9 @@ double innerp (double x[], double y[], int n)
 double norm (double x[], int n)
 { int i; double t=0;  FOR (i,n) t+=x[i]*x[i];  return sqrt(t); }
 
-int indexing (double x[], int n, int index[], int descending, double space[])
+int sort1 (double x[], int n, int rank[], int descending, int space[])
 {
-   int i,j, it=0, *mark=(int*)space;
+   int i,j, it=0, *mark=space;
    double t=0;
 
    FOR (i, n) mark[i]=1;
@@ -874,17 +873,17 @@ int indexing (double x[], int n, int index[], int descending, double space[])
          for ( ; j<n; j++)
             if (mark[j] && x[j]<t) { t=x[j]; it=j; }
       }
-      mark[it]=0;   index[i]=it;
+      mark[it]=0;   rank[i]=it;
    }
    return (0);
 }
 
-static int z_rndu=137;
-static unsigned w_rndu=13757;
+static unsigned int z_rndu=137;
+static unsigned int w_rndu=13757;
 
 void SetSeed (int seed)
 {
-   z_rndu = 170*(seed%178) + 137;
+   z_rndu=170*(seed%178)+137;
    w_rndu=seed;
 }
 
@@ -910,15 +909,17 @@ double rndu (void)
    x, y, z are any numbers in the range 1-30000.  Integer operation up
    to 30323 required.
 */
-   static int x_rndu=11, y_rndu=23;
+   static unsigned int x_rndu=11, y_rndu=23;
    double r;
 
    x_rndu = 171*(x_rndu%177) -  2*(x_rndu/177);
    y_rndu = 172*(y_rndu%176) - 35*(y_rndu/176);
    z_rndu = 170*(z_rndu%178) - 63*(z_rndu/178);
+/*
    if (x_rndu<0) x_rndu+=30269;
    if (y_rndu<0) y_rndu+=30307;
    if (z_rndu<0) z_rndu+=30323;
+*/
    r = x_rndu/30269.0 + y_rndu/30307.0 + z_rndu/30323.0;
    return (r-(int)r);
 }
@@ -1654,14 +1655,14 @@ long factorial(int n)
    return (f);
 }
 
+
 double Binomial(double n, double k, double *scale)
 {
-/* this should give n choose k, but currently only works for int k>0
+/* calculates n choose k, but currently only works for int k>0
    n can be any real number.
    If(*scale!=0) the result should be c+exp(*scale).
 */
-
-   double c, i, large=1e99;
+   double c,i,large=1e99;
 
    *scale=0;
    if(k==0) return(1);
@@ -2553,7 +2554,7 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
    ix[i] specifies the i-th free parameter
 
 */
-   int i,j, i1,i2,it, maxround=5000, fail=0, *xmark, *ix, nfree;
+   int i,j, i1,i2,it, maxround=1000, fail=0, *xmark, *ix, nfree;
    double small=1.e-20;     /* small value for checking |w|=0   */
    double f0, *g0, *g, *p, *x0, *y, *s, *z, *H, *C, *tv;
    double w,v, alfa, am, h;
@@ -2569,10 +2570,10 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
       if(x[i]>=xb[i][1]) { x[i]=xb[i][1]; xmark[i]= 1; continue; }
       ix[nfree++]=i;
    }
-   if(/* nfree<n && */ n<50) {
+   if(nfree<n && n<50) {
       FPN(F0);  FOR(j,n) printf(" %9.6f", x[j]);  FPN(F0);
-      FOR(j,n) printf(" %9.6f", xb[j][0]);  FPN(F0);
-      FOR(j,n) printf(" %9.6f", xb[j][1]);  FPN(F0);
+      FOR(j,n) printf(" %9.5f", xb[j][0]);  FPN(F0);
+      FOR(j,n) printf(" %9.5f", xb[j][1]);  FPN(F0);
       if(nfree<n) printf("warning: ming2, %d para at boundary.",n-nfree);
    }
 
@@ -2621,7 +2622,7 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
             FOR (i,n) fprintf (fout, "%8.5f  ", x[i]);
             fflush (fout);
          }
-         w=.1;  if(e<1e-4) w=0.01;  if(e<1e-6) w=.001;
+         w=.2;  if(e<1e-4) w=0.01;  if(e<1e-6) w=.001;
          if (SIZEp<w && H_end (x0,x,f0,*f,e,e,n))
             { xtoy(x,x0,n); break; }
       }
@@ -2669,6 +2670,7 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
          H[i*nfree+j] += ((1+w/v)*s[i]*s[j]-z[i]*s[j]-s[i]*z[j])/v;
    }    /* for (Iround,maxround)  */
 
+   if (noisy>2) FPN(F0);
    if (Iround==maxround) {
       if (fout) fprintf (fout,"\ncheck convergence!\n");
       return(-1);

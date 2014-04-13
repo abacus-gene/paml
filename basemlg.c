@@ -94,9 +94,9 @@ int main(int argc, char *argv[])
    com.runmode=0;
    com.clock=0;    com.fix_rgene=0;
 
-   com.model=F84;
-   com.fix_kappa=0;      com.kappa=5;
-   com.fix_alpha=0;      com.alpha=0.2;
+   com.seqtype=0;     com.model=F84;
+   com.fix_kappa=0;   com.kappa=5;
+   com.fix_alpha=0;   com.alpha=0.2;
    com.ncode=4;
 
    frate=fopen(ratef,"w");  frub=fopen("rub","w");  flfh=fopen("lfh","w");
@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 
    if ((fout=fopen (com.outf, "w"))==NULL) error("outfile creation err.");
    if((fseq=fopen (com.seqf,"r"))==NULL)  error("No sequence file!");
-   ReadSeq (NULL, fseq, 0);
+   ReadSeq (NULL, fseq);
 
    fprintf (fout,"BASEMLG %15s %8s + Gamma", com.seqf, models[com.model]);
    if (com.clock) fprintf (fout, ", Clock");
@@ -157,6 +157,8 @@ int Forestry (FILE *fout, double space[])
       fprintf(frate,"\nTREE # %2d\n", itree+1);
 
       if (ReadaTreeN(ftree, &i, 1)) error ("err tree..");
+      com.ntime = com.clock ? tree.nnode-com.ns: tree.nbranch;
+
       OutaTreeN (F0, 0, 0);   
       OutaTreeN (fout, 0, 0);  
       fflush (fout);  fflush (flfh);
@@ -709,13 +711,13 @@ int lfunG_dd (double x[], double *lnL, double dl[], double ddl[], int np)
 
 int GetOptions (char *ctlf)
 {
-   int i, nopt=25, lline=255;
+   int i, nopt=26, lline=255;
    char line[255], *pline, opt[20], comment='*';
    char *optstr[]={"seqfile","outfile","treefile", "noisy",
         "cleandata", "ndata", "verbose","runmode",
         "clock","fix_rgene","Mgene","nhomo","getSE","RateAncestor",
         "model","fix_kappa","kappa","fix_alpha","alpha","Malpha","ncatG", 
-        "fix_rho","rho","nparK", "Small_Diff"};
+        "fix_rho","rho","nparK", "Small_Diff", "method"};
    double t;
    FILE  *fctl=fopen (ctlf, "r");
 
@@ -760,6 +762,7 @@ int GetOptions (char *ctlf)
                   case (22): com.rho=t;              break;
                   case (23): com.nparK=(int)t;       break;
                   case (24):                         break;   /* smallDiff */
+                  case (25):                         break;   /* method */
                }
                break;
             }
@@ -772,14 +775,13 @@ int GetOptions (char *ctlf)
    else
       if (noisy) printf ("\nno ctl file..");
 
-   if (com.runmode>0)  puts ("tree search using BASEMLG?");
+   if (com.runmode)  error("runmode!=0 for BASEMLG?");
    if (com.model!=F84 && com.kappa<=0)  error("init kappa..");
    if (com.alpha<=0) error("init alpha..");
    if (com.alpha==0 || com.Malpha || com.rho>0 || com.nhomo>0 || com.nparK>0 
       || com.model>HKY85)
        error ("\noptions in file baseml.ctl inappropriate.. giving up..");
    if (com.model==JC69 || com.model==F81) { com.fix_kappa=1; com.kappa=1; }
-   if (com.runmode) error("tree search not available with basemlg.");
    if(com.cleandata==0) { 
       puts("cleandata set to 1, with ambiguity data removed. ");
       com.cleandata=1;

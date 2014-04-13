@@ -70,8 +70,8 @@ FILE *frub, *frst;
 char *models[]={"JC69", "K80", "F81", "F84", "HKY85", "TN93", "REV"};
 enum {JC69, K80, F81, F84, HKY85, TN93, REV} MODELS;
 
-static int nR=4, nreplicateMC;
-static double lnpBestTree, PMat[16], Cijk[64], Root[4];
+int nR=4, nreplicateMC;
+double lnpBestTree, PMat[16], Cijk[64], Root[4];
 double _rateSite=1;
 
 #define REALSEQUENCE
@@ -97,8 +97,8 @@ int main(int argc, char *argv[])
 #endif
 
    noisy=3;          
-   com.model=F84;    com.kappa=1.63;
-   com.alpha=0.;      com.ncatG=1;
+   com.seqtype=0;    com.model=F84;    com.kappa=1.63;
+   com.alpha=0.;     com.ncatG=1;
    com.priTt=2;      /* 0: coalesent; 1: Yule; 2: birth-death */
    com.hier=0;   /* hierarchical, with priors for birth & death rates */ 
 /*   com.birth=8.2;    com.death=4.1;   com.sample=9./185;   com.mut=0.24; */
@@ -127,9 +127,9 @@ int main(int argc, char *argv[])
          printf ("\nData set %d\n", idata+1);
          fprintf (fout, "\n\nData set %d\n", idata+1);
       }
-      ReadSeq (NULL, fseq, 0);
+      ReadSeq(NULL,fseq);
       
-      fprintf (fout, "MCMCTREE %15s %8s (%s prior) ", 
+      fprintf(fout,"MCMCTREE %15s %8s (%s prior) ", 
                      com.seqf, models[com.model], priorTt[2]);
       if (com.clock) fprintf (fout, " Clock  ");
       if (com.alpha) fprintf (fout,"dGamma (ncatG=%d)", com.ncatG);

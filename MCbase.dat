@@ -1,7 +1,10 @@
 0
 1234567
 6 100 10
+
+-1
 (((1:0.1, 2:0.1):0.1, 3:0.2):0.1, 4:0.2, (5:0.1, 6:0.1):0.1)
+
 1
 5
 .5 8
@@ -20,7 +23,8 @@ The variables in this file are defined below:
 <format,0=paml,1=paup>
 <random number seed>
 <# seqs>  <# nucleotide sites>  <# replicates>
-<tree topology & branch lengths>
+<tree length, use -1 if tree has absolute branch lengths>
+<tree topology relative branch lengths>
 <model: 0:JC69, 1:K80, 2:F81, 3:F84, 4:HKY85, 5:TN93, 6:REV>
 <kappa or rates>
 <alpha>  <#categories for discrete gamma>

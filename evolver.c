@@ -6,15 +6,14 @@
 */
 /*
 #define CodonNSbranches  1
-*/
-/*
 #define CodonNSsites     1
 */
+
 /* Do not define both CodonNSSites & CodonNSbranches */
 
 
 #include "tools.h"
-#define NS            5000
+#define NS            2000
 #define NBRANCH       (NS*2-2)
 #define NCODE         64
 #define NCATG         40
@@ -34,7 +33,8 @@ struct TREEN {
    double branch, divtime, omega, *lkl, daa[20*20];
 }  nodes[2*NS-1];
 
-extern char BASEs[],GenetCode[][64];
+extern char BASEs[];
+extern int GenetCode[][64];
 
 #define NODESTRUCTURE
 #define BIRTHDEATH
@@ -71,7 +71,7 @@ void main(int argc, char*argv[])
    FILE *fout=fopen(outf,"w");
 
    if(fout==NULL) { printf("cannot create %s\n",outf); exit(-1); }
-   else             printf("\nResults go into %s.\n",outf);
+   else             printf("\nResults go into %s\n",outf);
    if(argc>1) MCctlf=argv[1];
    for(puts(""); ;) {
       printf("\n\t(1) Get random UNROOTED trees?\n"); 
@@ -127,8 +127,8 @@ void main(int argc, char*argv[])
       case(5):  com.seqtype=0; Simulate(MCctlf?MCctlf:MCctlf0[0]);   exit(0);
       case(6):  com.seqtype=1; Simulate(MCctlf?MCctlf:MCctlf0[1]);   exit(0);
       case(7):  com.seqtype=2; Simulate(MCctlf?MCctlf:MCctlf0[2]);   exit(0);
-      case(8):  TreeDistances(fout);                                 break;
-      case(99): f_and_x();                                           break;
+      case(8):  TreeDistances(fout);      break;
+      case(99): f_and_x();                break;
       default:  exit(0);
       }
    }
@@ -400,7 +400,7 @@ void MakeSeq(char*z, int ls)
 
    FOR(j,n) p[j]=com.pi[j];
    for (j=1; j<n; j++) p[j]+=p[j-1];
-   if (fabs(p[n-1]-1) > 1e-6) 
+   if (fabs(p[n-1]-1) > 5e-6) 
       { printf("\nsum pi = %.6f != 1!\n",p[n-1]); exit(-1); }
    for (h=0; h<com.ls; h++) {
       for(j=0,r=rndu();j<n;j++) if(r<p[j]) break;
@@ -469,12 +469,12 @@ void Simulate (char*ctlf)
    char *paupstart="paupstart",*paupblock="paupblock",*paupend="paupend";
    int i,j,k, ir,n,nr,fixtree=1,size=10000,rooted=0;
    int h=0,format=PAML,b[3]={0}, nrate=1, counts[NCATG];
-   double birth=0, death=0, sample=1, mut=1, *space;
+   double birth=0, death=0, sample=1, mut=1, tlength, *space;
    double T,C,A,G,Y,R;
 
    com.alpha=0; com.cleandata=1;
 
-   printf("\nReadind options from data file %s.\n", ctlf);
+   printf("\nReading options from data file %s\n", ctlf);
    com.ncode=n=(com.seqtype==0 ? 4 : (com.seqtype==1?64:20));
    if((fin=(FILE*)fopen(ctlf,"r"))==NULL) 
       { printf("\ndata file %s does not exist?\n", ctlf);  exit(-1); }
@@ -490,14 +490,21 @@ void Simulate (char*ctlf)
    k=(com.ns*com.ls* (com.seqtype==CODONseq?4:1) *nr)/1000+1;
    printf ("Seq file will be about %dK bytes.",k);
 
+   fscanf(fin,"%lf",&tlength);
    if (fixtree) {
       if(ReadaTreeN(fin,&i,1))  error("err tree..");
       if(!i) {  /* if tree does not have branch lengths */
          FOR(i,tree.nbranch)
             fscanf(fin,"%lf",&nodes[tree.branches[i][1]].branch);
       }
+      if(tlength>0) {
+         for(i=0,T=0; i<tree.nnode; i++) 
+            if(i!=tree.origin) T+=nodes[i].branch;
+         for(i=0; i<tree.nnode; i++) 
+            if(i!=tree.origin) nodes[i].branch*=tlength/T;
+      }
       if(com.ns<100) {
-	printf("\nModel tree & branch lengths:\n"); OutaTreeN(F0,0,1); FPN(F0);
+         printf("\nModel tree & branch lengths:\n"); OutaTreeN(F0,0,1); FPN(F0);
       }
       if(com.ns<30) { 
          OutaTreeB(F0); FPN(F0);
@@ -610,7 +617,7 @@ void Simulate (char*ctlf)
    else if(com.seqtype==AAseq)
       EigenQaa(com.pi,Root, U, V,PMat);
 
-   puts("\nAll parameters are read, now ready to simulate.\n");
+   puts("\nAll parameters are read, now ready to simulate\n");
    FOR(i,com.ns)sprintf(com.spname[i],"seq.%d",i+1);
    FOR(j,com.ns*2-1) com.z[j]=(char*)malloc(com.ls*sizeof(char));
    size=max2(size, com.ls*com.ns*(int)sizeof(char));

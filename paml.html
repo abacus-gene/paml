@@ -1,9 +1,6 @@
 <html>
 
 <head>
-<meta http-equiv="Content-Type"
-content="text/html; charset=iso-8859-1">
-<meta name="GENERATOR" content="Microsoft FrontPage Express 2.0">
 <title>Phylogenetic Analysis by Maximum Likelihood (PAML)</title>
 </head>
 
@@ -13,9 +10,13 @@ content="text/html; charset=iso-8859-1">
 face="Bookman Old Style">Phylogenetic Analysis by Maximum
 Likelihood (PAML) </font></h1>
 
-<p align="center"><font size="4"><tt>Ziheng Yang </tt>(</font><a
-href="http://abacus.gene.ucl.ac.uk/ziheng/ziheng.html"><font
-size="4">Home</font></a><font size="4">) </font></p>
+<p align="center"><font color="#FF0000" size="4">Version 3.0, May
+2000</font></p>
+
+<p align="center"><font size="4"><strong>© </strong></font><a
+href="http://abacus.gene.ucl.ac.uk/"><font size="4"><strong>Ziheng
+Yang</strong></font></a><strong> (</strong><a
+href="mailto:z.yang@ucl.ac.uk"><strong>z.yang@ucl.ac.uk</strong></a><strong>)</strong></p>
 
 <hr>
 
@@ -23,12 +24,11 @@ size="4">Home</font></a><font size="4">) </font></p>
 
 <ul>
     <li><a href="#Intro">Introduction </a></li>
-    <li><a href="#PAMLorNot">Is PAML Likely to be Useful to me?</a>
-    </li>
+    <li><a href="#PAMLorNot">What does PAML do?</a> </li>
     <li><a href="#GetPAML">Downloading and Compiling PAML</a> </li>
     <li><a href="#Running">Running Programs in PAML </a></li>
     <li><a href="#Bug">Bugs and Problems noted. Check this.</a> </li>
-    <li><a href="pamlDOC.html">Viewing and printing the Manual</a>
+    <li><a href="pamlDOC.pdf">Viewing and printing the Manual</a>
     </li>
 </ul>
 
@@ -41,11 +41,11 @@ C source codes as well as PowerMAC and Windows 95/NT executables
 are provided. </p>
 
 <p>This document is about downloading and compiling PAML and
-getting started with it. The manual for the package (<a
-href="pamlDOC.html">pamlDOC.html</a>) is an html file and
+getting started. The manual for the package (<a
+href="pamlDOC.pdf">pamlDOC.pdf</a>) is an acrobat file and
 included in the distribution packages. You can use a web browser
-(Netscape 4.0 or Internet Exploror 4.0) or MS Word to view and/or
-print it. These two documents will print to about 30 pages. </p>
+(Netscape or Internet Exploror) or MS Word to view and/or print
+it. These two documents will print to about 30 pages. </p>
 
 <p>Possible uses of the programs are </p>
 
@@ -142,49 +142,50 @@ programs in the package is given below. </p>
         can run the program to see the main menu, and then
         consult one of those files to see the details. This
         program can easily fill your hard disk. </li>
-    <li><font color="#FF0000" size="4">YN00</font>: This program
+    <li><font color="#FF0000" size="4"><b>yn00</b></font>: This program
         implements the method of Yang and Nielsen (2000) for
         estimating synonymous and nonsynonymous substitution
         rates in pairwise comparison of protein-coding DNA
-        sequences.<p>&nbsp;</p>
-    </li>
+        sequences. The method of Nei and Gojobori (1986) is also
+        included in the program. Run yn00 and have a look at the
+        control file yn00.ctl and the default result file yn. No
+        further documentation is included for this program.</li>
 </ul>
 
-<h2><a name="PAMLorNot">Is PAML Likely to be Useful to me? </a></h2>
+<h2><a name="PAMLorNot">What does PAML do? </a></h2>
 
 <p>PAML is not good for tree making. There are a few options for
 heuristic tree search, but they do not work well except for small
 data sets of only a few species. If you hope to use PAML to
-compare trees, one possibility is to get a collection of
-candidate trees and then compare them using more sophisticated
-models implemented in PAML. You can get candidate trees by using
-other programs/methods implemented in PAUP*, PHYLIP, MOLPHY and
-so on. The new version of PAUP* 4.0 has implemented a number of
-likelihood models for nucleotide sequences, including the gamma
-model of variable rates among sites. Programs like DNAML in
-PHYLIP, NucML in MOLPHY, and fastDNAML are all good for tree
-search by maximum likelihood using nucleotide sequence data.
-ProtML in MOLPHY does a nice tree search using protein maximum
-likelihood. C source codes for MOLPHY are distributed by J.
-Adachi and M. Hasegawa by anonymous ftp at
-ftp://sunmh.ism.ac.jp/pub/molphy/.</p>
+compare trees from relatively large data sets, one possibility is
+to get a collection of candidate trees and then compare them
+using more sophisticated models implemented in PAML. You can get
+candidate trees by using other programs/methods implemented in
+PAUP*, PHYLIP, MOLPHY etc. The new version of PAUP* 4.0 has
+implemented a number of likelihood models for nucleotide
+sequences, including the gamma model of variable rates among
+sites. Programs like DNAML in PHYLIP, NucML in MOLPHY, and
+fastDNAML are all good for tree search by maximum likelihood
+using nucleotide sequence data. ProtML in MOLPHY does a nice tree
+search using protein maximum likelihood.</p>
 
 <p>PAML may be useful if you are interested in the process of
-sequence evolution. Right now, the following options/models do
-not seem available in other packages. I hope some of the models
-listed here will be taken off the list soon: </p>
+sequence evolution. The two main programs, baseml and codeml,
+implement a number of sophisticated models, which you can use to
+construt likelihood ratio tests of evolutionary hypotheses. Right
+now, the following options/models do not seem available in other
+packages. </p>
 
 <ul>
-    <li>Codon-based likelihood analysis (for estimating
-        synonymous and nonsynonymous rates, testing hypotheses
-        concerning d<sub>N</sub>/d<sub>S</sub> rate ratios;
-        Methods described in Goldman and Yang 1994 MBE
-        11:725-736; Yang and Nielsen 1998 JME 46:409-418; Nielsen
-        and Yang 1998 Genetics 148:929-936; Yang 1998 MBE
-        15:568-573) </li>
-    <li>Amino acid likelihood analysis with rate variation among
-        sites. Calculation of pairwise distances using protein
-        sequences by ML. </li>
+    <li>Codon-based likelihood analysis for estimating synonymous
+        and nonsynonymous rates, and testing hypotheses
+        concerning d<sub>N</sub>/d<sub>S</sub> rate ratios
+        (Goldman and Yang 1994 MBE 11:725-736; Yang and Nielsen
+        1998 JME 46:409-418; Nielsen and Yang 1998 Genetics
+        148:929-936; Yang 1998 MBE 15:568-573; Yang et al. 2000
+        Genetics 155: 431-449).</li>
+    <li>Amino acid-based likelihood analysis with rate variation
+        among sites.</li>
     <li>Ancestral sequence reconstruction based on nucleotide,
         codon, or amino acid substitution models (Yang, Kumar,
         and Nei 1995 Genetics 141:1641-1650). Nucleotide sequence
@@ -204,35 +205,36 @@ and through world wide web at <a
 href="http://abacus.gene.ucl.ac.uk/software/paml.html">http://abacus.gene.ucl.ac.uk/software/paml.html</a>
 </p>
 
-<p>The current version is 2.0j. The following files are posted: </p>
+<p>The current version is 3.0. The following files are posted: </p>
 
 <ul>
     <li><a
         href="ftp://abacus.gene.ucl.ac.uk/pub/paml/paml.readme">The
         readme file</a>. </li>
     <li><a
-        href="ftp://abacus.gene.ucl.ac.uk/pub/paml/paml2.0j.tar.Z">Source
+        href="ftp://abacus.gene.ucl.ac.uk/pub/paml/paml2.0l.tar.Z">Source
         codes for UNIX machines, which you need to compile
-        yourself (paml2.0j.tar.Z)</a>. </li>
+        yourself (paml3.0.tar.Z)</a>. </li>
     <li><a
-        href="ftp://abacus.gene.ucl.ac.uk/pub/paml/paml2.0j.G3.sea.bin">PowerMac
-        PPC or G3 executables, self-extracting archive
-        (paml2.0j.G3.sea.bin)</a> (This supports command-line
-        arguments, and so you can type in the name of the control
-        file in the command-line box when you run the programs.
-        Thanks to Dr Andrew Rambaut for preparing this.) </li>
+        href="ftp://abacus.gene.ucl.ac.uk/pub/paml/paml2.0k.G3.sea.bin">PowerMac
+        PPC or G3 executables, self-extracting archive (paml3.0.G3.sea.bin)</a>
+        (This supports command-line arguments, and so you can
+        type in the name of the control file in the command-line
+        box when you run the programs. Thanks to Dr Andrew
+        Rambaut for preparing this.) </li>
     <li><a
-        href="ftp://abacus.gene.ucl.ac.uk/pub/paml/paml2.0j.win32.exe">Win95/NT
-        executables, self-extracting archive (paml2.0j.win32.exe)</a>.
+        href="ftp://abacus.gene.ucl.ac.uk/pub/paml/paml2.0l.win32.exe">Win95/NT
+        executables, self-extracting archive (paml3.0.win32.exe)</a>.
     </li>
 </ul>
 
 <p><b>UNIX or other systems for workstations and mainframes. </b>Get
-the compressed archive <code>paml2.0j.tar.Z</code>. This archive
-contains the source codes, example data files, control files, and
-documentation. You log on to your UNIX account, and create a
-directory to hold the paml files. You then use the ftp command in
-UNIX to get the archive:</p>
+the compressed archive <code>paml*.*.tar.Z</code>, where *.*
+represents the version numbers. This archive contains the source
+codes, example data files, control files, and documentation. You
+log on to your UNIX account, and create a directory to hold the
+paml files. You then use the ftp command in UNIX to get the
+archive:</p>
 
 <dir>
     <li><code>ftp abacus.gene.ucl.ac.uk <br>
@@ -240,7 +242,7 @@ UNIX to get the archive:</p>
         cd pub/paml <br>
         ls <br>
         bin <br>
-        get paml2.0j.tar.Z <br>
+        get paml*.*.tar.Z <br>
         quit <br>
         </code></li>
 </dir>
@@ -249,19 +251,20 @@ UNIX to get the archive:</p>
 archive. </p>
 
 <dir>
-    <li><code>uncompress paml2.0j.tar.Z <br>
-        tar xf paml2.0j.tar <br>
+    <li><code>uncompress paml*.*.tar.Z <br>
+        tar xf paml*.*.tar <br>
         <br>
         make </code></li>
 </dir>
 
 <p>The <code>make</code> command is to compile the programs.
 Programs in PAML are written in ANSI C and should be compilable
-with any ANSI C-compatible compiler. You may need to change the
-file Makefile before compiling. There are a few flags at the
-beginning of the file. For example, you may need to change the
-flag -fast into -O2 or -O3. You can read the mannual pages for
-your compiler (say cc) by typing <br>
+with any ANSI C-compatible compiler. You may need to change a few
+flags at the beginning of <font face="Courier New">Makefile</font>.
+For example, if the compiler complains about -fast, you can
+change it into -O2 or -O3. If you have gcc rather than cc, you
+make that change too. You can read the mannual pages for your
+compiler (say cc) by typing <br>
 </p>
 
 <dir>
@@ -279,124 +282,59 @@ have commands for compiling the programs using different
 compilers. Make sure you turn on the optimization.</p>
 
 <p><b>PowerMacs (PPC or G3). </b>Download the compressed
-self-extracting archive <code>paml2.0j.G3.sea.bin</code> . When
-you get the archive by <code>fetch</code>, the file will change
-its name into <code>paml2.0j.G3.sea</code>. Move it to a
-subdirectory on your hard disk and double-click on it so that it
-explodes into a directory containing all files in the package
-(source codes, example data files, control files, documentation,
-and executables). When you run the PowerMac programs, a
-command-line window will pop up. You can then type in the name of
-the control file. You can also hit Enter to use the default
-control file names (<code>baseml.ctl</code> for <code>baseml</code>
-and <code>basemlg</code>, <code>codeml.ctl</code> for <code>codeml</code>).
-The sequence data files and tree structure files do not have
-fixed names and can be specified in the control files. </p>
+self-extracting archive <code>for the PowerMac</code>. When you
+get the archive by <code>fetch</code>, the file will change its
+name into <code>paml*.*.G3.sea</code>. Move it to a subdirectory
+on your hard disk and double-click on it so that it explodes into
+a directory containing all files in the package (source codes,
+example data files, control files, documentation, and
+executables). When you run the PowerMac programs, a command-line
+window will pop up. You can then type in the name of the control
+file. You can also hit Enter to use the default control file
+names (<code>baseml.ctl</code> for <code>baseml</code> and <code>basemlg</code>,
+<code>codeml.ctl</code> for <code>codeml</code>). The sequence
+data files and tree structure files do not have fixed names and
+can be specified in the control files. </p>
 
-<p><b>Windows 95/98/NT. </b>Download the compressed archive <code>paml2.0j.win32.exe</code>.
-This has all the files for the package (source codes, example
-data files, control files, documentation, and executables). This
-is a self-extracting archive. You can run it and it will explode
-into a directory with all the files. Programs in the package (the
-<code>.EXE</code> files) are simple Win32 Console applications,
-and do not support mice or menues. When you run a program, open a
-&quot;command prompt&quot; box and type the name of the program
-rather than double-clicking the program name from Windows
-Explorer. </p>
+<p><b>Windows 95/98/NT. </b>Download the compressed archive <code>for
+Windows</code>. This has all the files for the package (source
+codes, example data files, control files, documentation, and
+executables). This is a self-extracting archive. You can run it
+and it will explode into a directory with all the files. Programs
+in the package (the <code>.EXE</code> files) are simple Win32
+Console applications, and do not support mice or menues. When you
+run a program, open a &quot;command prompt&quot; box and type the
+name of the program rather than double-clicking the program name
+from Windows Explorer. </p>
 
 <h2><a name="Running">Running Programs in PAML </a></h2>
 
-<p><b>Some warnings and general comments.</b> The main objective
-of the PAML package has been to make new methods developed by me
-and my colleagues available to the public as soon as the papers
-are published. Since my work is mainly based on maximum
-likelihood, programs in PAML are limited to likelihood analysis
-as well; other methods, if implemented, are regarded as
-approximations to it. </p>
-
 <p>The programs in distribution are essentially the copies I work
-on every day. Usually only minor changes are made to the programs
-I use for release to the public. The nice thing about this
-pratice is that whatever I have is also at your hands. But the
-problem is that the programs are not always well tested. As the
-programs are getting sophisticated with many options, some
-combinations are not allowed or implemented but may not have been
-disabled. I have started adding safeguarding features to disable
-combinations of options not supported or tested, but I must have
-missed some. As a general rule, models that I have used to
-calculate results published in my papers are well tested. Most
-often my collaborators and I wrote separate programs, and the
-published results are most likely to be correct. I have included
-in the paml distribution example data sets that we used in our
-papers for the purpose of error checking. You might want to try
-to duplicate our analysis first to check that the program works
-and also to get familiar with the format of the data file and the
-interpertation of results. </p>
+on every day, as I make only minor changes before release to the
+public. So the programs are not always well tested. Models that I
+have never used myself, even it they look sensible or possible
+from options in the control file, should be taken with great
+caution. I have included example data sets that were used in our
+papers for the purpose of error checking. You are encouraged to
+duplicate our analysis first to check that the program works and
+also to get familiar with the format of the data file and the
+interpertation of results.</p>
 
-<p>Models that I have never used myself, even it they look
-sensible or possible from options in the control file, should be
-taken with great caution. For example, the <code>codonml</code>
-program (<code>codeml</code> with <code>seqtype = 1</code>)
-implements a few models that allow different <i>d</i><sub>N</sub>/<i>d</i><sub>S</sub>
-ratios among codon (amino acid) sites (the control variable <code>NSites</code>)
-and a few other models that allow for different <i>d</i><sub>N</sub>/<i>d</i><sub>S</sub>
-ratios among lineages (branches) (the control variable <code>model</code>).
-However, it does not have any model that allows the ratio to vary
-both among sites and among lineages, although that would be a
-sensible model. If you specify both options, the program should
-give up. </p>
-
-<p><b>Maximum likelihood estimation and likelihood ratio test.</b>
-Our job is to suggest biologically interesting models that are
-mathematically tractable. The mathematical tractability
-essentially means the ability to calculate the probability of
-observing the data for any given values of parameters in the
-model, that is, the likelihood function. Given we know how to
-calcualte the likelihood function, parameter estimation by
-maximizing the likelihood is a numerical optimization problem.
-The basic idea is to alter the values of parameters, and see how
-the likelihood value changes, and the values of parameters that
-correspond to the highest likelihood value are the maximum
-likelihood estimates. We use iterative algorithms to obtain the
-optimum values of parameters. Almost all the execution time of
-the two main PAML programs (<code>baseml</code> and <code>codeml</code>)
-is spent on maximum likelihood parameter estimation by numerical
-iteration. </p>
-
-<p>The iteration algorithm used in PAML is a general-purpose
-minimization algorithm that does not take advantage of likelihood
-calculations on a phylogeny. At each iteration step, it
-calculates a search direction, and then does a one-dimensional
-search to determine how far to go in that direction. At the new
-point, the process is repeated, until there is no improvement in
-the log-likelihood value and changes to the parameters are very
-small. It updates all parameters including branch lengths
-simultaneously and differs from the algorithm used in DNAML or
-PAUP*, which updates branch lengths one by one. If branch lengths
-are the only parameters to be estimated and the substitution
-model involves no or very few parameters, the PAML algorithm is
-inefficient in that it duplicates computations that could be
-saved. When the substitution model involves many parameters, the
-algorithm may be advantageous in that it does not require the
-storage and bookkeeping required for taking advantage of the
-calculation on phylogenies. The algorithm used in PAML uses and
-calculates the first derivatives of the log likelihood with
-respect to parameters by the difference approximation. This was
-initially thought to be quite reliable, but more recently I
-noticed that it may not work well when the data contain thousands
-of sites. </p>
-
-<p>The likelihood value of a model measures its fit to data, and
-models can be compared by examining their likelihood values,
-using the likelihood ratio test. If a more-general model involves
-<i>p</i> parameters and has log likelihood <i>l</i><sub>1</sub>,
+<p>Programs <font face="Courier New">baseml</font> and <font
+face="Courier New">codeml</font> estimate parameters and
+calculate the log likelihood values, but do not calcualte the
+likelihood ratio statistics. You need to do the subtraction
+yourself. The theory is like this. If a more-general model
+involves <i>p</i> parameters and has log likelihood <i>l</i><sub>1</sub>,
 and a simpler model (which is a special case of the general
 model) has <i>q</i> parameters with log-likeliood value <i>l</i><sub>0</sub>,
 then 2(<i>l</i><sub>1</sub> - <i>l</i><sub>0</sub>) can be
 comared with a chi-square distribution with d.f. = <i>p - q</i>.
-While PAML calculates the log-likelihood value under each
-specified model, calculation of the likelihood difference and
-counting of parameters is left to the user. </p>
+Suppose we want to test whether the transition/transversion rate
+ratio kappa = 1. We run the JC69 model and get <i>l</i><sub>0</sub>,
+and run K80 to get <i>l</i><sub>1</sub>. Then we compare 2(<i>l</i><sub>1</sub>
+- <i>l</i><sub>0</sub>) with the chi-square distribution with one
+degree of freedom.</p>
 
 <p><b>Running PAML.</b> Most programs in the PAML package have
 control files that specify the names of the sequence data file,
@@ -423,7 +361,7 @@ On UNIX or Windows systems, you run the programs from a command
 prompt by </p>
 
 <dir>
-    <li><i>ProgramName</i></li>
+    <li><i>ProgramName</i> [for example, baseml]</li>
 </dir>
 
 <p>or </p>
@@ -446,7 +384,7 @@ and <code>codonml</code> as following </p>
         alias codonml 'codeml codonml.ctl' </code></li>
 </dir>
 
-<p>More information is given in the Manual (pamlDOC.html) about
+<p>More information is given in the Manual (pamlDOC.pdf) about
 running the programs. </p>
 
 <h2><a name="Bug">Bugs and Problems </a></h2>
@@ -461,19 +399,17 @@ in deciding which format will be most convenient. Send a message
 to <a href="mailto:z.yang@ucl.ac.uk">z.yang@ucl.ac.uk</a>. </p>
 
 <p><b>When reporting problems, please mention the version number
-of the package you use (for example, 2.0j for UNIX) and include a
+of the package you use (for example, 2.0k for UNIX) and include a
 copy of the control file (</b><code><b>baseml.ctl</b></code><b>
-or </b><code><b>codeml.ctl</b></code><b>). Please do this by
-inserting the text file (by copy and paste, for example) into
-your email program and not by sending me an encoded attachment.
-Please also let me know the number of sequences and the sequence
-length in the data. Please let me know exactly what happened and
-when, inlcude error messages and screen output generated by the
-program. </b></p>
+or </b><code><b>codeml.ctl</b></code><b>). I would also like to
+know the number of sequences and the sequence length in the data,
+if the problem has to do with the size of the data. Please let me
+know exactly what happened and when, and inlcude error messages
+and screen output generated by the program. </b></p>
 
 <hr>
 
 <p>Last modified by Ziheng Yang<br>
-Wed Sept 8, 1999 </p>
+Thurs11 May, 1999 </p>
 </body>
 </html>

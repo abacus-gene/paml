@@ -14,6 +14,7 @@
 #define NS            1000
 #define LSPNAME       30
 #define NCODE         64
+#define NGENE         1
 
 int ConsistencyMC(void);
 int GetOptions (char *ctlf);
@@ -39,18 +40,26 @@ int InfiniteData(double t,double kappa,double omega,double f3x4_0[],
 void SimulateData2s64(FILE* fout, double f3x4_0[], double space[]);
 
 struct common_info {
-   char *z[NS], spname[NS][LSPNAME+1], seqf[96],outf[96];
-   int ns,ls,npatt,codonf,icode,ncode,getSE,verbose;
+   char *z[NS], *spname[NS], seqf[96],outf[96];
+   int ns,ls,npatt,codonf,icode,ncode,getSE,*pose,verbose, seqtype, cleandata;
    int fcommon,kcommon, iteration;
-   double *fpatt, pi[NCODE], f3x4s[NS][12], kappa, omega, alpha;
+   double *fpatt, pi[NCODE], f3x4s[NS][12], kappa, omega;
+   int ngene,posG[NGENE+1],lgene[NGENE],fix_rgene, model;
+   double rgene[NGENE],piG[NGENE][NCODE], alpha;
 }  com;
+
+
+#define REALSEQUENCE
+#include "treesub.c"
+
 
 double PMat[NCODE*NCODE];
 char *codonfreqs[]={"Fequal", "F1x4", "F3x4", "Fcodon"};
 enum {Fequal, F1x4, F3x4, Fcodon} CodonFreqs;
 
 FILE *frst, *frst1, *frub;
-extern char BASEs[],AAs[],GenetCode[][64],Nsensecodon[];
+extern char BASEs[], AAs[], Nsensecodon[];
+extern int GenetCode[][64];
 extern int noisy;
 enum {NODEBUG, KAPPA, SITES, DIFF} DebugFunctions;
 int debug=0;
@@ -68,6 +77,7 @@ int main(int argc, char *argv[])
 
    /* ConsistencyMC(); */
 
+   com.seqtype=1;  com.cleandata=1;
    noisy=1; com.icode=0;  com.fcommon=0;  com.kcommon=1;
    fout=fopen (outf,"w"); frst=fopen("rst","w"); frst1=fopen("rst1","w"); 
    frub=fopen ("rub","w");
@@ -81,7 +91,7 @@ int main(int argc, char *argv[])
       printf ("\n\nSequence file %s not found!\n", com.seqf);
       exit(-1);
    }
-   ReadSeq1 ((com.verbose?fout:NULL), fseq);
+   ReadSeq ((com.verbose?fout:NULL), fseq);
    sspace=max2(200000,64*com.ns*sizeof(double));
    sspace=max2(sspace,64*64*5*sizeof(double));
    if ((space=(double*)malloc(sspace))==NULL) error("oom space");
@@ -92,10 +102,11 @@ int main(int argc, char *argv[])
    if ((com.fpatt=(double*)malloc(k))==NULL)  error("oom fpatt");
    EncodeSeq();   /* ls changed to ls/3 in this */
    com.npatt=com.ls;  FOR(k,com.ls) com.fpatt[k]=1;
-   
-   DistanceMatNG86(fout,0);  fflush(fout);
-   
+
+   fprintf (fout,"YN00 %15s", com.seqf);
    Statistics(fout, space); 
+   DistanceMatNG86(fout,0);  fflush(fout);
+
    if(noisy) puts("\nEstimation by the method of Yang & Nielsen (2000):");
    fputs("\nEstimation by the method of Yang & Nielsen (2000):\n",fout);
    if(!com.iteration) fputs("(equal weighting of pathways)\n",fout);
@@ -131,6 +142,7 @@ int main(int argc, char *argv[])
       FPN(fds); FPN(fdn); FPN(ft);   fflush(fds); fflush(fdn); fflush(ft);
    }       /* for (is) */
    fflush(frst);
+   FPN(F0);
    return (0);
 }
 
@@ -191,7 +203,7 @@ int ConsistencyMC(void)
    for (; ; ) {
       printf("\nInfinite data\nt k w? ");
       scanf("%lf%lf%lf",&t,&com.kappa,&com.omega);
-      if(t<=0 || com.kappa<=0 || com.omega<=0) exit(0);
+      if(t<=0 || com.kappa<=0 || com.omega<=0) break;
       InfiniteData(t, com.kappa, com.omega, f3x4_data[fcodon], space);
       fprintf(frst,"%7.3f%7.3f%7.3f%  ",t,com.kappa,com.omega);
       if(noisy) matout(F0,f3x4_data[fcodon],3,4);
@@ -310,225 +322,6 @@ int DistanceYN00(int is, int js, double*S, double*N, double*dS,double*dN,
 }
 
 
-int PopEmptyLines (FILE* fseq, int lline, char line[])
-{
-/* pop out empty lines in the sequence data file.
-   returns -1 if EOF.
-*/
-   char *eqdel=".-", *p;
-   int i;
-
-   for (i=0; ;i++) {
-      p=fgets (line, lline, fseq);
-      if (p==NULL) return(-1);
-      while (*p) 
-         if (*p==eqdel[0] || *p==eqdel[1] || isalpha(*p)) return(0);
-         else p++;
-      /* printf ("\nEmpty line #%d: |%s|\n", i+1, line); */
-   }
-}
-
-int hasbase (char *str)
-{
-   char *p=str, *eqdel=".-?";
-   while (*p) 
-      if (*p==eqdel[0] || *p==eqdel[1] || *p==eqdel[2] || isalpha(*p++)) 
-         return(1);
-   return(0);
-}
-
-int blankline (char *str)
-{
-   char *p=str;
-   while (*p) if (isalnum(*p++)) return(0);
-   return(1);
-}
-
-int ReadSeq1 (FILE *fout, FILE *fseq)
-{
-/* This is a complicated routine for reading sequences, modified from 
-   ReadSeq() in treesub.c.  char opt_c[]="I" for interlaved format
-
-   Is this exactly the same as ReadSeq in treesub.c? (March 2000)
-*/
-   char *line, *p, *eqdel=".-?";
-   int i,j,k, ch, lspname=LSPNAME, indel=0, simple=1;
-   int lline=255,lt[NS], igroup, Sequential=1;
-   int n31=3;
-
-   fscanf (fseq, "%d%d", &com.ns, &com.ls);
-
-   if (com.ns>NS) error ("too many sequences.. raise NS?");
-   if (com.ls%3!=0) {
-      printf ("\n%d nucleotides", com.ls); error ("seq. len. err.");
-   }
-   if (noisy) printf ("\nns = %d  \tls = %d\n", com.ns, com.ls);
-
-   FOR (j,com.ns) if (com.z[j]) free(com.z[j]);
-   FOR (j,com.ns) com.z[j]=(char*) malloc ((com.ls+1)*sizeof(char));
-   if (com.z[com.ns-1]==NULL) error ("oom");
-   FOR (j,com.ns) com.z[j][com.ls]='\0';
-   lline=max2(lline, com.ls+lspname+10);
-   line=(char*) malloc (lline*sizeof(char));
-   if (line==NULL) error ("oom");
-
-   /* first line */
-   if (!fgets (line, lline, fseq)) error ("err ReadSeq: first line");
-   for (j=0; j<lline && line[j] && line[j]!='\n'; j++) {
-      if (!isalnum(line[j])) continue;
-      line[j]=(char)toupper(line[j]);
-      switch (line[j]) {
-         case 'S':  Sequential=1;  break;
-         case 'I':  Sequential=0;  break;
-         default :  printf (".Bad option %c\n", line[j]);  exit (-1);
-      }
-   }
-   /* read sequence */
-   if (Sequential)  {    /* sequential */
-      if (noisy) printf ("\nSequential format..\n");
-      FOR (j,com.ns) {
-         lspname=LSPNAME;
-         FOR (i, 2*lspname) line[i]='\0';
-         if (!fgets (line, lline, fseq)) error ("err: EOF?");
-         if (blankline(line)) {
-            if (!fgets (line, lline, fseq)) error ("err: EOF");
-            if (!hasbase(line))
-               { printf("err: empty line (seq %d)\n",j+1); exit(-1); }
-         }
-         p=line+(line[0]=='=' || line[0]=='>') ;
-         if ((ch=strstr(line,"  ")-line)<lspname && ch>0) lspname=ch;
-         strncpy (com.spname[j], p, lspname);
-         p+=lspname;
-         for (k=lspname; k>0; k--)
-            if (!isgraph(com.spname[j][k]))   com.spname[j][k]=0;
-            else    break;
-         if (noisy) printf ("Reading seq #%2d: %s\n", j+1, com.spname[j]);
-         for (k=0; k<com.ls; p++) {
-            while (*p=='\n' || *p=='\0')  p=fgets(line, lline, fseq);
-            if (isalpha(*p))  com.z[j][k++] = (char)toupper(*p);
-            else if (*p == eqdel[0]) {
-               if (j==0) error ("err: . in 1st seq.?");
-               com.z[j][k] = com.z[0][k];  k++;
-            }
-            else if (*p==eqdel[1] || *p==eqdel[2])
-               { com.z[j][k++] = *p; indel=1; }
-            else if (*p==EOF) error ("err: EOF?");
-         }
-      }                 /* for (j,com.ns) */
-   }
-   else   {              /* interlaved */
-      if (noisy) printf ("\nInterlaved format..\n");
-      FOR (j, com.ns) lt[j]=0;  /* temporary seq length */
-      for (igroup=0; ; igroup++) {
-         FOR (j, com.ns) if (lt[j]<com.ls) break;
-         if (j==com.ns) break;
-         FOR (j,com.ns) {
-            if (!fgets (line, lline, fseq)) {
-               printf("\nerr reading site %d, seq %d group %d",
-                  lt[j]+1,j+1,igroup+1);
-               error ("err: EOF?");
-            }
-            if (!hasbase(line)) {
-               if (j)  {
-                  printf ("\n%d, seq %d group %d", lt[j]+1, j+1, igroup+1);
-                  error ("err: empty line.");
-               }
-               else {
-                  if (PopEmptyLines (fseq, lline, line)==-1) {
-                     printf ("\n%d, seq %d group %d", lt[j]+1, j+1, igroup+1);
-                     error ("err: EOF?");
-                  }
-               }
-            }
-            p=line;
-            if (igroup==0) {
-               lspname=LSPNAME;
-               if ((ch=strstr(line,"  ")-line)<lspname && ch>0) lspname=ch;
-               strncpy (com.spname[j], p, lspname);
-               k=strlen(com.spname[j]);
-               p+=(k<lspname?k:lspname);
-
-               for (k=lspname; k>0; k--)   /* trim species names */
-                  if (!isgraph(com.spname[j][k]))  com.spname[j][k]=0;
-                  else   break;
-               if(noisy) printf("Reading seq #%2d: %s\n",j+1,com.spname[j]);
-            }
-            for (; *p && *p!='\n'; p++) {
-               if (lt[j] == com.ls) break;
-               if (isalpha(*p))  com.z[j][lt[j]++] = (char)toupper(*p);
-               else if (*p == eqdel[0]) {
-                  if (j==0) error ("err: . in 1st seq.");
-                  com.z[j][lt[j]] = com.z[0][lt[j]];
-                  lt[j]++;  continue;
-               }
-               else if (*p==eqdel[1] || *p==eqdel[2])
-                  { com.z[j][lt[j]++] = (char)toupper(*p); indel=1; }
-            }         /* for (*p) */
-         }            /* for (j,com.ns) */
-      }               /* for (igroup) */
-   }
-   free (line);
-   if (indel) {
-      puts("All indels are removed.");
-      RemoveIndel ();
-      if(fout) fprintf(fout,"\nAfter deleting gaps. %d sites\n",com.ls);
-   }
-   if (fout) {
-      fprintf (fout,"List of sequences\n%6d %6d\n", com.ns, com.ls);
-      for (j=0;j<com.ns;j++,FPN(fout))  {
-         fprintf (fout,"%-*s", LSPNAME, com.spname[j]);
-         FOR (i,com.ls) { 
-            fprintf(fout,"%c",com.z[j][i]);
-            if ((i+1)%(n31==3?3:10)==0) fputc(' ',fout);
-         }
-      }
-      FPN(fout); fflush(fout);
-   }
-   if (noisy>2) printf("\nSequences read..\n");
-   return (0);
-}
-
-
-int RemoveIndel(void)
-{
-/* Remove ambiguity characters and indels in the untranformed sequences, 
-   Changing com.ls and com.pose[] (site marks for multiple genes).
-   For codonml, com.ls is still 3*#codons
-   Called at the end of ReadSeq, when com.pose[] are still site marks.
-   All characters in com.z[][] not found in the character string pch are
-   considered ambiguity characters and are removed.
-*/
-   int  h,k, j,js,lnew,nindel, n31,nchar;
-   char b, *pch, *miss;  /* miss[h]=1 if site (codon) h is missing, 0 otherwise */
-
-   n31=3; nchar=4; pch=BASEs;
-   if (com.ls%n31) error ("ls in RemoveIndel.");
-   if((miss=(char*)malloc(com.ls/n31 *sizeof(char)))==NULL)
-      error("oom miss");
-   FOR (h,com.ls/n31) miss[h]=0;
-   for (js=0; js<com.ns; js++) {
-      for (h=0,nindel=0; h<com.ls/n31; h++) {
-         for (k=0; k<n31; k++) {
-            b=(char)toupper(com.z[js][h*n31+k]);
-            FOR(j,nchar) if(b==pch[j]) break;
-            if(j==nchar) { miss[h]=1; nindel++; }
-         }
-      }
-      if (nindel) printf ("\n%6d ambiguity characters in seq. %d", nindel,js+1);
-   }
-   for (h=0,lnew=0; h<com.ls/n31; h++)  {
-      if(miss[h]) continue;
-      for (js=0; js<com.ns; js++) {
-         for (k=0; k<n31; k++)
-            com.z[js][lnew*n31+k]=com.z[js][h*n31+k];
-      }
-      lnew++;
-   }
-   com.ls=lnew*n31;
-   free(miss);
-   return (0);
-}
-
 
 
 int EncodeSeq(void)
@@ -539,8 +332,6 @@ int EncodeSeq(void)
    char str[4]="";
    int is,h,j, it, indel=0, c[3];
 
-   if (com.ls%3) error ("Codon seq?");
-   com.ls/=3;
    FOR (is, com.ns) {
       for (h=0; h<com.ls; h++) {
          for(j=0,it=0;j<3;j++) {
@@ -894,7 +685,8 @@ int CountDiffs(char z1[],char z2[],
          b[i][0]=c[i]/16; b[i][1]=(c[i]%16)/4; b[i][2]=c[i]%4;
          aa[i]=GenetCode[com.icode][c[i]];
       }
-      if (aa[0]==-1||aa[1]==-1) error("stop codon in sequence.");
+      if (aa[0]==-1||aa[1]==-1)
+         error("stop codon in sequence.");
       ndiff=0;  sts=stv=nts=ntv=0;
       FOR (k,3) dmark[k]=-1;
       FOR (k,3) if (b[0][k]!=b[1][k]) dmark[ndiff++]=k;
