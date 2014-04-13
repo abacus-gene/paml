@@ -1,7 +1,7 @@
       seqfile = mtYoder3.nuc * sequence data file name
-      outfile = mlb       * main result file
      treefile = DatingNUC.trees  * tree structure filename
 
+      outfile = mlb       * main result file
         noisy = 9  * 0,1,2,3: how much rubbish on the screen
       verbose = 1  * 1: detailed output, 0: concise output
       runmode = 0  * 0: user tree;  1: semi-automatic;  2: automatic

@@ -25,7 +25,7 @@
     fix_alpha = 1   * 0: estimate gamma shape parameter; 1: fix it at alpha
         alpha = .0  * initial or fixed alpha, 0:infinity (constant rate)
        Malpha = 0   * different alphas for genes
-        ncatG = 3   * # of categories in the dG or AdG models of rates
+        ncatG = 4   * # of categories in the dG or AdG models of rates
 
         clock = 0   * 0: no clock, unrooted tree, 1: clock, rooted tree
         getSE = 0   * 0: don't want them, 1: want S.E.s of estimates

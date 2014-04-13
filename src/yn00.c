@@ -7,11 +7,13 @@
                  cc -o yn00 -fast yn00.c tools.o -lm
                      yn00 <SequenceFileName>
 
-  Codon sequences are encoded as 0,1,...,63, different from codeml.c.
+  Codon sequences are encoded as 0,1,...,63, and matrices P(t) and Q
+  etc. have size 64x64.  This is different from codeml.c.
+
   Routines in the two files should not be mixed.
 */
 #include "paml.h"
-#define NS            500
+#define NS            1000
 #define LSPNAME       30
 #define NCODE         64
 #define NGENE         1
@@ -26,8 +28,7 @@ int GetKappa (void);
 int GetFreqs(int is1, int is2, double f3x4[], double pi[]);
 int CountSites(char z[],double pi[],double*Stot,double*Ntot,
     double fbS[],double fbN[]);
-int GetPMatCodon(double P[],double t, double kappa, double omega, double pi[],
-    double e, double space[]);
+int GetPMatCodon(double P[],double t, double kappa, double omega, double space[]);
 int CountDiffs(char z1[],char z2[], 
                double*Sdts,double*Sdtv,double*Ndts,double*Ndtv,double PMat[]);
 int DistanceF84(double n,double P,double Q,double pi[],double*k_HKY, double*t);
@@ -42,10 +43,11 @@ void SimulateData2s64(FILE* fout, double f3x4_0[], double space[]);
 struct common_info {
    char *z[NS], *spname[NS], seqf[96],outf[96];
    int ns,ls,npatt,codonf,icode,ncode,getSE,*pose,verbose, seqtype, cleandata;
-   int fcommon,kcommon, iteration;
+   int fcommon,kcommon, iteration, ndata, npi0;
    double *fpatt, pi[NCODE], f3x4s[NS][12], kappa, omega;
    int ngene,posG[NGENE+1],lgene[NGENE],fix_rgene, model;
    double rgene[NGENE],piG[NGENE][NCODE], alpha;
+   double pi_sqrt[NCODE];
 }  com;
 
 
@@ -64,7 +66,7 @@ extern int noisy;
 enum {NODEBUG, KAPPA, SITES, DIFF} DebugFunctions;
 int debug=0;
 
-double omega_NG, dN_NG, dS_NG;
+double omega_NG, dN_NG, dS_NG;  /* what are these for? */
 
 
 int main(int argc, char *argv[])
@@ -72,13 +74,13 @@ int main(int argc, char *argv[])
    char dsf[32]="2YN.dS",dnf[32]="2YN.dN",tf[32]="2YN.t";
    FILE *fout, *fseq, *fds,*fdn,*ft;
    char ctlf[96]="yn00.ctl";
-   int n=com.ncode, is,js, j,k, wname=20, sspace;
-   double t=0.4, dS=0.1,dN=0.1, S,N, f3x4[12], *space;
+   int n=com.ncode, is,js, j,k, idata, wname=20, sspace;
+   double t=0.4, dS=0.1,dN=0.1, S,N, f3x4[12], *space=NULL;
 
    /* ConsistencyMC(); */
 
    if (argc>1)  strcpy(ctlf, argv[1]); 
-   com.seqtype=1;  com.cleandata=1;
+   com.seqtype=1;  com.cleandata=1; com.ndata=1;
    noisy=1; com.icode=0;  com.fcommon=0;  com.kcommon=1;
    GetOptions (ctlf);
    fout=fopen (com.outf,"w"); frst=fopen("rst","w"); frst1=fopen("rst1","w"); 
@@ -91,59 +93,69 @@ int main(int argc, char *argv[])
       printf ("\n\nSequence file %s not found!\n", com.seqf);
       exit(-1);
    }
-   ReadSeq ((com.verbose?fout:NULL), fseq);
-   sspace=max2(200000,64*com.ns*sizeof(double));
-   sspace=max2(sspace,64*64*5*sizeof(double));
-   if ((space=(double*)malloc(sspace))==NULL) error2("oom space");
-
-   com.kappa=4.6;  com.omega=1;
-
    k=max2(64*64,com.ls/3)*sizeof(double);
    if ((com.fpatt=(double*)malloc(k))==NULL)  error2("oom fpatt");
-   EncodeSeqCodon();   /* ls changed to ls/3 in this */
-   com.npatt=com.ls;  FOR(k,com.ls) com.fpatt[k]=1;
+   for (idata=0; idata<com.ndata; idata++) {
+      if (com.ndata>1) {
+         printf("\nData set %d\n", idata+1);
+         fprintf(fout, "\n\nData set %d\n", idata+1);
+         fprintf(frst, "\t%d", idata+1);
+      }
 
-   fprintf (fout,"YN00 %15s", com.seqf);
-   Statistics(fout, space); 
-   DistanceMatNG86(fout,0);  fflush(fout);
+      ReadSeq ((com.verbose?fout:NULL), fseq);
+      sspace=max2(200000,64*com.ns*sizeof(double));
+      sspace=max2(sspace,64*64*5*sizeof(double));
+      if ((space=(double*)realloc(space,sspace))==NULL) error2("oom space");
 
-   if(noisy) puts("\nEstimation by the method of Yang & Nielsen (2000):");
-   fputs("\nEstimation by the method of Yang & Nielsen (2000):\n",fout);
-   if(!com.iteration) fputs("(equal weighting of pathways)\n",fout);
+      com.kappa=4.6;  com.omega=1;
 
-   if(com.fcommon)  GetFreqs(-1,-1,f3x4,com.pi);
-   if(com.kcommon) {
-      GetKappa();
-      printf("kappa = %.2f\n\n",com.kappa);
-      /* puts("kappa?"); scanf("%lf", &com.kappa); */
+      EncodeSeqCodon();   /* ls changed to ls/3 in this */
+      com.npatt=com.ls;  FOR(k,com.ls) com.fpatt[k]=1;
+
+      fprintf (fout,"YN00 %15s", com.seqf);
+      Statistics(fout, space); 
+      DistanceMatNG86(fout,0);  fflush(fout);
+
+      if(noisy) puts("\nEstimation by the method of Yang & Nielsen (2000):");
+      fputs("\nEstimation by the method of Yang & Nielsen (2000):\n",fout);
+      if(!com.iteration) fputs("(equal weighting of pathways)\n",fout);
+
+      if(com.fcommon)  GetFreqs(-1,-1,f3x4,com.pi);
+      if(com.kcommon) {
+         GetKappa();
+         printf("kappa = %.2f\n\n",com.kappa);
+         /* puts("kappa?"); scanf("%lf", &com.kappa); */
+      }
+
+      fputs("\nseq. seq.     S       N        t   kappa   omega     dN     dS\n\n",fout);
+      fprintf(fds,"%6d\n", com.ns);  fprintf(fdn,"%6d\n", com.ns);
+      fprintf(ft,"%6d\n", com.ns);
+      FOR(is,com.ns) {
+         if(noisy) printf (" %3d", is+1);
+         fprintf(fds,"%-*s ", wname,com.spname[is]);
+         fprintf(fdn,"%-*s ", wname,com.spname[is]);
+         fprintf(ft,"%-*s ", wname,com.spname[is]);
+         FOR (js,is) {
+            if(noisy>3) printf(" vs. %3d", js+1);
+            fprintf (fout, " %3d  %3d ", is+1,js+1);
+
+            if(!com.fcommon) GetFreqs(is,js,f3x4,com.pi);
+            if(!com.kcommon) GetKappa();
+            j=DistanceYN00(is, js, &S, &N, &dS,&dN, &t,space);
+
+            fprintf(fout,"%7.1f %7.1f %8.4f %7.4f %7.4f %6.4f %6.4f\n",
+               S,N,t,com.kappa,com.omega,dN,dS);
+            /* fprintf(frst,"YN: %8.4f%8.4f%8.4f%7.4f%7.4f\n",t,com.kappa,com.omega,dN,dS); */
+	 
+            fprintf(fds," %7.4f",dS); fprintf(fdn," %7.4f",dN); fprintf(ft," %7.4f",t);
+         }    /* for (js) */
+         FPN(fds); FPN(fdn); FPN(ft);    
+         fflush(fds); fflush(fdn); fflush(ft);
+      }       /* for (is) */
+      FPN(fds); FPN(fdn); FPN(ft);
+      fflush(frst);
+      FPN(F0);
    }
-
-   fputs("\nseq. seq.     S       N        t   kappa   omega     dN     dS\n\n",fout);
-   fprintf(fds,"%6d\n", com.ns);  fprintf(fdn,"%6d\n", com.ns);
-   fprintf(ft,"%6d\n", com.ns);
-   FOR(is,com.ns) {
-      if(noisy) printf (" %3d", is+1);
-      fprintf(fds,"%-*s ", wname,com.spname[is]);
-      fprintf(fdn,"%-*s ", wname,com.spname[is]);
-      fprintf(ft,"%-*s ", wname,com.spname[is]);
-      FOR (js,is) {
-         if(noisy>3) printf(" vs. %3d", js+1);
-         fprintf (fout, " %3d  %3d ", is+1,js+1);
-
-         if(!com.fcommon) GetFreqs(is,js,f3x4,com.pi);
-         if(!com.kcommon) GetKappa();
-         j=DistanceYN00(is, js, &S, &N, &dS,&dN, &t,space);
-
-         fprintf(fout,"%7.1f %7.1f %8.4f%8.4f%8.4f%7.4f%7.4f\n",S,N,t,com.kappa,com.omega,dN,dS);
-	 
-         /* fprintf(frst,"YN: %8.4f%8.4f%8.4f%7.4f%7.4f\n",t,com.kappa,com.omega,dN,dS); */
-	 
-         fprintf(fds," %7.4f",dS); fprintf(fdn," %7.4f",dN); fprintf(ft," %7.4f",t);
-      }    /* for (js) */
-      FPN(fds); FPN(fdn); FPN(ft);   fflush(fds); fflush(fdn); fflush(ft);
-   }       /* for (is) */
-   fflush(frst);
-   FPN(F0);
    return (0);
 }
 
@@ -151,10 +163,10 @@ int main(int argc, char *argv[])
 
 int GetOptions (char *ctlf)
 {
-   int i, nopt=8, lline=255; 
+   int i, nopt=9, lline=255;
    char line[255], *pline, opt[20], comment='*';
    char *optstr[]={"seqfile","outfile", "verbose", "noisy", "icode", 
-        "weighting","commonkappa", "commonf3x4"};
+        "weighting","commonkappa", "commonf3x4", "ndata"};
    double t;
    FILE *fctl;
 
@@ -182,6 +194,7 @@ int GetOptions (char *ctlf)
                case (5): com.iteration=(int)t;   break;
                case (6): com.kcommon=(int)t;     break;
                case (7): com.fcommon=(int)t;     break;
+               case (8): com.ndata=(int)t;       break;
             }
             break;
          }
@@ -202,14 +215,15 @@ int DistanceYN00(int is, int js, double*S, double*N, double*dS,double*dN,
 */
    int j,k,ir,nround=10, status=0;
    double fbS[4],fbN[4],fbSt[4],fbNt[4], St,Nt, Sdts,Sdtv,Ndts,Ndtv,y;
-   double w0=0,dS0=0,dN0=0, accu=5e-4,minomega=1e-5;
+   double w0=0,dS0=0,dN0=0, accu=5e-4, minomega=1e-5,maxomega=99;
 
-   if(*t==0) *t=1;  if(com.omega<=0) com.omega=1;
+   if(*t==0) *t=.5;  
+   if(com.omega<=0) com.omega=1;
    FOR(k,4) fbS[k]=fbN[k]=0;
    if(debug) printf("\nCountSites\n");
    for(k=0,*S=*N=0; k<2; k++) {
       CountSites(com.z[k==0?is:js], com.pi, &St, &Nt, fbSt, fbNt);
-      *S+=St/2; *N+=Nt/2; 
+      *S+=St/2; *N+=Nt/2;
       FOR(j,4) { fbS[j]+=fbSt[j]/2; fbN[j]+=fbNt[j]/2; }
       if(noisy>3) printf("Seq. %d: S = %9.3f N=%9.3f\n",k+1,St,Nt);
    }
@@ -220,9 +234,13 @@ int DistanceYN00(int is, int js, double*S, double*N, double*dS,double*dN,
    }
    if(noisy>3) printf("\n      %-34s t k w dN dS\n","Diffs");
    /* initial values? */
+   if(com.iteration) { 
+      if(*t<0.001 || *t>5) *t=0.5; 
+      if(com.omega<0.01 || com.omega>5) com.omega=.5;
+   }
    for (ir=0; ir<(com.iteration?nround:1); ir++) {   /* iteration */
       if(com.iteration) 
-         GetPMatCodon(PMat,*t,com.kappa,com.omega,com.pi,1e-5,space);
+         GetPMatCodon(PMat,*t,com.kappa,com.omega,space);
       else
          FOR(j,NCODE*NCODE) PMat[j]=1;
 
@@ -233,7 +251,7 @@ int DistanceYN00(int is, int js, double*S, double*N, double*dS,double*dN,
       if(DistanceF84(*N, Ndts/ *N, Ndtv/ *N, fbN, &y, dN)) status=-1;
       if(noisy>3) printf("nonsyn kappa=%8.4f\n",y);
 
-      if(*dS<1e-9) { status=-1; com.omega=1; }
+      if(*dS<1e-9) { status=-1; com.omega=maxomega; }
       else         com.omega= max2(minomega, *dN/ *dS);
       *t = *dS * 3 * *S/(*S + *N) + *dN * 3 * *N/(*S + *N);
       if(noisy>3) {
@@ -331,7 +349,7 @@ int GetFreqs(int is1, int is2, double f3x4[], double pi[])
    Codon frequencies pi[] are calculated from the f3x4 table.
    The calculation is duplicated when com.fcommon=1.
 */
-   int j, k;
+   int j, k, n=64;
    double fstop=0;
 
    if (com.fcommon)
@@ -341,12 +359,16 @@ int GetFreqs(int is1, int is2, double f3x4[], double pi[])
       FOR(k,12)  f3x4[k]=(com.f3x4s[is1][k]+com.f3x4s[is2][k])/2;
 
    if (noisy>=9)  matout(F0,f3x4,3,4);
-   FOR(j,64) {
+   FOR(j,n) {
       pi[j] = f3x4[j/16] * f3x4[4+(j%16)/4] * f3x4[8+j%4];
       if (GeneticCode[com.icode][j]==-1) { fstop+=pi[j]; pi[j]=0; }
    }
-   FOR(j,64) pi[j]/=(1-fstop);
-   if (fabs(1-sum(pi,64))>1e-6) error2("err GetFreqs()");
+   FOR(j,n) pi[j]/=(1-fstop);
+   if (fabs(1-sum(pi,n))>1e-6) error2("err GetFreqs()");
+
+   for(j=0,com.npi0=0; j<n; j++)
+      if(com.pi[j]) com.pi_sqrt[com.npi0++]=sqrt(com.pi[j]);
+   com.npi0=n-com.npi0;
 
    return (0);
 }
@@ -357,6 +379,8 @@ int DistanceMatNG86 (FILE *fout, double alpha)
 /* Nei & Gojobori (1986)
    alpha used for nonsynonymous rates only.
    changed coding com.z[][] for this program.
+   This is a duplication of the routine of the same name in codeml.c.  
+   Consider removing this.
 */
    int i,j, h, wname=15, status=0, ndiff;
    char codon1[4], codon2[4], str[4]="   ";
@@ -536,14 +560,12 @@ int CountSites(char z[],double pi[],double*Stot,double*Ntot,double fbS[],double 
 }
 
 
-int GetPMatCodon(double P[],double t, double kappa, double omega, double pi[],
-    double e, double space[])
+int GetPMatCodon(double P[],double t, double kappa, double omega, double space[])
 {
-/* Get approximate PMat using polynomial approximation
-   P(t) = I + Qt + (Qt)^2/2 + (Qt)^3/3!
+/* Get PMat=exp(Q*t) for weighting pathways
 */
    int nterms=100, n=NCODE, i,j,k, c[2],ndiff,pos=0,from[3],to[3];
-   double *Q=space, *Q1=Q+n*n, *Q2=Q1+n*n, mr, div;
+   double *Q=P, *U=space+n*n, *V=U+n*n, *Root=V+n*n, mr;
 
    FOR (i,n*n) Q[i]=0;
    for (i=0; i<n; i++) FOR (j,i) {
@@ -559,30 +581,19 @@ int GetPMatCodon(double P[],double t, double kappa, double omega, double pi[],
       if(c[0]!=c[1])  Q[i*n+j]*=omega;
       Q[j*n+i]=Q[i*n+j];
    }
-   FOR(i,n) FOR(j,n) Q[i*n+j]*=pi[j];
+   FOR(i,n) FOR(j,n) Q[i*n+j]*=com.pi[j];
    for (i=0,mr=0;i<n;i++) { 
-      Q[i*n+i]=-sum(Q+i*n,n); mr-=pi[i]*Q[i*n+i]; 
-   }
-   FOR(i,n*n) Q[i]*=t/mr;
-
-   xtoy(Q,P,n*n);  FOR(i,n) P[i*n+i]++;   /* I + Qt */
-   xtoy(Q,Q1,n*n);
-   for (i=2,div=2;i<nterms;i++,div*=i) {  /* k is divisor */
-      matby(Q, Q1, Q2, n, n, n);
-      for(j=0,mr=0;j<n*n;j++) { P[j]+=Q2[j]/div; mr+=fabs(Q2[j]); }
-      mr/=div;
-      /* if(debug) printf("Pmat term %d: norm=%.6e\n", i, mr); */
-      if (mr<e) break;
-      xtoy(Q2,Q1,n*n);
+      Q[i*n+i]=-sum(Q+i*n,n); mr-=com.pi[i]*Q[i*n+i]; 
    }
 
-/*
+   eigenQREV(Q, com.pi, com.pi_sqrt, n, com.npi0, Root, U, V);
+   FOR(i,n) Root[i]/=mr;
+   PMatUVRoot(P,t,n,U,V,Root);
+
+
 testTransP(PMat, n);
 fprintf(frub,"\nP(%.5f)", t);
-matout (frub,PMat,NCODE,NCODE); fflush(frub);
-*/
-   FOR(i,n*n) if(P[i]<0) P[i]=0;
-
+matout (frub,PMat,n,n); fflush(frub);
    return (0);
 }
 
@@ -720,7 +731,6 @@ int DistanceF84(double n,double P,double Q,double pi[],double*k_HKY, double*t)
 /* This calculates kappa and d from P & Q & pi under F84.
    When F84 fails, we try to use K80.  When K80 fails, we try
    to use JC69.  When JC69 fails, we set distance t to maxt.
-
 */
    int failF84=0,failK80=0,failJC69=0;
    double tc,ag, Y,R, a=0,b=0, k_F84;
@@ -746,8 +756,8 @@ int DistanceF84(double n,double P,double Q,double pi[],double*k_HKY, double*t)
       if(b<=0) failF84=1;
       else {
          k_F84=a/b-1;
-         if(t) *t=4*b*(tc*(1+ k_F84/Y)+ag*(1+ k_F84/R)+Y*R);
-         *k_HKY=(tc+ag + (tc/Y+ag/R)* k_F84)/(tc+ag); /* k_F84=>k_HKY85 */
+         *t = 4*b*(tc*(1+ k_F84/Y)+ag*(1+ k_F84/R)+Y*R);
+         *k_HKY = (tc+ag + (tc/Y+ag/R)* k_F84)/(tc+ag); /* k_F84=>k_HKY85 */
       }
    }
    if(failF84 && !failK80) {  /* try K80 */
@@ -759,13 +769,14 @@ int DistanceF84(double n,double P,double Q,double pi[],double*k_HKY, double*t)
          if(b<=0)  failK80=1;
          else {
             *k_HKY=(.5*a-.25*b)/(.25*b);
-            if(*t) *t = .5*a+.25*b;
-	 }
+            *t = .5*a+.25*b;
+         }
       }
    }
    if(failK80) {
       if((P+=Q)>=.75) { failJC69=1; P=.75*(n-1.)/n; }
-      if(*t) { *t=-.75*log(1-P*4/3.); if(*t>maxt) *t=maxt; }
+      *t = -.75*log(1-P*4/3.); 
+      if(*t>maxt) *t=maxt;
    }
    if(*k_HKY>maxkappa) *k_HKY=maxkappa;
 
@@ -780,6 +791,7 @@ double dsdnREV (int is, int js, double space[])
 {
 /* This calculates ds and dn by recovering the Q*t matrix using the equation
       F(t) = PI * P(t) = PI * exp(Q*t)
+   This is found not to work well and is not published.
    space[64*64*5]
 */
    int n=NCODE, i,j, h;

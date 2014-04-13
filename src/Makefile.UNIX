@@ -1,10 +1,14 @@
-PRGS =  baseml codeml codemlsites basemlg pamp evolver mcmctree yn00 chi2 
+PRGS =  baseml codeml basemlg pamp evolver mcmctree yn00 chi2 
 CC = cc # cc, gcc, cl
 
 CFLAGS = -fast
 #CFLAGS = -O2
 #CFLAGS = -O3
-#CFLAGS = -w0 -warnprotos -newc -std -fast
+#CFLAGS = -warnprotos -newc -std -fast
+
+# for linux running gcc 3 on pentium and athlon
+#CFLAGS = -march=athlon -mcpu=athlon -O4 -funroll-loops -fomit-frame-pointer -finline-functions
+#CFLAGS = -march=pentiumpro -mcpu=pentiumpro -O4 -funroll-loops -fomit-frame-pointer -finline-functions 
 
 LIBS = -lm # -lM
 
@@ -14,12 +18,10 @@ baseml : baseml.o eigen.o tools.o
 	$(CC) $(CFLAGS) -o $@ baseml.o eigen.o tools.o $(LIBS)
 basemlg : basemlg.o tools.o
 	$(CC) $(CFLAGS) -o $@ basemlg.o tools.o $(LIBS)
-codeml : codeml.o eigen.o tools.o
-	$(CC) $(CFLAGS) -o $@ codeml.o eigen.o tools.o $(LIBS)
-codemlsites : codemlsites.o eigen.o tools.o
-	$(CC) $(CFLAGS) -o $@ codemlsites.o tools.o eigen.o $(LIBS)
-evolver : evolver.o tools.o eigen.o
-	$(CC) $(CFLAGS) -o $@ evolver.o tools.o eigen.o $(LIBS)
+codeml : codeml.o tools.o
+	$(CC) $(CFLAGS) -o $@ codeml.o tools.o $(LIBS)
+evolver : evolver.o tools.o 
+	$(CC) $(CFLAGS) -o $@ evolver.o tools.o $(LIBS)
 pamp : pamp.o tools.o eigen.o
 	$(CC) $(CFLAGS) -o $@ pamp.o tools.o eigen.o $(LIBS)
 mcmctree : mcmctree.o tools.o
@@ -39,8 +41,6 @@ basemlg.o : paml.h basemlg.c treesub.c
 	$(CC) $(CFLAGS) -c basemlg.c
 codeml.o : paml.h codeml.c treesub.c treespace.c
 	$(CC) $(CFLAGS) -c codeml.c
-codemlsites.o : paml.h codeml.c treesub.c treespace.c
-	$(CC) $(CFLAGS) -DNSSITESBATCH -o codemlsites.o -c codeml.c
 evolver.o: evolver.c treesub.c treespace.c
 	$(CC) $(CFLAGS) -c evolver.c
 pamp.o : paml.h pamp.c treesub.c treespace.c

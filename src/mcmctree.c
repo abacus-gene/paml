@@ -57,6 +57,8 @@ struct CommonInfo {
    double *fpatt;
    double pi[6],lmax, birth,death,sample, mut, kappa,alpha, beta,delta0,delta1;
    double rgene[NGENE],piG[NGENE][6], freqK[NCATG], rK[NCATG], *lkl, *fhK;
+   double pi_sqrt[NCODE];  /* not used but can be used */
+   int npi0;
 }  com;
 struct TREEB {
    int  nbranch, nnode, root, branches[NBRANCH][2];

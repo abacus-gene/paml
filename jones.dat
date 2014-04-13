@@ -31,6 +31,11 @@ Rate Q_ij=S_ij*PI_j.
 The rest of the file is not used.  
 Prepared by Z. Yang, March 1995.
 
+See the following reference for notation:
+
+Yang, Z., R. Nielsen and M. Hasegawa. 1998. Models of amino acid substitution and
+applications to mitochondrial protein evolution. Mol. Biol. Evol. 15:1600-1611.
+
 -----------------------------------------------------------------------
 
   426 
@@ -49,7 +54,8 @@ Prepared by Z. Yang, March 1995.
  1395  360   64   74   27  629  106  171  249   54  882  117   36   66             
  3664  661 2706  390  559  278  236 1861  214  274  691  351   89  468 1839      
  3920  360 1069  216   91  227  217  266  116 1420  256  653  579   54  653 3527    
-   19  171    9    5   60   20   17  106    5   13  127   16   15   56    8   64  18   49   62  178  142  246   59   26   34  777  102  131   30   25 1276   32  259   73  60     
+   19  171    9    5   60   20   17  106    5   13  127   16   15   56    8   64  18
+   49   62  178  142  246   59   26   34  777  102  131   30   25 1276   32  259   73  60     
  2771  111   86  195  150  100  336  420   32 6260 2020   99  937  307  142  320  805  44  63 
 
     A    R    N    D    C    Q    E    G    H    I    L    K    M    F    P    S    T   W   Y  V

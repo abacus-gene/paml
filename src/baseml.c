@@ -23,7 +23,7 @@
 #define NGENE         100
 #define LSPNAME       30
 #define NCODE         4
-#define NCATG         40
+#define NCATG         8
 
 #define NP            (NBRANCH+NGENE+11)
 /*
@@ -32,6 +32,7 @@
 extern int noisy, NFunCall, NEigenQ, NPMatUVRoot, *ancestor, GeneticCode[][64];
 extern char AAs[];
 extern double *SeqDistance; 
+extern clock_t clock_start, clock_cur;
 
 int Forestry (FILE *fout);
 void DetailOutput (FILE *fout, double x[], double var[]);
@@ -48,10 +49,6 @@ int cPMat(double P[],double t,int n,complex cU[],complex cV[],complex cRoot[]);
 int TransformxBack(double x[]);
 void ReadPatternFreq (char* pexpf);
 
-int TestModel (FILE *fout, double x[], int nsep, double space[]);
-int OldDistributions (int inode, double x[]);
-int SubData(int argc, char *argv[]);
-
 struct CommonInfo {
    char *z[NS], *spname[NS], seqf[96],outf[96],treef[96];
    int seqtype, ns,ls,ngene,posG[NGENE+1],lgene[NGENE], *pose,npatt;
@@ -59,9 +56,10 @@ struct CommonInfo {
    int np,ntime,nrgene,nrate,nalpha,npi,nhomo,ncatG,ncode,Mgene,sspace,slkl1;
    int fix_kappa, fix_rgene, fix_alpha, fix_rho, nparK, fix_branch;
    int clock, model, getSE, runmode, print,verbose, ndata, icode,coding;
-   int method;
+   int method, npi0;
    double *fpatt, kappa, alpha, rho, rgene[NGENE], pi[4],piG[NGENE][4];
    double freqK[NCATG], rK[NCATG], MK[NCATG*NCATG];
+   double pi_sqrt[NCODE];
    double (*plfun)(double x[],int np), *lkl, *lkl0, *fhK, *space;
 }  com;
 struct TREEB {
@@ -95,21 +93,21 @@ double _rateSite=1;
 int *rateBranch=NULL, N_rateBranch=-1;
 int N_PMatUVRoot=0;
 
+
 #define BASEML 1
 #include "treesub.c"
 #include "treespace.c"
 
 int main(int argc, char *argv[])
 {
-   FILE *fout, *fseq=NULL;
+   FILE *fout, *fseq=NULL, *fpair[6];
+   char pairfs[1][32]={"2base.t"};
    int i, slkl0=0,s2=0, READPATTERNFREQ=0, idata;
-   char rstf[96]="rst", ctlf[96]="baseml.ctl";
+   char rstf[96]="rst", ctlf[96]="baseml.ctl", timestr[64];
    char *Mgenestr[]={"diff. rate", "separate data", "diff. rate & pi", 
                      "diff. rate & kappa", "diff. rate & pi & kappa"};
    char *clockstr[]={"", "global clock", "local clock", "clock with dated seqs"};
-   double t;
    time_t tm;
-   clock_t clock_start, clock_end;
 
 #ifdef __MWERKS__
 /* Added by Andrew Rambaut to accommodate Macs -
@@ -118,7 +116,7 @@ int main(int argc, char *argv[])
 	argc=ccommand(&argv);
 #endif
 
-   clock_start=clock();
+   starttime();
    com.ndata=1;
    com.cleandata=0;  noisy=0;  com.runmode=0;
 
@@ -139,32 +137,22 @@ int main(int argc, char *argv[])
    frub=fopen("rub","w");  frst=fopen(rstf,"w"); frst1=fopen("rst1","w");
    if(frub==NULL || frst==NULL || frst1==NULL) error2("file open error");
 
-/*
-com.pi[0]=0.45; com.pi[1]=0.45; com.pi[2]=0.05; com.pi[3]=0.05; 
-com.model=4;
-EigenTN93 (com.model,1,1,com.pi,&nR,Root,Cijk);
-PMatCijk (PMat, 3./3.);
-matout (F0, PMat, 4,4);
-FOR(i,4) abyx(com.pi[i], PMat+i*4, 4);
-matout (F0, PMat, 4,4);
-exit(0);
-*/
-
    if (argc>1)  strcpy(ctlf, argv[1]); 
    GetOptions (ctlf);
 
    if ((fout=fopen (com.outf, "w"))==NULL) 
       error2("can't open the control file .ctl\n");
-
    if((fseq=fopen (com.seqf,"r"))==NULL)  {
       printf ("\n\nSequence file %s not found!\n", com.seqf);
       exit (-1);
    }
+   if((fpair[0]=(FILE*)fopen(pairfs[0],"w"))==NULL) error2("2base.t file open error");
+
    for (idata=0; idata<com.ndata; idata++) {
       if (com.ndata>1) {
-         printf("\nData set %d\n", idata+1);
-         fprintf(fout, "\n\nData set %d\n", idata+1);
-         fprintf(frst, "\t%d", idata+1);
+         printf("\nData set %4d\n", idata+1);
+         fprintf(fout, "\n\nData set %4d\n", idata+1);
+         fprintf(frst, "\t%4d", idata+1);
       }
       if (idata)  GetOptions (ctlf);
       if (READPATTERNFREQ) {
@@ -184,14 +172,14 @@ exit(0);
             error2("this is not a coding sequence.  Remove icode?");
       }
 
-      if(com.ngene>1 && com.Mgene==1)  printSeqsMgenes ();
+      /* if(com.ngene>1 && com.Mgene==1)  printSeqsMgenes (); */
       if(com.Mgene && com.ngene==1)  error2 ("option Mgene for 1 gene?");
       if(com.ngene>1 && com.nhomo) error2("nhomo for mutliple genes?");
       if(com.nalpha && (!com.alpha || com.ngene==1 || com.fix_alpha))
          error2("Malpha");
       if(com.nalpha>1 && com.rho) error2("Malpha or rho");
       if(com.alpha==0)  com.nalpha=0;
-      else               com.nalpha=(com.nalpha?com.ngene:!com.fix_alpha);
+      else              com.nalpha=(com.nalpha?com.ngene:!com.fix_alpha);
       if(com.Mgene==1)  com.nalpha=!com.fix_alpha;
 
       if(com.ngene==1) com.Mgene=0;
@@ -231,10 +219,10 @@ exit(0);
 
       if (!READPATTERNFREQ) Initialize (fout, com.space);
       if (com.Mgene==3) FOR (i,com.ngene) xtoy(com.pi,com.piG[i],4);
-
+/*
       if (com.model==JC69 && !com.print && !READPATTERNFREQ) 
-         PatternJC69like(NULL);
-
+         PatternJC69like(fout);
+*/
       if(!com.cleandata) {
          slkl0=com.ns*com.ncode*com.npatt*sizeof(double);
          if((com.lkl0=(double*)malloc(slkl0))==NULL) error2("oom lkl0");
@@ -254,9 +242,9 @@ exit(0);
       /* FOR(i,com.ns*2-1) xtoy(com.pi,nodes[i].pi, 4);  check this? */
 
       if(!READPATTERNFREQ) 
-         DistanceMatNuc(fout,com.model,com.alpha);
+         DistanceMatNuc(fout,fpair[0],com.model,com.alpha);
 
-      if (com.Mgene==1)        MultipleGenes (fout, com.space);
+      if (com.Mgene==1)        MultipleGenes (fout, fpair, com.space);
       else if (com.runmode==0) Forestry (fout);
       else if (com.runmode==3) StepwiseAddition (fout, com.space);
       else if (com.runmode>=4) Perturbation(fout, (com.runmode==4), com.space);
@@ -264,13 +252,13 @@ exit(0);
       
       FPN(frst);  if((idata+1)%10==0) fflush(frst);
       free(nodes);
+      printf("\nTime used: %s\n", printtime(timestr));
+      starttime();
    }   /* for(idata) */
    if(com.ndata>1 && fseq) fclose(fseq);  
-   fclose(fout); fclose(frst); 
+   fclose(fout); fclose(frst);   fclose(fpair[0]);
    if (noisy) putchar ('\a');
 
-   clock_end=clock(); i=(int)(t=(clock_end*1.0-clock_start)/CLOCKS_PER_SEC);
-   printf("\nTime used: %02d:%02d:%02.1f.\n", i/3600,(i%3600)/60, t-(i/60)*60);
    return (0);
 }
 
@@ -310,7 +298,7 @@ int Forestry (FILE *fout)
    for(itree=0; ntree==-1||itree<ntree; itree++,iteration=1) {
       if((pauptree && PaupTreeRubbish(ftree)) || 
          ReadaTreeN(ftree,&length_label,1))
-            { puts("err or end of tree file."); break; }
+            { printf("\nerr or end of tree file.\n"); break; }
       if(noisy) printf ("\nTREE # %2d: ", itree+1);
       fprintf (fout,"\nTREE # %2d:  ", itree+1);
       fprintf (frub,"\n\nTREE # %2d\n", itree+1);
@@ -321,9 +309,9 @@ int Forestry (FILE *fout)
       if (times++==0 && (length_label==1 || length_label==3)) {
          if(com.clock) puts("\nBranch lengths in tree are ignored");
          else {
-
-			puts("\ntree has branch lengths.\n0:ignore?\n1:initials?\n2:fixed?");
-            /* scanf("%d",&com.fix_branch); */
+            puts("\ntree has branch lengths.\n0:ignore?\n1:initials?\n2:fixed?");
+            com.fix_branch=1;
+            scanf("%d",&com.fix_branch);
 			
             if(com.fix_branch==1) {
                FOR(i,tree.nnode) 
@@ -363,31 +351,21 @@ int Forestry (FILE *fout)
          FOR(i,tree.nbranch) fprintf(fout,"%3d",rateBranch[i]); FPN(fout);
       }
 
+      if(noisy>=2&&com.npi0) printf("\n%d zero frequencies.\n", com.npi0);
       PointLklnodes ();
       lnL = com.plfun (x,np);
+
       if(noisy) {
          printf("\nntime & nrate & np:%6d%6d%6d\n",com.ntime,com.nrate,com.np);
-         if(noisy>2 && np<50) { OutaTreeB(F0); FPN(F0); matout(F0,x,1,np); }
+         if(noisy>2 && com.ns<50) { OutaTreeB(F0); FPN(F0); matout(F0,x,1,np); }
          printf("\nlnL0 = %12.6f\n",-lnL);
-
-
-/*
-         printf ("\nGradient:\n");
-         gradient(np,x,lnL,com.space,com.plfun,com.space+np,1);
-         matout(F0,com.space,1,np);
-         printf ("\nHessian:\n");
-         var=com.space+2*np;
-         Hessian (np, x, lnL, com.space+np, var, com.plfun, var+np*np);
-         FOR(i,np) printf(" %11.6f",var[i*np+i]);
-         exit(0);
-*/
       }
 
       if (iteration && np) {
          SetxBound (np, xb);
-         if(com.method==1)
-            j=minB(noisy>2?frub:NULL, &lnL,x,xb, com.space);
-         if(j==4 || com.method==0)
+         if(com.method)
+            j=minB(noisy>2?frub:NULL, &lnL,x,xb, e*100, com.space);
+         else
             j=ming2(noisy>2?frub:NULL,&lnL,com.plfun,NULL,x,xb, com.space,e,np);
 
          if (j==-1 || lnL<=0 || lnL>1e7) status=-1;
@@ -447,11 +425,6 @@ fprintf(frst,"%12.4f %4d ",-lnL,com.npatt);
          for (i=0; i<np-com.ntime; i++) xcom[i]=x[com.ntime+i];
       else if (!j)  
          for (i=0; i<np-com.ntime; i++) xcom[i]=xcom[i]*.8+x[com.ntime+i]*0.2;
-/*
-      TestModel(fout,x,1,com.space);
-      OldDistributions (tree.root, x);
-      fprintf(fout,"\n\n# of lfun calls:%10d\n", NFunCall);
-*/
 
       com.print-=9;  com.plfun(x, np);  com.print+=9;
       if (com.print) {
@@ -488,7 +461,6 @@ fprintf(frst,"%12.4f %4d ",-lnL,com.npatt);
 }
 
 
-
 int TransformxBack(double x[])
 {
 /* transform variables x[] back to their original definition after iteration,
@@ -498,15 +470,15 @@ int TransformxBack(double x[])
 
    k=com.ntime+com.nrgene+com.nrate;
    for (i=0; i<com.npi; i++)  
-      f_to_x(x+k+3*i,x+k+3*i,4,0,0);
+      f_and_x(x+k+3*i,x+k+3*i,4,0,0);
    
    k+=com.npi*3 + K-1;        /* K-1 for rK */
    if (com.nparK==2)          /* rK & fK */
-      f_to_x(x+k,x+k,K,0,0);
+      f_and_x(x+k,x+k,K,0,0);
    else if (com.nparK==3)     /* rK & MK (double stochastic matrix) */
-      for (i=0; i<K-1; k+=K-1,i++)  f_to_x(x+k,x+k,K,0,0);
+      for (i=0; i<K-1; k+=K-1,i++)  f_and_x(x+k,x+k,K,0,0);
    else if (com.nparK==4)     /* rK & MK */
-      for (i=0; i<K;   k+=K-1,i++)  f_to_x(x+k,x+k,K,0,0);
+      for (i=0; i<K;   k+=K-1,i++)  f_and_x(x+k,x+k,K,0,0);
    return(0);
 }
 
@@ -778,7 +750,7 @@ int GetOptions (char *ctlf)
       { if (com.ncatG<2 || com.ncatG>NCATG) error2 ("ncatG"); }
    else if (com.ncatG>1) com.ncatG=1;
 
-   if(com.method==1 &&(com.clock||com.rho)) 
+   if(com.method &&(com.clock||com.rho)) 
       { com.method=0; puts("\aiteration method reset"); }
 
    if (com.nhomo==2) {
@@ -823,7 +795,7 @@ int GetInitials (double x[], int *fromfile)
    else if ((com.alpha && com.rho==0) || com.nparK==1 || com.nparK==2)
       com.plfun=lfundG;
 
-   if(com.method==1 && com.fix_branch!=2 && com.plfun==lfundG) {
+   if(com.method && com.fix_branch!=2 && com.plfun==lfundG) {
       lklSiteClass=1;
       if(com.slkl1!=slkl1_new) {
          com.slkl1=slkl1_new;
@@ -890,12 +862,13 @@ int GetInitials (double x[], int *fromfile)
       if(com.clock==3) SetDivTime_OldSon(tree.root);
    }
    else if(com.fix_branch==0) {
-      FOR (j,com.ntime) x[j]=rndu()*.02;
+      for(j=0,t=0,k=com.ns*(com.ns-1)/2; j<k; j++)  t+=SeqDistance[j]/k;
+      FOR (j,com.ntime) x[j]=min2(t,5)*rndu();
       if(com.ns<50) LSDistance (&t, x, testx);
-      /*
+/*
 matout (F0, x, 1, com.ntime);
 printf("SS=%.8f\n", t);
-      */
+*/
    }
 
    FOR (j,com.nrgene) x[com.ntime+j]=1;
@@ -967,7 +940,7 @@ int SetParameters(double x[])
    if (com.nhomo==1) {
       k=com.ntime+com.nrgene+com.nrate;
 
-      if (!LASTROUND) f_to_x(x+k,com.pi,4,0,0);
+      if (!LASTROUND) f_and_x(x+k,com.pi,4,0,0);
       else            xtoy (x+k, com.pi, 3);
       com.pi[3]=1-sum(com.pi,3);
       if (com.model<=TN93) EigenTN93(com.model,k1,k2,com.pi,&nR,Root,Cijk);
@@ -984,19 +957,19 @@ int SetParameters(double x[])
       k+=com.nrate;
       if (com.nhomo==3) {
          FOR (i,com.ns) 
-            if (!LASTROUND) f_to_x(x+k+i*3,nodes[i].pi,4,0,0);
+            if (!LASTROUND) f_and_x(x+k+i*3,nodes[i].pi,4,0,0);
             else            xtoy  (x+k+i*3, nodes[i].pi, 3);
          for (i=com.ns; i<tree.nnode; i++)
-            if (!LASTROUND) f_to_x(x+k+com.ns*3,nodes[i].pi,4,0,0);
+            if (!LASTROUND) f_and_x(x+k+com.ns*3,nodes[i].pi,4,0,0);
             else            xtoy  (x+k+com.ns*3, nodes[i].pi, 3);
 
          if (tree.root>=com.ns && tree.nnode>com.ns+1)
-            if (!LASTROUND) f_to_x(x+k+(com.ns+1)*3,nodes[tree.root].pi,4,0,0);
+            if (!LASTROUND) f_and_x(x+k+(com.ns+1)*3,nodes[tree.root].pi,4,0,0);
             else            xtoy   (x+k+(com.ns+1)*3, nodes[tree.root].pi,3);
       }
       else { /*  if(com.nhomo==4) */
          FOR (i,tree.nnode)
-            if (!LASTROUND) f_to_x(x+k+i*3,nodes[i].pi,4,0,0);
+            if (!LASTROUND) f_and_x(x+k+i*3,nodes[i].pi,4,0,0);
             else            xtoy   (x+k+i*3, nodes[i].pi, 3);
       }
 
@@ -1027,13 +1000,13 @@ int SetParameters(double x[])
    xtoy (x+k, com.rK, K-1);
 
    if (com.nparK==2) {
-      if (!LASTROUND)  f_to_x(x+k+K-1, com.freqK, K,0,0);
+      if (!LASTROUND)  f_and_x(x+k+K-1, com.freqK, K,0,0);
       else             xtoy  (x+k+K-1, com.freqK, K-1);
       com.freqK[K-1]=1-sum(com.freqK, K-1);
    }
    else if (com.nparK==3) {   /* rK & MK (double stochastic matrix) */
       for (i=0,k+=K-1; i<K-1; k+=K-1,i++) {
-         if (!LASTROUND) f_to_x(x+k, com.MK+i*K, K,0,0);
+         if (!LASTROUND) f_and_x(x+k, com.MK+i*K, K,0,0);
          else            xtoy  (x+k, com.MK+i*K, K-1);
          com.MK[i*K+K-1]=1-sum(com.MK+i*K,K-1);
       }
@@ -1046,7 +1019,7 @@ int SetParameters(double x[])
    }
    else if (com.nparK==4) { /* rK & MK */
       for (i=0, k+=K-1; i<K; k+=K-1, i++) {
-         if (!LASTROUND) f_to_x(x+k, com.MK+i*K, K,0,0);
+         if (!LASTROUND) f_and_x(x+k, com.MK+i*K, K,0,0);
          else            xtoy  (x+k, com.MK+i*K, K-1);
          com.MK[i*K+K-1]=1-sum(com.MK+i*K,K-1);
       }
@@ -1063,12 +1036,18 @@ int SetPGene(int igene, int _pi, int _UVRoot, int _alpha, double xcom[])
    Note that com.piG[][] have been homogeneized if (com.Mgene==3)
 */
    int nr[]={0, 1, 0, 1, 1, 2, 5, 11};
-   int k=com.nrgene+(com.Mgene>=3)*igene*nr[com.model];
+   int j,k=com.nrgene+(com.Mgene>=3)*igene*nr[com.model];
    double ka1=xcom[k], ka2=(com.model==TN93?xcom[k+1]:-1);
 
    if(com.Mgene==2 && com.fix_kappa) ka1=ka2=com.kappa;
 
-   if (_pi) xtoy(com.piG[igene], com.pi, 4);
+   if (_pi) {
+      xtoy(com.piG[igene], com.pi, 4);
+      if(com.model==REV || com.model==REVu)
+      for(j=0,com.npi0=0; j<com.ncode; j++)
+         if(com.pi[j]) com.pi_sqrt[com.npi0++]=sqrt(com.pi[j]);
+      com.npi0=com.ncode-com.npi0;
+   }
    if (_UVRoot) {
       if (com.model==K80) com.kappa=ka1;
       else if (com.model<=TN93) 
@@ -1187,7 +1166,7 @@ int PartialLikelihood (int inode, int igene)
       GetPMatBranch(PMat, NULL, t, ison);
 
       if (com.cleandata && nodes[ison].nson<1)       /* end node */
-         for(h=pos0; h<pos1; h++) 
+         for(h=pos0; h<pos1; h++)
             FOR(j,n) nodes[inode].lkl[h*n+j]*=PMat[j*n+com.z[ison][h]];
       else {
          for(h=pos0; h<pos1; h++) 
@@ -1199,7 +1178,6 @@ int PartialLikelihood (int inode, int igene)
       }
    }        /*  for (ison)  */
    if(_nnodeScale && _nodeScale[inode])  NodeScale(inode, pos0, pos1);
-
    return (0);
 }
 
@@ -1209,169 +1187,20 @@ int PMatCijk (double P[], double t)
 /* P(t)ij = SUM Cijk * exp{Root*t}
 */
    int i,j,k, n=4, nr=nR;
-   double expt[4];
+   double expt[4], pij;
 
-   if (t<-1e-3 && noisy>3) 
+   if (t<-2e-4 && noisy>3) 
       printf ("\nt = %.5f in PMatCijk", t);
    if (t<1e-200) { identity (P, n); return(0); }
 
    for (k=1; k<nr; k++) expt[k]=exp(t*Root[k]);
    FOR (i,n) FOR (j,n) {
-      for (k=1,t=Cijk[i*n*nr+j*nr+0]; k<nr; k++)
-         t+=Cijk[i*n*nr+j*nr+k]*expt[k];
-      P[i*n+j]=t;
+      for (k=1,pij=Cijk[i*n*nr+j*nr+0]; k<nr; k++)
+         pij+=Cijk[i*n*nr+j*nr+k]*expt[k];
+      P[i*n+j] = (pij>0?pij:0);
    }
    return (0);
 }
-
-
-#ifdef UNDEFINED
-
-int CollapsSite (FILE *fout, int nsep, int ns, int *ncat, int SiteCat[])
-{
-   int j,k, it, h, b[NS], ndiff, n1, bit1;
-/* n1: # of 1's   ...  bit1: the 1st nonzero bit */
-   
-   *ncat = 5 + (1<<(ns-1))-1 + nsep*11;
-   if (fout) fprintf (fout, "\n# cat:%5d  # sep:%5d\n\n", *ncat, nsep);
- 
-   FOR (h, 1<<2*ns) {
-      for (j=0,it=h; j<ns; b[ns-1-j]=it%4,it/=4,j++) ;
-      for (j=1,ndiff=0; j<ns; j++)  {
-         FOR (k,j) if (b[j]==b[k]) break;
-         if (k==j) ndiff++;
-      }
-      switch (ndiff) {
-      default  : SiteCat[h]=0;      break;
-      case (0) : SiteCat[h]=b[0]+1; break;
-      case (1) :
-         for (j=1,it=0,n1=0,bit1=0; j<ns; j++) {
-            k = (b[j]!=b[0]);
-            it = it*2 + k;
-            n1 += k;
-            if (bit1==0 && k) bit1=ns-1-j;
-         }
-         it = 5 + it-1;
-         if (nsep==0) { SiteCat[h]=it; break; }
-
-         SiteCat[h]=it+min2(bit1+1,nsep)*11;
-         if (n1==1 && bit1<nsep) {
-            SiteCat[h]-=11;
-            SiteCat[h]+=(b[0]*4+b[ns-1-bit1]-b[0]-(b[0]<=b[ns-1-bit1]));
-         }
-         break;
-      }
-      if (fout) {
-         FOR (j, ns) fprintf (fout, "%1c", BASEs[b[j]]);
-         fprintf (fout, "%5d    ", SiteCat[h]);
-         if (h%4==3) FPN (fout);
-      }
-   }
-   return (0);
-}
-
-int GetPexpML (double x[], int ncat, int SiteCat[], double pexp[])
-{
-   int  j, it, h, nodeb[NNODE]; 
-   int  isum, nsum=1<<(2*(tree.nbranch-com.ns+1));
-   double fh, y, Pt[NBRANCH][16];
-
-   if (com.ngene>1 || com.nhomo || com.alpha || com.nparK || com.model>REV)
-      error2 ("Pexp()");
-   SetParameters (x);
-   FOR (j, tree.nbranch) 
-      PMatCijk (Pt[j], nodes[tree.branches[j][1]].branch);
-
-   for (h=0; h<(1<<2*com.ns); h++) {
-      if (SiteCat[h] == 0) continue;
-      for (j=0,it=h; j<com.ns; nodeb[com.ns-1-j]=it&3,it>>=2,j++) ;
-      for (isum=0,fh=0; isum<nsum; isum++) {
-         for (j=0,it=isum; j<tree.nbranch-com.ns+1; j++)
-            { nodeb[com.ns+j]=it%4; it/=4; }
-         for (j=0,y=com.pi[nodeb[tree.root]]; j<tree.nbranch; j++) 
-            y*=Pt[j][nodeb[tree.branches[j][0]]*4+nodeb[tree.branches[j][1]]];
-         fh += y;
-      }
-      pexp[SiteCat[h]] += fh;
-   }    
-   pexp[0] = 1-sum(pexp+1,ncat-1);
-   return (0);
-}
-
-
-int TestModel (FILE *fout, double x[], int nsep, double space[])
-{
-/* test of models, using com.
-*/
-   int j,h, it, ls=com.ls, ncat, *SiteCat;
-   double *pexp=space, *nobs, lmax0, lnL0, X2, ef, de;
-
-   SiteCat=(int*)malloc((1<<2*com.ns)* sizeof(int));
-   if (SiteCat == NULL)  error2 ("oom");
-   CollapsSite (F0, nsep, com.ns, &ncat, SiteCat);
-   fprintf (fout, "\n\nAppr. test of model.. ncat%6d  nsep%6d\n", ncat,nsep);
-
-   nobs = pexp+ncat;
-   zero (pexp, 2*ncat);
-    /* nobs */
-   FOR (h, com.npatt) {
-      for (j=0,it=0; j<com.ns; j++) it = it*4+(com.z[j][h]-1);
-      nobs[SiteCat[it]] += com.fpatt[h];
-   }
-   GetPexpML (x, ncat, SiteCat, pexp);
-
-   for (h=0,lnL0=0,X2=0,lmax0=-(double)ls*log((double)ls); h<ncat; h++) {
-      if (nobs[h]>1) {
-         lmax0 += nobs[h]*log(nobs[h]);
-         lnL0 += nobs[h]*log(pexp[h]);
-      }
-      ef = com.ls*pexp[h];
-      de = square(nobs[h]-ef)/ef;
-      X2 += de;
-      fprintf (fout, "\nCat #%3d%9.0f%9.2f%9.2f", h, nobs[h], ef,de);
-   }
-   fprintf (fout, "\n\nlmax0:%12.4f  D2:%12.4f   X2:%12.4f\n",
-       lmax0, 2*(lmax0-lnL0), X2);
-   free (SiteCat);
-
-   return (0);
-}
-
-double freq[NNODE][4];
-
-int OldDistributions (int inode, double x[])
-{
-/* reconstruct nucleotide frequencies at and down inode
-   for models with com.nhomo>2
-*/
-   int i;
-   double kappa=com.kappa;
-
-   if (com.model>=REV)  error2 ("model");
-   if (inode==tree.root) {
-      if (com.alpha || com.model>REV) puts ("\ninaccurate");
-      SetParameters (x);
-      xtoy (nodes[inode].pi, freq[inode], 4);
-   }
-   else {
-      EigenTN93 (com.model, kappa, kappa, nodes[inode].pi,
-          &nR, Root, Cijk);
-      PMatCijk (PMat, nodes[inode].branch);
-      matby (freq[nodes[inode].father], PMat, freq[inode], 1, 4, 4);
-   }
-   printf ("\nnode%2d b %8.5f k %8.5f sum PI =%12.6f =%12.6f\n",
-      inode+1, nodes[inode].branch, nodes[inode].kappa,
-      sum(freq[inode],4), sum(freq[inode]+4,2));
-
-   fprintf (flnf, "\nnode %4d", inode+1);
-   FOR (i, 4) fprintf (flnf, " %8.5f", freq[inode][i]);
-   FOR (i, nodes[inode].nson)  
-      OldDistributions (nodes[inode].sons[i], x);
-   return (0);
-}
-
-#endif
-
 
 void ReadPatternFreq (char* pexpf)
 {

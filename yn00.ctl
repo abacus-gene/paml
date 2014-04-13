@@ -6,7 +6,7 @@
 
     weighting = 0  * weighting pathways between codons (0/1)?
    commonf3x4 = 0  * use one set of codon freqs for all pairs (0/1)? 
-
+*       ndata = 1
 
 
 * Genetic codes: 0:universal, 1:mammalian mt., 2:yeast mt., 3:mold mt.,

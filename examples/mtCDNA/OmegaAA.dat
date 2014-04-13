@@ -1,0 +1,75 @@
+4
+1: DN HQ LI MI ML FI FL YF VM
+2: QR ED EQ HR PA SN TP VI VL
+3: GA KQ KE SG TA TN TS WL VA VF
+4: HN HD PQ PH SP TK TM YH
+
+// from grantham.dat, for table 5 in Yang et al. (1998).
+
+
+
+Note: The first number is the number of substitution classes minus
+one.  So the above specifies 5 classes.  The next four lines specifies
+the amino acid pairs in each of the 4 classes.  Pairs not mentioned in
+the file make up a default class (class 0).  Note that only changes
+between amino acids different at one codon position are allowed in the
+model, and amino acids different at two or three positions are not
+allowed to change between themselves.  Note that the model is
+time-reversible (see Yang et al. 1998).  If you want to fit the
+"general" model, which assigns an independent rate for each one-step
+amino acid pair, you use -1 at the start of the file (that is, instead
+of the 4), which will act as a signal to the program to fit the
+general model (see pages 1608-9 in that paper).
+
+Reference
+
+Yang, Z., R. Nielsen and M. Hasegawa. 1998. Models of amino acid
+substitution and applications to mitochondrial protein
+evolution. Mol. Biol. Evol. 15:1600-1611.
+
+
+ (1) The universal genetic code (74 nonempty)
+ Ala A                                             
+ Arg R  0                                          
+ Asn N  0 0                                        
+ Asp D  1 0 1                                      
+ Cys C  0 1 0 0                                    
+ Gln Q  0 1 0 0 0                                  
+ Glu E  1 0 0 1 0 1                                
+ Gly G  1 1 0 1 1 0 1                              
+ His H  0 1 1 1 0 1 0 0                            
+ Ile I  0 1 1 0 0 0 0 0 0                          
+ Leu L  0 1 0 0 0 1 0 0 1 1                        
+ Lys K  0 1 1 0 0 1 1 0 0 1 0                      
+ Met M  0 1 0 0 0 0 0 0 0 1 1 1                    
+ Phe F  0 0 0 0 1 0 0 0 0 1 1 0 0                  
+ Pro P  1 1 0 0 0 1 0 0 1 0 1 0 0 0                
+ Ser S  1 1 1 0 1 0 0 1 0 1 1 0 0 1 1              
+ Thr T  1 1 1 0 0 0 0 0 0 1 0 1 1 0 1 1            
+ Trp W  0 1 0 0 1 0 0 1 0 0 1 0 0 0 0 1 0          
+ Tyr Y  0 0 1 1 1 0 0 0 1 0 0 0 0 1 0 1 0 0        
+ Val V  1 0 0 1 0 0 1 1 0 1 1 0 1 1 0 0 0 0 0
+        A R N D C Q E G H I L K M F P S T W Y V      
+                                                     
+ (2)  The mammalian mitochondrial code (69 nonempty) 
+ Ala A                                              
+ Arg R  0                                          
+ Asn N  0 0                                        
+ Asp D  1 0 1                                      
+ Cys C  0 1 0 0                                    
+ Gln Q  0 1 0 0 0                                  
+ Glu E  1 0 0 1 0 1                                
+ Gly G  1 1 0 1 1 0 1                              
+ His H  0 1 1 1 0 1 0 0                            
+ Ile I  0 0 1 0 0 0 0 0 0                          
+ Leu L  0 1 0 0 0 1 0 0 1 1                        
+ Lys K  0 0 1 0 0 1 1 0 0 0 0                      
+ Met M  0 0 0 0 0 0 0 0 0 1 1 1                    
+ Phe F  0 0 0 0 1 0 0 0 0 1 1 0 0                  
+ Pro P  1 1 0 0 0 1 0 0 1 0 1 0 0 0                
+ Ser S  1 1 1 0 1 0 0 1 0 1 1 0 0 1 1              
+ Thr T  1 0 1 0 0 0 0 0 0 1 0 1 1 0 1 1            
+ Trp W  0 1 0 0 1 0 0 1 0 0 1 0 0 0 0 1 0          
+ Tyr Y  0 0 1 1 1 0 0 0 1 0 0 0 0 1 0 1 0 0        
+ Val V  1 0 0 1 0 0 1 1 0 1 1 0 1 1 0 0 0 0 0
+        A R N D C Q E G H I L K M F P S T W Y V  

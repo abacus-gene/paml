@@ -53,8 +53,8 @@ struct CommonInfo {
    int np, ntime, nrate, ncode, nrgene;
    double *fpatt, pi[4], lmax, alpha,kappa, rgene[NGENE],piG[NGENE][4],*lkl;
    double *SSave, *ErSave, *EaSave;
-   int  nhomo, nparK, ncatG, fix_rho, getSE;  /* unused */
-   double rho;                           /* unused */
+   int  nhomo, nparK, ncatG, fix_rho, getSE, npi0;  /* unused */
+   double pi_sqrt[4], rho;                           /* unused */
 }  com;
 struct TREEB {
    int  nbranch, nnode, root, branches[NBRANCH][2];
@@ -82,9 +82,10 @@ int LASTROUND=0; /* no use for this */
 
 int main(int argc, char *argv[])
 {
+   FILE *fout, *fseq=NULL, *fpair[6];
+   char pairfs[1][32]={"2base.t"};
    char ctlf[32]="baseml.ctl";
    double  *space;
-   FILE *fout, *fseq;
 
 #ifdef __MWERKS__
 /* Added by Andrew Rambaut to accommodate Macs -
@@ -112,6 +113,7 @@ int main(int argc, char *argv[])
    if ((fout=fopen (com.outf, "w"))==NULL) error2("outfile creation err.");
    if((fseq=fopen (com.seqf,"r"))==NULL)  error2("No sequence file!");
    ReadSeq (NULL, fseq);
+   if((fpair[0]=(FILE*)fopen(pairfs[0],"w"))==NULL) error2("2base.t file open error");
 
    fprintf (fout,"BASEMLG %15s %8s + Gamma", com.seqf, models[com.model]);
    if (com.clock) fprintf (fout, ", Clock");
@@ -126,11 +128,11 @@ int main(int argc, char *argv[])
    Initialize (fout, space);
    if (com.model==JC69) PatternJC69like (fout);
 
-   DistanceMatNuc (fout, com.model, com.alpha);
+   DistanceMatNuc (fout, fpair[0], com.model, com.alpha);
    if (com.model<=HKY85)
       EigenTN93 (com.model, com.kappa, com.kappa, com.pi, &nR, Root, Cijk);
    Forestry (fout, space);
-   fclose(fseq);
+   fclose(fseq);  fclose(fpair[0]);
    putchar ('\a');
    return (0);
 }
@@ -140,14 +142,14 @@ int main(int argc, char *argv[])
 int Forestry (FILE *fout, double space[])
 {
    int  status=0, i,j, itree, ntree, np;
+   int pauptree=0, btree=0, length_label;
    double x[NP], xb[NP][2], lnL[NTREE], e=1e-5, *var=space+NP;
    FILE *ftree, *finbasemlg=NULL;
 
    if ((ftree=fopen(com.treef,"r"))==NULL)   error2("treefile err.");
-   fscanf (ftree, "%d%d", &i, &ntree);
-   if (i!=com.ns || ntree>NTREE) error2 ("err:ns || ntree..");              
-   fprintf (flfh,"%6d%6d%6d\n", ntree, com.ls, com.npatt);
+   GetTreeFileType(ftree,&ntree,&pauptree,0);
 
+   fprintf (flfh,"%6d%6d%6d\n", ntree, com.ls, com.npatt);
    fprintf(frate,"Rates for sites, from BASEMLG, %d tree(s)\n\n", ntree);
 
    finbasemlg=fopen("in.basemlg","r");
@@ -159,7 +161,10 @@ int Forestry (FILE *fout, double space[])
       fprintf(frub,"\n\nTREE # %2d", itree+1);
       fprintf(frate,"\nTREE # %2d\n", itree+1);
 
-      if (ReadaTreeN(ftree, &i, 1)) error2 ("err tree..");
+      if((pauptree && PaupTreeRubbish(ftree)) || 
+         ReadaTreeN(ftree,&length_label,1))
+           { puts("err or end of tree file."); break; }
+
       com.ntime = com.clock ? tree.nnode-com.ns: tree.nbranch;
 
       OutaTreeN (F0, 0, 0);   
@@ -280,9 +285,9 @@ int GetInitials (double x[])
    if (com.model<=HKY85)
       EigenTN93 (com.model, com.kappa, com.kappa, com.pi, &nR, Root, Cijk);
 
+   com.np = com.ntime+com.nrgene+com.nrate+(!com.fix_alpha);
    FOR (j,com.nrgene) x[com.ntime+j]=1;
    if (!com.fix_alpha)  x[com.np-1]=com.alpha;
-   com.np = com.ntime+com.nrgene+com.nrate+(!com.fix_alpha);
 
    if (com.clock) for(j=1,x[0]=0.1; j<com.ntime; j++) x[j]=0.5;
    else           FOR (j,com.ntime) x[j]=0.1;

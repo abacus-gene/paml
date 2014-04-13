@@ -36,8 +36,8 @@ int Site2Pattern (FILE *fout);
 int GetSubSeqs(int nsnew);
 int GetSubTreeN (int hasbranch, char keep[], int rennodes);
 
-int f_to_x(double x[], double f[], int n, int fromx, int LastItem);
-void SetSeed (int seed);
+int f_and_x(double x[], double f[], int n, int fromx, int LastItem);
+void SetSeed (unsigned int seed);
 double rndu (void);
 void randorder(int order[], int n, int space[]);
 double rndnorm (void);
@@ -104,7 +104,7 @@ int PMatTN93 (double P[], double a1t, double a2t, double bt, double pi[]);
 int PMatCijk (double PMat[], double t);
 int EvolveHKY85 (char source[], char target[], int ls, double t, 
     double rates[], double pi[], double kapa, int isHKY85);
-int DistanceMatNuc (FILE *fout, int model, double alfa);
+int DistanceMatNuc (FILE *fout, FILE*f2base, int model, double alpha);
 int EigenREVbase (FILE* fout, double kapa[], double pi[], 
                   int *nR, double Root[], double Cijk[]);
 int EigenQunrest(FILE *fout, double kappa[], double pi[], 
@@ -113,11 +113,11 @@ int EigenQunrest(FILE *fout, double kappa[], double pi[],
 int BootstrapSeq (char* seqfilename);
 int rell(FILE*flnf, FILE*fout, int ntree);
 int print1site (FILE*fout, int h);
-int MultipleGenes (FILE* fout, double space[]);
+int MultipleGenes (FILE* fout, FILE*fpair[], double space[]);
 int lfunRates (FILE* fout, double x[], int np);
 int AncestralSeqs (FILE *fout, double x[]);
 void ListAncestSeq(FILE *fout, char *zanc);
-int ChangesSites(FILE*fout, char *zanc);
+int ChangesSites(FILE*fout, int coding, char *zanc);
 int InitPartialLikelihood (void);
 
 int NucListall(char b, int *nb, int ib[4]);
@@ -130,8 +130,11 @@ int printcums (FILE *fout, int ns, double fcodons[], int code);
 int PtoPi (double P[], double Pi[], int n, double *space);
 int PtoX(double P1[], double P2[], double Pi[], double X[]);
 
-void sleep(clock_t wait);
+void starttime(void);
+char* printtime(char timestr[]);
+void sleep2(int wait);
 char *strc (int n, char c);
+int printdouble(FILE*fout, double a);
 void strcase (char *str, int direction);
 void error2(char * message);
 int sort1 (double x[], int n, int rank[], int descending, int space[]);
@@ -157,6 +160,8 @@ int matout2 (FILE *fout, double x[], int n, int m, int wid, int deci);
 int mattransp1 (double x[], int n);
 int mattransp2 (double x[], double y[], int n, int m);
 int matinv (double x[], int n, int m, double space[]);
+int eigenQREV (double Q[], double pi[], double pi_sqrt[], int n, int npi0,
+             double Root[], double U[], double V[]);
 int eigenRealSym(double A[], int n, double Root[], double Offdiag[]);
 int eigen (int job, double A[], int n, double rr[], double ri[],
           double vr[], double vi[], double w[]);
@@ -200,7 +205,7 @@ double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[],
 void xtoFreq(double x[], double freq[], int n);
 
 
-int minB (FILE*fout, double *lnL,double x[],double xb[][2],double space[]);
+int minB (FILE*fout, double *lnL,double x[],double xb[][2],double e, double space[]);
 int SetxBound (int np, double xb[][2]);
 int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
     int (*dfun)(double x[], double *f, double dx[], int n),
@@ -301,6 +306,6 @@ void EvolveJC (int inode);
 #define DEBUG 9
 */
 
-#define VerStr "paml 3.11 September 2001"
+#define VerStr "paml 3.12 February 2002"
 
 #endif

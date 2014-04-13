@@ -1,4 +1,4 @@
-PRGS =  baseml basemlg codeml codemlsites evolver mcmctree pamp yn00 chi2
+PRGS =  baseml basemlg codeml evolver mcmctree pamp yn00 chi2
 CC = cl # cc, gcc, cl
 CFLAGS =  -O2 -Ot -Oi -Og -G6 -nologo -ML -Za -W3 -DWIN32 -DNDEBUG
 
@@ -15,8 +15,6 @@ basemlg : basemlg.obj tools.obj
   $(CC) $(CFLAGS) basemlg.obj tools.obj $(LIBS)
 codeml : codeml.obj eigen.obj tools.obj
   $(CC) $(CFLAGS) codeml.obj eigen.obj tools.obj $(LIBS)
-codemlsites : codemlsites.obj eigen.obj tools.obj
-  $(CC) $(CFLAGS) -Fecodemlsites.exe codemlsites.obj tools.obj eigen.obj $(LIBS)
 evolver : evolver.obj tools.obj eigen.obj
   $(CC) $(CFLAGS) evolver.obj tools.obj eigen.obj $(LIBS)
 mcmctree : mcmctree.obj tools.obj
@@ -39,8 +37,6 @@ basemlg.obj : paml.h basemlg.c treesub.c
   $(CC) $(CFLAGS) -c basemlg.c
 codeml.obj : paml.h codeml.c treesub.c treespace.c
   $(CC) $(CFLAGS) -c codeml.c
-codemlsites.obj : paml.h codeml.c treesub.c treespace.c
-  $(CC) $(CFLAGS) -c -Focodemlsites.obj -DNSSITESBATCH codeml.c
 evolver.obj: evolver.c treesub.c treespace.c
   $(CC) $(CFLAGS) -c evolver.c
 mcmctree.obj : paml.h mcmctree.c treesub.c treespace.c

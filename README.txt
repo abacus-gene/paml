@@ -16,10 +16,9 @@ PAML is distributed free of charge for academic use only.  Comments
 and suggestions are appreciated.  
 
 Ziheng Yang
-
-Department of Biology (Galton Lab)    Phone: +44 (20) 7679 5083
-University College London             Fax:   +44 (20) 7383 2048
-4 Stephenson Way                      Email: z.yang@ucl.ac.uk
-London NW1 2HE
+Department of Biology                   Phone: (+44) (0)20 7679 4379
+University College London               Fax:   (+44) (0)20 7679 7096
+Darwin Building                         Email: z.yang@ucl.ac.uk  
+Gower Street
+London WC1E 6BT
 England
-http://abacus.gene.ucl.ac.uk/

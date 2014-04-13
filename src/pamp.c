@@ -42,6 +42,8 @@ struct CommonInfo {
    int np, ntime, ncode,fix_kappa,fix_rgene,fix_alpha, clock, model, ncatG, cleandata;
    double *fpatt, *lkl;
    double lmax,pi[NCODE], kappa,alpha,rou, rgene[NGENE],piG[NGENE][NCODE];
+   int npi0;
+   double pi_sqrt[NCODE];
 }  com;
 struct TREEB {
    int nbranch, nnode, root, branches[NBRANCH][2];
@@ -543,9 +545,7 @@ double DistanceREV (double Ft[], int n,double alpha,double Root[],double U[],
    if (eigen (1, Q, n, Root, T1, U, V, T2)) error2 ("eigen jgl");
    xtoy (U, V, n*n);
    matinv (V, n, n, T1);
-/*
-matout (F0, Root, 4, n/4);   getchar();
-*/
+
    FOR (i,n) {
       if (Root[i]<=0)  {
          printf ("  Root %d:%10.4f", i+1, Root[i]); 

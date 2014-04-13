@@ -1,7 +1,7 @@
       seqfile = mtYoder.aa * sequence data file name
-      outfile = mlc       * main result file
      treefile = DatingAA.trees  * tree structure filename
 
+      outfile = mlc       * main result file
         noisy = 9   * 0,1,2,3,9: how much rubbish on the screen
       verbose = 1   * 1: detailed output, 0: concise output
 

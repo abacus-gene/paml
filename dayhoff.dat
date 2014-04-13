@@ -28,6 +28,14 @@ Ala Arg Asn Asp Cys Gln Glu Gly His Ile Leu Lys Met Phe Pro Ser Thr Trp Tyr Val
 S_ij = S_ji and PI_i for the Dayhoff model, with the rate Q_ij=S_ij*PI_j
 The rest of the file is not used.
 Prepared by Z. Yang, March 1995.
+
+
+See the following reference for notation used here:
+
+Yang, Z., R. Nielsen and M. Hasegawa. 1998. Models of amino acid substitution and
+applications to mitochondrial protein evolution. Mol. Biol. Evol. 15:1600-1611.
+
+
 -----------------------------------------------------------------------
 
      

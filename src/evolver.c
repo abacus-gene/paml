@@ -14,9 +14,10 @@
 
 
 
+
 #include "paml.h"
 
-#define NS            1000
+#define NS            5000
 #define NBRANCH       (NS*2-2)
 #define NCODE         64
 #define NCATG         40
@@ -24,8 +25,8 @@
 struct CommonInfo {
    char *z[2*NS-1], spname[NS][10], daafile[96];
    int ns,ls,npatt,*fpatt,np,ntime,ncode,clock,rooted,model,icode,cleandata;
-   int seqtype, *pose, ncatG;
-   double kappa, omega, alpha, pi[64],*rates, *lkl, daa[20*20];
+   int seqtype, *pose, ncatG, npi0;
+   double kappa, omega, alpha, pi[64],*rates, *lkl, daa[20*20], pi_sqrt[NCODE];
    double freqK[NCATG],rK[NCATG];
 }  com;
 struct TREEB {
@@ -53,7 +54,7 @@ int EigenQbase(double rates[], double pi[],
 int EigenQcodon (int getstats, double kappa,double omega,double pi[],
     double Root[], double U[], double V[], double Q[]);
 int EigenQaa(double pi[],double Root[], double U[], double V[],double Q[]);
-int f_and_x(void);
+int between_f_and_x(void);
 
 char *MCctlf0[]={"MCbase.dat","MCcodon.dat","MCaa.dat"};
 char *seqf[2]={"mc.paml", "mc.paup"};
@@ -79,7 +80,7 @@ int main(int argc, char*argv[])
    if(fout==NULL) { printf("cannot create %s\n",outf); exit(-1); }
    else             printf("Results for options 1-4 & 8 go into %s\n",outf);
    if(argc!=1 && argc!=3) {
-	  puts("Usage: \nevolver \nevolver 5 MyDataFile"); exit(-1); 
+      puts("Usage: \n\tevolver \n\tevolver option# MyDataFile"); exit(-1); 
    }
    if(argc==3) {
       sscanf(argv[1],"%d",&option);
@@ -142,7 +143,7 @@ int main(int argc, char*argv[])
             ListTrees(fout,com.ns,rooted);
             break;
          case(8):  TreeDistances(fout);      break;
-         case(9):  f_and_x();                break;
+         case(9):  between_f_and_x();                break;
          default:  exit(0);
          }
       }
@@ -153,7 +154,7 @@ int main(int argc, char*argv[])
 }
 
 
-int f_and_x(void)
+int between_f_and_x (void)
 {
 /* this helps with the exponential transform for frequency parameters */
    int i,n,fromf=0;
@@ -167,7 +168,7 @@ int f_and_x(void)
       printf("input the first %d values for %s? ",n-1,(fromf?"f":"x"));
       FOR(i,n-1) scanf("%lf",&x[i]);
       x[n-1]=(fromf?1-sum(x,n-1):0);
-      f_to_x(x, x, n, fromf, 1);
+      f_and_x(x, x, n, fromf, 1);
       matout(F0,x,1,n);
    }
 }
@@ -273,7 +274,7 @@ int EigenQbase(double rates[], double pi[],
 /* Construct the rate matrix Q[] for nucleotide model REV.
 */
    int i,j,k;
-   double mr,  space[4*3];
+   double mr;
 
    zero (Q, 16);
    for (i=0,k=0; i<3; i++) for (j=i+1; j<4; j++)
@@ -283,9 +284,7 @@ int EigenQbase(double rates[], double pi[],
       { Q[i*4+i]=0; Q[i*4+i]=-sum(Q+i*4, 4); mr-=pi[i]*Q[i*4+i]; }
    abyx (1/mr, Q, 16);
 
-   if (eigen(1,Q,4,Root,space,U,V,space+4))  error2 ("\nerr in EigenQbase?");
-   xtoy (U, V, 16);
-   matinv (V, 4, 4, space);
+   eigenQREV(Q, com.pi, com.pi_sqrt, 4, com.npi0, Root, U, V);
    return (0);
 }
 
@@ -299,7 +298,7 @@ int EigenQcodon (int getstats, double kappa,double omega,double pi[],
    64 codons are used, and stop codons have 0 freqs.
 */
    int n=com.ncode, i,j,k, c[2],ndiff,pos=0,from[3],to[3];
-   double mr,space[64*3];
+   double mr;
    
    FOR (i,n*n) Q[i]=0;
    for (i=0; i<n; i++) FOR (j,i) {
@@ -324,9 +323,7 @@ int EigenQcodon (int getstats, double kappa,double omega,double pi[],
    else {
       if(com.ncatG==0) FOR(i,n*n) Q[i]*=1/mr;
       else             FOR(i,n*n) Q[i]*=Qfactor;  /* NSsites models */
-      if (eigen(1,Q,n,Root,space,U,V,space+n))  error2 ("\nerr EigenQcodon");
-      xtoy (U, V, n*n);
-      matinv (V, n, n, space);
+      eigenQREV(Q, com.pi, com.pi_sqrt, n, com.npi0, Root, U, V);
    }
 
    return (0);
@@ -339,7 +336,7 @@ int EigenQaa(double pi[],double Root[], double U[], double V[],double Q[])
 /* Construct the rate matrix Q[]
 */
    int n=20, i,j;
-   double mr, space[20*3];
+   double mr;
 
    FOR (i,n*n) Q[i]=0;
    switch (com.model) {
@@ -354,10 +351,7 @@ int EigenQaa(double pi[],double Root[], double U[], double V[],double Q[])
       Q[i*n+i]=0; Q[i*n+i]=-sum(Q+i*n,n);  mr-=com.pi[i]*Q[i*n+i]; 
    }
 
-   if (eigen(1,Q,n,Root,space,U,V,space+n))  error2("err: eigenQaa");
-   xtoy(U,V,n*n);
-   matinv(V,n,n,space);
-
+   eigenQREV(Q, com.pi, com.pi_sqrt, n, com.npi0, Root, U, V);
    FOR(i,n)  Root[i]=Root[i]/mr;
 
    return (0);
@@ -448,8 +442,9 @@ void Evolve1 (int inode)
 	            break;
 
 	         case (CODONseq): /* Watch out for NSsites model */
-               if(!com.rates) r=nodes[ison].omega;
-               EigenQcodon(0, com.kappa,r,com.pi, Root,U,V, PMat);
+               if(com.model) r=nodes[ison].omega;
+               if(com.rates || com.model)
+                  EigenQcodon(0, com.kappa,r,com.pi, Root,U,V, PMat);
                PMatUVRoot(PMat,t,com.ncode,U,V,Root); 
                break;
 
@@ -477,7 +472,7 @@ void Simulate (char*ctlf)
    generated.
    space[com.ls] is used to hold site marks.
 */
-   int verbose=0;
+   int verbose=1;
    char *ancf="ancestral.seq", *sitesf="siterates";
    enum {PAML,PAUP};
    FILE *fin, *fseq, *ftree=NULL, *fanc=NULL, *fsites=NULL;
@@ -490,7 +485,7 @@ void Simulate (char*ctlf)
    double birth=0, death=0, sample=1, mut=1, tlength, *space;
    double T,C,A,G,Y,R;
 
-   com.alpha=0; com.cleandata=1;
+   com.alpha=0; com.cleandata=1; com.model=0;
 
    printf("\nReading options from data file %s\n", ctlf);
    com.ncode=n=(com.seqtype==0 ? 4 : (com.seqtype==1?64:20));
@@ -509,7 +504,7 @@ void Simulate (char*ctlf)
    if(com.ns>NS) error2("too many seqs?");
    printf ("\n%d seqs, %d sites, %d replicates\n", com.ns,com.ls,nr);
    k=(com.ns*com.ls* (com.seqtype==CODONseq?4:1) *nr)/1000+1;
-   printf ("Seq file will be about %dK bytes.",k);
+   printf ("Seq file will be about %dK bytes.\n",k);
 
    fscanf(fin,"%lf",&tlength);
    if (fixtree) {
@@ -610,6 +605,9 @@ void Simulate (char*ctlf)
          FOR(k,com.ncode) fscanf(fin,"%lf",&com.pi[k]);
    else if(com.model==0 || (com.seqtype==BASEseq && com.model<=K80)) 
       fillxc(com.pi,1./com.ncode,com.ncode);
+   for(j=0,com.npi0=0; j<com.ncode; j++)
+      if(com.pi[j]) com.pi_sqrt[com.npi0++]=sqrt(com.pi[j]);
+   com.npi0=com.ncode-com.npi0;
 
    printf("sum pi = 1 = %.6f:", sum(com.pi,com.ncode));
    matout2(F0,com.pi,1,com.ncode,7,4);
@@ -648,7 +646,7 @@ void Simulate (char*ctlf)
    space=(double*)malloc(sspace);
    if(com.alpha || com.ncatG) tmpseq=(char*)space;
    if (com.z[com.ns*2-1-1]==NULL || space==NULL) error2("oom for space");
-   if((fseq=fopen(seqf[format],"w"))==NULL) error2("seq file creation error2.");
+   if((fseq=fopen(seqf[format],"w"))==NULL) error2("seq file creation error.");
    if(format==PAUP) appendfile(fseq,paupstart);
    if(verbose) {
       if((fanc=(FILE*)fopen(ancf,"w"))==NULL) error2("anc file creation error2");
