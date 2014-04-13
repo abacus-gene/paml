@@ -28,10 +28,3 @@ hs;
 From: Anne-Mette Krabbe Pedersen 
 Date: Mon, 14 Jun 1999 10:28:20 +0200 (METDST)
 HIV-1 sample 136 patient 1 from Sweden envelope glycoprotein (env) gene, V3 region
-
-13 1
-
-(1,2,((3,(4,5)),(6,(7,(8,((((9,11),10),12),13))))));
-(1,2,(3,((4,5),((6,7),(8,((((9,11),10),12),13))))));
-
-(((((((U68496,U68497),(U68498,(U68499,U68500))),(U68501,U68502))),U68503),(U68507,U68508))),(((U68504,U68505),U68506))); // Anne-Mette's tree, too many ()'s.

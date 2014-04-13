@@ -10,13 +10,6 @@
 
 #include "paml.h"
 
-#ifdef __MWERKS__
-/* Added by Andrew Rambaut to accommodate Macs -
-   Brings up dialog box to allow command line parameters.
-*/
-#include <console.h>
-#endif
-
 #define NS       9
 #define NTREE    20    
 #define NBRANCH  (NS*2-2)      
@@ -50,10 +43,10 @@ struct CommonInfo {
    int  seqtype, ns, ls, ngene, posG[NGENE+1],lgene[NGENE],*pose,npatt;
    int  clock,fix_alpha,fix_kappa,fix_rgene,Malpha,print,verbose;
    int  model, runmode, cleandata, ndata;
-   int np, ntime, nrate, ncode, nrgene;
-   double *fpatt, pi[4], lmax, alpha,kappa, rgene[NGENE],piG[NGENE][4],*lkl;
+   int np, ntime, nrate, ncode, nrgene, icode, coding;
+   double *fpatt, pi[4], lmax, alpha,kappa, rgene[NGENE],piG[NGENE][4],*conP;
    double *SSave, *ErSave, *EaSave;
-   int  nhomo, nparK, ncatG, fix_rho, getSE, npi0, readfpatt;  /* unused */
+   int  nhomo, nparK, ncatG, fix_rho, getSE, npi0, readpattf;  /* unused */
    double pi_sqrt[4], rho;                           /* unused */
 }  com;
 struct TREEB {
@@ -62,7 +55,8 @@ struct TREEB {
 }  tree;                
 struct TREEN {
    int father, nson, sons[NS], ibranch;
-   double branch, divtime, label, *lkl;
+   double branch, age, label, *conP;
+   char fix_age;
 }  nodes[2*NS-1];
 
 static int nR=4, CijkIs0[64];
@@ -72,6 +66,8 @@ FILE *frub, *flfh, *frate;
 char *ratef="rates";
 char *models[]={"JC69","K80","F81","F84","HKY85","T92","TN93","REV","UNREST", "REVu","UNRESTu"};
 enum {JC69, K80, F81, F84, HKY85, T92, TN93, REV, UNREST, REVu, UNRESTu} MODELS;
+char *clockstr[]={"", "Global clock", "Local clock", "ClockCombined"};
+enum {GlobalClock=1, LocalClock, ClockCombined} ClockModels;
 
 /*
 #define REV_UNREST
@@ -80,19 +76,12 @@ enum {JC69, K80, F81, F84, HKY85, T92, TN93, REV, UNREST, REVu, UNRESTu} MODELS;
 int LASTROUND=0; /* no use for this */
 #include "treesub.c"
 
-int main(int argc, char *argv[])
+int main (int argc, char *argv[])
 {
    FILE *fout, *fseq=NULL, *fpair[6];
    char pairfs[1][32]={"2base.t"};
    char ctlf[32]="baseml.ctl";
    double  space[50000];
-
-#ifdef __MWERKS__
-/* Added by Andrew Rambaut to accommodate Macs -
-   Brings up dialog box to allow command line parameters.
-*/
-	argc=ccommand(&argv);
-#endif
 
    noisy=2;  com.cleandata=1;
    com.runmode=0;
@@ -103,6 +92,7 @@ int main(int argc, char *argv[])
    com.fix_alpha=0;   com.alpha=0.2;
    com.ncode=4;
 
+   printf("BASEMLG in %s\n",  VerStr);
    frate=fopen(ratef,"w");  frub=fopen("rub","w");  flfh=fopen("lfh","w");
 
    if (argc>1) { strcpy(ctlf, argv[1]); printf ("\nctlfile is %s.\n", ctlf); }
@@ -160,7 +150,7 @@ int Forestry (FILE *fout, double space[])
       fprintf(frate,"\nTREE # %2d\n", itree+1);
 
       if((pauptree && PaupTreeRubbish(ftree)) || 
-         ReadaTreeN(ftree,&haslength,&i,1))
+         ReadaTreeN(ftree,&haslength,&i,0,1))
            { puts("err or end of tree file."); break; }
 
       com.ntime = com.clock ? tree.nnode-com.ns: tree.nbranch;
@@ -223,6 +213,28 @@ int Forestry (FILE *fout, double space[])
    }        /* for (itree) */
    fclose (ftree);
    return (0);
+}
+
+
+
+int SetBranch (double x[])
+{
+   int i, status=0;
+   double small=1e-5;
+
+   if (com.clock) {
+       FOR (i,com.ntime) nodes[i+com.ns].age=x[i];
+       FOR (i,tree.nnode) {
+          if (i==tree.root) continue;
+          nodes[i].branch = nodes[nodes[i].father].age-nodes[i].age;
+          if (nodes[i].branch<-small) status=-1;
+       }
+   }
+   else
+      FOR (i,tree.nnode)
+         if (i!=tree.root && (nodes[i].branch=x[nodes[i].ibranch])<-small)
+            status=-1;
+   return (status);
 }
 
 int testx (double x[], int np)
@@ -338,22 +350,22 @@ int GetMem (int nbranch, int nR, int nitem)
 /* ns=4: 98KB,  5: 1.6MB,  6: 25MB,  7: 402MB    (for HKY85, 3/3/93)
    nitem=1:ErSave; 2:SSave & ErSave; 3:SSave & ErSave & EaSave 
 */
-   static int size=0;
    int nm, j;
+   double memsize=-1;
 
    for(j=0,nm=1; j<nbranch; j++)   nm*=nR;
-   if (nm*nitem>size && size) free(com.lkl);
-   if (nm*nitem>size) {
-      size=nm*nitem;
-      printf ("\n\nSave %12ld bytes\n", size*sizeof(double));
-      com.lkl = (double*)malloc(size*sizeof(double));
-      if (com.lkl==NULL) error2("oom");
-   }
-   com.ErSave  = com.lkl;
+   if(nm>1) memsize=(double)nm*nitem*sizeof(double);
+   printf ("\nMemory required: %6.0fK bytes\n", memsize/1024);
+   if(nm*nitem*sizeof(double)<=0 || 
+      (com.conP=(double*)realloc(com.conP, nm*nitem*sizeof(double)))==NULL)
+      error2("out of memory");
+
+   com.ErSave  = com.conP;
    if (nitem>1) com.SSave=com.ErSave+nm;
    if (nitem>2) com.EaSave=com.SSave+nm;
    return(0);
 }
+
 
 void GetSave (int nitem, int *nm, int M[], double alpha, double c)
 {
@@ -718,12 +730,12 @@ int lfunG_dd (double x[], double *lnL, double dl[], double ddl[], int np)
 int GetOptions (char *ctlf)
 {
    int i, nopt=27, lline=255;
-   char line[255], *pline, opt[20], comment='*';
+   char line[255], *pline, opt[20], *comment="*#";
    char *optstr[]={"seqfile","outfile","treefile", "noisy",
         "cleandata", "ndata", "verbose","runmode",
         "clock","fix_rgene","Mgene","nhomo","getSE","RateAncestor",
         "model","fix_kappa","kappa","fix_alpha","alpha","Malpha","ncatG", 
-        "fix_rho","rho","nparK", "Small_Diff", "method", "readfpatt"};
+        "fix_rho","rho","nparK", "Small_Diff", "method", "readpattf"};
    double t;
    FILE  *fctl=fopen (ctlf, "r");
 
@@ -733,7 +745,7 @@ int GetOptions (char *ctlf)
          if (fgets (line, lline, fctl) == NULL) break;
          for (i=0,t=0,pline=line; i<lline&&line[i]; i++)
             if (isalnum(line[i]))  { t=1; break; }
-            else if (line[i]==comment) break;
+            else if (strchr(comment,line[i])) break;
          if (t==0) continue;
          sscanf (line, "%s%*s%lf", opt, &t);
          if ((pline=strstr(line, "="))==NULL) error2("option file.");
@@ -769,7 +781,7 @@ int GetOptions (char *ctlf)
                   case (23): com.nparK=(int)t;       break;
                   case (24):                         break;   /* smallDiff */
                   case (25):                         break;   /* method */
-                  case (26): com.readfpatt=(int)t;   break;
+                  case (26): com.readpattf=(int)t;   break;
                }
                break;
             }

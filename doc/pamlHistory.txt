@@ -1,7 +1,102 @@
 History and bug fixes of PAML (Phylogenetic Analysis by Maximum Likelihood)
 Ziheng Yang
 
-Please report any bugs or comments to Ziheng Yang at z.yang@ucl.ac.uk.
+Please report bugs to Ziheng Yang at z.yang@ucl.ac.uk.
+
+
+
+
+
+Version 3.14beta2, November 2003
+
+(1) baseml: Models TN93 and REV are wrong when used with Mgene = 3 or 4.
+This seems correct in version 3.12 but went wrong in 3.13 and 3.14
+since I inserted TN92 between HKY85 and TN93.  Thanks for Lee Bofkin
+for reporting the error.
+
+(2) codonml (codeml for codons): When codon models are used to reconstruct
+ancestral sequences (with RateAncestor = 1), the program lists
+synonymous and nonsynonymous changes at each site under the heading
+"Changes at sites (syn nonsyn)."  This listing is incorrect due to a
+bug in the program.  This bug affects versions 3.12, 3.13 and 3.14,
+and version 3.11 seems correct.  Thanks to Joe Bielawski.
+
+
+
+Version 3.14beta, 20 July 2003
+
+(1) baseml/codeml: rewrote likelihood clock and local clock models.
+   Implemented models for combined analysis of multiple genes using
+   multiple calibration points (Yang and Yoder 2003).  The option
+   variable clock in the control files is now used differently from
+   before.  See documentation below and also the readme and example
+   files in the folder paml/examples/MouseLemurs/.
+
+(2) codeml: added branch-site models C and D (Bielawski and Yang
+   submitted).
+
+(3) baseml/codeml: The SE's for divergence times under the clock
+   models are calculated incorrectly.  This happens when you use clock
+   = 1 or 2, supply fossil date to calculate absolute times, and
+   request standard errors for times.  The estimates of times
+   themselves are correct, but standard errors for times are wrong.
+   The SEs for times and for the rate under the TipDate model (clock =
+   3) are wrong as well.  The programs print out the variances after
+   the +-, instead of their square roots.  This error was introduced
+   in version 3.13.  Versions prior to 3.13 are correct.  I posted an
+   update 3.13d to fix this bug.
+
+(4) mcmctree: this program is decommissioned in this release.  The old
+   program died and the new program is still under construction.
+
+(5) evolver: the simulation program can now accept species names in
+   the tree.  Note that the data file formats for evolver (MCbase.dat,
+   MCcodon.dat, MCaa.dat) have changed and you might have to change
+   your own data files.  Look at the files included in the package.
+
+(6) Improved the iteration algorithm a little.  No change to the
+   interface.
+
+(7) The documentation in paml v3.13 from August 2002 - 12 December
+   2002 had a mistake about the critical values for the newer test
+   using a modified M8.  The critical values for the test are 2.71 at
+   the 5% significance level and 5.41 at the 1% level, rather than
+   1.95 and 3.32 as in the documentation.
+
+(8) Edited the manual pamlDOC.pdf.
+
+
+
+
+15 May 2003
+paml3.13d
+
+baseml/codeml: The SE's for times under the clock models are
+calculated incorrectly.  This happens when you use clock = 1 or 2,
+supply fossil date to calculate absolute times, and request standard
+errors for times.  The estimates of times themselves are correct, but
+standard errors for times are wrong.  The SEs for times and for the
+rate under the TipDate model (clock = 3) are wrong as well.  The
+programs print out the variances after the +-, instead of their square
+roots.  
+
+This error was introduced in version 3.13.  Versions prior to 3.13 are
+correct.
+
+
+12 December 2002 correction of documentation
+
+The paml documentation in paml v3.13 from August 2002 - 12 December 2002
+has a mistake about the critical values for the newer test using a
+modified M8.
+
+The critical values for the test are 2.71 at the 5% significance level
+and 5.41 at the 1% level, rather than 1.95 and 3.32 as in the
+documentation.  I made a mistake and quickly discovered it.  I thought
+I corrected this a few months ago, but apparently the document
+included in the paml release had this mistake.  I am sorry.  I'll
+correct it now.
+
 
 
 Version 3.13, August 2002
@@ -439,11 +534,11 @@ Dec98 & Jan99
 Version 1.4 (UCL)
 July 1998 
 
-     1.Most of the changes are in the program codeml (aaml for amino
+     1. Most of the changes are in the program codeml (aaml for amino
   acid sequences and codonml for codon sequences). A few new models of
   codon substitution are implemented (see Yang and Nielsen 1998; Nielsen
   and Yang 1998; Yang 1998).
-     2.Some problems relating to ancestral sequence reconstruction (in
+     2. Some problems relating to ancestral sequence reconstruction (in
   baseml and codeml) are fixed. The earlier algorithm does not work
   properly if the data contain more than several sequences. The
   algorithm makes a guess at the likely character states at the interior
@@ -466,15 +561,15 @@ July 1998
   produce very similar results, and since the marginal reconstruction is
   always reliable, perhaps it can always be used for data analysis.
   (Thanks to Belinda Chang.)
-     3.The output file for estimated rates for sites under the
+     3. The output file for estimated rates for sites under the
   variable-rates models is now "Rates.out" instead of "rst".
-     4.I have implemented ancestral sequence reconstructions based on
+     4. I have implemented ancestral sequence reconstructions based on
   codon-substitution models (codonml). This has not been tested
   carefully, and I would appreciate your comments if you use it.
-     5.A number of minor changes have been made. I have fixed several
+     5. A number of minor changes have been made. I have fixed several
   floating exception errors that seem to occur on DEC Alpha machines
   only.
-     6.The documentation is now changed into the html format. 
+     6. The documentation is now changed into the html format. 
 
 
 

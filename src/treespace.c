@@ -189,8 +189,8 @@ void ReRootTree (int newroot)
 {
 /* reroot tree at newroot.  oldroot forgotten
    The order of branches is not changed.  
-   Branch lengths, and other parameters for branches are updated are updated.
-   Note that node inode needs to be updated if _oldlkl[inode] == 0.
+   Branch lengths, and other parameters for branches are updated.
+   Note that node inode needs to be updated if com.oldconP[inode] == 0.
 */
    int oldroot=tree.root, a,b;  /* a->b becomes b->a */
 
@@ -199,7 +199,7 @@ void ReRootTree (int newroot)
       tree.branches[nodes[b].ibranch][0]=b;
       tree.branches[nodes[b].ibranch][1]=a;
 #if (BASEML || CODEML)
-      if(a>=com.ns /* && com.method==1 */) _oldlkl[a]=0;  /* update the node */
+      if(a>=com.ns /* && com.method==1 */) com.oldconP[a]=0;  /* update the node */
 #endif
    }
 
@@ -210,7 +210,7 @@ void ReRootTree (int newroot)
    nodes[newroot].branch=-1;  nodes[newroot].label=-1;
 
 #if (CODEML)
-   /* omega's are moved in updatelkl for NSbranchsites models */
+   /* omega's are moved in updateconP for NSbranchsites models */
    if(com.model && com.NSsites==0) { 
       for (b=oldroot,a=nodes[b].father; b!=newroot; b=a,a=nodes[b].father)
          nodes[b].omega=nodes[a].omega;

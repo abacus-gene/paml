@@ -15,8 +15,7 @@
 double PointChi2 (double prob, double v);
 
 #define PointGamma(prob,alpha,beta) PointChi2(prob,2.0*(alpha))/(2.0*(beta))
-#define CDFGamma(x,alpha,beta) \
-     IncompleteGamma((beta)*(x),alpha,LnGammaFunction(alpha))
+#define CDFGamma(x,alpha,beta) IncompleteGamma((beta)*(x),alpha,LnGammaFunction(alpha))
 #define CDFChi2(x,v) CDFGamma(x,(v)/2.0,0.5)
 
 double PointNormal (double prob);

@@ -1,7 +1,7 @@
 /* paml.h 
 */
 
-#ifndef PAML_H
+#if !defined (PAML_H)
 #define PAML_H
 
 #include <stdio.h>
@@ -20,12 +20,13 @@
 #define min2(a,b) ((a)<(b)?(a):(b))
 #define max2(a,b) ((a)>(b)?(a):(b))
 #define PI 3.141592653
-typedef struct { double re, im; } complex;
 
 #define beep putchar('\a')
 #define spaceming2(n) ((n)*((n)*2+9+2)*(int)sizeof(double))
 
 int ReadSeq (FILE *fout, FILE *fseq);
+void EncodeSeqs (void);
+void ReadPatternFreq (FILE* fout, char* fpattf);
 int Initialize (FILE *fout);
 int MoveCodonSeq (int ns, int ls, char *z[]);
 int PatternWeight (FILE *fout);
@@ -33,21 +34,18 @@ int PatternJC69like (FILE *fout);
 int PatternWeightSimple (int CollapsJC, double space[]);
 int Site2Pattern (FILE *fout);
 
-int GetSubSeqs(int nsnew);
-int GetSubTreeN (int hasbranch, char keep[], int rennodes);
-
 int f_and_x(double x[], double f[], int n, int fromx, int LastItem);
 void SetSeed (unsigned int seed);
 double rndu (void);
 void randorder(int order[], int n, int space[]);
 #define rnduab(a,b) ((a)+((b)-(a))*rndu())
-double sample_uniform(double x, double range[2], double finetune);
 double reflect(double x, double a, double b);
 #define rndexp(mean) (-(mean)*log(rndu()))
-double rndnorm (void);
-double rndgamma (double s);
-int rndpoisson (double m);
-int rndNegBinomial (double shape, double mean);
+double rndnormal(void);
+double rndgamma(double s);
+double rndbeta(double p, double q);
+int rndpoisson(double m);
+int rndNegBinomial(double shape, double mean);
 int SampleCat (double P[], int n, double space[]);
 int MultiNomial (int n, int nclass, double Prob[], int nobs[], double space[]);
 int AutodGamma (double M[], double freqK[], double rK[], double *rho1,
@@ -56,8 +54,12 @@ int DiscreteGamma (double freqK[], double rK[],
     double alfa, double beta, int K, int median);
 double PointChi2 (double prob, double v);
 #define PointGamma(prob,alpha,beta) PointChi2(prob,2.0*(alpha))/(2.0*(beta))
+double PDFGamma(double x, double alpha, double beta);
 #define CDFGamma(x,alpha,beta) IncompleteGamma((beta)*(x),alpha,LnGamma(alpha))
+double  PDF_IGamma(double x, double alpha, double beta);
+#define CDF_IGamma(x,alpha,beta) (1-CDFGamma(1/(x),alpha,beta))
 #define CDFChi2(x,v) CDFGamma(x,(v)/2.0,0.5)
+int getab_gamma(double *a, double* b, double xmodetiles[3]);
 double CDFBeta(double x, double p, double q, double lnbeta);
 double InverseCDFBeta(double prob, double p, double q, double lnbeta);
 double InverseCDF(double(*cdf)(double x,double par[]),
@@ -70,11 +72,13 @@ double IncompleteGamma (double x, double alpha, double ln_gamma_alpha);
 double LBinormal(double h, double k, double r);
 double CDFBinormal (double h, double k, double r);
 double probBinomial (int n, int k, double p);
+double probBetaBinomial (int n, int k, double p, double q);
 long factorial(int n);
-double Binomial(double n, double k, double *scale);
+double Binomial(double n, int k, double *scale);
 
 int ScatterPlot (int n, int nseries, int yLorR[], double x[], double y[],
     int nrow, int ncol, int ForE);
+void rainbowRGB (double temperature, int *R, int *G, int *B);
 
 int CodeChara (char b, int seqtype);
 int dnamaker (char z[], int ls, double pi[]);
@@ -87,7 +91,7 @@ int PickExtreme (FILE *fout, char z[], int ls,int iring,int lfrag,int ffrag[]);
 
 int print1seq (FILE*fout, char *z, int ls, int encoded, int pose[]);
 void printSeqs(FILE *fout, int *pose, char keep[], int format);
-int printSeqsMgenes (void);
+void printSeqsMgenes (void);
 int printsma(FILE*fout, char*spname[], char*z[],
     int ns, int l, int lline, int gap, int seqtype, 
     int transformed, int simple, int pose[]);
@@ -110,13 +114,12 @@ int PMatUVRoot (double P[],double t,int n,double U[],double V[],double Root[]);
 int PMatCijk (double PMat[], double t);
 int EvolveHKY85 (char source[], char target[], int ls, double t, 
     double rates[], double pi[], double kapa, int isHKY85);
+double DistanceIJ (int is, int js, int model, double alpha, double *kappa);
 int DistanceMatNuc (FILE *fout, FILE*f2base, int model, double alpha);
 int getpi_sqrt (double pi[], double pi_sqrt[], int n, int *npi0);
 int EigenQREVbase (FILE* fout, double kappa[], 
                    double pi[], double pi_sqrt[], int npi0,
                    int *nR, double Root[], double Cijk[]);
-int EigenQunrest(FILE *fout, double kappa[], double pi[], 
-    int *nR, complex cRoot[], complex cU[], complex cV[]);
 
 int BootstrapSeq (char* seqfilename);
 int rell(FILE*flnf, FILE*fout, int ntree);
@@ -126,7 +129,7 @@ int lfunRates (FILE* fout, double x[], int np);
 int AncestralSeqs (FILE *fout, double x[]);
 void ListAncestSeq(FILE *fout, char *zanc);
 int ChangesSites(FILE*fout, int coding, char *zanc);
-int InitPartialLikelihood (void);
+int InitConditionalPNode (void);
 
 int NucListall(char b, int *nb, int ib[4]);
 char *getcodon(char codon[], int icodon);
@@ -135,8 +138,9 @@ int Codon2AA(char codon[3], char aa[3], int icode, int *iaa);
 int DNA2protein(char dna[], char protein[], int lc, int icode);
 int printcu (FILE *f1, double fcodon[], int icode);
 int printcums (FILE *fout, int ns, double fcodons[], int code);
+int QtoPi (double Q[], double pi[], int n, double *space);
 int PtoPi (double P[], double Pi[], int n, double *space);
-int PtoX(double P1[], double P2[], double Pi[], double X[]);
+int PtoX (double P1[], double P2[], double Pi[], double X[]);
 
 void starttime(void);
 char* printtime(char timestr[]);
@@ -145,9 +149,9 @@ char *strc (int n, char c);
 int printdouble(FILE*fout, double a);
 void strcase (char *str, int direction);
 void error2(char * message);
-int sort1 (double x[], int n, int rank[], int descending, int space[]);
+int  sort1 (double x[], int n, int rank[], int descending, int space[]);
 FILE *gfopen(char *filename, char *mode);
-int appendfile(FILE*fout, char*filename);
+int  appendfile(FILE*fout, char*filename);
 
 int zero (double x[], int n);
 double sum (double x[], int n);
@@ -169,9 +173,12 @@ int matout2 (FILE *fout, double x[], int n, int m, int wid, int deci);
 int mattransp1 (double x[], int n);
 int mattransp2 (double x[], double y[], int n, int m);
 int matinv (double x[], int n, int m, double space[]);
+int matexp (double Q[], double t, int n, int TimeSquare, double space[]);
+int matsqrt (double A[], int n, double work[]);
+int CholeskyDecomp (double A[], int n, double L[]);
 int eigenQREV (double Q[], double pi[], double pi_sqrt[], int n, int npi0,
              double Root[], double U[], double V[]);
-int eigenRealSym(double A[], int n, double Root[], double Offdiag[]);
+int eigenRealSym(double A[], int n, double Root[], double work[]);
 int eigen (int job, double A[], int n, double rr[], double ri[],
           double vr[], double vi[], double w[]);
 
@@ -179,24 +186,10 @@ int MeanVar (double x[], int n, double *mean, double *var);
 int variance (double x[], int n, int nx, double mx[], double vx[]);
 int correl (double x[], double y[], int n, double *mx, double *my,
             double *v11, double *v12, double *v22, double *r);
-
-/* complex functions */
-#define csize(a) (fabs(a.re)+fabs(a.im))
-complex compl (double re,double im);
-complex conj2 (complex a);
-complex cplus (complex a, complex b);
-complex cminus (complex a, complex b);
-complex cby (complex a, complex b);
-complex cdiv (complex a,complex b);
-complex cexp (complex a);
-complex cfactor (complex x, double a);
-int cxtoy (complex x[], complex y[], int n);
-int cmatby (complex a[], complex b[], complex c[], int n,int m,int k);
-int cmatout (FILE * fout, complex x[], int n, int m);
-int cmatinv( complex x[], int n, int m, double space[]);
-int EigenUNREST (FILE *fout, double kapa[], double pi[], 
-    int *nR, complex cRoot[], complex cU[], complex cV[]);
-int cPMat (double P[],double t,int n,complex cU[],complex cV[],complex cRoot[]);
+int comparefloat  (const void *a, const void *b);
+int comparedouble (const void *a, const void *b);
+int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int nrho);
+int splitline (char line[], int fields[]);
 
 double bound (int nx, double x0[], double p[], double x[],
     int (*testx) (double x[], int nx));
@@ -207,22 +200,23 @@ int Hessian (int nx, double x[], double f, double g[], double H[],
 
 int H_end (double x0[], double x1[], double f0, double f1,
     double e1, double e2, int n);
-double LineSearch(double(*fun)(double x),double *f,double *x0,double xb[2],double step);
+double LineSearch(double(*fun)(double x),double *f,double *x0,double xb[2],double step,double e);
 double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[], 
     double p[], double h, double limit, double e, double space[], int n);
 
 void xtoFreq(double x[], double freq[], int n);
 
 
-int minB (FILE*fout, double *lnL,double x[],double xb[][2],double e, double space[]);
 int SetxBound (int np, double xb[][2]);
-int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
-    int (*dfun)(double x[], double *f, double dx[], int n),
-    double x[], double xb[][2], double space[], double e, int n);
 int ming1 (FILE *fout, double *f, double (* fun)(double x[], int n),
     int (*dfun) (double x[], double *f, double dx[], int n),
     int (*testx) (double x[], int n),
     double x0[], double space[], double e, int n);
+int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
+    int (*dfun)(double x[], double *f, double dx[], int n),
+    double x[], double xb[][2], double space[], double e, int n);
+int minB (FILE*fout, double *lnL,double x[],double xb[][2],double e, double space[]);
+int minB2 (FILE*fout, double *lnL,double x[],double xb[][2],double e, double space[]);
 
 
 int Newton (FILE *fout, double *f, double (* fun)(double x[], int n),
@@ -240,11 +234,14 @@ int nls2 (FILE *fout, double *sx, double * x0, int nx,
 void NodeToBranch (void);
 void BranchToNode (void);
 void ClearNode (int inode);
-int ReadaTreeN (FILE *ftree, int *haslength, int *haslabel, int popline);
+int ReadaTreeN (FILE *ftree, int *haslength, int *haslabel, int copyname, int popline);
 int ReadaTreeB (FILE *ftree, int popline);
 int OutaTreeN (FILE *fout, int spnames, int branchlen);
 int OutaTreeB (FILE *fout);
-void PointLklnodes (void);
+int DeRoot (void);
+int GetSubTreeN (int keep[], int space[]);
+void printtree (int timebranches);
+void PointconPnodes (void);
 int SetBranch (double x[]);
 int DistanceMat (FILE *fout, int ischeme, double alfa, double *kapa);
 int LSDistance (double * ss, double x[], int (*testx)(double x[],int np));
@@ -295,6 +292,8 @@ int GetIofLHistory (void);
 int CountLHistory(char LHistories[], double space[]);
 int ReorderNodes (char LHistory[]);
 
+int GetSubSeqs(int nsnew);
+
 /* functions for evolving sequences */
 int GenerateSeq (void);
 int Rates4Sites (double rates[],double alfa,int ncatG,int ls, int cdf,
@@ -311,10 +310,13 @@ void EvolveJC (int inode);
 #define FAST_RANDOM_NUMBER
 
 
+#define RELEASE      1
+
+#define VerStr "paml 3.14beta, July 2003"
+
+
 /*
 #define DEBUG 9
 */
-
-#define VerStr "paml 3.13, August 2002"
 
 #endif

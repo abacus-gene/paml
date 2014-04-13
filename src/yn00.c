@@ -46,7 +46,7 @@ struct common_info {
    int ns,ls,npatt,codonf,icode,ncode,getSE,*pose,verbose, seqtype, cleandata;
    int fcommon,kcommon, iteration, ndata, npi0, print;
    double *fpatt, pi[NCODE], f3x4s[NS][12], kappa, omega;
-   int ngene,posG[NGENE+1],lgene[NGENE],fix_rgene, model;
+   int ngene,posG[NGENE+1],lgene[NGENE],fix_rgene, model, readpattf;
    double rgene[NGENE],piG[NGENE][NCODE], alpha;
    double pi_sqrt[NCODE];
 }  com;
@@ -61,9 +61,9 @@ char *codonfreqs[]={"Fequal", "F1x4", "F3x4", "Fcodon"};
 enum {Fequal, F1x4, F3x4, Fcodon} CodonFreqs;
 
 FILE *frst, *frst1, *frub;
-extern char BASEs[], AAs[], Nsensecodon[];
-extern int GeneticCode[][64];
-extern int noisy;
+extern char BASEs[], AAs[];
+extern int noisy, GeneticCode[][64];
+int Nsensecodon;
 enum {NODEBUG, KAPPA, SITES, DIFF} DebugFunctions;
 int debug=0;
 
@@ -80,6 +80,7 @@ int main(int argc, char *argv[])
 
    /* ConsistencyMC(); */
 
+   printf("YN00 in %s\n",  VerStr);
    if (argc>1)  strcpy(ctlf, argv[1]); 
    com.seqtype=1;  com.cleandata=1; com.ndata=1;  com.print=0;
    noisy=1; com.icode=0;  com.fcommon=0;  com.kcommon=1;
@@ -204,7 +205,10 @@ int GetOptions (char *ctlf)
       if (i==nopt)
          { printf ("\noption %s in %s\n", opt, ctlf);  exit (-1); }
    }
-   com.ncode=Nsensecodon[com.icode];
+
+   for (i=0,Nsensecodon=0; i<64; i++)
+      if (GeneticCode[com.icode][i]!=-1) Nsensecodon++;
+   com.ncode=Nsensecodon;
    fclose (fctl);
    return (0);
 }
@@ -952,7 +956,7 @@ int ConsistencyMC(void)
                            }; 
 
    noisy=1;        com.ns=2;
-   com.icode=0;    com.ncode=Nsensecodon[com.icode];
+   com.icode=0;    com.ncode=Nsensecodon;
    realseq=0;      fcodon=1;
 
    printf("\nrandom number seed & fcodon? ");
@@ -1007,7 +1011,7 @@ void SimulateData2s64(FILE* fout, double f3x4_0[], double space[])
    f3x4 table is used to generate codon frequencies.
    x[0-2]: w,dN,dS for NG86; x[3-5]:w,dN,dS for YN00;
 */
-   int il,ir,nr=2000, i,j,h, n=Nsensecodon[com.icode];
+   int il,ir,nr=2000, i,j,h, n=Nsensecodon;
    int npatt0=n*(n+1)/2, nobs[NCODE*NCODE], nfail, nfail2;
    int ip,nil=1, ls[]={500, 100,500};
    double y, t=.5, x[6], S,N,dS=0,dN=0, f3x4[12];

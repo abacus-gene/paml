@@ -16,21 +16,20 @@ you can use the data to duplicate results in that paper.
 (1) Table 5 and the section titled "Different types of amino acid
 substitutions".  This model assumes different dn/ds (w) ratios for
 different types of amino acid substitutions.  You specify how many
-amino acid substitution types you would like to have and each type
-include which amino acid pairs.  The data should be codon sequences
-(seqtype = 1), and the model is specified by model = 7 (AAClasses).
-The details of amino acid substitution types are specified in a file
-called OmegaAA.dat.  See that file for details.  The model can be used
-to fit different rates for "radical" and "conserved" amino acid
-substitutions.  However, there are doubts about Hughes's idea of
-comparing radical and conserved amino acid substitution rates to
-detect positive selection.
+amino acid substitution types you would like to have and which amino
+acid pairs (changes) should be in each type.  The data should be codon
+sequences (seqtype = 1), and the model is specified by aaDist = 7
+(AAClasses).  The details of amino acid substitution types are
+specified in a file called OmegaAA.dat.  See that file for details.
+The model can be used to fit different rates for "radical" and
+"conserved" amino acid substitutions.
 
 Yang et al. (1998) implemented the model for codon sequences only
 (seqtype = 1).  In theory the model should be applicable to amino acid
 sequences as well (seqtype = 2), with one fewer parameter required.
 However, such models (for amino acid sequences) are either not tested
-properly or never made to work at all.  
+properly or never made to work.  If you need to apply such models to 
+amino acid sequences, you can let me know and I'll try to savalge the model.
 
 
 (2) Table 4.  Mechanistic models of codon substitution.  You should have
@@ -52,6 +51,7 @@ miyata.dat into the current folder to run those models.
        aaDist = -4  * linear relationship using p (polarity)
        aaDist = -5  * linear relationship using v (volume)
        aaDist = -6  * linear relationship using a (aromaticity)
+
 
 (3) Table 3.  Mechanistic models of amino acid substitution.  As above
 for table 4, but you should have seqtype = 2, model = 6 (FromCodon),

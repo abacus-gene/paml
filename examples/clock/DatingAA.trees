@@ -1,9 +1,0 @@
-31 1
-
-(((((
-(((((human #3, (common_chimp #3, pigmy_chimp #3) #3)#3, gorilla #3)#3,
-(bornean_orang #3, sumatran_orang #3)#3)#3, gibbon #3) #3, baboon #3) #3, 
-rabbit), ((((((grey_seal, harbor_seal), dog), cat), ((white_rhino,
-indian_rhino), (donkey, horse))), (((blue_whale, fin_whale), (sheep,
-cow)), pig)), fruit_bat)), (hedgehog #3, ((guinea_pig, fat_dormouse),
-(rat, mouse)))), (wallaroo #2, opossum #2) #2), platypus #1); //tree1 model1

@@ -93,3 +93,40 @@ Relative Mutability         The equilibrium freqs.
 (Dayhoff 1978)		    Dayhoff (1978)        
 ----------------------------------------------------------------
 
+
+
+Some notes from 1995, for those technical people:
+
+I managed to find some notes I wrote in 1995.  The symbols are not
+that comprehensible now, but you can get the basic idea, I think.  
+
+(1) Construction of P(0.01), for 1 PAM
+    p_ij(0.01) = m_i * A_{ij}/\sum_k{A_{ik}} / 7524.6
+
+(2) Eigensolution of P(0.01) = exp{Q*0.01}
+    P(0.01) = U diag{\lambda...} U^{-1}
+
+    Then 
+    Q = U diag{100*log{\lambda}...} U^{-1}
+
+
+I did not use the PAM transition probabilities as rates assuming 0.01
+is close to 0, but instead take them as P(0.01) to recover the rate
+matrix, and as we expect, the rates are more different from each other
+than the p_ij(0.01) are.
+
+I seem to recall that I thought some details in the Dayhoff paper and
+the Kishino et al. (1990) paper were not entirely right.  I think I
+thought that Q should be a symmetrical matrix, right-multiplied by a
+diagonal matrix, while either Dayhoff or Kishino or both used
+left-multiplication.
+
+As far as I know, codeml and protml give very similar (but not
+identical, I think) results under the Dayhoff model.
+
+My jones.dat file is not based on the Jones et al. (1992) paper, but
+is based on an updated data set sent to me by David Jones.  So codeml
+and protml gave different results under JTT, but ranking of trees was
+not affected for the data set I tested.
+
+Ziheng Yang

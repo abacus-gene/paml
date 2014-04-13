@@ -14,7 +14,6 @@ char AAs[] = "ARNDCQEGHILKMFPSTWYV*-?";
 char AA3Str[]=
      {"AlaArgAsnAspCysGlnGluGlyHisIleLeuLysMetPheProSerThrTrpTyrVal***"};
 char BINs[] ="TC";
-char Nsensecodon[]={61, 60, 61, 62, 62, 63, 62, 62, 61, 62, 62};
 int GeneticCode[][64] = 
      {{13,13,10,10,15,15,15,15,18,18,-1,-1, 4, 4,-1,17,
        10,10,10,10,14,14,14,14, 8, 8, 5, 5, 1, 1, 1, 1,
@@ -26,7 +25,7 @@ int GeneticCode[][64] =
         9, 9,12,12,16,16,16,16, 2, 2,11,11,15,15,-1,-1,
        19,19,19,19, 0, 0, 0, 0, 3, 3, 6, 6, 7, 7, 7, 7}, /* 1:vertebrate mt.*/
 
-      {13,13,10,10,15,15,15,15,18,18,-1,-1, 4, 4,-1,17,
+      {13,13,10,10,15,15,15,15,18,18,-1,-1, 4, 4,17,17,
        16,16,16,16,14,14,14,14, 8, 8, 5, 5, 1, 1, 1, 1,
         9, 9,12,12,16,16,16,16, 2, 2,11,11,15,15, 1, 1,
        19,19,19,19, 0, 0, 0, 0, 3, 3, 6, 6, 7, 7, 7, 7}, /* 2:yeast mt. */
@@ -70,14 +69,18 @@ int GeneticCode[][64] =
       {13,13,10,10,15,15,15,15,18,18,-1, 5, 4, 4,-1,17,
        10,10,10,10,14,14,14,14, 8, 8, 5, 5, 1, 1, 1, 1,
         9, 9, 9,12,16,16,16,16, 2, 2,11,11,15,15, 1, 1,
-       19,19,19,19, 0, 0, 0, 0, 3, 3, 6, 6, 7, 7, 7, 7} /* 10:blepharisma nu.*/
+       19,19,19,19, 0, 0, 0, 0, 3, 3, 6, 6, 7, 7, 7, 7}, /* 10:blepharisma nu.*/
+
+      { 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4,
+        5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8,
+        9, 9, 9, 9,10,10,10,10,11,11,11,11,12,12,12,12,
+       13,13,13,13,14,14,14,14,15,15,15,15,16,16,16,16} /* 11:Ziheng's regular code */
      } ;                                         /* GeneticCode[icode][#codon] */
 
 
 
 int noisy=0, Iround=0, NFunCall=0, NEigenQ, NPMatUVRoot;
 double SIZEp=0;
-
 
 int picksite (char *z, int l, int begin, int gap, char *result)
 {
@@ -294,7 +297,8 @@ int difcodonNG (char codon1[], char codon2[], double *SynSite,double *AsynSite,
          }
       }
       iaa[i]=GeneticCode[icode][iy[i]];
-      if(iaa[i]==-1) printf("\nNG86: stop codon %s.\n",getcodon(str,iy[i]));
+      if(iaa[i]==-1) 
+         printf("\nNG86: stop codon %s.\n",getcodon(str,iy[i]));
       for(j=0; j<3; j++) 
          FOR (k,4) {
             if (k==b[i][j]) continue;
@@ -357,10 +361,11 @@ int difcodonNG (char codon1[], char codon2[], double *SynSite,double *AsynSite,
    return (ndiff);
 }
 
+
 int testTransP (double P[], int n)
 {
    int i,j, status=0;
-   double sum, small=1e-7;
+   double sum, small=1e-10;
 
    for (i=0; i<n; i++) {
       for (j=0,sum=0; j<n; sum+=P[i*n+j++]) 
@@ -381,6 +386,7 @@ int PMatUVRoot (double P[], double t, int n, double U[], double V[],
 */
    int i,j,k;
    double expt, uexpt, *pP;
+   double smallp = 0;
 
    NPMatUVRoot++;
    if (t<-0.1) printf ("\nt = %.5f in PMatUVRoot", t);
@@ -389,10 +395,11 @@ int PMatUVRoot (double P[], double t, int n, double U[], double V[],
       for (i=0,pP=P,expt=exp(t*Root[k]); i<n; i++)
          for (j=0,uexpt=U[i*n+k]*expt; j<n; j++)
             *pP++ += uexpt*V[k*n+j];
-   for(i=0;i<n*n;i++)  if(P[i]<0)  P[i]=0;
+
+   for(i=0;i<n*n;i++)  if(P[i]<smallp)  P[i]=0;
+
 #if (DEBUG>=5)
       if (testTransP(P,n)) {
-         /*  matout(F0,P,n,n); */
          printf("\nP(%.6f) err in PMatUVRoot.\n", t);
          exit(-1);
       }
@@ -404,7 +411,8 @@ int PMatUVRoot (double P[], double t, int n, double U[], double V[],
 
 void pijJC69 (double pij[2], double t)
 {
-   if (t<-0.01) printf ("\nt = %.5f in pijJC69", t);
+   if (t<-0.0001) 
+      printf ("\nt = %.5f in pijJC69", t);
    if (t<1e-100) 
       { pij[0]=1; pij[1]=0; }
    else
@@ -420,20 +428,21 @@ int PMatK80 (double P[], double t, double kappa)
    int i,j;
    double e1, e2;
 
-   if (t<-0.1) printf ("\nt = %.5f in PMatK80", t);
+   if (t<-0.01)
+      printf ("\nt = %.5f in PMatK80", t);
    if (t<1e-100) { identity (P, 4); return(0); }
    e1=exp(-4*t/(kappa+2));
    if (fabs(kappa-1)<1e-5) {
       FOR (i,4) FOR (j,4)
-         if (i==j) P[i*4+j]=.25*(1+3*e1);
-         else      P[i*4+j]=.25*(1-e1);
+         if (i==j) P[i*4+j]=(1+3*e1)/4;
+         else      P[i*4+j]=(1-e1)/4;
    }
    else {
       e2=exp(-2*t*(kappa+1)/(kappa+2));
-      FOR (i,4) P[i*4+i]=.25*(1+e1+2*e2);
-      P[0*4+1]=P[1*4+0]=P[2*4+3]=P[3*4+2]=.25*(1+e1-2*e2);
+      FOR (i,4) P[i*4+i]=(1+e1+2*e2)/4;
+      P[0*4+1]=P[1*4+0]=P[2*4+3]=P[3*4+2]=(1+e1-2*e2)/4;
       P[0*4+2]=P[0*4+3]=P[2*4+0]=P[3*4+0]=
-      P[1*4+2]=P[1*4+3]=P[2*4+1]=P[3*4+1]=.25*(1-e1);
+      P[1*4+2]=P[1*4+3]=P[2*4+1]=P[3*4+1]=(1-e1)/4;
    }
    return (0);
 }
@@ -726,23 +735,43 @@ int printcums (FILE *fout, int ns, double fcodons[], int icode)
    return(0);
 }
 
-int PtoPi (double P[], double pi[], int n, double *space)
+int QtoPi (double Q[], double pi[], int n, double *space)
 {
-/* from transition probability P[ij] to pi, the stationary frequencies
-   (I-P)' * pi = 0     pi * 1 = 1
+/* from rate matrix Q[] to pi, the stationary frequencies:
+   Q' * pi = 0     pi * 1 = 1
    space[] is of size n*(n+1).
 */
    int i,j;
    double *T = space;      /* T[n*(n+1)]  */
 
-   FOR (i,n)  {
-      FOR (j,n)
-         T[i*(n+1)+j] = (double)(i==j) - P[j*n+i];     /* transpose */
+   for(i=0;i<n+1;i++) T[i]=1;
+   for(i=1;i<n;i++) {
+      for(j=0;j<n;j++)
+         T[i*(n+1)+j] =  Q[j*n+i];     /* transpose */
       T[i*(n+1)+n] = 0.;
    }
-   fillxc (T, 1., n+1);
    matinv( T, n, n+1, pi);
-   FOR (i,n) pi[i] = T[i*(n+1)+n];
+   for(i=0;i<n;i++) pi[i] = T[i*(n+1)+n];
+   return (0);
+}
+
+int PtoPi (double P[], double pi[], int n, double *space)
+{
+/* from transition probability P[ij] to pi, the stationary frequencies
+   (P'-I) * pi = 0     pi * 1 = 1
+   space[] is of size n*(n+1).
+*/
+   int i,j;
+   double *T = space;      /* T[n*(n+1)]  */
+
+   for(i=0;i<n+1;i++) T[i]=1;
+   for(i=1;i<n;i++) {
+      for(j=0;j<n;j++)
+         T[i*(n+1)+j] = P[j*n+i]-(double)(i==j);     /* transpose */
+      T[i*(n+1)+n] = 0;
+   }
+   matinv( T, n, n+1, pi);
+   for(i=0;i<n;i++) pi[i] = T[i*(n+1)+n];
    return (0);
 }
 
@@ -785,7 +814,7 @@ int printsma(FILE*fout, char*spname[], char*z[],
    printing out the original sequences after site patterns are collapsed. 
    Sequences z[] are coded if(transformed) and not if otherwise.
 */
-   int igroup, ngroup, lt, h,hp, i, b,b0=-1,igap, lspname=20, lseqlen=7;
+   int igroup, ngroup, lt, h,hp, i, b,b0=-1,igap, lspname=35, lseqlen=7;
    char indel='-', ambi='?', equal='.';
    char *pch=(seqtype<=1 ? BASEs : (seqtype==2?AAs:BINs));
    char codon[4]="   ";
@@ -845,9 +874,12 @@ char* printtime (char timestr[])
 /* print time elapsed since last call to starttime()
 */
    time_t t;
+   int h, m, s;
 
    t=time(NULL)-time_start;
-   sprintf(timestr,"%02ld:%02ld:%02ld", t/3600,(t%3600)/60, t-(t/60)*60);
+   h=t/3600; m=(t%3600)/60; s=t-(t/60)*60;
+   if(h)  sprintf(timestr,"%d:%02d:%02d", h,m,s);
+   else   sprintf(timestr,"%2d:%02d", m,s);
    return(timestr);
 }
 
@@ -889,8 +921,14 @@ void strcase (char *str, int direction)
 FILE *gfopen(char *filename, char *mode)
 {
    FILE *fp=(FILE*)fopen(filename, mode);
+
    if(fp==NULL) {
       printf("\nerror when opening file %s\n", filename);
+      if(!strchr(mode,'r')) exit(-1);
+      printf("tell me the full path-name of the file? ");
+      scanf("%s", filename);
+      if((fp=(FILE*)fopen(filename, mode))!=NULL)  return(fp);
+      puts("Can't find the file.  I give up.");
       exit(-1);
    }
    return(fp);
@@ -945,15 +983,19 @@ double innerp (double x[], double y[], int n)
 double norm (double x[], int n)
 { int i; double t=0;  FOR (i,n) t+=x[i]*x[i];  return sqrt(t); }
 
+
 int sort1 (double x[], int n, int rank[], int descending, int space[])
 {
-/* inefficient bubble sort */
+/* inefficient bubble sort.  This also puts ranks into rank[] and does not 
+   change x[].
+*/
    int i,j, it=0, *mark=space;
    double t=0;
 
    FOR (i,n) mark[i]=1;
    FOR (i,n) {
-      for (j=0; j<n; j++)  if (mark[j]) { t=x[j]; it=j++; break; }
+      FOR(j,n)  
+         if(mark[j]) { t=x[j]; it=j++; break; } /* first unused number */
       if (descending) {
          for ( ; j<n; j++)
             if (mark[j] && x[j]>t) { t=x[j]; it=j; }
@@ -995,21 +1037,12 @@ int f_and_x(double x[], double f[], int n, int fromf, int LastItem)
    return(0);
 }
 
-#if 0
-double rndu (void)
-{
-/* 32-bit integer assumed */
-   w_rndu *= 127773;
-   return ldexp((double)w_rndu, -32);
-}
-#endif
-
-
 static unsigned int z_rndu=137;
 static unsigned int w_rndu=123456757;
 
 void SetSeed (unsigned int seed)
 {
+   if(sizeof(int)-4) puts("oh-oh, we are in trouble.  int not 32-bit?");
    z_rndu=170*(seed%178)+137;
    w_rndu = seed*127773;
 }
@@ -1051,37 +1084,26 @@ double rndu (void)
 #endif
 
 
-double sample_uniform(double x, double range[2], double finetune)
-{
-   double w[2], xnew;
-   
-   w[0] = x - (range[1]-range[0])*finetune/2;
-   w[1] = x + (range[1]-range[0])*finetune/2;
-   xnew = rnduab(w[0],w[1]);
-   xnew = reflect(xnew, range[0], range[1]);
-   return(xnew);
-}
-
 double reflect(double x, double a, double b)
 {
 /* This returns a variable in the range (a,b) by reflecting x back into the range
 */
    int rounds=0;
-   double x0=x;
+   double x0=x, small=1e-12, verysmall=1e-17;
 
-   if(a>=b) {
-      printf("improper range %f (%f, %f)\n", x0,a,b);
-      printf("");
+   if(b-a<small)
+      printf("improper range x0=%.20e (%.20e, %.20e)\n", x0,a,b);
+   /* small *= min2(0.5, fabs(a+b)/2); */
+   small=0;
+   for ( ; ; rounds++) {
+      if(x>a && x<b) return x;  /* note strict inequality */
+      if(x<=a)       x = a + a - x + small;
+      else if(x>=b)  x = b - (x - b) - small;
    }
-   for ( ; ; rounds) {
-      if(x>=a && x<=b) return x;
-      if(x<a)      x = a + a - x;
-      else if(x>b) x = b - (x - b);
-      if(noisy>2 && ++rounds==2) {
-         printf("reflecting more than once %f (%f, %f)\n", x0,a,b);
-         printf("");
-      }
-   }
+   if(noisy>2 && rounds>2)
+      printf("reflected %d times x0 = %9.6f (%9.6f, %9.6ff)\n", rounds, x0,a,b);
+   if(noisy>2 && (x<=a+verysmall || x<=b-verysmall))
+      puts("close to the boundary.");
 }
 
 
@@ -1100,9 +1122,9 @@ void randorder(int order[], int n, int space[])
 }
 
 
-double rndnorm (void)
+double rndnormal (void)
 {
-/* standard normal variate, using the -Muller method (1958), improved by 
+/* standard normal variate, using the Box-Muller method (1958), improved by 
    Marsaglia and Bray (1964).  The method generates a pair of random
    variates, and only one used.
    See N. L. Johnson et al. (1994), Continuous univariate distributions, 
@@ -1168,7 +1190,7 @@ double rndgamma2 (double s);
 
 double rndgamma (double s)
 {
-/* random standard gamma (Mean=Var=s,  with shape par=s, scale par=1)
+/* random standard gamma (Mean=Var=s,  with shape parameter=s, scale para=1)
       r^(s-1)*exp(-r)
    J. Dagpunar (1988) Principles of random variate generation,
    Clarendon Press, Oxford
@@ -1237,6 +1259,17 @@ double rndgamma2 (double s)
       if (d*x < x-2*f*f || log(d) < 2*(b*log(x/b)-f))  break;
    }
    return (x);
+}
+
+
+double rndbeta (double p, double q)
+{
+/* this generates a random beta(p,q) variate
+*/
+   double gamma1, gamma2;
+   gamma1=rndgamma(p);
+   gamma2=rndgamma(q);
+   return gamma1/(gamma1+gamma2);
 }
 
 
@@ -1315,7 +1348,6 @@ double PointNormal (double prob)
        normal distribution.  37: 477-484.
      Beasley JD & Springer SG  (1977).  Algorithm AS 111: the percentage 
        points of the normal distribution.  26: 118-121.
-
 */
    double a0=-.322232431088, a1=-1, a2=-.342242088547, a3=-.0204231210245;
    double a4=-.453642210148e-4, b0=.0993484626060, b1=.588581570495;
@@ -1363,40 +1395,61 @@ double CDFNormal (double x)
 
 double LnGamma (double x)
 {
-/* returns ln(gamma(x)) for x>0, accurate to 10 decimal places.  
+/* returns ln(gamma(x)) for x>0, accurate to 10 decimal places.
    Stirling's formula is used for the central polynomial part of the procedure.
 
    Pike MC & Hill ID (1966) Algorithm 291: Logarithm of the gamma function.
    Communications of the Association for Computing Machinery, 9:684
 */
-   double f=0, fneg=0, z;
+   double f=0, fneg=0, z, lng;
+   int nx=(int)x-1;
 
-   if(x<=0) {
-      error2("lnGamma not implemented for x<0");
-      if((int)x-x==0) { puts("lnGamma undefined"); return(-1); }
-      for (fneg=1; x<0; x++) fneg/=x;
-      if(fneg<0) error2("strange!! check lngamma");
-      fneg=log(fneg);
+   if((double)nx==x && nx>0 && nx<10)
+      lng=log((double)factorial(nx));
+   else {
+      if(x<=0) {
+         error2("lnGamma not implemented for x<0");
+         if((int)x-x==0) { puts("lnGamma undefined"); return(-1); }
+         for (fneg=1; x<0; x++) fneg/=x;
+         if(fneg<0) error2("strange!! check lngamma");
+         fneg=log(fneg);
+      }
+      if (x<7) {
+         f=1;  z=x-1;
+         while (++z<7)  f*=z;
+         x=z;   f=-log(f);
+      }
+      z = 1/(x*x);
+      lng = fneg+ f + (x-0.5)*log(x) - x + .918938533204673 
+             + (((-.000595238095238*z+.000793650793651)*z-.002777777777778)*z
+                  +.083333333333333)/x;
    }
-   if (x<7) {
-      f=1;  z=x-1;
-      while (++z<7)  f*=z;
-      x=z;   f=-log(f);
-   }
-   z = 1/(x*x);
-   return  fneg+ f + (x-0.5)*log(x) - x + .918938533204673 
-          + (((-.000595238095238*z+.000793650793651)*z-.002777777777778)*z
-               +.083333333333333)/x;  
+   return  lng;
 }
 
-double DFGamma(double x, double alpha, double beta)
+double PDFGamma (double x, double alpha, double beta)
 {
-/* mean=alpha/beta; var=alpha/beta^2
+/* gamma density: mean=alpha/beta; var=alpha/beta^2
 */
-   if (alpha<=0 || beta<=0) error2("err in DFGamma()");
-   if (alpha>100) error2("large alpha in DFGamma()");
+   if (x<=0 || alpha<=0 || beta<=0) {
+      printf("x=%.6f a=%.6f b=%.6f", x, alpha, beta);
+      error2("x a b outside range in PDFGamma()");
+   }
+   if (alpha>100)           error2("large alpha in PDFGamma()");
    return pow(beta*x,alpha)/x * exp(-beta*x - LnGamma(alpha));
+}
 
+double PDF_IGamma (double x, double alpha, double beta)
+{
+/* inverse-gamma density: 
+   mean=beta/(alpha-1); var=beta^2/[(alpha-1)^2*(alpha-2)]
+*/
+   if (x<=0 || alpha<=0 || beta<=0) {
+      printf("x=%.6f a=%.6f b=%.6f", x, alpha, beta);
+      error2("x a b outside range in PDF_IGamma()");
+   }
+   if (alpha>100)           error2("large alpha in PDF_IGamma()");
+   return pow(beta/x,alpha)/x * exp(-beta/x - LnGamma(alpha));
 }
 
 
@@ -1516,6 +1569,51 @@ l4:
    return (ch);
 }
 
+
+
+double *gamma_modetiles, gamma_pexp[2]; /* mode, 2.5%, 97.5% */
+
+double fun_ab_beta(double x)
+{
+   int i;
+   double diff=0, a=x, b, p[2]={0.025,0.975}, *pe=gamma_pexp, weight[3]={2,2,1};
+   
+   if(a<=1) error2("a should be > 1");
+   b=(a-1)/gamma_modetiles[0];
+   for(i=0; i<2; i++)
+      pe[i] = CDFGamma(gamma_modetiles[i+1],a,b);
+
+   diff = fabs(p[0]-pe[0])*weight[0] + fabs(p[1]-pe[1])*weight[1]
+        + fabs(pe[1]-pe[0]-0.95)*weight[2];
+
+/*
+   if(!RELEASE && noisy) printf("ab %9.5f %9.5f p %9.5f %9.5f %9.5f\n",
+      a,b,pe[0],pe[1],pe[1]-pe[0]);
+*/
+   return(diff);
+}
+
+int getab_gamma(double *a, double* b, double xmodetiles[3])
+{
+/* This gets parameters a (alpha) and b (beta) for the gamma distribution,
+   given the mode, and the 2.5% and 97.5% percentiles (soft bounds).
+   The mode is matched perfectly so that  b = (a-1)/mode, 
+   and a is solved to minimize the differences in CDFs at the soft bounds.
+   a > 1 is assumed.
+*/
+   double x=1+2*rndu(), xb[2]={1.0001,99999}, S, e=1e-15;
+
+   if(xmodetiles[0]<=xmodetiles[1] || xmodetiles[0]>xmodetiles[2]) 
+      error2("modetiles for gamma out of range.");
+   gamma_modetiles = xmodetiles;
+   LineSearch(fun_ab_beta, &S, &x, xb, 0.2, e);
+   *a=x; *b=(*a-1)/gamma_modetiles[0];
+   return(0);
+}
+
+
+extern int LASTROUND;
+
 int DiscreteGamma (double freqK[], double rK[], 
     double alpha, double beta, int K, int median)
 {
@@ -1532,10 +1630,11 @@ int DiscreteGamma (double freqK[], double rK[],
    }
    else {
       lnga1=LnGamma(alpha+1);
-      for (i=0; i<K-1; i++)
+      for (i=0; i<K-1; i++) /* cutting points, Eq. 9 */
          freqK[i]=PointGamma((i+1.0)/K, alpha, beta);
-      for (i=0; i<K-1; i++)
+      for (i=0; i<K-1; i++) /* Eq. 10 */
          freqK[i]=IncompleteGamma(freqK[i]*beta, alpha+1, lnga1);
+
       rK[0] = freqK[0]*factor;
       rK[K-1] = (1-freqK[K-2])*factor;
       for (i=1; i<K-1; i++)  rK[i] = (freqK[i]-freqK[i-1])*factor;
@@ -1662,21 +1761,53 @@ double probBinomial (int n, int k, double p)
    return C;
 }
 
+
+double probBetaBinomial (int n, int k, double p, double q)
+{
+/* This calculates beta-binomial probability of k succeses out of n trials,
+   The binomial probability parameter has distribution beta(p, q)
+
+   prob(x) = C1(-a,k) * C2(-b,n-k)/C3(-a-b,n)
+*/
+   double a=p,b=q, C1,C2,C3,scale1,scale2,scale3;
+
+   if(a<=0 || b<=0) return(0);
+   C1=Binomial(-a, k, &scale1);
+   C2=Binomial(-b, n-k, &scale2);
+   C3=Binomial(-a-b, n, &scale3);
+   C1*=C2/C3;
+   if(C1<0) 
+      error2("error in probBetaBinomial");
+   return C1*exp(scale1+scale2-scale3);
+}
+
+
 double CDFBeta(double x, double pin, double qin, double lnbeta)
 {
-/* Returns distribution function of the beta distribution, that is,  
-   the incomplete beta ratio I_x(p,q) ).
+/* Returns distribution function of the standard form of the beta distribution, 
+   that is, the incomplete beta ratio I_x(p,q).
+
+   lnbeta is log of the complete beta function; provide it if known,
+   and otherwise use 0.
+
    This is called from InverseCDFBeta() in a root-finding loop.
-     This routine is a translation into C of a Fortran subroutine
-     by W. Fullerton of Los Alamos Scientific Laboratory.
-     Bosten and Battiste (1974).
-     Remark on Algorithm 179, CACM 17, p153, (1974).
+
+    This routine is a translation into C of a Fortran subroutine
+    by W. Fullerton of Los Alamos Scientific Laboratory.
+    Bosten and Battiste (1974).
+    Remark on Algorithm 179, CACM 17, p153, (1974).
 */
-   double ans, c, finsum, p, ps, p1, q, term, xb, xi, y;
+   double ans, c, finsum, p, ps, p1, q, term, xb, xi, y, small=1e-15;
    int n, i, ib;
    static double eps = 0, alneps = 0, sml = 0, alnsml = 0;
 
-   if(x<0 || x>1 || pin<0 || qin<0) error2("out of range in CDFBeta");
+   if(x<small)        return 0;
+   else if(x>1-small) return 1;
+   if(pin<=0 || qin<=0)  { 
+      printf("p=%.4f q=%.4f: parameter outside range in CDFBeta",pin,qin); 
+      return (-1); 
+   }
+
    if (eps == 0) {/* initialize machine constants ONCE */
       eps = pow((double)FLT_RADIX, -(double)DBL_MANT_DIG);
       alneps = log(eps);
@@ -1760,8 +1891,6 @@ double CDFBeta(double x, double pin, double qin, double lnbeta)
    return ans;
 }
 
-static volatile double xtrunc;
-
 double InverseCDFBeta(double prob, double p, double q, double lnbeta)
 {
 /* This calculates the inverseCDF of the beta distribution
@@ -1772,17 +1901,16 @@ double InverseCDFBeta(double prob, double p, double q, double lnbeta)
 
    My own implementation of the algorithm did not bracket the variable well.  
    This version is Adpated from the pbeta and qbeta routines from 
-   "R : A Computer Language for Statistical Data Analysis", and it fails for 
+   "R : A Computer Language for Statistical Data Analysis".  It fails for 
    extreme values of p and q as well, although it seems better than my 
    previous version.
    Ziheng Yang, May 2001
 */
    double fpu=3e-308, acu_min=1e-300, lower=fpu, upper=1-2.22e-16;
    /* acu_min>= fpu: Minimal value for accuracy 'acu' which will depend on (a,p); */
-   int swap_tail, i_pb, i_inn;
+   int swap_tail, i_pb, i_inn, niterations=2000;
    double a, adj, g, h, pp, prev=0, qq, r, s, t, tx=0, w, y, yprev;
-   double acu;
-   volatile double xinbta;
+   double acu, xinbta;
 
    if(prob<0 || prob>1 || p<0 || q<0) error2("out of range in InverseCDFBeta");
 
@@ -1800,7 +1928,7 @@ double InverseCDFBeta(double prob, double p, double q, double lnbeta)
    if (prob <= 0.5) {
       a = prob;   pp = p; qq = q; swap_tail = 0;
    }
-   else { /* change tail, swap  p <-> q :*/
+   else {
       a = 1. - prob; pp = q; qq = p; swap_tail = 1;
    }
 
@@ -1842,10 +1970,7 @@ double InverseCDFBeta(double prob, double p, double q, double lnbeta)
 /* Changes made by Ziheng to fix a bug in qbeta()
    qbeta(0.25, 0.143891, 0.05) = 3e-308   wrong (correct value is 0.457227)
 */
-   if(xinbta<0) xinbta=(a+.5)/2;
-   else if (xinbta < lower)  xinbta = lower;
-   else if (xinbta > upper)  xinbta = upper;
-
+   if(xinbta<=lower || xinbta>=upper)  xinbta=(a+.5)/2;
 
    /* Desired accuracy should depend on (a,p)
     * This is from Remark .. on AS 109, adapted.
@@ -1857,15 +1982,13 @@ double InverseCDFBeta(double prob, double p, double q, double lnbeta)
    acu = pow(10., -13. - 2.5/(pp * pp) - 0.5/(a * a));
    acu = max2(acu, acu_min);
 
-   for (i_pb=0; i_pb < 1000; i_pb++) {
+   for (i_pb=0; i_pb<niterations; i_pb++) {
       y = CDFBeta(xinbta, pp, qq, lnbeta);
-      /* y = pbeta2(xinbta, pp, qq, lnbeta) -- to SAVE CPU; */
       y = (y - a) *
          exp(lnbeta + r * log(xinbta) + t * log(1. - xinbta));
       if (y * yprev <= 0)
          prev = max2(fabs(adj),fpu);
-      g = 1;
-      for (i_inn=0; i_inn < 1000; i_inn++) {
+      for (i_inn=0,g=1; i_inn<niterations; i_inn++) {
          adj = g * y;
          if (fabs(adj) < prev) {
             tx = xinbta - adj; /* trial new x */
@@ -1876,17 +1999,15 @@ double InverseCDFBeta(double prob, double p, double q, double lnbeta)
          }
          g /= 3.;
       }
-      /* this prevents trouble with excess FPU precision on some machines. */
-      xtrunc = tx;
-      if (xtrunc == xinbta)
+      if (fabs(tx-xinbta)<fpu) 
          goto L_converged;
       xinbta = tx;
       yprev = y;
    }
-/*
-   printf("\nwarning: InverseCDFBeta(%.2f, %.5f, %.5f) = %.6e\n", 
-      prob,p,q, (swap_tail ? 1. - xinbta : xinbta));
-*/
+   if(!RELEASE) 
+      printf("\nInverseCDFBeta(%.2f, %.5f, %.5f) = %.6e\t%d rounds\n", 
+         prob,p,q, (swap_tail ? 1. - xinbta : xinbta), niterations);
+
    L_converged:
    return (swap_tail ? 1. - xinbta : xinbta);
 }
@@ -1910,11 +2031,11 @@ double InverseCDF(double(*cdf)(double x,double par[]),
 {
 /* Use x for initial value if in range
 */
-   double sdiff,step=min2(0.05,(xb[1]-xb[0])/100);
+   double sdiff,step=min2(0.05,(xb[1]-xb[0])/100), e=1e-15;
 
    prob_InverseCDF=p;  par_InverseCDF=par; cdf_InverseCDF=cdf;
    if(x<=xb[0]||x>=xb[1]) x=.5;
-   LineSearch(diff_InverseCDF, &sdiff, &x, xb, step);
+   LineSearch(diff_InverseCDF, &sdiff, &x, xb, step, e);
    return(x);
 }
 
@@ -2008,21 +2129,22 @@ long factorial(int n)
 }
 
 
-double Binomial(double n, double k, double *scale)
+double Binomial(double n, int k, double *scale)
 {
-/* calculates n choose k, but currently only works for int k>0
-   n can be any real number.
+/* calculates n choose k. n is any real number, and k is integer.
    If(*scale!=0) the result should be c+exp(*scale).
 */
-   double c,i,large=1e99;
+   double c=1,i,large=1e99;
 
    *scale=0;
-   if(k==0) return(1);
-   if(k<0 || (int)k!=k) 
+   if((int)k!=k) 
       error2("k is not a whole number in Binomial.");
+   if(n<0 && k%2==1) c=-1;
+   if(k==0) return(1);
+   if(n>0 && (k<0 || k>n)) return (0);
 
-   if(n>0 && (int)n==n) k=min2(k,n-k);
-   for (i=1,c=1; i<=k; i++) {
+   if(n>0 && (int)n==n) k=min2(k,(int)n-k);
+   for (i=1; i<=k; i++) {
       c*=(n-k+i)/i;
       if(c>large)
          { *scale+=log(c); c=1; } 
@@ -2108,17 +2230,17 @@ int mattransp2 (double x[], double y[], int n, int m)
 int matinv (double x[], int n, int m, double space[])
 {
 /* x[n*m]  ... m>=n
+   space[n].  This puts the fabs(|x|) into space[0].  Check and calculate |x|.
 */
    register int i,j,k;
    int *irow=(int*) space;
-   double ee=1.0e-30, t,t1,xmax;
-   double det=1.0;
+   double ee=1.0e-30, t,t1,xmax, det=1;
 
    FOR (i,n)  {
-      xmax = 0.;
-      for (j=i; j<n; j++)
-         if (xmax < fabs(x[j*m+i])) { xmax = fabs(x[j*m+i]); irow[i]=j; }
-      det *= xmax;
+      for (j=i,xmax=0; j<n; j++)
+         if (xmax<fabs(x[j*m+i]))
+            { xmax = fabs(x[j*m+i]); irow[i]=j; }
+      det *= x[irow[i]*m+i];
       if (xmax < ee)   {
          printf("\nDet = %.4e close to zero at %3d!\t\n", xmax,i+1);
          return(-1);
@@ -2139,7 +2261,7 @@ int matinv (double x[], int n, int m, double space[])
       }
       FOR(j,m)   x[i*m+j] *= t;
       x[i*m+i] = t;
-   }                            /* i  */
+   }                            /* for(i) */
    for (i=n-1; i>=0; i--) {
       if (irow[i] == i) continue;
       FOR(j,n)  {
@@ -2148,8 +2270,141 @@ int matinv (double x[], int n, int m, double space[])
          x[j*m + irow[i]] = t;
       }
    }
+   space[0]=det;
    return (0);
 }
+
+
+int matexp (double Q[], double t, int n, int TimeSquare, double space[])
+{
+/* This calculates the matrix exponential P(t) = exp(t*Q).
+   Input: Q[] has the rate matrix, and t is the time or branch length.
+          TimeSquare is the number of times the matrix is squared and should 
+          be from 5 to 31.
+   Output: Q[] has the transition probability matrix, that is P(Qt).
+
+      P(t) = (I + Qt/m + (Qt/m)^2/2)^m, with m = 2^TimeSquare.
+
+   T[it=0] is the current matrix, and T[it=1] is the squared result matrix,
+   used to avoid copying matrices.
+*/
+   int it, i;
+   double *T[2];
+
+   if(TimeSquare<2 || TimeSquare>31) error2("TimeSquare not good");
+   T[0]=Q; T[1]=space;
+   for(i=0; i<n*n; i++)  T[0][i] = ldexp( Q[i]*t, -TimeSquare );
+
+   matby (T[0], T[0], T[1], n, n, n);
+   for(i=0; i<n*n; i++)  T[0][i] += T[1][i]/2;
+   for(i=0; i<n; i++)  T[0][i*n+i] ++;
+
+   for(i=0,it=0; i<TimeSquare; i++) {
+      it = !it;
+      matby (T[1-it], T[1-it], T[it], n, n, n);
+   }
+   if(it==1) 
+      for(i=0;i<n*n;i++) Q[i]=T[1][i];
+   return(0);
+}
+
+
+
+void HouseholderRealSym(double a[], int n, double d[], double e[]);
+int EigenTridagQLImplicit(double d[], double e[], int n, double z[]);
+
+int matsqrt (double A[], int n, double work[])
+{
+/* This finds the symmetrical square root of a real symmetrical matrix A[n*n].
+   R * R = A.  The root is returned in A[].
+   The work space if work[n*n*2+n].
+   Used the same procedure as eigenRealSym(), but does not sort eigen values.
+*/
+   int i,j, status;
+   double *U=work, *Root=U+n*n, *V=Root+n;
+
+   xtoy(A, U, n*n);
+   HouseholderRealSym(U, n, Root, V);
+   status=EigenTridagQLImplicit(Root, V, n, U);
+   mattransp2 (U, V, n, n);
+   for(i=0;i<n;i++) 
+      if(Root[i]<0) error2("negative root in matsqrt?");
+      else          Root[i]=sqrt(Root[i]);
+   for(i=0;i<n;i++) for(j=0;j<n;j++) 
+      U[i*n+j] *= Root[j];
+   matby (U, V, A, n, n, n);
+
+   return(status);
+}
+
+
+
+int CholeskyDecomp (double A[], int n, double L[])
+{
+/* A=LL', where A is symmetrical and positive-definite, and L is
+   lower-diagonal
+   only A[i*n+j] (j>=i) are used.
+*/
+   int i,j,k;
+   double t;
+
+   for (i=0; i<n; i++) for (j=i+1; j<n; j++) L[i*n+j]=0;
+   for (i=0; i<n; i++) {
+      for (k=0,t=A[i*n+i]; k<i; k++) t-=square(L[i*n+k]);
+      if (t>=0)    
+         L[i*n+i]=sqrt(t);   
+      else
+         return (-1);
+      for (j=i+1; j<n; j++) {
+         for (k=0,t=A[i*n+j]; k<i; k++) t-=L[i*n+k]*L[j*n+k];
+         L[j*n+i]=t/L[i*n+i];
+      }
+   }
+   return (0);
+}
+
+
+int Choleskyback (double L[], double b[], double x[], int n);
+int CholeskyInverse (double L[], int n);
+
+int Choleskyback (double L[], double b[], double x[], int n)
+{
+/* solve Ax=b, where A=LL' is lower-diagonal.  
+   x=b O.K.  Only A[i*n+j] (i>=j) are used
+*/
+  
+   int i,j;
+   double t;
+
+   for (i=0; i<n; i++) {       /* solve Ly=b, and store results in x */
+      for (j=0,t=b[i]; j<i; j++) t-=L[i*n+j]*x[j];
+      x[i]=t/L[i*n+i];
+   }
+   for (i=n-1; i>=0; i--) {    /* solve L'x=y, and store results in x */
+      for (j=i+1,t=x[i]; j<n; j++) t-=L[j*n+i]*x[j];
+      x[i]=t/L[i*n+i];
+   }
+   return (0);
+}
+
+int CholeskyInverse (double L[], int n)
+{
+/* inverse of L
+*/
+   int i,j,k;
+   double t;
+
+   for (i=0; i<n; i++) {
+      L[i*n+i]=1/L[i*n+i];
+      for (j=i+1; j<n; j++) {
+         for (k=i,t=0; k<j; k++) t-=L[j*n+k]*L[k*n+i];
+         L[j*n+i]=t/L[j*n+j];
+      }
+   }
+   return (0);
+}
+
+
 
 
 int getpi_sqrt (double pi[], double pi_sqrt[], int n, int *npi0)
@@ -2236,8 +2491,11 @@ int eigenQREV (double Q[], double pi[], double pi_sqrt[], int n, int npi0,
       }
    }
 
-   if(fabs(Root[0])>1e-12 && noisy) printf("Root[0] = %.5e\n",Root[0]);
-   Root[0]=0;
+/*   This routine is also used for P(t) as well as Q. */
+/*
+   if(fabs(Root[0])>1e-10 && noisy) printf("Root[0] = %.5e\n",Root[0]);
+   Root[0]=0; 
+*/
    return(status);
 }
 
@@ -2248,7 +2506,7 @@ void HouseholderRealSym(double a[], int n, double d[], double e[]);
 int EigenTridagQLImplicit(double d[], double e[], int n, double z[]);
 void EigenSort(double d[], double U[], int n);
 
-int eigenRealSym(double A[], int n, double Root[], double Offdiag[])
+int eigenRealSym(double A[], int n, double Root[], double work[])
 {
 /* This finds the eigen solution of a real symmetrical matrix A[n*n].  In return, 
    A has the right vectors and Root has the eigenvalues. work[n] is the working space.
@@ -2259,8 +2517,8 @@ int eigenRealSym(double A[], int n, double Root[], double Offdiag[])
    Ziheng Yang, 23 May 2001
 */
    int status=0;
-   HouseholderRealSym(A, n, Root, Offdiag);
-   status=EigenTridagQLImplicit(Root, Offdiag, n, A);
+   HouseholderRealSym(A, n, Root, work);
+   status=EigenTridagQLImplicit(Root, work, n, A);
    EigenSort(Root, A, n);
 
    return(status);
@@ -2506,103 +2764,396 @@ int bubblesort (float x[], int n)
 }
 
 
-typedef float resulttype;
 
 int comparefloat (const void *a, const void *b)
 {  
-   resulttype aa = *(resulttype*)a, bb= *(resulttype*)b;
+   double aa = *(double*)a, bb= *(double*)b;
+   return (aa==bb ? 0 : aa > bb ? 1 : -1);
+}
+
+int comparedouble (const void *a, const void *b)
+{  
+   double aa = *(double*)a, bb= *(double*)b;
    return (aa==bb ? 0 : aa > bb ? 1 : -1);
 }
 
 
-int DescriptiveStatistics (FILE *fout, char infile[], int nbin)
+int splitline (char line[], int fields[])
 {
-/* this reads fin nx+2 times.
+/* This finds out how many fields there are in the line, and marks the starting 
+   positions of the fields.
+   Fields are separated by spaces, and texts are allowed as well.
 */
-   FILE *fin=fopen(infile,"r");
-   int  n, nx, i,j,k, jj;
+   int lline=64000, i, nfields=0, InSpace=1;
+   char *p=line;
+
+   for(i=0; i<lline && *p && *p!='\n'; i++,p++) {
+      if (isspace(*p))
+         InSpace=1;
+      else  {
+         if(InSpace) {
+            InSpace=0;
+            fields[nfields++]=i;
+            /* if(nfields>MAXNFIELDS) puts("raise MAXNFIELDS?"); */
+         }
+      }
+   }
+   return(nfields);
+}
+
+
+int scanfile(FILE*fin, int *nrecords, int *nx)
+{
+   int  lline=64000, nxline, fields[1000];
+   char line[64000];
+
+   for (*nrecords=0; ; ) {
+      if (!fgets(line,lline,fin)) break;
+      nxline=splitline(line,fields);
+      if(nxline==0)          continue;
+      if(*nrecords==0)       *nx=nxline;
+      else if (*nx!=nxline)  break;
+      (*nrecords)++;
+      /* printf("line # %3d:  %3d variables\n", *nrecords+1, nxline); */
+   }
+   rewind(fin);
+   return(0);
+}
+
+
+#define MAXNF2D  5
+#define SQRT5    2.2360679774997896964
+#define Epanechnikov(t) ((0.75-0.15*(t)*(t))/SQRT5)
+int splitline (char line[], int fields[]);
+int scanfile(FILE*fin, int *nrecords, int *nx);
+
+
+int density1d (FILE* fout, double y[], int n, int nbin, double minx, 
+               double gap, double h, double space[])
+{
+/* This collects the histogram and uses kernel smoothing and adaptive kernel 
+   smoothing to estimate the density.  The kernel is Epanechnikov.  The 
+   histogram is collected into f, smoothed density into fE, and density 
+   from adaptive kernel smoothing into fEA[].  
+   Data y[] are sorted in increasing order before calling this routine.
+
+   space[bin+n]
+*/
+   char timestr[32];
+   int adaptive=1, i,k, iL, nused;
+   double *f=space, *lambda=f+nbin, fE, fEA, xt, d, G, alpha=0.5;
+
+   for(i=0; i<nbin; i++)  f[i]=0;
+   for(k=0,i=0; k<n; k++) {
+      for ( ; i<nbin-1; i++)
+         if(y[k]<=minx+gap*(i+1)) break;
+      f[i]+=1./n;
+   }
+
+   /* weights for adaptive smoothing */
+   if(adaptive) {
+      for(k=0;k<n;k++) lambda[k]=0;
+      for(k=0,G=0,iL=0; k<n; k++) {
+         xt=y[k];
+         for (i=iL,nused=0; i<n; i++) {
+            d=fabs(xt-y[i])/h;
+            if(d<SQRT5) {
+               nused++;
+               lambda[k] += 1-0.2*d*d;  /* based on Epanechnikov kernel */
+               //lambda[k] += Epanechnikov(d)/(n*h);
+            }
+            else if(nused==0)
+               iL=i;
+            else
+               break;
+         }
+         G+=log(lambda[k]);
+         if((k+1)%1000==0)
+            printf("\r\tGetting weights: %2d/%d  %d terms  %s", k+1,n,nused,printtime(timestr));
+
+      }
+      G = exp(G/n);
+      for (k=0; k<n; k++) lambda[k] = pow(lambda[k]/G, -alpha);
+      if(n>1000) printf("\r");
+   }
+
+   /* smoothing and printing */
+   for (k=0; k<nbin; k++) {
+      xt=minx+gap*(k+0.5);
+      for (i=0,fE=fEA=0; i<n; i++) {
+         d=fabs(xt-y[i])/h;
+         if(d<SQRT5) fE += Epanechnikov(d)/(n*h);
+         if(adaptive) {
+            d/=lambda[i];
+            if(d<SQRT5) fEA += Epanechnikov(d)/(n*h*lambda[i]);
+         }
+      }
+      fprintf(fout, "%.6f\t%.6f\t%.6f\t%.6f\n", xt, f[k], fE, fEA);
+   }
+   return(0);
+}
+
+
+int density2d (FILE* fout, double y1[], double y2[], int n, int nbin, 
+               double minx1, double minx2, double gap1, double gap2, 
+               double var[4], double h, double space[])
+{
+/* This collects the histogram and uses kernel smoothing and adaptive kernel 
+   smoothing to estimate the 2-D density.  The kernel is Epanechnikov.  The 
+   histogram is collected into f, smoothed density into fE, and density 
+   from adaptive kernel smoothing into fEA[].  
+   Data y1 and y2 are not sorted, unlike the 1-D routine.
+
+   alpha goes from 0 to 1, with 0 being equivalent to fixed width smoothing.
+   var[] has the 2x2 variance matrix, which is copied into S[4] and inverted.
+
+   space[nbin*nbin+n] for observed histogram f[nbin*nbin] and for lambda[n].
+*/
+   char timestr[32];
+   int i,j,k;
+   double *f=space, *lambda=f+nbin*nbin, fE, fEA, h2=h*h, c2d;
+   double a,b,c,d, S[4], detS, G, x1,x2, alpha=0.5;
+
+   /* histogram */
+   for (i=0,zero(f,nbin*nbin); i<n; i++) {
+      for (j=0; j<nbin-1; j++) if(y1[i]<=minx1+gap1*(j+1)) break;
+      for (k=0; k<nbin-1; k++) if(y2[i]<=minx2+gap2*(k+1)) break;
+      f[j*nbin+k]+=1./n;
+   }
+
+   xtoy(var,S,4);
+   a=S[0]; b=c=S[1]; d=S[3]; detS=a*d-b*c;
+   S[0]=d/detS;  S[1]=S[2]=-b/detS;  S[3]=a/detS;
+   /* detS=1; S[0]=S[3]=1; S[1]=S[2]=0; */
+   c2d=2/(n*PI*h*h*sqrt(detS));
+
+   /* weights for adaptive kernel smoothing */
+   for (k=0; k<n; k++) lambda[k]=0;
+   for(k=0,G=0; k<n; k++) {
+      x1=y1[k]; x2=y2[k];
+      for(i=0;i<n;i++) {
+         a=x1-y1[i], b=x2-y2[i];
+         d=(a*S[0]+b*S[1])*a + (a*S[1]+b*S[3])*b;
+         d/=h2;
+         if(d<1) lambda[k] += (1-d);
+      }
+      G+=log(lambda[k]);
+      if((k+1)%1000==0)
+         printf("\r\tGetting weights: %2d/%d  %s", k+1,n,printtime(timestr));
+
+   }
+   G = exp(G/n);
+   for(k=0; k<n; k++) lambda[k] = pow(lambda[k]/G, -alpha);
+   for(k=0; k<n; k++) lambda[k] = 1/square(lambda[k]);   /* 1/lambda^2 */
+   if(n>1000) printf("\r");
+
+   /* smoothing and printing */
+   puts("\t\tSmoothing and printing.");
+   for(j=0; j<nbin; j++) {
+      for(k=0; k<nbin; k++) {
+         x1=minx1+gap1*(j+0.5);
+         x2=minx2+gap2*(k+0.5);
+
+         for(i=0,fE=fEA=0;i<n;i++) {
+            a=x1-y1[i], b=x2-y2[i];
+            d=(a*S[0]+b*S[1])*a + (a*S[1]+b*S[3])*b;
+            d /= h2;
+            if(d<1) fE += (1-d);
+
+            d *= lambda[i];
+            if(d<1) fEA += (1-d)*lambda[i];
+         }
+         fprintf(fout, "%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n", x1,x2, f[j*nbin+k],fE*c2d,fEA*c2d);
+      }
+   }
+   return(0);
+}
+
+
+int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int nrho)
+{
+/* This routine reads n records (observations) each of p continuous variables,
+   to calculate summary statistics such as the mean, SD, median, min, max
+   of each variable, as well as the variance and correlation matrices.
+   It also uses kernel density estimation to smooth the histogram for each
+   variable, as well as calculating 2-D densities for selected variable pairs.
+   The smoothing used the kerney estimator, with both fixed window size and 
+   adaptive kernel smoothing using variable bandwiths.  The kernel function 
+   is Epanechnikov.  For 2-D smoothing, Fukunaga's transform is used 
+   (p.77 in B.W. Silverman 1986).
+
+   The routine reads infile (p*2+3+nf2d) times:
+      1:     to scan the file
+      1:     to calculate min, max, mean
+      1:     to calculate variance matrix
+      p:     to sort each variable for median and percentiles
+      p:     to do 1-D density smooth
+      nf2d:  to do 2-D density smooth
+
+   Space requirement:
+      x[p];    mean[p]; median[p]; minx[p]; maxx[p]; x005[p]; x995[p];
+      x025[p]; x975[p]; x25[p];  x75[p];  var[p*p];  gap[p]; rho[p*nrho];  
+
+   Each line in the data file has p variables, read into x[p], and the variable 
+   to be sorted or processed is moved into y[].  The vector y[] contains the 
+   data, f[] for histogram, and lambda[n] for adaptive kernel smoothing.   
+   For 1-D, y[n*2+nbin*nbin] contains the data, f[nbin] for histogram, and 
+   lambda[n] for adaptive smoothing.  
+   For 2-D, y[n*3+nbin*nbin] contains the data (y[n*2], f[nbin*nbin] for 
+   histogram, and lambda[n] for adaptive smoothing.  *space is pointed to y 
+   after the data at the start of f[].
+
+   Future work: Sorting data to avoid useless computation.
+
+*/
+   FILE *fin=gfopen(infile,"r");
+   int  n, p, i,j,k, jj,kk;
    char *fmt=" %9.6f", timestr[32];
-   double *x, *mean, *median, *minx, *maxx, *x025, *x975, *var, t;
-   double *mid, *freq, *gap;  /* size nbin, for binning */
-   resulttype *y;
+   double *x, *mean, *median, *minx, *maxx, *x005,*x995,*x025,*x975,*x25,*x75,*var, t;
+   double h, *y, *rho, *gap, *space, a,b,c,d, v2d[4];
+   int nf2d=0, ivar_f2d[MAXNF2D][2]={{5,6},{0,2}}, k2d;
 
    starttime();
-   if (fin==NULL) { puts("input file open err"); exit(-1); }
-   fscanf(fin,"%d%d", &n,&nx);
-   printf("\n%d observations %d variables\n", n,nx);
-   x = (double*)malloc((nx*7+nx*nx)*sizeof(double));
-   mid = (double*)malloc((2*nx*nbin+nx)*sizeof(double));
-   if (x==NULL || mid==NULL) { puts("did not get enough space."); exit(-1); }
-   for(j=0;j<nx*7+nx*nx;j++) x[j]=0; 
-   mean=x+nx; median=mean+nx; minx=median+nx; maxx=minx+nx; 
-   x025=maxx+nx; x975=x025+nx; var=x975+nx;
-   freq=mid+nx*nbin; gap=freq+nx*nbin;
-   printf("collecting min, max, and mean");
+   printf("\nscanning the file %s once..", infile);
+   scanfile(fin, &n, &p);
+   printf("\nAha, i've seen %d observations, each with %d variables\n", n,p);
+   if(n<=2) return(1);
+
+   x = (double*)malloc((p*12+p*p + p*nrho)*sizeof(double));
+   if (x==NULL) { puts("did not get enough space."); exit(-1); }
+   for(j=0;j<p*12+p*p + p*nrho; j++) x[j]=0;
+   mean=x+p; median=mean+p; minx=median+p; maxx=minx+p; 
+   x005=maxx+p; x995=x005+p; x025=x995+p; x975=x025+p; x25=x975+p; x75=x25+p;
+   var=x75+p;   gap=var+p*p; rho=gap+p;
+
+   if(p>1) {
+      printf("Great offer!  I can do a few 2-D densities.  How many do you want? ");
+      scanf("%d", &nf2d);
+   }
+
+   if(nf2d>MAXNF2D) error2("I don't want to do that many!");
+   FOR(i,nf2d) {
+      printf("pair #1 (e.g., type  1 3  to use variables #1 and #3)? ");
+      scanf("%d%d", &ivar_f2d[i][0], &ivar_f2d[i][1]);
+      ivar_f2d[i][0]--; ivar_f2d[i][1]--;
+   }
+
+   /* min, max, and mean */
+   printf("\n(1) collecting min, max, and mean");
    for(i=0; i<n; i++) {
-      for(j=0;j<nx;j++) fscanf(fin,"%lf", &x[j]);
+      for(j=0;j<p;j++) fscanf(fin,"%lf", &x[j]);
       if(i==0) 
-         for(j=0;j<nx;j++) minx[j]=maxx[j]=x[j];
+         for(j=0;j<p;j++) minx[j]=maxx[j]=x[j];
       else {
-         for(j=0;j<nx;j++) 
+         for(j=0;j<p;j++) 
             if      (minx[j]>x[j]) minx[j]=x[j];
             else if (maxx[j]<x[j]) maxx[j]=x[j];
       }
-      for(j=0;j<nx;j++) mean[j]+=x[j]/n;
+      for(j=0;j<p;j++) mean[j]+=x[j]/n;
    }
-   printf(" %10s\nhistogram & variance",printtime(timestr));
-   for(j=0;j<nx;j++) {
-      gap[j]=(maxx[j]-minx[j])/nbin;
-      for (k=0; k<nbin; k++) 
-         { freq[j*nbin+k]=0; mid[j*nbin+k]=minx[j]+gap[j]*(k+0.5); }
-   }
-   rewind(fin);  fscanf(fin,"%d%d", &n,&nx);
+
+   /* variance-covariance matrix */
+   printf(" %10s\n(2) variance-covariance matrix",printtime(timestr));
+   rewind(fin);
    for (i=0; i<n; i++) {
-      for(j=0;j<nx;j++) fscanf(fin,"%lf", &x[j]);
-      for(j=0;j<nx;j++) {
-         for (k=0; k<nbin; k++) if(x[j]<=minx[j]+gap[j]*(k+1)) break;
-         freq[j*nbin+k]++;
-      }
-      for(j=0;j<nx;j++) for(k=0;k<=j;k++)
-          var[j*nx+k] += (x[j]-mean[j])*(x[k]-mean[k])/n;
+      for(j=0;j<p;j++) fscanf(fin,"%lf", &x[j]);
+      for(j=0;j<p;j++) for(k=0;k<=j;k++)
+         var[j*p+k] += (x[j]-mean[j])*(x[k]-mean[k])/n;
    }
-   printf("%10s\nsorting to get median and percentiles\n",printtime(timestr));
-   y=(float*)malloc(n*sizeof(float));
+   for(j=0;j<p;j++) for(k=0;k<j;k++)  var[k*p+j]=var[j*p+k];
+
+   /* sorting to get median and percentiles */
+   printf("%10s\n(3) median, percentiles & serial correlation",printtime(timestr));
+   y=(double*)malloc((n*(2+(nf2d>0))+nbin*nbin)*sizeof(double));
    if(y==NULL) { printf("not enough mem for %d variables\n",n); exit(-1); }
-   for(jj=0;jj<nx;jj++) {
-      rewind(fin);  fscanf(fin,"%d%d", &n,&nx);
+   space=y+(1+(nf2d>0))*n;  /* space[] points to y after the data */
+   for(j=0;j<p;j++)
+      gap[j]=(maxx[j]-minx[j])/nbin;
+   for(jj=0;jj<p;jj++) {
+      rewind(fin);
       for(i=0;i<n;i++) {
-         for(j=0;j<nx;j++) fscanf(fin,"%lf", &x[j]);
-         y[i]=(float)x[jj];
+         for(j=0;j<p;j++) fscanf(fin,"%lf", &x[j]);
+         y[i]=x[jj];
       }
+      for(i=0; i<nrho; i++)
+         correl(y, y+1+i, n-1-i, &a, &b, &c, &d, &x[0], &rho[jj*nrho+i]);
 
-      /* bubblesort(y, n); */
-      qsort(y, (size_t)n, sizeof(float), comparefloat);
-
+      qsort(y, (size_t)n, sizeof(double), comparedouble);
       median[jj]=y[(n+1)/2];
-      x025[jj]=y[(int)(n*.025+.5)];
-      x975[jj]=y[(int)(n*.975+.5)];
-      printf("  variable %d out of %d %10s\n",jj+1,nx,printtime(timestr));
+      x005[jj]=y[(int)(n*.005+.5)];  x995[jj]=y[(int)(n*.995+.5)];
+      x025[jj]=y[(int)(n*.025+.5)];  x975[jj]=y[(int)(n*.975+.5)];
+      x25[jj]=y[(int)(n*.25+.5)];    x75[jj]=y[(int)(n*.75+.5)];
    }
 
-   fprintf(fout,"\nmean    ");  for(j=0;j<nx;j++) fprintf(fout, fmt, mean[j]);
-   fprintf(fout,"\nmedian  ");  for(j=0;j<nx;j++) fprintf(fout, fmt, median[j]);
-   fprintf(fout,"\nS.D.    ");  for(j=0;j<nx;j++) fprintf(fout, fmt, sqrt(var[j*nx+j]));
-   fprintf(fout,"\nmin     ");  for(j=0;j<nx;j++) fprintf(fout, fmt, minx[j]);
-   fprintf(fout,"\nmax     ");  for(j=0;j<nx;j++) fprintf(fout, fmt, maxx[j]);
-   fprintf(fout,"\n2.5%%    "); for(j=0;j<nx;j++) fprintf(fout, fmt, x025[j]);
-   fprintf(fout,"\n97.5%%   "); for(j=0;j<nx;j++) fprintf(fout, fmt, x975[j]);
-   fprintf (fout, "\n\ncorrelation coefficient\n");
-   for (j=0; j<nx; j++,fputc('\n',fout))
-      for (k=0; k<=j; k++) {
-         t=sqrt(var[j*nx+j]*var[k*nx+k]);
-         fprintf(fout, fmt, (t>0?var[j*nx+k]/t:-9));
-      }
-   fprintf(fout, "\nmidvalue and freq for bins\n");
-   for (k=0; k<nbin; k++,fputc('\n',fout))
-      for(j=0;j<nx;j++)
-         fprintf(fout, "%s%.5f\t%.5f", (j?"\t\t":""),mid[j*nbin+k], freq[j*nbin+k]/n);
+   fprintf(fout,"\n(A) Descriptive statistics\n\n        ");
+   for (j=0; j<p; j++) fprintf(fout,"   x%-5d", j+1);
+   fprintf(fout,"\nmean    ");  for(j=0;j<p;j++) fprintf(fout,fmt,mean[j]);
+   fprintf(fout,"\nmedian  ");  for(j=0;j<p;j++) fprintf(fout,fmt,median[j]);
+   fprintf(fout,"\nS.D.    ");  for(j=0;j<p;j++) fprintf(fout,fmt,sqrt(var[j*p+j]));
+   fprintf(fout,"\nmin     ");  for(j=0;j<p;j++) fprintf(fout,fmt,minx[j]);
+   fprintf(fout,"\nmax     ");  for(j=0;j<p;j++) fprintf(fout,fmt,maxx[j]);
+   fprintf(fout,"\n2.5%%    "); for(j=0;j<p;j++) fprintf(fout,fmt,x025[j]);
+   fprintf(fout,"\n97.5%%   "); for(j=0;j<p;j++) fprintf(fout,fmt,x975[j]);
 
-   free(x); free(mid);  free(y);
+   fprintf(fout, "\n\n(B) Matrix of correlation coefficients between variables\n\n");
+   for (j=0; j<p; j++,fputc('\n',fout)) {
+      for (k=0; k<=j; k++) {
+         t=sqrt(var[j*p+j]*var[k*p+k]);
+         fprintf(fout, fmt, (t>0?var[j*p+k]/t:-9));
+      }
+   }
+   fprintf(fout, "\n\n(C) Serial correlation coefficients within variables\n");
+   fprintf(fout, "\nlag  variables ...\n\n");
+   for(i=0; i<nrho; i++,FPN(fout)) {
+      fprintf(fout, "%3d", i+1);
+      for(j=0; j<p; j++)
+         fprintf(fout, "%12.6f", rho[j*nrho+i]);
+   }
+
+   printf(" %10s\n(4) Histograms and 1-D densities\n",printtime(timestr));
+   fprintf(fout, "\n(D) Histograms and 1-D densities\n");
+   for(jj=0;jj<p;jj++) {
+      rewind(fin);
+      for(i=0;i<n;i++) {
+         for(j=0;j<p;j++) fscanf(fin,"%lf", &x[j]);
+         y[i]=x[jj];
+      }
+
+      fprintf(fout, "\nvar x%d\nmidvalue  freq    f(x)   f(x)\n\n", jj+1);
+      /* steplength for 1-d kernel density estimation, from Eq 3.24, 3.30, 3.31 */
+      d=sqrt(var[jj*p+jj]);
+      h = min2(d,(x75[jj]-x25[jj])/1.34) * 0.9*pow((double)n,-0.2);
+      qsort(y, (size_t)n, sizeof(double), comparedouble);
+      density1d (fout, y, n, nbin, minx[jj], gap[jj], h, space);
+
+      printf("    variable %2d out of %2d: %s%30s\n", jj+1,p,printtime(timestr),"");
+   }
+
+   /* 2-D histogram and density */
+   if(nf2d<=0) return(0);
+   h = 2.4*pow((double)n, -1/6.0);
+   printf("(5) 2-d histogram and density (h = %.6g)\n",h);
+   fprintf(fout, "\n(E) 2-D histogram and density\n");
+
+   for(k2d=0; k2d<nf2d; k2d++) {
+      jj=min2(ivar_f2d[k2d][0],ivar_f2d[k2d][1]);
+      kk=max2(ivar_f2d[k2d][0],ivar_f2d[k2d][1]);
+
+      /* can reset min, gap */
+      printf("    2-D smoothing for variables %d & %d\n", jj+1,kk+1);
+      fprintf(fout, "\nx%-8d\tx%-8d\tfreq\tdensity\n\n", jj+1, kk+1);
+      rewind(fin);
+      for (i=0; i<n; i++) {
+         for(j=0;j<p;j++) fscanf(fin,"%lf", &x[j]);
+         y[i]=x[jj]; y[n+i]=x[kk];
+      }
+
+      v2d[0]=var[jj*p+jj];  v2d[1]=v2d[2]=var[jj*p+kk];  v2d[3]=var[kk*p+kk];
+      density2d (fout, y, y+n, n, nbin, minx[jj], minx[kk], gap[jj], gap[kk], 
+               v2d, h, space);
+   }
+   free(x); free(y);
+   printf("\n%10s used\n", printtime(timestr));
    return(0);
 }
 
@@ -2659,32 +3210,32 @@ int gradient (int n, double x[], double f0, double g[],
 int Hessian (int n, double x[], double f0, double g[], double H[],
     double (*fun)(double x[], int n), double space[])
 {
-/* Hessian matrix H[n][n] by the central difference method
-   # of function calls: (1+2*n*n)
+/* Hessian matrix H[n*n] by the central difference method.
+   # of function calls: 2*n*n
 */
    int i,j,k;
-   double *x1=space, eh0=Small_Diff*2, *eh=x1+n, f11,f22,f12,f21;  
-/* eh0=1e-5 or 1e-6                              1:+  2:-  */
+   double *x1=space, *h=x1+n, h0=Small_Diff*10; /* h0=1e-5 or 1e-6 */ 
+   double fpp,fmm,fpm,fmp;  /* p:+  m:-  */
 
-   FOR (k,n) eh[k] = eh0*(1+fabs(x[k]));
-   FOR (i,n)  {
+   FOR (k,n) h[k] = h0*(1+fabs(x[k]));
+   FOR (i,n) {
       for (j=i; j<n; j++)  {
          FOR (k,n) x1[k]=x[k];
-         x1[i]+=eh[i]/2.0;  x1[j]+=eh[j]/2.0;  f11=(*fun)(x1,n);
-         x1[i]-=eh[i];      x1[j]-=eh[j];      f22=(*fun)(x1,n);
+         x1[i]+=h[i];    x1[j]+=h[j];    fpp=(*fun)(x1,n);  /* (+hi, +hj) */
+         x1[i]-=h[i]*2;  x1[j]-=h[j]*2;  fmm=(*fun)(x1,n);  /* (-hi, -hj) */
          if (i==j)  {
-             H[i*n+i]=(f11+f22-2*f0)/(eh[i]*eh[i]);
-             g[i]=(f11-f22)/(eh[i]*2);
-             continue;
+             H[i*n+i]=(fpp+fmm-2*f0)/(4*h[i]*h[i]);
+             g[i]=(fpp-fmm)/(h[i]*4);
          }
-         x1[i]+=eh[i];                         f12=(*fun)(x1,n);
-         x1[i]-=eh[i];      x1[j]+=eh[j];      f21=(*fun)(x1,n);
-         H[i*n+j]=H[j*n+i] = (f11+f22-f12-f21)/(eh[i]*eh[j]);
+         else {
+            x1[i]+=2*h[i];                   fpm=(*fun)(x1,n);  /* (+hi, -hj) */
+            x1[i]-=2*h[i];   x1[j]+=2*h[j];  fmp=(*fun)(x1,n);  /* (-hi, +hj) */
+            H[i*n+j]=H[j*n+i] = (fpp+fmm-fpm-fmp)/(4*h[i]*h[j]);
+         }
       }
    }
    return(0);
 }
-
 
 int jacobi_gradient (double x[], double J[],
     int (*fun) (double x[], double y[], int nx, int ny),
@@ -2815,7 +3366,7 @@ double bound (int nx, double x0[], double p[], double x[],
 
 
 
-double LineSearch(double(*fun)(double x),double *f,double *x0,double xb[2],double step)
+double LineSearch (double(*fun)(double x),double *f,double *x0,double xb[2],double step, double e)
 {
 /* linear search using quadratic interpolation 
 
@@ -2823,13 +3374,14 @@ double LineSearch(double(*fun)(double x),double *f,double *x0,double xb[2],doubl
    optimization: An introduction.  Van Nostrand Reinhold Company, New York.
    pp. 62-73.
    step is used to find the bracket (a1,a2,a3)
+
+   This is the same routine as LineSearch2(), but I have not got time 
+   to test and improve it properly.  Ziheng note, September, 2002
 */
    int ii=0, maxround=100, i;
-   double e=1e-15, small=1e-20,factor=1.2, step1, percentUse=0;
+   double factor=2, step1, percentUse=0;
    double a0,a1,a2,a3,a4=-1,a5,a6, f0,f1,f2,f3,f4=-1,f5,f6;
-/*
-int debug=0;
-*/
+
 /* find a bracket (a1,a2,a3) with function values (f1,f2,f3)
    so that a1<a2<a3 and f2<f1 and f2<f3
 */
@@ -2854,6 +3406,9 @@ int debug=0;
          if(f1<=f2) { a2=a1; f2=f1; }
          break;
       }
+
+      if(noisy>2) printf("\ta = %.6f\tf = %.6f %5d\n", a2, f2, NFunCall);
+
    }
 
    if(i==0) { /* *x0 is the best point during the previous search */
@@ -2871,6 +3426,9 @@ int debug=0;
             if(f3<f2) { a2=a3; f2=f3; }
             break;
          }
+
+	 if(noisy>2) printf("\ta = %.6f\tf = %.6f %5d\n", a3, f3, NFunCall);
+
       }
    }
 
@@ -2881,16 +3439,14 @@ int debug=0;
       if (a1>a2+1e-99 || a3<a2-1e-99 || f2>f1+1e-99 || f2>f3+1e-99) /* for linux */
          { printf("\npoints out of order (ii=%d)!",ii+1); break; }
 
-/*
-      if (a1>a2 || a3<a2 || f2>f1 || f2>f3)
-         { printf("\npoints out of order (ii=%d)!",ii+1); break; }
-*/
-      a4 = 2*((a2-a3)*f1+(a3-a1)*f2+(a1-a2)*f3);
-      if (fabs(a4)>small)
-         a4=((a2*a2-a3*a3)*f1+(a3*a3-a1*a1)*f2+(a1*a1-a2*a2)*f3)/a4;
-      if (a4>a3 || a4<a1)  a4=(a1+2*a2+a3)/4;  /* not useful */
+      a4 = (a2-a3)*f1+(a3-a1)*f2+(a1-a2)*f3;
+      if (fabs(a4)>1e-100)
+         a4=((a2*a2-a3*a3)*f1+(a3*a3-a1*a1)*f2+(a1*a1-a2*a2)*f3)/(2*a4);
+      if (a4>a3 || a4<a1)  a4=(a1+a2)/2;  /* out of range */
       else                 percentUse++;
       f4=fun(a4);
+
+      if (noisy>2) printf("\ta = %.6f\tf = %.6f %5d\n", a4, f4, NFunCall);
 
       if (fabs(f2-f4)*(1+fabs(f2))<=e && fabs(a2-a4)*(1+fabs(a2))<=e)  break;
 
@@ -2946,7 +3502,7 @@ int debug=0;
    if (f2<=f4)  { *f=f2; a4=a2; }
    else           *f=f4;
 
-if(noisy>9 && (a6=percentUse/ii)<.5)
+if(noisy>=9 && (a6=percentUse/ii)<.5)
  printf("\nLineSearch: only %6.2f%% useful?\n",a6*100);
 
    return (*x0=(a4+a2)/2);
@@ -2959,7 +3515,8 @@ double fun_ls (double t, double (*fun)(double x[],int n),
 
 double fun_ls (double t, double (*fun)(double x[],int n), 
        double x0[], double p[], double x[], int n)
-{  int i;   FOR (i,n) x[i]=x0[i] + t*p[i];   return ( (*fun)(x, n) ); }
+{  int i;   FOR (i,n) x[i]=x0[i] + t*p[i];   return( (*fun)(x, n) ); }
+
 
 
 double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[], 
@@ -2975,73 +3532,94 @@ double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[],
    adapted from Wolfe M. A.  1978.  Numerical methods for unconstrained
    optimization: An introduction.  Van Nostrand Reinhold Company, New York.
    pp. 62-73.
-   step is used to find the bracket and is increased or reduced as necessary, and is 
-   not terribly important.
+   step is used to find the bracket and is increased or reduced as necessary, 
+   and is not terribly important.
 */
-   int ii=0, maxround=10;
-   double *x=space, factor=2, small=1e-10, e1=e*1e-3, e2=1e-5;
-   double a0, a1, a2, a3, a4, a5, a6, f0, f1, f2, f3, f4, f5, f6;
+   int ii=0, maxround=10, status, i, nsymb=0;
+   double *x=space, factor=4, small=1e-10, smallgapa=0.2;
+   double a0,a1,a2,a3,a4=-1,a5,a6, f0,f1,f2,f3,f4=-1,f5,f6;
 
 /* look for bracket (a1, a2, a3) with function values (f1, f2, f3)
    step length step given, and only in the direction a>=0
 */
 
    if (noisy>2)
-      printf ("\n%4d h-lim-p %8.4f %8.4f %8.4f ",Iround+1,step,limit,norm(p,n));
+      printf ("\n%3d h-m-p %7.4f %6.4f %8.4f ",Iround+1,step,limit,norm(p,n));
 
    if (step<=0 || limit<small || step>=limit) {
       if (noisy>2) 
-         printf ("\nh-lim-p:%20.8e%20.8e%20.8e %12.6f\n",step,limit,norm(p,n),*f);
+         printf ("\nh-m-p:%20.8e%20.8e%20.8e %12.6f\n",step,limit,norm(p,n),*f);
       return (0);
    }
    a0=a1=0; f1=f0=*f;
    a2=a0+step; f2=fun_ls(a2, fun,x0,p,x,n);
-   if (f2>f1) {
+   if (f2>f1) {  /* reduce step length so the algorithm is decreasing */
       for (; ;) {
          step/=factor;
          if (step<small) return (0);
          a3=a2;    f3=f2;
          a2=a0+step;  f2=fun_ls(a2, fun,x0,p,x,n);
          if (f2<=f1) break;
+         if(!RELEASE && noisy>2) { printf("-"); nsymb++; }
       }
    }
-   else {
+   else {       /* step length is too small? */
       for (; ;) {
          step*=factor;
          if (step>limit) step=limit;
          a3=a0+step;  f3=fun_ls(a3, fun,x0,p,x,n);
          if (f3>=f2) break;
+
+         if(!RELEASE && noisy>2) { printf("+"); nsymb++; }
          a1=a2; f1=f2;    a2=a3; f2=f3;
          if (step>=limit) {
-            if (noisy>2) printf("%14.6f%3c%7.4f%6d", *f=f3, 'm', a3, NFunCall);
+            if(!RELEASE && noisy>2) for(; nsymb<5; nsymb++) printf(" ");
+            if (noisy>2) printf(" %12.6f%3c %6.4f %5d", *f=f3, 'm', a3, NFunCall);
             *f=f3; return(a3);
          }
       }
    }
 
-   a4=(a2+a3)/2; f4=fun_ls(a4, fun,x0,p,x,n);
-   if (f4<f2) { a1=a2; f1=f2;   a2=a4; f2=f4; }
-   else { a3=a4; f3=f4; }
-
    /* iteration by quadratic interpolation, fig 2.2.9-10 (pp 71-71) */
-
    for (ii=0; ii<maxround; ii++) {
       /* a4 is the minimum from the parabola over (a1,a2,a3)  */
-
-      if (a1>a2 || a3<a2 || f2>f1 || f2>f3) { puts ("\n? in ls2!"); break; }
-      a4 = 2*((a2-a3)*f1+(a3-a1)*f2+(a1-a2)*f3);
-      if (a4>small*.01)
-         a4 = ((a2*a2-a3*a3)*f1+(a3*a3-a1*a1)*f2+(a1*a1-a2*a2)*f3)/a4;
-      if (a4>a3 || a4<a1)  a4=(a1+2*a2+a3)/4;
+      a4 = (a2-a3)*f1+(a3-a1)*f2+(a1-a2)*f3;
+      if(fabs(a4)>1e-100) 
+         a4 = ((a2*a2-a3*a3)*f1+(a3*a3-a1*a1)*f2+(a1*a1-a2*a2)*f3)/(2*a4);
+      if (a4>a3 || a4<a1) {   /* out of range */
+         a4=(a1+a2)/2;
+         status='N';
+      }
+      else {
+         if((a4<=a2 && a2-a4>smallgapa*(a2-a1)) || (a4>a2 && a4-a2>smallgapa*(a3-a2)))
+            status='Y';
+         else 
+            status='C';
+      }
       f4 = fun_ls(a4, fun,x0,p,x,n);
+      if(!RELEASE && noisy>2) putchar(status);
+      if (fabs(f2-f4)<e*(1+fabs(f2))) {
+         if(!RELEASE && noisy>2) 
+            for(nsymb+=ii+1; nsymb<5; nsymb++) printf(" ");
+         break;
+      }
 
-      if ((fabs(f2)>=e2 && fabs(f2-f4)<=e1*fabs(f2))
-          || (fabs(f2)<e2 && fabs(f2-f4)<=e1))    break;
+      /* possible multiple local optima during line search */
+      if(!RELEASE  && noisy>2 && ((a4<a2&&f4>f1) || (a4>a2&&f4>f3))) {
+         printf("\n\na %12.6f %12.6f %12.6f %12.6f",   a1,a2,a3,a4);
+         printf(  "\nf %12.6f %12.6f %12.6f %12.6f\n", f1,f2,f3,f4);
 
-      if (a1<=a4 && a4<=a2) {    /* fig 2.2.10 */
-         if (fabs(a2-a4)>.2*fabs(a1-a2)) {
-            if (f1>=f4 && f4<=f2) { a3=a2; a2=a4;  f3=f2; f2=f4; }
-            else { a1=a4; f1=f4; }
+         for(a5=a1; a5<=a3; a5+=(a3-a1)/20) {
+            printf("\t%.6e ",a5);
+            if(n<5) FOR(i,n) printf("\t%.6f",x0[i] + a5*p[i]);
+            printf("\t%.6f\n", fun_ls(a5, fun,x0,p,x,n));
+         }
+         puts("Linesearch2 a4: multiple optima?");
+      }
+      if (a4<=a2) {    /* fig 2.2.10 */
+         if (a2-a4>smallgapa*(a2-a1)) {
+            if (f4<=f2) { a3=a2; a2=a4;  f3=f2; f2=f4; }
+            else        { a1=a4; f1=f4; }
          }
          else {
             if (f4>f2) {
@@ -3051,21 +3629,21 @@ double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[],
             }
             else {
                a5=(a1+a4)/2; f5=fun_ls(a5, fun,x0,p,x,n);
-               if (f5>=f4 && f4<=f2)
+               if (f5>=f4)
                   { a3=a2; a2=a4; a1=a5;  f3=f2; f2=f4; f1=f5; }
                else {
                   a6=(a1+a5)/2; f6=fun_ls(a6, fun,x0,p,x,n);
                   if (f6>f5)
                        { a1=a6; a2=a5; a3=a4;  f1=f6; f2=f5; f3=f4; }
-                  else { a2=a6; a3=a5;  f2=f6; f3=f5; }
+                  else { a2=a6; a3=a5; f2=f6; f3=f5; }
                }
             }
          }
       }
       else {                     /* fig 2.2.9 */
-         if (fabs(a2-a4)>.2*fabs(a2-a3)) {
-            if (f2>=f4 && f4<=f3) { a1=a2; a2=a4;  f1=f2; f2=f4; }
-            else                  { a3=a4; f3=f4; }
+         if (a4-a2>smallgapa*(a3-a2)) {
+            if (f2>=f4) { a1=a2; a2=a4;  f1=f2; f2=f4; }
+            else        { a3=a4; f3=f4; }
          }
          else {
             if (f4>f2) {
@@ -3075,7 +3653,7 @@ double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[],
             }
             else {
                a5=(a3+a4)/2; f5=fun_ls(a5, fun,x0,p,x,n);
-               if (f2>=f4 && f4<=f5)
+               if (f5>=f4)
                   { a1=a2; a2=a4; a3=a5;  f1=f2; f2=f4; f3=f5; }
                else {
                   a6=(a3+a5)/2; f6=fun_ls(a6, fun,x0,p,x,n);
@@ -3091,16 +3669,16 @@ double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[],
    if (f2>f0 && f4>f0)  a4=0;
    if (f2<=f4)  { *f=f2; a4=a2; }
    else         *f=f4;
-   if (noisy>2) printf ("%14.6f%3d%7.4f%6d", *f,ii, a4, NFunCall);
+   if(noisy>2) printf(" %12.6f%3d %6.4f %5d", *f, ii, a4, NFunCall);
 
    return (a4);
 }
 
 
 
-/*
+
 #define Safeguard_Newton
-*/
+
 
 int Newton (FILE *fout, double *f, double (* fun)(double x[], int n),
     int (* ddfun) (double x[], double *fx, double dx[], double ddx[], int n),
@@ -3108,7 +3686,7 @@ int Newton (FILE *fout, double *f, double (* fun)(double x[], int n),
     double x0[], double space[], double e, int n)
 {
    int i,j, maxround=500;
-   double f0=1e40, /*small=1e-10,*/ h, SIZEp, t, *H, *x, *g, *p, *tv;
+   double f0=1e40, small=1e-10, h, SIZEp, t, *H, *x, *g, *p, *tv;
 
    H=space,  x=H+n*n;   g=x+n;   p=g+n, tv=p+n;
 
@@ -3123,7 +3701,7 @@ int Newton (FILE *fout, double *f, double (* fun)(double x[], int n),
            *f = (*fun)(x0, n);
            Hessian (n, x0, *f, g, H, fun, tv);
        }
-       matinv (H, n, n, tv);
+       matinv(H, n, n, tv);
        FOR (i,n) for (j=0,p[i]=0; j<n; j++)  p[i]-=H[i*n+j]*g[j];
 
        h=bound (n, x0, p, tv, testx);
@@ -3203,6 +3781,9 @@ int gradientB (int n, double x[], double f0, double g[],
 #define DFP
 */
 
+extern double e_branches;
+extern FILE *frst;
+
 int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
     int (*dfun)(double x[], double *f, double dx[], int n),
     double x[], double xb[][2], double space[], double e, int n)
@@ -3219,9 +3800,13 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
 
 */
    int i,j, i1,i2,it, maxround=1000, fail=0, *xmark, *ix, nfree;
-   double small=1.e-20;     /* small value for checking |w|=0   */
+   int Ngoodtimes=2, goodtimes=0;
+   double small=1.e-30, sizep0=0;     /* small value for checking |w|=0 */
    double f0, *g0, *g, *p, *x0, *y, *s, *z, *H, *C, *tv;
-   double w,v, alpha, am, h;
+   double w,v, alpha, am, h, maxstep=8;
+
+
+// e_branches=0.1;
 
    if(n==0) return(0);
    g0=space;   g=g0+n;  p=g+n;   x0=p+n;
@@ -3243,6 +3828,7 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
 
    f0=*f=(*fun)(x,n);
    xtoy(x,x0,n);
+   SIZEp=999; 
    if (noisy>2) {
       printf ("\nIterating by ming2\nInitial: fx= %12.6f\nx=",f0);
       FOR(i,n) printf("%9.5f",x[i]);   FPN(F0);
@@ -3251,22 +3837,35 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
    if (dfun)  (*dfun) (x0, &f0, g0, n);
    else       gradientB (n, x0, f0, g0, fun, tv, xmark);
 
-   SIZEp=0; identity (H,nfree);
+   identity (H,nfree);
    FOR (Iround, maxround) {
       for (i=0,zero(p,n); i<nfree; i++)  FOR (j,nfree)
          p[ix[i]] -= H[i*nfree+j]*g0[ix[j]];
-      SIZEp=norm(p,n);      /* check this */
+      sizep0=SIZEp; SIZEp=norm(p,n);      /* check this */
 
-      for (i=0,am=20; i<n; i++) {  /* max2 step length */
+/*
+if(Iround<10 && SIZEp>1)  e_branches=0.1;
+else if(SIZEp>.5)         e_branches=0.05;
+else if(SIZEp>.1)         e_branches=0.01;
+else if(SIZEp>.05)        e_branches=0.005;
+else                      e_branches=max2(e,1e-6);
+*/
+      for (i=0,am=maxstep; i<n; i++) {  /* max step length */
          if (p[i]>0 && (xb[i][1]-x0[i])/p[i]<am) am=(xb[i][1]-x0[i])/p[i];
          else if (p[i]<0 && (xb[i][0]-x0[i])/p[i]<am) am=(xb[i][0]-x0[i])/p[i];
       }
 
-      if (Iround==0)    h=fabs(2*f0*.01/innerp(g0,p,n));  /* check this?? */
-      else              h=norm(s,nfree)/SIZEp;
-      h=max2(h,1e-5);   h=min2(h,am/8);
+      if (Iround==0) {
+         h=fabs(2*f0*.01/innerp(g0,p,n));  /* check this?? */
+         h=min2(h,am/2000);
+      }
+      else {
+         h=norm(s,nfree)/SIZEp;
+         h=max2(h,am/500);
+      }
+      h=max2(h,1e-5);   h=min2(h,am/5);
       *f=f0;
-      alpha = LineSearch2(fun,f,x0,p,h,am, min2(1e-5,e*10), tv,n); /* n or nfree? */
+      alpha = LineSearch2(fun,f,x0,p,h,am, min2(1e-3,e), tv,n); /* n or nfree? */
 
       if (alpha<=0) {
          if (fail) {
@@ -3284,13 +3883,20 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
             FOR (i,n) fprintf (fout, "%8.5f  ", x[i]);
             fflush (fout);
          }
-         w=.2;  if(e<1e-4) w=0.01;  if(e<1e-6) w=e*1000;
-         if (SIZEp<w && (f0- *f<2.0) && H_end(x0,x,f0,*f,e,e,n))
+         w=min2(2,e*1000); if(e<1e-4 && e>1e-6) w=0.01;
+
+         if(Iround==0 || SIZEp<sizep0 || (SIZEp<.001 && sizep0<.001)) goodtimes++;
+         else  goodtimes=0;
+         if((n==1||goodtimes>=Ngoodtimes) && SIZEp<(e>1e-5?.05:.01) && (f0- *f<2)
+            && H_end(x0,x,f0,*f,e,e,n))
             break;
       }
       if (dfun)  (*dfun) (x, f, g, n);
       else       gradientB (n, x, *f, g, fun, tv, xmark);
-
+/*
+for(i=0; i<n; i++) fprintf(frst,"%9.5f", x[i]); fprintf(frst, "%6d",AlwaysCenter);
+for(i=0; i<n; i++) fprintf(frst,"%9.2f", g[i]); FPN(frst);
+*/
       /* modify the working set */
       FOR (i, n) {         /* add constraints, reduce H */
          if (xmark[i]) continue;
@@ -3316,13 +3922,34 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
       }
 
       if (noisy>2) {
-         printf (" |%3d/%d", n-nfree, n);
+         printf (" | %d/%d", n-nfree, n);
          /* FOR (i,n)  if (xmark[i]) printf ("%4d", i+1); */
       }
       for (i=0,f0=*f; i<nfree; i++)
         {  y[i]=g[ix[i]]-g0[ix[i]];  s[i]=x[ix[i]]-x0[ix[i]]; }
       FOR (i,n) { g0[i]=g[i]; x0[i]=x[i]; }
 
+
+      /* renewal of H varies with different algorithms   */
+#if (defined SR1)
+      /*   Symmetrical Rank One (Broyden, C. G., 1967) */
+      for (i=0,w=.0; i<nfree; i++) {
+         for (j=0,v=.0; j<nfree; j++) v += H[i*nfree+j] * y[j];
+         z[i]=s[i] - v;
+         w += y[i]*z[i];
+      }
+      if (fabs(w)<small)   { identity(H,nfree); fail=1; continue; }
+      FOR (i,nfree)  FOR (j,nfree)  H[i*nfree+j] += z[i]*z[j]/w;
+#elif (defined DFP)
+      /* Davidon (1959), Fletcher and Powell (1963). */
+      for (i=0,w=v=0.; i<nfree; i++) {
+         for (j=0,z[i]=0; j<nfree; j++) z[i] += H[i*nfree+j] * y[j];
+         w += y[i]*z[i];  v += y[i]*s[i];
+      }
+      if (fabs(w)<small || fabs(v)<small)  { identity(H,nfree); fail=1; continue;}
+      FOR (i,nfree)  FOR (j,nfree)  
+         H[i*nfree+j] += s[i]*s[j]/v - z[i]*z[j]/w;
+#else /* BFGS */
       for (i=0,w=v=0.; i<nfree; i++) {
          for (j=0,z[i]=0.; j<nfree; j++) z[i]+=H[i*nfree+j]*y[j];
          w+=y[i]*z[i];    v+=y[i]*s[i];
@@ -3330,14 +3957,22 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
       if (fabs(v)<small)   { identity(H,nfree); fail=1; continue; }
       FOR (i,nfree)  FOR (j,nfree)
          H[i*nfree+j] += ((1+w/v)*s[i]*s[j]-z[i]*s[j]-s[i]*z[j])/v;
+#endif
+
+
    }    /* for (Iround,maxround)  */
 
-   *f=(*fun)(x,n);  /* try to remove this after updating LineSearch2() */
-   if (noisy>2) FPN(F0);
+   /* try to remove this after updating LineSearch2() */
+   *f=(*fun)(x,n);  
+   if(noisy>2) FPN(F0);
 
    if (Iround==maxround) {
       if (fout) fprintf (fout,"\ncheck convergence!\n");
       return(-1);
+   }
+   if(nfree==n) { 
+      xtoy(H, space, n*n);  /* H has variance matrix, or inverse of Hessian */
+      return(1);
    }
    return(0);
 }
@@ -3411,13 +4046,13 @@ int ming1 (FILE *fout, double *f, double (* fun)(double x[], int n),
             { xtoy(x,x0,n); break; }
       }
       if (dfun)  (*dfun) (x, f, g, n);
-      else       gradient (n,x,*f,g,fun,tv, (AlwaysCenter||fail||SIZEp<1));
+      else       gradient (n,x,*f,g,fun,tv, (AlwaysCenter||fail||SIZEp<0.01));
 
       for (i=0,f0=*f; i<n; i++)
          { y[i]=g[i]-g0[i];  s[i]=x[i]-x0[i];  g0[i]=g[i]; x0[i]=x[i]; }
 
       /* renewal of H varies with different algorithms   */
-#ifdef SR1
+#if (defined SR1)
       /*   Symmetrical Rank One (Broyden, C. G., 1967) */
       for (i=0,w=.0; i<n; i++) {
          for (j=0,t=.0; j<n; j++) t += H[i*n+j] * y[j];
@@ -3426,8 +4061,7 @@ int ming1 (FILE *fout, double *f, double (* fun)(double x[], int n),
       }
       if (fabs(w)<small)   { identity(H,n); fail=1; continue; }
       FOR (i,n)  FOR (j,n)  H[i*n+j] += z[i]*z[j]/w;
-#else
-#ifdef DFP
+#elif (defined DFP)
       /* Davidon (1959), Fletcher and Powell (1963). */
       for (i=0,w=v=0.; i<n; i++) {
          for (j=0,z[i]=.0; j<n; j++) z[i] += H[i*n+j] * y[j];
@@ -3444,7 +4078,7 @@ int ming1 (FILE *fout, double *f, double (* fun)(double x[], int n),
       FOR (i,n)  FOR (j,n)
          H[i*n+j] += ( (1+w/v)*s[i]*s[j] - z[i]*s[j] - s[i]*z[j] ) / v;
 #endif
-#endif
+
    }    /* for (Iround,maxround)  */
 
    if (Iround==maxround) {

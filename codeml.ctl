@@ -26,7 +26,9 @@
                    * 13:3normal>0
 
         icode = 0  * 0:universal code; 1:mammalian mt; 2-10:see below
-        Mgene = 0  * 0:rates, 1:separate; 
+        Mgene = 0
+                   * codon: 0:rates, 1:separate; 2:diff pi, 3:diff kapa, 4:all diff
+                   * AA: 0:rates, 1:separate
 
     fix_kappa = 0  * 1: kappa fixed, 0: kappa to be estimated
         kappa = 2  * initial or fixed kappa
@@ -38,7 +40,7 @@
        Malpha = 0  * different alphas for genes
         ncatG = 8  * # of categories in dG of NSsites models
 
-        clock = 0   * 0:no clock, 1:global clock; 2:local clock; 3:TipDate
+        clock = 0   * 0:no clock, 1:clock; 2:local clock; 3:CombinedAnalysis
         getSE = 0  * 0: don't want them, 1: want S.E.s of estimates
  RateAncestor = 1  * (0,1,2): rates (alpha>0) or ancestral states (1 or 2)
 

@@ -1,8 +1,8 @@
 PRGS =  baseml codeml basemlg pamp evolver mcmctree yn00 chi2 
 CC = cc # cc, gcc, cl
 
-CFLAGS = -O3
-#CFLAGS = -O2
+CFLAGS = -O2
+#CFLAGS = -O4
 #CFLAGS = -fast
 
 # for linux running gcc 3 on pentium and athlon
@@ -13,16 +13,16 @@ LIBS = -lm # -lM
 
 all : $(PRGS)
 
-baseml : baseml.o eigen.o tools.o
-	$(CC) $(CFLAGS) -o $@ baseml.o eigen.o tools.o $(LIBS)
+baseml : baseml.o tools.o
+	$(CC) $(CFLAGS) -o $@ baseml.o tools.o $(LIBS)
 basemlg : basemlg.o tools.o
 	$(CC) $(CFLAGS) -o $@ basemlg.o tools.o $(LIBS)
 codeml : codeml.o tools.o
 	$(CC) $(CFLAGS) -o $@ codeml.o tools.o $(LIBS)
 evolver : evolver.o tools.o 
 	$(CC) $(CFLAGS) -o $@ evolver.o tools.o $(LIBS)
-pamp : pamp.o tools.o eigen.o
-	$(CC) $(CFLAGS) -o $@ pamp.o tools.o eigen.o $(LIBS)
+pamp : pamp.o tools.o 
+	$(CC) $(CFLAGS) -o $@ pamp.o tools.o $(LIBS)
 mcmctree : mcmctree.o tools.o
 	$(CC) $(CFLAGS) -o $@ mcmctree.o tools.o $(LIBS)
 yn00: yn00.c tools.o
@@ -30,8 +30,6 @@ yn00: yn00.c tools.o
 chi2 : chi2.c
 	$(CC) $(CFLAGS) -o $@ chi2.c $(LIBS)
 
-eigen.o : paml.h eigen.c
-	$(CC) $(CFLAGS) -c eigen.c
 tools.o : paml.h tools.c
 	$(CC) $(CFLAGS) -c tools.c
 baseml.o : paml.h baseml.c treesub.c treespace.c

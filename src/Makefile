@@ -1,6 +1,6 @@
 PRGS =  baseml basemlg codeml evolver mcmctree pamp yn00 chi2
 CC = cl # cc, gcc, cl
-CFLAGS =  -O2 -Ot -W3
+CFLAGS =  -O2 -Ot 
 
 
 
@@ -9,26 +9,24 @@ LIBS = #-lm -lM
 
 all : $(PRGS)
  
-baseml : baseml.obj eigen.obj tools.obj
-  $(CC) $(CFLAGS) baseml.obj eigen.obj tools.obj $(LIBS)
+baseml : baseml.obj tools.obj
+  $(CC) $(CFLAGS) baseml.obj tools.obj $(LIBS)
 basemlg : basemlg.obj tools.obj
   $(CC) $(CFLAGS) basemlg.obj tools.obj $(LIBS)
-codeml : codeml.obj eigen.obj tools.obj
-  $(CC) $(CFLAGS) codeml.obj eigen.obj tools.obj $(LIBS)
-evolver : evolver.obj tools.obj eigen.obj
-  $(CC) $(CFLAGS) evolver.obj tools.obj eigen.obj $(LIBS)
+codeml : codeml.obj tools.obj
+  $(CC) $(CFLAGS) codeml.obj tools.obj $(LIBS)
+evolver : evolver.obj tools.obj
+  $(CC) $(CFLAGS) evolver.obj tools.obj $(LIBS)
 mcmctree : mcmctree.obj tools.obj
   $(CC) $(CFLAGS) mcmctree.obj tools.obj $(LIBS)
-pamp : pamp.obj tools.obj eigen.obj
-  $(CC) $(CFLAGS) pamp.obj tools.obj eigen.obj $(LIBS)
+pamp : pamp.obj tools.obj 
+  $(CC) $(CFLAGS) pamp.obj tools.obj $(LIBS)
 yn00 : yn00.obj tools.obj
   $(CC) $(CFLAGS) yn00.obj tools.obj $(LIBS)
 chi2 : chi2.c
   $(CC) $(CFLAGS) chi2.c $(LIBS)
 
 
-eigen.obj : paml.h eigen.c
-  $(CC) $(CFLAGS) -c eigen.c
 tools.obj : paml.h tools.c
   $(CC) $(CFLAGS) -c tools.c
 baseml.obj : paml.h baseml.c treesub.c treespace.c

@@ -6,7 +6,7 @@
 
 <body link="#0000FF" vlink="#800080" bgcolor="#FFFFFF">
 <h2 align="center">Phylogenetic Analysis by Maximum Likelihood (PAML)<br>
-  Version 3.12, March 2002</h2>
+  Version 3.13, August 2002</h2>
 
 <p align="center"><a href="http://abacus.gene.ucl.ac.uk/"><b>Ziheng
 Yang</b></a> (<a href="mailto:z.yang@ucl.ac.uk">z.yang@ucl.ac.uk</a>)</p>
@@ -204,19 +204,36 @@ not support mice or menues.  Open a "command prompt" box and type the
 name of the program rather than double-clicking the program name from
 Windows Explorer.
 
-<p><b>UNIX, linux, MAC OS X or other systems</b>. Download the UNIX
- archive (paml*.*.tar.Z) and unpack it into a folder.  Type make to
- compile or look at Makefile.UNIX or readme.txt for compiling
- instructions. <br>
-
-
-<i>MAC OS X.</i> You should open a command terminal
-(Applications-Utilities-Terminal) and then compile and run the
-programs from the terminal.  You cd to the paml folder and then look
-at the readme.txt or Makefile or Makefile.UNIX files.  
-
-
-
+<p><b>UNIX, linux, MAC OS X or other systems</b>. Download the UNIX archive (paml*.*.tar.gz 
+  or paml*.*.tar.Z) and save it on the disk. Then unpack it into a folder. You 
+  either 
+<blockquote> 
+  <p><code> gzip -d paml*.*.tar.gz </code></p>
+</blockquote>
+<p>or</p>
+<blockquote> 
+  <p><code>uncompress paml*.*.tar.Z </code></p>
+</blockquote>
+<p>Then </p>
+<blockquote>
+  <p><code>tar xf paml*.*.tar</code> </p>
+</blockquote>
+<p>
+<p> Change directory (cd) to src/. Type make to compile. You might have to open 
+  and edit the file Makefile (or copy from Makefile.UNIX) before you compile. 
+  For example, you can change cc to gcc and -fast to -O3 or -O4. Read readme.txt 
+  in the same folder for compiling instructions. 
+<p>MAC OS X. You should open a command terminal (Applications-Utilities-Terminal) 
+  and then compile and run the programs from the terminal. You cd to the paml 
+  folder and then look at the readme.txt or Makefile or Makefile.UNIX files. To 
+  compile the programs you either type the command make or copy the commands in 
+  te readme file. You will need the Mac Developer Toolkit installed on your MAC, 
+  otherwise you will get a &quot;Command not found&quot; error with either cc 
+  or make. You can go to the Apple web site to download and install the Toolkit 
+  (http://developer.apple.com/tools/index.html). There are some more notes about 
+  running programs on MAC OS X or UNIX at the FAQ page.
+<p>For linux administrators, a spec file <a href="paml.spec">paml.spec</a> for 
+  the linux installer rpm has been kindly prepared by Hunter Matthews &lt;thm@duke.edu&gt;. 
 <p><b>PowerMacs (PPC or G3 prior to OS X). </b>
 Download the compressed self-extracting archive for the PowerMac.
   There is usually a time lag before the Mac version is made
@@ -299,13 +316,20 @@ open a command box and run the program from there.
 <p><a href="pamlHistory.txt">Update history and bug fixes </a>
 collected here. </p>
 
-<p>Your suggestions and criticisms are appreciated. Send a message to <a href="mailto:z.yang@ucl.ac.uk">z.yang@ucl.ac.uk</a>. 
-</p>
-<p>When you have a problem, try to identify where the problem lies. Most of programs 
-  in paml read your control file and sequence file before doing any calculation. 
-  You can ask questions such as &quot;Does the program read the sequences correctly?&quot;, 
-  &quot;Does it read my tree file correctly&quot;. Problems at this stage can 
-  mostly be solved by your editing the files.</p>
+<p>Due to the amount of emails I receive about the programs, I will not reply 
+  to some emails if I believe the answers are readily available from the documentation 
+  (pamlDOC.pdf), the web site, the FAQ page and/or the examples included in the 
+  package. Questions of this nature include &quot;how do I specify such and such 
+  options to do such and such analysis&quot;, &quot;can you tell me how maximum 
+  likelihood works&quot;, and &quot;my supervisor wants results by this afternoon. 
+  Can you do the analysis for me?&quot;</p>
+<p> I will try to reply to reports of bugs and problems or if the answers are 
+  not easily available from those sources. When you have a problem, try to identify 
+  where the problem lies. Most of programs in paml read your control file and 
+  sequence file before doing any calculation. You can ask questions such as &quot;Does 
+  the program read the sequences correctly?&quot;, &quot;Does it read my tree 
+  file correctly&quot;. Problems at this stage can mostly be solved by your editing 
+  the files.</p>
 
 <p><b>When reporting problems, please mention the version number of
 the package you use (for example, 3.0c for UNIX) and include a copy of

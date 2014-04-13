@@ -23,6 +23,8 @@
 0.073152 0.022944 0.053761 0.091904 0.058676 0.023826 0.040126
 0.050901 0.068765 0.058565 0.014261 0.032102 0.066005
 
+// this is the end of the file.  The rest are notes.
+
 Ala Arg Asn Asp Cys Gln Glu Gly His Ile Leu Lys Met Phe Pro Ser Thr Trp Tyr Val
 
 S_ij = S_ji and PI_i for the Jones model based on the SWISSPROT

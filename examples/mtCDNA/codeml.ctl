@@ -30,4 +30,4 @@
 
    Small_Diff = .5e-6
      cleandata = 1  * remove sites with ambiguity data (1:yes, 0:no)?
-        method = 1   * 0: simultaneous; 1: one branch at a time
+        method = 0   * 0: simultaneous; 1: one branch at a time

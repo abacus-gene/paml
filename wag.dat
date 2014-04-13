@@ -20,6 +20,10 @@
 
 0.0866279 0.043972  0.0390894 0.0570451 0.0193078 0.0367281 0.0580589 0.0832518 0.0244313 0.048466  0.086209  0.0620286 0.0195027 0.0384319 0.0457631 0.0695179 0.0610127 0.0143859 0.0352742 0.0708956
 
+
+// this is the end of the file.  The rest are notes.
+
+
  A   R   N   D   C   Q   E   G   H   I   L   K   M   F   P   S   T   W   Y   V
 Ala Arg Asn Asp Cys Gln Glu Gly His Ile Leu Lys Met Phe Pro Ser Thr Trp Tyr Val
   
@@ -35,10 +39,10 @@ j is Q_ij = s_ij*pi_j.
 	Prepared by Simon Whelan and Nick Goldman, September 2000.
 
 Citation:
-Whelan, S. and N. Goldman.  In press.  A general empirical model of
+Whelan, S. and N. Goldman.  2001.  A general empirical model of
 	protein evolution derived from multiple protein families using
 	a maximum likelihood approach.  Molecular Biology and
-	Evolution.
+	Evolution 18, 691-699.
 
 See the following reference for notation used here:
 

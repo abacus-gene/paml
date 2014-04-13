@@ -1,35 +1,24 @@
-0
-21234567
+0          * 0:paml format (mc.paml); 1:paup format (mc.paup)
+21234567   * random number seed (odd number)
 
-4 10000 1
--1
-((1 :0.1, 2 :0.2) :0.12, 3 :0.3, 4 :0.4);
+4 10000 1  * <# seqs>  <# nucleotide sites>  <# replicates>
+-1         * <tree length, use -1 if tree has absolute branch lengths>
 
-4
-1
-0  0
+((human :0.1, chimpanzee :0.1) :0.12, gorilla :0.22, orangutan :0.4);
 
-0.1 0.2 0.3 0.4
+7          * model: 0:JC69, 1:K80, 2:F81, 3:F84, 4:HKY85, 5:T92, 6:TN93, 7:REV
+10 5 1 2 3 * kappa or rate parameters in model
+0.5  4     * <alpha>  <#categories for discrete gamma>
+
+0.1 0.2 0.3 0.4    * base frequencies
   T   C   A   G
 
 
 ==================================================
 The rest of this data file are notes, ignored by the program evolver.
+Change the values of the parameters, but do not delete them.
 evolver simulates nucleotide sequences under the REV+Gamma model
 and its simpler forms.
-The variables in this file are defined below:
-
-==================================================
-<format: 0=paml format, data into mc.paml; 1=paup format, data into mc.paup>
-<random number seed>
-<# seqs>  <# nucleotide sites>  <# replicates>
-<tree length, use -1 if tree has absolute branch lengths>
-<tree with relative branch lengthes>
-<model: 0:JC69, 1:K80, 2:F81, 3:F84, 4:HKY85, 5:T92, 6:TN93, 7:REV>
-<kappa or rate parameters in model>
-<alpha>  <#categories for discrete gamma>
-<base frequencies>
-==================================================
 
 More notes:
   Parameter kappa or rate parameters in the substituton model: 

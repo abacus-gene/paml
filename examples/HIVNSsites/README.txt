@@ -1,31 +1,35 @@
+Notes by Ziheng Yang
+Last modified 16 May 2003
 
-This folder contains the control file, sequence data file and the tree
-file for models of variable dN/dS rate ratios among sites (the NSsites
-models).
+This folder contains example data files for the HIV-1 env V3 region
+analyzed in Yang et al. (2000).  This is the 10th data set analyzed
+and the results are in table 12 in that paper.  The default
+specification in the control file codeml.ctl
 
- 
-You run the NSsites analysis by typing
+      NSsites = 0 1 2
 
-    codemlsites HIVenvSweden.ctl 
+will fit the onw-ratio model (M0), neutral (M0) and selection (M2)
+models.  You can fit more models if you want.  Note that the lysin and 
+lysozyme example folders contain files for similar analyses of bigger 
+data sets.
 
-and then selecting the models you want for the batch run.  
+You run the program by typing
 
-Or if you use codeml, the control file right now fits the one-ratio
-model, and you change the variable NSsites and perhaps ncatG as well
-to run other models.  The data set was used in the Nielsen and Yang
-(1998) paper.
+    codeml
 
-References
+or 
+
+   ..\..\codeml 
+
+   ../../codeml 
+
+
+Reference
 
 Nielsen, R., and Z. Yang. 1998. Likelihood models for detecting
 positively selected amino acid sites and applications to the HIV-1
 envelope gene. Genetics 148:929-936.
 
-Yang, Z., and W. J. Swanson. 2001. Codon-substitution models to detect
-adaptive evolution that account for heterogeneous selective pressures
-among site classes. Mol. Biol. Evol. submitted.
-
-
-
-Ziheng Yang
-11 September 2001
+Yang, Z., R. Nielsen, N. Goldman and A.-M. K. Pedersen. 2000. 
+Codon-substitution models for heterogeneous selection pressure at amino 
+acid sites. Genetics 155:431-449.
