@@ -5,7 +5,7 @@
                            pamp <SequenceFileName>
 */
 
-#include "tools.h"
+#include "paml.h"
 
 #ifdef macintosh
 /* Added by Andrew Rambaut to accommodate Macs -
@@ -111,7 +111,7 @@ int main (int argc, char *argv[])
    Ft = (double*) malloc(s3);
    if (space==NULL || Ft==NULL)  error2 ("oom space");
 
-   Initialize (fout, space, com.seqtype);
+   Initialize (fout, space);
    if (com.ngene>1) error2 ("option G not allowed yet");
 
 /*

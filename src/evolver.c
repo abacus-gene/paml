@@ -4,6 +4,9 @@
      cc -fast -o evolver evolver.c tools.o eigen.o -lm
      evolver
 */
+
+/* Do not define both CodonNSSites & CodonNSbranches */
+
 /*
 #define CodonNSbranches  1
 #define CodonNSsites     1
@@ -11,11 +14,8 @@
 
 
 
+#include "paml.h"
 
-/* Do not define both CodonNSSites & CodonNSbranches */
-
-
-#include "tools.h"
 #define NS            1000
 #define NBRANCH       (NS*2-2)
 #define NCODE         64
@@ -37,13 +37,14 @@ struct TREEN {
 }  *nodes;
 
 extern char BASEs[];
-extern int GenetCode[][64];
-int LASTROUND=0; /* no use for this */
+extern int GeneticCode[][64];
+int LASTROUND=0; /* not used */
 
 #define NODESTRUCTURE
 #define BIRTHDEATH
 #include "treesub.c"
 #include "treespace.c"
+
 void TreeDistances (FILE* fout);
 void Simulate (char*ctlf);
 void MakeSeq(char*z, int ls);
@@ -71,75 +72,83 @@ int main(int argc, char*argv[])
 {
    char *MCctlf=NULL, outf[]="evolver.out";
    int i, option=6, ntree=1,rooted, BD=0;
-   double bfactor=1, birth,death,sample,mut, *space;
+   double bfactor=1, birth=-1,death=-1,sample=-1,mut=-1, *space;
    FILE *fout=fopen(outf,"w");
 
+   printf("\nEVOLVER (in %s)\n",  VerStr);
    if(fout==NULL) { printf("cannot create %s\n",outf); exit(-1); }
-   else             printf("\nResults go into %s\n",outf);
-   if(argc>1) MCctlf=argv[1];
-   for(puts(""); ;) {
-      printf("\n\t(1) Get random UNROOTED trees?\n"); 
-      printf("\t(2) Get random ROOTED trees?\n"); 
-      printf("\t(3) List all UNROOTED trees into file trees?\n");
-      printf("\t(4) List all ROOTED trees into file trees?\n");
-      printf("\t(5) Simulate nucleotide data sets (use %s)?\n",MCctlf?MCctlf:MCctlf0[0]);
-      printf("\t(6) Simulate codon data sets      (use %s)?\n",MCctlf?MCctlf:MCctlf0[1]);
-      printf("\t(7) Simulate amino acid data sets (use %s)?\n",MCctlf?MCctlf:MCctlf0[2]);
-      printf("\t(8) Calculate identical bi-partitions between trees?\n");
-      printf("\t(0) Quit?\n");
-
+   else             printf("Results for options 1-4 & 8 go into %s\n",outf);
+   if(argc!=1 && argc!=3) {
+	  puts("Usage: \nevolver \nevolver 5 MyDataFile"); exit(-1); 
+   }
+   if(argc==3) {
+      sscanf(argv[1],"%d",&option);
+      MCctlf=argv[2];
+      if(option<5 || option>7) error2("command line option not right.");
+   }
+   else {
+      for(; ;) {
+         printf("\n\t(1) Get random UNROOTED trees?\n"); 
+         printf("\t(2) Get random ROOTED trees?\n"); 
+         printf("\t(3) List all UNROOTED trees into file trees?\n");
+         printf("\t(4) List all ROOTED trees into file trees?\n");
+         printf("\t(5) Simulate nucleotide data sets (use %s)?\n",MCctlf0[0]);
+         printf("\t(6) Simulate codon data sets      (use %s)?\n",MCctlf0[1]);
+         printf("\t(7) Simulate amino acid data sets (use %s)?\n",MCctlf0[2]);
+         printf("\t(8) Calculate identical bi-partitions between trees?\n");
+         printf("\t(0) Quit?\n");
 #if defined (CodonNSbranches)
-      option=6;  MCctlf="MCcodonNSbranches.dat";
+         option=6;  MCctlf="MCcodonNSbranches.dat";
 #elif defined (CodonNSsites)
-      option=6;  MCctlf="MCcodonNSsites.dat";
+         option=6;  MCctlf="MCcodonNSsites.dat";
 #else 
-      scanf("%d", &option);
+         scanf("%d", &option);
 #endif
-
-      if(option==0) exit(0);
-      if(option<5)  { printf ("No. of species: ");   scanf ("%d", &com.ns); }
-      if(com.ns>NS) error2 ("Too many species.  Raise NS.");
-      if((space=(double*)malloc(10000*sizeof(double)))==NULL) error2("oom");
-      rooted=!(option%2);
-      if (option<3) {
-         printf("\nnumber of trees & random number seed? ");
-         scanf("%d%d",&ntree,&i);  SetSeed(i);
-         printf ("Want branch lengths from the birth-death process (0/1)? ");
-         scanf ("%d", &BD);
-      }
-      if(option<=4) {
-         i=(com.ns*2-1)*sizeof(struct TREEN);
-         if((nodes=(struct TREEN*)malloc(i))==NULL) error2("oom");
-      }
-      switch (option) {
-      case(1):
-      case(2):
-         if(BD) {
-            printf ("\nbirth rate, death rate, sampling fraction, and ");
-            printf ("mutation rate (tree height)?\n");
-            scanf ("%lf%lf%lf%lf", &birth, &death, &sample, &mut);
+         if(option==0) exit(0);
+         if(option>=5 && option<=7) break;
+         if(option<5)  { printf ("No. of species: ");   scanf ("%d", &com.ns); }
+         if(com.ns>NS) error2 ("Too many species.  Raise NS.");
+         if((space=(double*)malloc(10000*sizeof(double)))==NULL) error2("oom");
+         rooted=!(option%2);
+         if (option<3) {
+            printf("\nnumber of trees & random number seed? ");
+            scanf("%d%d",&ntree,&i);  SetSeed(i);
+            printf ("Want branch lengths from the birth-death process (0/1)? ");
+            scanf ("%d", &BD);
          }
-         for(i=0;i<ntree;i++) {
-            RandomLHistory (rooted, space);
-            if(BD)  BranchLengthBD (1, birth, death, sample, mut);
-            if(com.ns<20&&ntree<10) { OutaTreeN(F0,0,BD); puts("\n"); }
-            OutaTreeN(fout,0,BD);  FPN(fout);
+         if(option<=4) {
+            i=(com.ns*2-1)*sizeof(struct TREEN);
+            if((nodes=(struct TREEN*)malloc(i))==NULL) error2("oom");
          }
-         /* for (i=0; i<com.ns-2-!rooted; i++) Ib[i]=(int)((3.+i)*rndu());
-            MakeTreeIb (com.ns, Ib, rooted); */
-         break;
-      case(3):
-      case(4): 
-         ListTrees(fout,com.ns,rooted);
-         break;
-      case(5):  com.seqtype=0; Simulate(MCctlf?MCctlf:MCctlf0[0]);   exit(0);
-      case(6):  com.seqtype=1; Simulate(MCctlf?MCctlf:MCctlf0[1]);   exit(0);
-      case(7):  com.seqtype=2; Simulate(MCctlf?MCctlf:MCctlf0[2]);   exit(0);
-      case(8):  TreeDistances(fout);      break;
-      case(9):  f_and_x();                break;
-      default:  exit(0);
+         switch (option) {
+         case(1):
+         case(2):
+            if(BD) {
+               printf ("\nbirth rate, death rate, sampling fraction, and ");
+               printf ("mutation rate (tree height)?\n");
+               scanf ("%lf%lf%lf%lf", &birth, &death, &sample, &mut);
+            }
+            for(i=0;i<ntree;i++) {
+               RandomLHistory (rooted, space);
+               if(BD)  BranchLengthBD (1, birth, death, sample, mut);
+               if(com.ns<20&&ntree<10) { OutaTreeN(F0,0,BD); puts("\n"); }
+               OutaTreeN(fout,0,BD);  FPN(fout);
+            }
+            /* for (i=0; i<com.ns-2-!rooted; i++) Ib[i]=(int)((3.+i)*rndu());
+               MakeTreeIb (com.ns, Ib, rooted); */
+            break;
+         case(3):
+         case(4): 
+            ListTrees(fout,com.ns,rooted);
+            break;
+         case(8):  TreeDistances(fout);      break;
+         case(9):  f_and_x();                break;
+         default:  exit(0);
+         }
       }
    }
+   com.seqtype=option-5;  /* 0, 1, 2 for bases, codons, & amino acids */
+   Simulate(MCctlf?MCctlf:MCctlf0[option-5]);
    return(0);
 }
 
@@ -287,7 +296,7 @@ int EigenQcodon (int getstats, double kappa,double omega,double pi[],
     double Root[], double U[], double V[], double Q[])
 {
 /* Construct the rate matrix Q[].
-   64 codon are used, and stop codons have 0 freqs.
+   64 codons are used, and stop codons have 0 freqs.
 */
    int n=com.ncode, i,j,k, c[2],ndiff,pos=0,from[3],to[3];
    double mr,space[64*3];
@@ -296,7 +305,7 @@ int EigenQcodon (int getstats, double kappa,double omega,double pi[],
    for (i=0; i<n; i++) FOR (j,i) {
       from[0]=i/16; from[1]=(i/4)%4; from[2]=i%4;
       to[0]=j/16;   to[1]=(j/4)%4;   to[2]=j%4;
-      c[0]=GenetCode[com.icode][i];   c[1]=GenetCode[com.icode][j];
+      c[0]=GeneticCode[com.icode][i];   c[1]=GeneticCode[com.icode][j];
       if (c[0]==-1 || c[1]==-1)  continue;
       for (k=0,ndiff=0; k<3; k++)  if (from[k]!=to[k]) { ndiff++; pos=k; }
       if (ndiff!=1)  continue;
@@ -394,18 +403,17 @@ int GetDaa (FILE* fout, double daa[])
 
 void MakeSeq(char*z, int ls)
 {
-/* makes a codon or AA sequence using com.pi[].  Codons are encoded as 
-   0,1,2,...,63
+/* makes a base, amino acid, or codon sequence using com.pi[].  
 */
    int j,h, n=com.ncode;
-   double p[64],r;
+   double p[64],r, small=4e-6;
 
    FOR(j,n) p[j]=com.pi[j];
    for (j=1; j<n; j++) p[j]+=p[j-1];
-   if (fabs(p[n-1]-1) > 5e-6) 
+   if (fabs(p[n-1]-1) > small)
       { printf("\nsum pi = %.6f != 1!\n",p[n-1]); exit(-1); }
    for (h=0; h<com.ls; h++) {
-      for(j=0,r=rndu();j<n;j++) if(r<p[j]) break;
+      for(j=0,r=rndu();j<n-1;j++) if(r<p[j]) break;
       z[h]=(char)j;
    }
 }
@@ -451,7 +459,7 @@ void Evolve1 (int inode)
             }
             FOR(i,n) for(j=1;j<n;j++)  PMat[i*n+j]+=PMat[i*n+j-1];
          }
-         for(j=0,from=com.z[ison][h],r=rndu(); j<n; j++)
+         for(j=0,from=com.z[ison][h],r=rndu(); j<n-1; j++)
             if(r<PMat[from*n+j]) break;
          com.z[ison][h]=j;
       }
@@ -470,9 +478,9 @@ void Simulate (char*ctlf)
    space[com.ls] is used to hold site marks.
 */
    int verbose=0;
+   char *ancf="ancestral.seq", *sitesf="siterates";
    enum {PAML,PAUP};
    FILE *fin, *fseq, *ftree=NULL, *fanc=NULL, *fsites=NULL;
-   char *ancf="ancestral.seq", *sitesf="siterates";
    char *paupstart="paupstart",*paupblock="paupblock",*paupend="paupend";
    char *siterate=NULL;  /* used if ncatG>1 */
    int i,j,k, ir,n,nr,fixtree=1,sspace=10000,rooted=0;
@@ -566,6 +574,7 @@ void Simulate (char*ctlf)
       FOR(i,com.ncatG) printf("%9.5f",com.freqK[i]);
       printf("\nw: ");
       FOR(i,com.ncatG) printf("%9.5f",com.rK[i]);  FPN(F0);
+      verbose=1;
 #else
 #ifndef CodonNSbranches
       fscanf(fin,"%lf",&com.omega);
@@ -683,7 +692,8 @@ void Simulate (char*ctlf)
 
       Evolve1(tree.root);
 
-      if(com.rates && com.ncatG>1) { /* randomize sites for site-class model */
+      /* randomize sites for site-class model */
+      if(com.rates && com.ncatG>1) {
          randorder(siteorder, com.ls, (int*)space);
          FOR(j,tree.nnode) {
             memcpy(tmpseq,com.z[j],com.ls*sizeof(char));
@@ -698,16 +708,9 @@ void Simulate (char*ctlf)
             FOR(h,com.ls) siterate[h]=*((char*)space+siteorder[h]);
          }
       }
-      if (format==PAUP) fprintf(fseq,"\n\n[Replicate # %d]\n", ir+1);
-      printSeqs(fseq, NULL, NULL, format);
-      if(format==PAUP && !fixtree) {
-         fprintf(fseq,"\nbegin tree;\n   tree true_tree = [&U] "); 
-         OutaTreeN(fseq,1,1); fputs(";\n",fseq);
-         fprintf(fseq,"end;\n\n");
-      }
-      if(format==PAUP) appendfile(fseq,paupblock);
 
-      if(verbose) { /* print ancestral seqs, rates for sites */
+      /* print ancestral seqs, rates for sites */
+      if(verbose) {
          j=(com.seqtype==CODONseq?3*com.ls:com.ls);
          fprintf(fanc,"\n[replicate %d]\n",ir+1);
          fprintf(fanc,"%6d %6d\n",tree.nnode-com.ns,j);
@@ -732,6 +735,16 @@ void Simulate (char*ctlf)
             FPN(fsites);
          }
       }
+
+      /* print sequences*/
+      if (format==PAUP) fprintf(fseq,"\n\n[Replicate # %d]\n", ir+1);
+      printSeqs(fseq, NULL, NULL, format);
+      if(format==PAUP && !fixtree) {
+         fprintf(fseq,"\nbegin tree;\n   tree true_tree = [&U] "); 
+         OutaTreeN(fseq,1,1); fputs(";\n",fseq);
+         fprintf(fseq,"end;\n\n");
+      }
+      if(format==PAUP) appendfile(fseq,paupblock);
 
       printf ("\rdid data set %d.", ir+1);
    }   /* for (ir) */

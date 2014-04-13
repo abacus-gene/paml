@@ -1,6 +1,6 @@
 /* tools.c 
 */
-#include "tools.h"
+#include "paml.h"
 
 /************************
              sequences 
@@ -15,7 +15,7 @@ char AA3Str[]=
      {"AlaArgAsnAspCysGlnGluGlyHisIleLeuLysMetPheProSerThrTrpTyrVal***"};
 char BINs[] ="TC";
 char Nsensecodon[]={61, 60, 61, 62, 62, 63, 62, 62, 61, 62, 62};
-int GenetCode[][64] = 
+int GeneticCode[][64] = 
      {{13,13,10,10,15,15,15,15,18,18,-1,-1, 4, 4,-1,17,
        10,10,10,10,14,14,14,14, 8, 8, 5, 5, 1, 1, 1, 1,
         9, 9, 9,12,16,16,16,16, 2, 2,11,11,15,15, 1, 1,
@@ -71,7 +71,7 @@ int GenetCode[][64] =
        10,10,10,10,14,14,14,14, 8, 8, 5, 5, 1, 1, 1, 1,
         9, 9, 9,12,16,16,16,16, 2, 2,11,11,15,15, 1, 1,
        19,19,19,19, 0, 0, 0, 0, 3, 3, 6, 6, 7, 7, 7, 7} /* 10:blepharisma nu.*/
-     } ;                                         /* GenetCode[icode][#codon] */
+     } ;                                         /* GeneticCode[icode][#codon] */
 
 
 
@@ -87,13 +87,12 @@ int picksite (char *z, int l, int begin, int gap, char *result)
 
 int CodeChara (char b, int seqtype)
 {
-/* This codes characters into 0, 1, 2, ...
-   It used to code characters as 1,2,..., and has been changed
+/* This codes nucleotides or amino acids into 0, 1, 2, ...
 */
-   int i, n=(seqtype==0?4:(seqtype==2?20:2));
-   char *pch=(seqtype==0?BASEs:(seqtype==2?AAs:BINs));
+   int i, n=(seqtype<=1?4:(seqtype==2?20:2));
+   char *pch=(seqtype<=1?BASEs:(seqtype==2?AAs:BINs));
 
-   if (seqtype==BASEseq)
+   if (seqtype<=1)
       switch (b) {
          case 'T':  case 'U':   return(0);
          case 'C':              return(1);
@@ -115,7 +114,7 @@ int dnamaker (char z[], int ls, double pi[])
 
    xtoy(pi, p, 4);
    for (i=1; i<4; i++) p[i]+=p[i-1];
-   if (fabs(p[3]-1) > 1e-5) error2 ("sum pi != 1..");
+   if (fabs(p[3]-1) > 1e-5) error2("sum pi != 1..");
    for (i=0; i<ls; i++) {
       for(j=0,r=rndu();j<4;j++) if(r<p[j]) break;
       z[i]=(char)j;
@@ -128,7 +127,7 @@ int transform (char *z, int ls, int direction, int seqtype)
 /* direction==1 from TCAG to 0123, ==0 from 0123 to TCGA.
 */
    int il, status=0;
-   char *p, *pch=(seqtype==0?BASEs:(seqtype==2?AAs:BINs));
+   char *p, *pch=((seqtype==0||seqtype==1)?BASEs:(seqtype==2?AAs:BINs));
 
    if (direction)
       for (il=0,p=z; il<ls; il++,p++)
@@ -181,7 +180,7 @@ int PickExtreme (FILE *fout, char *z, int ls, int iring, int lfrag, int *ffrag)
 
    f_mono_di(fout, z, ls, iring, fb1, fb2, p_2 );
    if (iring) {
-      error2 ("change PickExtreme()");
+      error2("change PickExtreme()");
       FOR (i, lfrag-1)  z[ls+i]=z[i];       /* dangerous */
       z[ls+i]=(char) 0;
    }
@@ -283,12 +282,12 @@ int difcodonNG(char codon1[], char codon2[], double *SynSite,double *AsynSite,
             error2("difcodonNG");
          }
       }
-      iaa[i]=GenetCode[icode][iy[i]];
+      iaa[i]=GeneticCode[icode][iy[i]];
       if(iaa[i]==-1) printf("\nNG86: End codon %s.\n",getcodon(str,iy[i]));
       for(j=0; j<3; j++) 
          FOR (k,4) {
             if (k==b[i][j]) continue;
-            i1=GenetCode[icode][iy[i] + (k-b[i][j])*by[j]];
+            i1=GeneticCode[icode][iy[i] + (k-b[i][j])*by[j]];
             if (i1==-1)            nstop++;
             else if (i1==iaa[i])  (*SynSite)++;
          }
@@ -327,7 +326,7 @@ int difcodonNG(char codon1[], char codon2[], double *SynSite,double *AsynSite,
                     ic[0]+=bt1[i2]*by[i2];
                     ic[1]+=bt2[i2]*by[i2];
                  }
-                 FOR (i2,2) iaa[i2]=GenetCode[icode][ic[i2]];
+                 FOR (i2,2) iaa[i2]=GeneticCode[icode][ic[i2]];
                  if (iaa[1]==-1)  { nstop++;  sdpath=ndpath=0; break; }
                  if (iaa[0]==iaa[1])  sdpath++;
                  else                 ndpath++;
@@ -350,18 +349,19 @@ int difcodonNG(char codon1[], char codon2[], double *SynSite,double *AsynSite,
 int testTransP (double P[], int n)
 {
    int i,j, status=0;
-   double sum;
+   double sum, small=1e-6;
 
    for (i=0; i<n; i++) {
       for (j=0,sum=0; j<n; sum+=P[i*n+j++]) 
-         if (P[i*n+j]<-1e-6) status=-1;
-      if (fabs(sum-1)>1e-6) {
+         if (P[i*n+j]<-small) status=-1;
+      if (fabs(sum-1)>small && status==0) {
          printf ("\nrow sum (#%2d) = 1 = %10.6f", i+1, sum);
          status=-1;
       }
    }
    return (status);
 }
+
 
 int PMatUVRoot (double P[], double t, int n, double U[], double V[],
     double Root[])
@@ -382,11 +382,11 @@ int PMatUVRoot (double P[], double t, int n, double U[], double V[],
 
    for(i=0;i<n*n;i++)  if(P[i]<0)  P[i]=0;
 
-
 #if (DEBUG>=5)
       if (testTransP(P,n)) {
          /*  matout (F0,P,n,n); */
          printf("\nP(%.6f) err in PMatUVRoot.\n", t);
+         exit(-1);
       }
 #endif
 
@@ -480,7 +480,7 @@ int EvolveHKY85 (char source[], char target[], int ls, double t,
          PMatTN93 (TransP, a1t*r, a2t*r, bt*r, pi);
          for (i=0;i<n;i++) {
             for (j=1;j<n;j++) TransP[i*n+j]+=TransP[i*n+j-1];
-            if (fabs(TransP[i*n+n-1]-1)>1e-5) error2 ("TransP err");
+            if (fabs(TransP[i*n+n-1]-1)>1e-5) error2("TransP err");
          }
       }
       for (j=0,i=source[h],r=rndu();j<n-1;j++)  if (r<TransP[i*n+j]) break;
@@ -543,7 +543,6 @@ char *getAAstr(char *AAstr, int iaa)
    return (AAstr);
 }
 
-
 int NucListall(char b, int *nb, int ib[4])
 {
 /* Resolve an ambiguity nucleotide b into all possibilities.  
@@ -580,7 +579,7 @@ int Codon2AA(char codon[3], char aa[3], int icode, int *iaa)
    for(i=0;i<3;i++)  NucListall(codon[i], &nb[i], ib[i]);
    FOR(i0,nb[0])  FOR(i1,nb[1])  FOR(i2,nb[2]) {
       ic=ib[0][i0]*16+ib[1][i1]*4+ib[2][i2];         
-      *iaa=GenetCode[icode][ic];
+      *iaa=GeneticCode[icode][ic];
       if(*iaa==-1) continue;
       if(naa==0)  { iaa0=*iaa; naa++; }
       else if (*iaa!=iaa0)  naa=2;
@@ -634,7 +633,7 @@ int printcu (FILE *fout, double fcodon[], int icode)
       FOR (j,4)  {
          FOR (k,4)  {
             it=i*16+k*4+j;   
-            iaa=GenetCode[icode][it];
+            iaa=GeneticCode[icode][it];
             if(iaa==-1) iaa=20;
             getcodon(codon, it);  getAAstr(aa3,iaa);
             if (!strcmp(ss3[k],aa3) && j>0)   fprintf(fout, "     ");
@@ -671,7 +670,7 @@ int printcums (FILE *fout, int ns, double fcodons[], int icode)
          FOR (j,4)  {
             FOR (k,4)  {
                it = i*16+k*4+j;   
-               iaa=GenetCode[icode][it]; 
+               iaa=GeneticCode[icode][it]; 
                if(iaa==-1) iaa=20;
                getcodon(codon, it);  getAAstr(aa3,iaa);
                if ( ! strcmp(ss3[k], aa3) && j>0)   fprintf(fout, "   ");
@@ -740,16 +739,19 @@ int printaSeq (FILE *fout, char z[], int ls, int lline, int gap)
 }
 
 int printsma(FILE*fout, char*spname[], char*z[],
-    int ns, int l, int lline, int gap, int simple, int pose[])
+    int ns, int l, int lline, int gap, int seqtype, 
+    int transformed, int simple, int pose[])
 {
 /* print multiple aligned sequences.
    use spname==NULL if no seq names available.
    pose[h] marks the position of the h_th site in z[], useful for 
    printing out the original sequences after site patterns are collapsed. 
-   Sequences z[] are not coded.
+   Sequences z[] are coded if(transformed) and not if otherwise.
 */
-   int igroup, ngroup, lt, h, i, b,b0=-1, igap, lspname=20, lseqlen=7;
+   int igroup, ngroup, lt, h,hp, i, b,b0=-1,igap, lspname=20, lseqlen=7;
    char indel='-', ambi='?', equal='.';
+   char *pch=(seqtype<=1 ? BASEs : (seqtype==2?AAs:BINs));
+   char codon[4]="   ";
 
    if (gap==0) gap=lline+1;
    ngroup=(l-1)/lline+1;
@@ -760,21 +762,28 @@ int printsma(FILE*fout, char*spname[], char*z[],
          igap=(l-igroup*lline)+(l-igroup*lline)/gap+lspname+1-lseqlen-1;
       /* fprintf (fout,"%*s[%*d]\n", igap, "", lseqlen,lt); */
       FOR(i,ns)  {
-
          if(spname) fprintf(fout,"%-*s  ", lspname,spname[i]);
-/*
-if(spname) fprintf(fout,"\n>\n%-10s\n", spname[i]);
-*/
          for (h=igroup*lline,lt=0,igap=0; lt<lline && h<l; h++,lt++) {
-            b=(int)z[i][pose?pose[h]:h];  b0=(int)z[0][pose?pose[h]:h];
+            hp=(pose?pose[h]:h);
+#ifdef CODEML
+            if(com.seqtype==1 && com.cleandata && transformed) {
+               ic=FROM61[com.z[i][hp]];
+               codon[0]=BASEs[is/16]; 
+               codon[1]=BASEs[(ic%16)/4]; 
+               codon[2]=BASEs[ic%4];
+               fprintf(fout," %s", codon);
+               continue;
+            }
+#endif
+            b0=(int)z[0][hp];  b=(int)z[i][hp];  
+            if(transformed) {
+               b0=pch[b0]; b=pch[b];
+            }
             if(i&&simple && b==b0 && b!=indel && b!=ambi)  b=equal;
             fputc(b, fout);
             if (++igap==gap)  { fputc(' ', fout); igap=0; }
          }
          FPN (fout);
-
-/* fprintf(fout,"*\n"); */
-
       }
    }
    FPN(fout);
@@ -799,7 +808,7 @@ char *strc (int n, char c)
    static char s[256];
    int i;
 
-   if (n>255) error2 ("line >255 in strc");
+   if (n>255) error2("line >255 in strc");
    FOR (i,n) s[i]=c;    s[n]=0;
    return (s);
 }
@@ -825,7 +834,7 @@ int appendfile(FILE*fout, char*filename)
 }
 
 void error2 (char * message)
-{ printf("\nerror: %s.\n", message); exit(-1); }
+{ printf("\nError: %s.\n", message); exit(-1); }
 
 int zero (double x[], int n)
 { int i; FOR (i,n) x[i]=0; return (0);}
@@ -834,7 +843,7 @@ double sum (double x[], int n)
 { int i; double t=0;  for(i=0; i<n; i++) t += x[i];    return(t); }
 
 int fillxc (double x[], double c, int n)
-{ int i; FOR (i,n) x[i]=c; return (0);}
+{ int i; for(i=0; i<n; i++) x[i]=c; return (0); }
 
 int xtoy (double x[], double y[], int n)
 { int i; for (i=0; i<n; y[i]=x[i],i++) ;  return(0); }
@@ -1151,7 +1160,7 @@ int MultiNomial (int n, int ncat, double prob[], int nobs[], double space[])
    to speed up the process when ncat is large.
 */
    int i, j, crude=(ncat>20), ncrude, lcrude[200];
-   double r, *pcdf=(space==NULL?prob:space);
+   double r, *pcdf=(space==NULL?prob:space), small=1e-6;
 
    ncrude=max2(5,ncat/20); ncrude=min2(200,ncrude);
    FOR(i,ncat) nobs[i]=0;
@@ -1159,7 +1168,7 @@ int MultiNomial (int n, int ncat, double prob[], int nobs[], double space[])
       xtoy(prob, pcdf, ncat);
       for(i=1; i<ncat; i++) pcdf[i]+=pcdf[i-1];
    }
-   if (fabs(pcdf[ncat-1]-1) > 1e-5) error2 ("sum P!=1 in MultiNomial");
+   if (fabs(pcdf[ncat-1]-1) > small) error2("sum P!=1 in MultiNomial");
    if (crude) {
       for(j=1,lcrude[0]=i=0; j<ncrude; j++)  {
          while (pcdf[i]<(double)j/ncrude) i++;
@@ -1173,7 +1182,7 @@ int MultiNomial (int n, int ncat, double prob[], int nobs[], double space[])
          for (; j<ncrude; j++) if (r<(j+1.)/ncrude) break;
          j=lcrude[j];
       }
-      for (; j<ncat; j++) if (r<pcdf[j]) break;
+      for (; j<ncat-1; j++) if (r<pcdf[j]) break;
       nobs[j] ++;
    }
    return (0);
@@ -1245,6 +1254,7 @@ double LnGamma (double x)
 {
 /* returns ln(gamma(x)) for alpha>0, accurate to 10 decimal places.  
    Stirling's formula is used for the central polynomial part of the procedure.
+
    Pike MC & Hill ID (1966) Algorithm 291: Logarithm of the gamma function.
    Communications of the Association for Computing Machinery, 9:684
 */
@@ -1438,7 +1448,7 @@ int AutodGamma (double M[], double freqK[], double rK[], double *rho1,
    double *point=freqK;
    double x, y, large=20, v1;
 /*
-   if (fabs(rho)>1-1e-4) error2 ("rho out of range");
+   if (fabs(rho)>1-1e-4) error2("rho out of range");
 */
    FOR (i,K-1) point[i]=PointNormal((i+1.0)/K);
    for (i=0; i<K; i++) {
@@ -1541,147 +1551,231 @@ double probBinomial (int n, int k, double p)
    return C;
 }
 
-
-double CDFBeta(double x, double p, double q, double lnbeta)
+double CDFBeta(double x, double pin, double qin, double lnbeta)
 {
-/* This returns the cdf of the standard form of the beta distribution, 
-   which is the incomplete beta ratio.  x is the argument between 0 and 1, 
-   and p and q are positive.
-   lnbeta is log of complete beta function; provide it if it is known,
-   and otherwise use 0.
-   returns -1 if in error
-
-   Algorithm AS 63  Appl. Statist. (1973), vol.22, no.3
+/* Returns distribution function of the beta distribution, that is,  
+   the incomplete beta ratio I_x(p,q) ).
+   This is called from InverseCDFBeta() in a root-finding loop.
+     This routine is a translation into C of a Fortran subroutine
+     by W. Fullerton of Los Alamos Scientific Laboratory.
+     Bosten and Battiste (1974).
+     Remark on Algorithm 179, CACM 17, p153, (1974).
 */
-   int indx, ns;
-/*   double acu=1e-9, in_beta=x, small=1e-10; */
-   double acu=1e-20, in_beta=x, small=1e-15;
-   double psq=p+q, cx, xx, pp, qq, temp, term, ai, rx;
+   double ans, c, finsum, p, ps, p1, q, term, xb, xi, y;
+   int n, i, ib;
+   static double eps = 0, alneps = 0, sml = 0, alnsml = 0;
 
-   if(x<small)        return 0;
-   else if(x>1-small) return 1;
-   if(p<=0 || q<=0)  { 
-      printf("p=%.4f q=%.4f: par err CDFBeta",p,q); return -1; 
+   if(x<0 || x>1 || pin<0 || qin<0) error2("out of range in CDFBeta");
+   if (eps == 0) {/* initialize machine constants ONCE */
+      eps = pow((double)FLT_RADIX, -(double)DBL_MANT_DIG);
+      alneps = log(eps);
+      sml = DBL_MIN;
+      alnsml = log(sml);
+   }
+   y = x;  p = pin;  q = qin;
+
+    /* swap tails if x is greater than the mean */
+   if (p / (p + q) < x) {
+      y = 1 - y;
+      p = qin;
+      q = pin;
    }
 
    if(lnbeta==0) lnbeta=LnGamma(p)+LnGamma(q)-LnGamma(p+q);
 
-   /* change tail if necessary and determine s; */
-   psq=p+q;
-   cx=1-x;
-   if(p>=psq*x) goto line1;
-   xx=cx; cx=x; pp=q;  qq=p; indx=1;
-   goto line2;
-   line1: xx=x;   pp=p; qq=q;  indx=0;
-   line2: term=ai=in_beta=1; ns=(int)(qq+cx*psq);
+   if ((p + q) * y / (p + 1) < eps) {  /* tail approximation */
+      ans = 0;
+      xb = p * log(max2(y, sml)) - log(p) - lnbeta;
+      if (xb > alnsml && y != 0)
+         ans = exp(xb);
+      if (y != x || p != pin)
+      ans = 1 - ans;
+   }
+   else {
+      /*___ FIXME ___:  This takes forever (or ends wrongly)
+      when (one or) both p & q  are huge
+      */
+      /* evaluate the infinite sum first.  term will equal */
+      /* y^p / beta(ps, p) * (1 - ps)-sub-i * y^i / fac(i) */
+      ps = q - floor(q);
+      if (ps == 0)
+         ps = 1;
 
-   /*  use soper's reduction formulae */
-   rx=xx/cx;
-   line3:    temp=qq-ai;  if(ns==0) rx=xx;
-   for (; ;) {
-      term*=temp*rx/(pp+ai);
-      in_beta+=term;  temp=fabs(term);
-      if(temp<=acu && temp<=acu*in_beta) break;
-      ai++;   ns--;
-      if(ns>=0)  goto line3;
-      temp=psq;  psq++;
-      /* printf("in_beta & temp: %12.9f %12.9f\n",in_beta,temp); */
-  }
-  in_beta=in_beta*exp(pp*log(xx)+(qq-1)*log(cx)-lnbeta)/pp;
-  if(indx) in_beta=1-in_beta;
+      xb=LnGamma(ps)+LnGamma(p)-LnGamma(ps+p);
+      xb = p * log(y) - xb - log(p);
 
-  return in_beta;    
+      ans = 0;
+      if (xb >= alnsml) {
+         ans = exp(xb);
+         term = ans * p;
+         if (ps != 1) {
+            n = (int)max2(alneps/log(y), 4.0);
+         for(i=1 ; i<= n ; i++) {
+            xi = i;
+            term = term * (xi - ps) * y / xi;
+            ans = ans + term / (p + xi);
+         }
+      }
+   }
+
+   /* now evaluate the finite sum, maybe. */
+   if (q > 1) {
+      xb = p * log(y) + q * log(1 - y) - lnbeta - log(q);
+      ib = (int) (xb/alnsml);  if(ib<0) ib=0;
+      term = exp(xb - ib * alnsml);
+      c = 1 / (1 - y);
+      p1 = q * c / (p + q - 1);
+
+      finsum = 0;
+      n = (int) q;
+      if (q == (double)n)
+         n = n - 1;
+         for(i=1 ; i<=n ; i++) {
+            if (p1 <= 1 && term / eps <= finsum)
+               break;
+            xi = i;
+            term = (q - xi + 1) * c * term / (p + q - xi);
+            if (term > 1) {
+               ib = ib - 1;
+               term = term * sml;
+            }
+            if (ib == 0)
+               finsum = finsum + term;
+         }
+         ans = ans + finsum;
+      }
+      if (y != x || p != pin)
+         ans = 1 - ans;
+      if(ans>1) ans=1;
+      if(ans<0) ans=0;
+   }
+   return ans;
 }
 
+static volatile double xtrunc;
 
 double InverseCDFBeta(double prob, double p, double q, double lnbeta)
 {
-/* this gives the inverse cdf for beta(p,q) at given probability prob
-   Algorithm AS 109  Appl. Statist. (1977) vol.26, p.111.  This replaces
-   Algorithm AS 64  Appl. Statist. (1973), vol.22, p.411.
+/* This calculates the inverseCDF of the beta distribution
 
-   lnbeta is log of complete beta function; provide it if it is known,
-   and otherwise use 0.
-   returns -1 if in error
+   Cran, G. W., K. J. Martin and G. E. Thomas (1977).
+   Remark AS R19 and Algorithm AS 109, Applied Statistics, 26(1), 111-114.
+   Remark AS R83 (v.39, 309-310) and correction (v.40(1) p.236).
+
+   My own implementation of the algorithm did not bracket the variable well.  
+   This version is Adpated from the pbeta and qbeta routines from 
+   "R : A Computer Language for Statistical Data Analysis", and it fails for 
+   extreme values of p and q as well, although it seems better than my 
+   previous version.
+   Ziheng Yang, May 2001
 */
-   int index=0;
-   double a, adj, g, h, pp, prev, qq, r, s;
-   double sq, t, tx, w, y, yprev, acu=1e-14, lower=.0001, upper=.9999;
-   double xinbta=prob;
-     
-   if (p<=0 || q<=0 || prob<0 || prob>1) return(-1);
-   if (prob==0 || prob==1) return(prob);
+   double fpu=3e-308, acu_min=1e-300, lower=fpu, upper=1-2.22e-16;
+/* acu_min>= fpu: Minimal value for accuracy 'acu' which will depend on (a,p); */
+   int swap_tail, i_pb, i_inn;
+   double a, adj, g, h, pp, prev=0, qq, r, s, t, tx=0, w, y, yprev;
+   double acu;
+   volatile double xinbta;
 
-   if (prob<=.5) {  /* change tail if necessary */
-      a=prob;  pp=p;  qq=q;  index=0;
-   }
-   else {
-      a=1-prob;  pp=q;  qq=p;  index=1;
+   if(prob<0 || prob>1 || p<0 || q<0) error2("out of range in InverseCDFBeta");
+
+   /* define accuracy and initialize */
+   xinbta = prob;
+
+   /* test for admissibility of parameters */
+   if(p<0 || q<0 || prob<0 || prob>1)  error2("beta par err");
+   if (prob == 0 || prob == 1)
+      return prob;
+
+   if(lnbeta==0) lnbeta=LnGamma(p)+LnGamma(q)-LnGamma(p+q);
+
+   /* change tail if necessary;  afterwards   0 < a <= 1/2    */
+   if (prob <= 0.5) {
+      a = prob;   pp = p; qq = q; swap_tail = 0;
+   } else { /* change tail, swap  p <-> q :*/
+      a = 1 - prob; pp = q; qq = p; swap_tail = 1;
    }
 
    /* calculate the initial approximation */
-   if(lnbeta==0) lnbeta=LnGamma(p)+LnGamma(q)-LnGamma(p+q);
    r = sqrt(-log(a * a));
    y = r - (2.30753+0.27061*r)/(1+ (0.99229+0.04481*r) * r);
-   if (pp>1 && qq>1) goto line5;
+
+   if (pp > 1 && qq > 1) {
+      r = (y * y - 3) / 6;
+      s = 1 / (pp + pp - 1);
+      t = 1 / (qq + qq - 1);
+      h = 2 / (s + t);
+      w = y * sqrt(h + r) / h - (t - s) * (r + 5./6. - 2./(3 * h));
+      xinbta = pp / (pp + qq * exp(w + w));
+   } else {
       r = qq + qq;
-      t = 1/(9*qq);
-      t = (1- t + y * sqrt(t));  t = r * t*t*t;
-      if (t<=0) goto line3;
-      t = (4*pp + r - 2) / t;
-      if (t<=1) goto line4;
-      xinbta = 1-2/ (t + 1);
-      goto line6;
-line3:
-      xinbta = 1- exp((log((1-a) * qq) + lnbeta) / qq);
-      goto line6;
-line4:
-      xinbta = exp((log(a * pp) + lnbeta) / pp);
-      goto line6;
-line5:
-      r = (y * y - 3)/6;
-      s = 1/ (pp*2-1);
-      t = 1/ (qq*2-1);
-      h = 2/ (s + t);
-      w = y * sqrt(h + r) / h - (t - s) * (r + 5/6. - 2/(3* h));
-      xinbta = pp / (pp + qq * exp(w*2));
+      t = 1. / (9 * qq);
+      t = r * pow(1 - t + y * sqrt(t), 3.);
+      if (t <= 0)
+         xinbta = 1 - exp((log((1 - a) * qq) + lnbeta) / qq);
+      else {
+         t = (4 * pp + r - 2) / t;
+         if (t <= 1)
+            xinbta = exp((log(a * pp) + lnbeta) / pp);
+         else
+            xinbta = 1 - 2/(t+1);
+      }
+   }
 
-      
-/*   solve for x by a modified newton-raphson method, using betaCDF() */
-line6:
-      r = 1- pp;
-      t = 1- qq;
-      yprev = 0;  sq = prev = 1;
-      if (xinbta<lower) xinbta = lower;
-      if (xinbta>upper) xinbta = upper;
+   /* solve for x by a modified newton-raphson method, using CDFBeta */
+   r = 1 - pp;
+   t = 1 - qq;
+   yprev = 0;
+   adj = 1;
+   if (xinbta < lower)
+     xinbta = lower;
+   else if (xinbta > upper)
+     xinbta = upper;
 
-line7:
+   /* Desired accuracy should depend on (a,p)
+    * This is from Remark .. on AS 109, adapted.
+    * However, it's not clear if this is "optimal" for IEEE double prec.
+
+    * acu = fmax2(acu_min, pow(10., -25. - 5./(pp * pp) - 1./(a * a)));
+
+    * NEW: 'acu' accuracy NOT for squared adjustment, but simple;
+    * ---- i.e.,  "new acu" = sqrt(old acu)
+
+    */
+   acu = pow(10., -13 - 2.5/(pp * pp) - 0.5/(a * a));
+   acu = max2(acu, acu_min);
+
+   for (i_pb=0; i_pb < 1000; i_pb++) {
       y = CDFBeta(xinbta, pp, qq, lnbeta);
-
-
-      y = (y - a) * exp(lnbeta + r * log(xinbta) + t * log(1-xinbta));
-      if (y * yprev<=0) prev = sq;
+      /* y = pbeta2(xinbta, pp, qq, lnbeta) -- to SAVE CPU; */
+      y = (y - a) *
+         exp(lnbeta + r * log(xinbta) + t * log(1 - xinbta));
+      if (y * yprev <= 0)
+         prev = max2(fabs(adj),fpu);
       g = 1;
-line9:
-      adj = g * y;
-      sq = adj * adj;
-      if (sq>=prev) goto line10;
-      tx = xinbta - adj;
-      if (tx>=0 && tx<=1) goto line11;
-line10:
-      g = g/3;
-      goto line9;
-line11:
-      if (prev<=acu) goto line12;
-      if (y * y<=acu) goto line12;
-      if (tx==0 || tx==1) goto line10;
-      if (tx==xinbta) goto line12;
+      for (i_inn=0; i_inn < 1000;i_inn++) {
+         adj = g * y;
+         if (fabs(adj) < prev) {
+            tx = xinbta - adj; /* trial new x */
+            if (tx >= 0 && tx <= 1) {
+               if (prev <= acu || fabs(y) <= acu)   goto L_converged;
+               if (tx != 0 && tx != 1)  break;
+            }
+         }
+         g /= 3;
+      }
+      /* this prevents trouble with excess FPU precision on some machines. */
+      xtrunc = tx;
+      if (xtrunc == xinbta)
+         goto L_converged;
       xinbta = tx;
       yprev = y;
-      goto line7;
-line12:
-      if (index) xinbta = 1- xinbta;
-      return (xinbta);
+   }
+   error2("not converged");
+
+   L_converged:
+   if (swap_tail)
+      xinbta = 1 - xinbta;
+   return xinbta;
 }
 
 
@@ -1795,7 +1889,7 @@ int ScatterPlot (int n, int nseries, int yLorR[], double x[], double y[],
 long factorial(int n)
 {
    long f, i;
-   if (n>10) error2 ("n>10 in factorial");
+   if (n>10) error2("n>10 in factorial");
    for (i=2,f=1; i<=(long)n; i++) f*=i;
    return (f);
 }
@@ -1913,7 +2007,7 @@ int matinv (double x[], int n, int m, double space[])
          if (xmax < fabs(x[j*m+i])) { xmax = fabs(x[j*m+i]); irow[i]=j; }
       det *= xmax;
       if (xmax < ee)   {
-         printf("\nDet becomes zero at %3d!\t\n", i+1);
+         printf("\nDet = %.4e close to zero at %3d!\t\n", xmax,i+1);
          return(-1);
       }
       if (irow[i] != i) {
@@ -1944,103 +2038,206 @@ int matinv (double x[], int n, int m, double space[])
    return (0);
 }
 
-int QRdecomp (double A[], int m, int n, double Q[])
-{
-/* A = Q*R by Givens reduction. A[m][n], Q[m][m]
-   A becomes R.  When m<n, R will be trapezoidal
-   J. C. Nash 1979.  Compact numerical methods for computers: linear
-   algebra and funciton minimisation.  Wiley, New York.  pp.42-43.
-*/
-   int mn=min2(m,n), i,j,k;
-   double small=1e-20, c, s, b,p;
 
-   identity (Q, m);
-   for (j=0;j<mn;j++) {
-      for (k=j+1;k<m;k++) {
-         c=A[j*n+j];  s=A[k*n+j];
-         b=fabs(c); if(fabs(s)>b) b=fabs(s);
-         if (b==0) continue;
-         c/=b; s/=b; p=sqrt(c*c+s*s);
-         s/=p;
-         if (fabs(s)<small) continue;
-         c/=p;
-         for (i=0; i<n; i++) {
-            p=A[j*n+i];
-            A[j*n+i]=c*p+s*A[k*n+i];
-            A[k*n+i]=-s*p+c*A[k*n+i];
-         }
-         for (i=0; i<m; i++) {
-            p=Q[i*m+j];
-            Q[i*m+j]=c*p+s*Q[i*m+k];
-            Q[i*m+k]=-s*p+c*Q[i*m+k];
-         }
-      }   /* (for (k) */
-   }      /* for (j) */
-   return (0);
+
+/* eigen solution for real symmetric matrix */
+void HouseholderRealSym(double a[], int n, double d[], double e[]);
+int EigenTridagQLImplicit(double d[], double e[], int n, double z[]);
+void EigenSort(double d[], double U[], int n);
+
+int eigenRealSym(double A[], int n, double Root[], double Offdiag[])
+{
+/* This finds the eigen solution of a real symmetrical matrix A[n*n].  In return, 
+   A has the right vectors and Root has the eigenvalues. work[n] is the working space.
+   The matrix is first reduced to a tridiagonal matrix using HouseholderRealSym(), 
+   and then using the QL algorithm with implicit shifts.  
+
+   Adapted from routine tqli in Numerical Recipes in C, with reference to LAPACK
+   Ziheng Yang, 23 May 2001
+*/
+   int status=0;
+   HouseholderRealSym(A, n, Root, Offdiag);
+   status=EigenTridagQLImplicit(Root, Offdiag, n, A);
+   EigenSort(Root, A, n);
+
+   return(status);
 }
 
-int CholeskyDecomp (double A[], int n, double L[])
-{
-/* A=LL', where A is symmetrical and positive-definite, and L is
-   lower-diagonal
-   only A[i*n+j] (j>=i) are used.
-*/
-   int i,j,k;
-   double t;
 
-   for (i=0; i<n; i++) for (j=i+1; j<n; j++) L[i*n+j]=0;
-   for (i=0; i<n; i++) {
-      for (k=0,t=A[i*n+i]; k<i; k++) t-=square(L[i*n+k]);
-      if (t>=0)    L[i*n+i]=sqrt(t);   
-      else         return (-1);
-      for (j=i+1; j<n; j++) {
-         for (k=0,t=A[i*n+j]; k<i; k++) t-=L[i*n+k]*L[j*n+k];
-         L[j*n+i]=t/L[i*n+i];
+void EigenSort(double d[], double U[], int n)
+{
+/* this sorts the eigen values d[] and rearrange the (right) eigen vectors U[]
+*/
+   int k,j,i;
+   double p;
+
+   for (i=0;i<n-1;i++) {
+      p=d[k=i];
+      for (j=i+1;j<n;j++)
+         if (d[j] >= p) p=d[k=j];
+      if (k != i) {
+         d[k]=d[i];
+         d[i]=p;
+         for (j=0;j<n;j++) {
+            p=U[j*n+i];
+            U[j*n+i]=U[j*n+k];
+            U[j*n+k]=p;
+         }
       }
    }
-   return (0);
 }
 
-
-int Choleskyback (double L[], double b[], double x[], int n);
-int CholeskyInverse (double L[], int n);
-
-int Choleskyback (double L[], double b[], double x[], int n)
+void HouseholderRealSym(double a[], int n, double d[], double e[])
 {
-/* solve Ax=b, where A=LL' is lower-diagonal.  
-   x=b O.K.  Only A[i*n+j] (i>=j) are used
+/* This uses HouseholderRealSym transformation to reduce a real symmetrical matrix 
+   a[n*n] into a tridiagonal matrix represented by d and e.
+   d[] is the diagonal (eigends), and e[] the off-diagonal.
 */
-  
-   int i,j;
-   double t;
+   int m,k,j,i;
+   double scale,hh,h,g,f;
 
-   for (i=0; i<n; i++) {       /* solve Ly=b, and store results in x */
-      for (j=0,t=b[i]; j<i; j++) t-=L[i*n+j]*x[j];
-      x[i]=t/L[i*n+i];
+   for (i=n-1;i>=1;i--) {
+      m=i-1;
+      h=scale=0;
+      if (m > 0) {
+         for (k=0;k<=m;k++)
+            scale += fabs(a[i*n+k]);
+         if (scale == 0)
+            e[i]=a[i*n+m];
+         else {
+            for (k=0;k<=m;k++) {
+               a[i*n+k] /= scale;
+               h += a[i*n+k]*a[i*n+k];
+            }
+            f=a[i*n+m];
+            g=(f >= 0 ? -sqrt(h) : sqrt(h));
+            e[i]=scale*g;
+            h -= f*g;
+            a[i*n+m]=f-g;
+            f=0;
+            for (j=0;j<=m;j++) {
+               a[j*n+i]=a[i*n+j]/h;
+               g=0;
+               for (k=0;k<=j;k++)
+                  g += a[j*n+k]*a[i*n+k];
+               for (k=j+1;k<=m;k++)
+                  g += a[k*n+j]*a[i*n+k];
+               e[j]=g/h;
+               f += e[j]*a[i*n+j];
+            }
+            hh=f/(h*2);
+            for (j=0;j<=m;j++) {
+               f=a[i*n+j];
+               e[j]=g=e[j]-hh*f;
+               for (k=0;k<=j;k++)
+                  a[j*n+k] -= (f*e[k]+g*a[i*n+k]);
+            }
+         }
+      } 
+      else
+         e[i]=a[i*n+m];
+      d[i]=h;
    }
-   for (i=n-1; i>=0; i--) {    /* solve L'x=y, and store results in x */
-      for (j=i+1,t=x[i]; j<n; j++) t-=L[j*n+i]*x[j];
-      x[i]=t/L[i*n+i];
-   }
-   return (0);
-}
+   d[0]=e[0]=0;
 
-int CholeskyInverse (double L[], int n)
-{
-/* inverse of L
-*/
-   int i,j,k;
-   double t;
-
-   for (i=0; i<n; i++) {
-      L[i*n+i]=1/L[i*n+i];
-      for (j=i+1; j<n; j++) {
-         for (k=i,t=0; k<j; k++) t-=L[j*n+k]*L[k*n+i];
-         L[j*n+i]=t/L[j*n+j];
+   /* Get eigenvectors */
+   for (i=0;i<n;i++) {
+      m=i-1;
+      if (d[i]) {
+         for (j=0;j<=m;j++) {
+            g=0;
+            for (k=0;k<=m;k++)
+               g += a[i*n+k]*a[k*n+j];
+            for (k=0;k<=m;k++)
+               a[k*n+j] -= g*a[k*n+i];
+         }
       }
+      d[i]=a[i*n+i];
+      a[i*n+i]=1;
+      for (j=0;j<=m;j++) a[j*n+i]=a[i*n+j]=0;
    }
-   return (0);
 }
+
+#define SIGN(a,b) ((b) >= 0.0 ? fabs(a) : -fabs(a))
+
+int EigenTridagQLImplicit(double d[], double e[], int n, double z[])
+{
+/* This finds the eigen solution of a tridiagonal matrix represented by d and e.  
+   d[] is the diagonal (eigenvalues), e[] is the off-diagonal
+   z[n*n]: as input should have the identity matrix to get the eigen solution of the 
+   tridiagonal matrix, or the output from HouseholderRealSym() to get the 
+   eigen solution to the original real symmetric matrix.
+   z[n*n]: has the orthogonal matrix as output
+
+   Adapted from routine tqli in Numerical Recipes in C, with reference to
+   LAPACK fortran code.
+   Ziheng Yang, May 2001
+*/
+   int m,j,iter,niter=30, status=0, i,k;
+   double s,r,p,g,f,dd,c,b, aa,bb;
+
+   for (i=1;i<n;i++) e[i-1]=e[i];  e[n-1]=0;
+   for (j=0;j<n;j++) {
+      iter=0;
+      do {
+         for (m=j;m<n-1;m++) {
+            dd=fabs(d[m])+fabs(d[m+1]);
+            if (fabs(e[m])+dd == dd) break;  /* ??? */
+         }
+         if (m != j) {
+            if (iter++ == niter) {
+               status=-1;
+               break;
+            }
+            g=(d[j+1]-d[j])/(2*e[j]);
+
+            /* r=pythag(g,1); */
+
+            if((aa=fabs(g))>1)  r=aa*sqrt(1+1/(g*g));
+            else                r=sqrt(1+g*g);
+
+            g=d[m]-d[j]+e[j]/(g+SIGN(r,g));
+            s=c=1;
+            p=0;
+            for (i=m-1;i>=j;i--) {
+               f=s*e[i];
+               b=c*e[i];
+
+               /*  r=pythag(f,g);  */
+               aa=fabs(f); bb=fabs(g);
+               if(aa>bb)       { bb/=aa;  r=aa*sqrt(1+bb*bb); }
+               else if(bb==0)             r=0;
+               else            { aa/=bb;  r=bb*sqrt(1+aa*aa); }
+
+               e[i+1]=r;
+               if (r == 0) {
+                  d[i+1] -= p;
+                  e[m]=0;
+                  break;
+               }
+               s=f/r;
+               c=g/r;
+               g=d[i+1]-p;
+               r=(d[i]-g)*s+2*c*b;
+               d[i+1]=g+(p=s*r);
+               g=c*r-b;
+               for (k=0;k<n;k++) {
+                  f=z[k*n+i+1];
+                  z[k*n+i+1]=s*z[k*n+i]+c*f;
+                  z[k*n+i]=c*z[k*n+i]-s*f;
+               }
+            }
+            if (r == 0 && i >= j) continue;
+            d[j]-=p; e[j]=g; e[m]=0;
+         }
+      } while (m != j);
+   }
+   return(status);
+}
+
+#undef SIGN
+
+
 
 int MeanVar (double x[], int n, double *m, double *v)
 {
@@ -2477,7 +2674,7 @@ double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[],
 */
 
    if (noisy>2)
-      printf ("\n%4d h-lim-p%9.4f%9.4f%9.4f", Iround+1, step, limit, norm(p,n));
+      printf ("\n%4d h-lim-p%9.4f%9.4f%9.4f ", Iround+1, step, limit, norm(p,n));
 
    if (step<=0 || limit<small || step>=limit) {
       if (noisy>2) 
@@ -2604,7 +2801,7 @@ int Newton (FILE *fout, double *f, double (* fun)(double x[], int n),
    printf ("\n\nIterating by Newton\tnp:%6d\nInitial:", n);
    FOR (i,n) printf ("%8.4f", x0[i]);       FPN (F0);
    if (fout) fprintf (fout, "\n\nNewton\tnp:%6d\n", n);
-   if (testx (x0, n)) error2 ("Newton..\ainvalid initials.");
+   if (testx (x0, n)) error2("Newton..\ainvalid initials.");
    FOR (Iround, maxround) {
        if (ddfun)
            (*ddfun) (x0, f, g, H, n);
@@ -2727,7 +2924,7 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
       FPN(F0);  FOR(j,n) printf(" %9.6f", x[j]);  FPN(F0);
       FOR(j,n) printf(" %9.5f", xb[j][0]);  FPN(F0);
       FOR(j,n) printf(" %9.5f", xb[j][1]);  FPN(F0);
-      if(nfree<n) printf("warning: ming2, %d para at boundary.",n-nfree);
+      if(nfree<n) printf("warning: ming2, %d paras at boundary.",n-nfree);
    }
 
    f0=*f=(*fun)(x,n);
@@ -2771,12 +2968,12 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
          fail=0;
          FOR(i,n)  x[i]=x0[i]+alfa*p[i];
          if (fout) {
-            fprintf (fout, "\n%3d %7.4f%14.6f  x: ", Iround+1, SIZEp, *f);
+            fprintf (fout, "\n%3d %7.4f %13.6f  x: ", Iround+1, SIZEp, *f);
             FOR (i,n) fprintf (fout, "%8.5f  ", x[i]);
             fflush (fout);
          }
          w=.2;  if(e<1e-4) w=0.01;  if(e<1e-6) w=.001;
-         if (SIZEp<w && H_end(x0,x,f0,*f,e,e,n))
+         if (SIZEp<w && (f0- *f<2.0) && H_end(x0,x,f0,*f,e,e,n))
             break;
       }
       if (dfun)  (*dfun) (x, f, g, n);

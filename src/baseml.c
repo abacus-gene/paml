@@ -15,7 +15,8 @@
 #include <console.h>
 #endif
 
-#include "tools.h"
+#include "paml.h"
+
 #define NS            500
 #define NBRANCH       (NS*2-2)
 #define NNODE         (NS*2-1)
@@ -28,7 +29,7 @@
 /*
 #define NP            (NBRANCH+3*NNODE+NGENE+11+NCATG*NCATG-1)
 */
-extern int noisy, NFunCall, *ancestor, GenetCode[][64];
+extern int noisy, NFunCall, *ancestor, GeneticCode[][64];
 extern char AAs[];
 
 extern double *SeqDistance; 
@@ -137,10 +138,13 @@ int main(int argc, char *argv[])
    frub=fopen("rub","w");  frst=fopen(rstf,"w"); frst1=fopen("rst1","w");
 
 /*
-printf("\nrandom number seed? ");
-scanf("%d", &i);
-SetSeed(i);
-SubData(argc,argv);
+com.pi[0]=0.45; com.pi[1]=0.45; com.pi[2]=0.05; com.pi[3]=0.05; 
+com.model=4;
+EigenTN93 (com.model,1,1,com.pi,&nR,Root,Cijk);
+PMatCijk (PMat, 3./3.);
+matout (F0, PMat, 4,4);
+FOR(i,4) abyx(com.pi[i], PMat+i*4, 4);
+matout (F0, PMat, 4,4);
 exit(0);
 */
 
@@ -195,7 +199,7 @@ exit(0);
         || ((com.Mgene==2 || com.Mgene==4) && com.model==K80)
         || (com.Mgene>1 && com.nhomo>1) || (com.Mgene>=2 && com.model==UNREST))
          error2 ("model || Mgene");
-      fprintf (fout,"BASEML %15s %8s ", com.seqf, models[com.model]);
+      fprintf(fout,"BASEML (in %s)  %s  %s ", VerStr,com.seqf,models[com.model]);
       if(com.clock) fprintf(fout," %s ",clockstr[com.clock]);
       if (!com.nparK && com.alpha && com.rho) fprintf (fout, "  Auto-");
       if (com.alpha) fprintf (fout,"dGamma (ncatG=%d)", com.ncatG);
@@ -222,7 +226,7 @@ exit(0);
          if(SeqDistance==NULL||ancestor==NULL) error2("oom distance&ancestor");
       }
 
-      if (!READPATTERNFREQ) Initialize (fout, com.space, 0);
+      if (!READPATTERNFREQ) Initialize (fout, com.space);
       if (com.Mgene==3) FOR (i,com.ngene) xtoy(com.pi,com.piG[i],4);
 
       if (com.model==JC69 && !com.print && !READPATTERNFREQ) 
@@ -375,11 +379,12 @@ int Forestry (FILE *fout)
 
       if (iteration && np) {
          SetxBound (np, xb);
-         if(com.method==0 || com.ntime==0)
+         if(com.method==1)
+            j=minB(noisy>2?frub:NULL, &lnL,x,xb, com.space);
+         if(j==4 || com.method==0)
             j=ming2(noisy>2?frub:NULL,&lnL,com.plfun,NULL,x,xb, com.space,e,np);
-         else
-            minB(noisy>2?frub:NULL, &lnL,x,xb, com.space);
-         if (j || lnL<=0 || lnL>1e7) status=-1;  else status=0;
+
+         if (j==-1 || lnL<=0 || lnL>1e7) status=-1;  else status=0;
       }
 
       if (itree==0) { lnL0=lnLbest=lnL; btree=0; }
@@ -419,6 +424,7 @@ fprintf(frst,"%12.4f %4d ",-lnL,com.npatt);
       }
 
 /*    if(com.clock) SetBranch(x); */
+
       for(i=0,tl=0;i<tree.nnode;i++) if(i!=tree.root) tl+=nodes[i].branch;
       fprintf(fout,"\ntree length = %9.5f%s\n",tl,com.ngene>1?" (1st gene)":"");
       /* FPN(fout); OutaTreeN(fout,0,1); FPN(fout); */
@@ -439,7 +445,7 @@ fprintf(frst,"%12.4f %4d ",-lnL,com.npatt);
       fprintf(fout,"\n\n# of lfun calls:%10d\n", NFunCall);
 */
       if (com.model>=REV) 
-         EigenREV(fout, x+com.ntime+com.nrgene, com.pi, &nR, Root, Cijk);
+         eigenQREVbase(fout, x+com.ntime+com.nrgene, com.pi, &nR, Root, Cijk);
       
       com.print-=9;  com.plfun(x, np);  com.print+=9;
       if (com.print) {
@@ -651,14 +657,14 @@ int GetOptions (char *ctlf)
 
       for (i=0; i<nopt; i++) {
          if (strncmp(opt, optstr[i], 8)==0)  {
-            if (noisy>2)
+            if (noisy>=9)
                printf ("\n%3d %15s | %-20s %6.2f", i+1,optstr[i],opt,t);
             switch (i) {
                case ( 0): sscanf(pline+1, "%s", com.seqf);    break;
                case ( 1): sscanf(pline+1, "%s", com.outf);    break;
                case ( 2): sscanf(pline+1, "%s", com.treef);    break;
                case ( 3): noisy=(int)t;           break;
-               case ( 4): com.cleandata=(int)t;  break;
+               case ( 4): com.cleandata=(int)t;   break;
                case ( 5): com.verbose=(int)t;     break;
                case ( 6): com.runmode=(int)t;     break;
                case ( 7): com.method=(int)t;      break;
@@ -777,7 +783,7 @@ int GetInitials (double x[], int *fromfile)
                                   break;   /* nnode pi   */
    }
 
-   if(com.fix_branch==2)  com.ntime=0;
+   if(com.fix_branch==2)  { com.ntime=0; com.method=0; }
    else if(com.clock==0)  com.ntime=tree.nbranch;
    else if(com.clock==1)  com.ntime=tree.nnode-com.ns+(tree.root<com.ns);
    else if(com.clock==3)  com.ntime=tree.nnode-com.ns+(tree.root<com.ns)+1;
@@ -812,6 +818,10 @@ int GetInitials (double x[], int *fromfile)
    else if(com.fix_branch==0) {
       FOR (j,com.ntime) x[j]=rndu()*.02;
       if(com.ns<50) LSDistance (&t, x, testx);
+
+matout (F0, x, 1, com.ntime);
+printf("SS=%.8f\n", t);
+
    }
 
    FOR (j,com.nrgene) x[com.ntime+j]=1;
@@ -920,7 +930,7 @@ int SetParameters(double x[])
       xtoy(nodes[tree.root].pi, com.pi, 4);
    }
    else if (com.model==REV && com.Mgene<=1)
-      EigenREV (NULL, x+com.ntime+com.nrgene, com.pi, &nR, Root, Cijk);
+      eigenQREVbase (NULL, x+com.ntime+com.nrgene, com.pi, &nR, Root, Cijk);
    else if (com.model==UNREST && com.Mgene<=1)
       EigenUNREST (NULL, x+com.ntime+com.nrgene,com.pi,&nR,cRoot,cU,cV);
 
@@ -990,7 +1000,7 @@ int SetPGene(int igene, int _pi, int _UVRoot, int _alpha, double xcom[])
       else if (com.model<=TN93) 
          EigenTN93(com.model,ka1,ka2,com.pi,&nR,Root,Cijk);
       else if (com.model==REV)
-         EigenREV(NULL,xcom+k,com.pi,&nR,Root,Cijk);
+         eigenQREVbase(NULL,xcom+k,com.pi,&nR,Root,Cijk);
    }
    if (_alpha) {
       com.alpha=xcom[com.nrgene+com.nrate+com.npi+igene]; /* check?? */
@@ -1038,7 +1048,7 @@ int SetxBound (int np, double xb[][2])
 /* sets lower and upper bounds for variables during iteration
 */
    int i,j, k=com.ntime+com.nrgene+com.nrate, nf=0;
-   double tb[]={.4e-5, 99}, rgeneb[]={1e-4,999}, rateb[]={1e-5,999};
+   double tb[]={.4e-6, 99}, rgeneb[]={1e-4,999}, rateb[]={1e-5,999};
    double alphab[]={.04, 99}, rhob[]={-0.2, 0.99}, pb[]={.00001,.999999};
    double fb[]={-19,9}; /* transformed freqs.*/
 
@@ -1334,7 +1344,7 @@ void ReadPatternFreq (char* pexpf)
       for (j=0; j<com.ns; j++) {
          ch=fgetc(fpexp);
          while (!isalpha(ch)) ch=fgetc(fpexp);
-         com.z[j][h]=CodeChara((char)ch, 0);
+         com.z[j][h]=(char)CodeChara((char)ch, 0);
       }
       if (fscanf(fpexp,"%lf",&com.fpatt[h]) != 1) error2 ("ReadPatternFreq");
    }
@@ -1387,183 +1397,3 @@ Parameters include (ns-1) node times t[] and rates for branches.
   x[ns-1 .. ntime-1]: rates for branches
 
 */
-
-
-
-#ifdef SUBDATA
-
-int GetSubTreeN (int hasbranch, char keep[], int rennodes)
-{
-/* This extracts the sub tree when some species are kept (keep[i]=1) while 
-   others are removed.  Branch lengths are preserved by adding them up 
-   when nodes are removed.
-   The algorithm modifies tree.branches[] to change the tree topology and 
-   nodes[].branch and then updates nodes[].  If (rennodes), the nodes and 
-   species are renumbered consecutively, in which case OutaTreeN(?,1,?) should 
-   not be used as the pointers to species names are not updated.  
-   If (!rennodes), the old nodes and species numberes are used, in which case 
-   you can use both OutaTreeN(?,1,?) (which gives the correct species) or 
-   OutaTreeN(?,0,?) (which uses the old species numbers).
-   If the root has 2 sons (&& !com.clock), the tree is derooted.
-   The program checks that species to be removed are removed and species 
-   to be kept are kept.  Branch lengths are checked using small trees manually.
-
-   Returns -1 if error (e.g., if <2 seqs are to be kept).
-   Does not work if a current seq is ancestral and is removed.
-   keep[] keeps species, and bkeep[] keeps branches.
-   December 1998, Ziheng Yang
-*/
-   char bkeep[NBRANCH];
-   int ib,j,k,father,inode,sib,nson0=nodes[tree.root].nson,newn,nmark[NNODE];
-
-   if(nson0<2) puts("GetSubTreeN: strange root.");
-   FOR(ib,tree.nbranch) bkeep[ib]=1;
-   for(j=0,k=0;j<com.ns;j++) if(keep[j]) k++;
-   if(k==com.ns) return(0); else if(k<2) return(-1);
-
-   FOR(ib,tree.nbranch) {
-      if(!bkeep[ib]) continue;
-      inode=tree.branches[ib][1]; father=tree.branches[ib][0]; 
-      if(inode>=com.ns || keep[inode]) continue;
-      bkeep[ib]=0;
-
-      nodes[father].nson--;  /* remove inode as a son */
-      for(j=0,k=0;j<nodes[father].nson+1;j++) {
-         if(k) nodes[father].sons[j-1]=nodes[father].sons[j];
-         else if(nodes[father].sons[j]==inode)  k=1;
-      }
-      if(nodes[father].nson>=2)  continue;
-      if(nodes[father].nson==0) {
-         printf("\nib %d father %d\n", ib+1,father+1);
-         error2("This should not be possible.");
-      }
-      else if(nodes[father].nson==1) {
-         sib=nodes[father].sons[0];
-         if(sib==inode) error2("This should not be possible 1");
-
-         if(father==tree.root) {  /* remove old root */
-            tree.root=sib; bkeep[nodes[sib].ibranch]=0;
-         }
-         else {  /* remove father node and father branch & reset sib branch */
-            bkeep[nodes[father].ibranch]=0;
-            j=nodes[sib].father=nodes[father].father;
-            tree.branches[nodes[sib].ibranch][0]=j;
-            for(k=0; k<nodes[j].nson; k++) 
-               if(nodes[j].sons[k]==father) { nodes[j].sons[k]=sib; break; }
-            if(hasbranch) nodes[sib].branch+=nodes[father].branch;
-         }
-      }
-   }  /* for (ib) */
-   if(nodes[tree.root].nson<2) error2("strange");
-   else if(nodes[tree.root].nson==2 && !com.clock && 
-      nodes[tree.root].nson<nson0) {
-      /* deroot, k is new root */
-      j=nodes[tree.root].sons[0]; k=nodes[tree.root].sons[1];
-      if(j>k) {k=j; j=nodes[tree.root].sons[1]; }
-      if(k<com.ns) if(noisy) puts("only two seqs left.");
-
-      tree.root=k; 
-      bkeep[nodes[k].ibranch]=0; 
-      tree.branches[nodes[j].ibranch][0]=k;
-      tree.branches[nodes[j].ibranch][1]=j;
-      nodes[j].branch+=nodes[k].branch;
-   }
-
-   /* error2 checking, k=err */
-   for(ib=0,k=0; ib<tree.nbranch; ib++) /* deleted species j? */
-      if(bkeep[ib] && (j=tree.branches[ib][1])<com.ns && !keep[j]) k=1;
-   if(k) { printf("\n\aDeleted species %d still in tree\n",j+1); getchar(); }
-   FOR(k,com.ns) nmark[k]=0;    /* kept species? nmark[] for species in tree */
-   FOR(ib,tree.nbranch)  if(bkeep[ib]) 
-      FOR(j,2) if((k=tree.branches[ib][j])<com.ns) nmark[k]=1;
-   FOR(j,com.ns)  if((int)keep[j]!=nmark[j])
-      { printf("\a\nsp. %d should be kept?\n", j+1); getchar(); }
-
-   if(rennodes) {   /* renumber nodes, using nmark[] to mark nodes */
-      FOR(j,tree.nnode) nmark[j]=-1; /* absent */
-      FOR(ib,tree.nbranch) if(bkeep[ib]) FOR(j,2) nmark[tree.branches[ib][j]]=1;
-      for(j=0,newn=0; j<tree.nnode; j++) if(nmark[j]==1) nmark[j]=newn++;
-      for(ib=0,newn=0; ib<tree.nbranch; ib++)  if(bkeep[ib]) {
-         FOR(j,2) tree.branches[newn][j]=nmark[tree.branches[ib][j]];
-         inode=tree.branches[ib][1];
-         newn++;   /* new nbranch */
-      }
-      tree.nbranch=newn;  tree.root=nmark[tree.root];
-      FOR(j,tree.nnode)  nodes[nmark[j]].branch=nodes[j].branch;
-      BranchToNode();
-   }
-   else {
-      FOR (j,tree.nnode) ClearNode (j);
-      FOR (ib,tree.nbranch) {  /* BranchToNode(); */
-         if(!bkeep[ib]) continue; 
-         j=tree.branches[ib][0]; k=tree.branches[ib][1];
-         nodes[j].sons[nodes[j].nson++]=k;
-         nodes[k].father=j;  nodes[k].ibranch=ib;
-      }
-   }
-   return (0);
-}
-
-
-
-struct TREEB tree0;
-struct TREEN nodes0[2*NS-1];
-
-int SubData(int argc, char *argv[])
-{
-   FILE *fin, *fout;
-   char keep[NS], outfile[32]="s", infile[32]="mc.paup";
-   int i,j, ntree, pauptree=0, format=1;
-   int nkept=4, isample,nsample=5;
-
-   puts("\n\nUsage: SubData <infile> <outfile> <#seqs> <#sample>\n");
-   strcpy(com.seqf,infile);
-   if(argc>1)  strcpy(com.seqf,argv[1]);
-   if(argc>2)  strcpy(outfile, argv[2]);
-   if(argc>3)  sscanf(argv[3],"%d",&nkept);
-   if(argc>4)  sscanf(argv[4],"%d",&nsample);
-   printf("\nreading %s\twriting %s\n", com.seqf,outfile);
-   printf("%d samples of size %d\n", nsample,nkept);
-
-   if ((fin=fopen(com.seqf,"r"))==NULL) error2("infile error");
-   if ((fout=fopen(outfile,"w"))==NULL) error2("outfile creation error");
-   ReadSeq (NULL, fin, 0);
-   if(nkept>com.ns || nkept<2) error2("err");
-   GetTreeFileType(fin, &ntree, &pauptree, 1);
-   if (!pauptree) error2("Is this a paup data & tree file?");
-   PaupTreeRubbish(fin);
-   if (ReadaTreeN (fin, &i, 1)) error2 ("err reading tree.");
-
-   fprintf(fout,"#NEXUS\n[%d small samples of size %d, from\n",nsample,nkept);
-   OutaTreeN(fout,1,1); fputs("\n]\n\n",fout);
-   appendfile(fout,"paupstart");
-   tree0=tree;  memcpy(nodes0,nodes,sizeof(nodes));
-
-   for (isample=0; isample<nsample; isample++) {
-      printf("\ndata # %d: ", isample+1); 
-      tree=tree0;  memcpy(nodes,nodes0,sizeof(nodes));
-      FOR(i,com.ns) keep[i]=0;
-      for(i=0; i<nkept; ) 
-         { j=(int)(com.ns*rndu()); if(!keep[j]) { keep[j]=1; i++; } }
-
-      fprintf(fout,"\n\n[data # %d: ", isample+1);  
-      fputs("Species kept: ",fout);
-      FOR(i,com.ns)  if(keep[i]) fprintf(fout,"%2d ",i+1);
-      fputs("]\n",fout);
-      printSeqs(fout,NULL,keep,1);
-
-      /* do not renumber nodes, use GetSubTreeN(1,keep,0) &  OutaTreeN(?,1,?) */
-      GetSubTreeN(1,keep,0);
-
-      fputs("\nbegin trees;\n  tree smalltree=[&U] ", fout);   
-      OutaTreeN(fout,1,1); fputs("\nend;\n", fout);
-
-/*      OutaTreeN(F0,0,0);
-*/
-      appendfile(fout, "paupblock");
-
-   }
-   FPN(F0);
-   return(0);
-}
-#endif

@@ -20,7 +20,7 @@
 *  Thu May  6 15:22:31 CDT 1993
 ***************************************************************/
 
-#include "tools.h"
+#include "paml.h"
 
 #define BASE        2    /* base of floating point arithmetic */
 #define DIGITS     40    /* no. of digits to the base BASE in the fraction */

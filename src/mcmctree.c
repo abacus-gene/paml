@@ -12,6 +12,8 @@
      x[birth, death, mut, kappa etc.]  
 */
 
+#include "paml.h"
+
 #ifdef __MWERKS__
 /* Added by Andrew Rambaut to accommodate Macs -
    Brings up dialog box to allow command line parameters.
@@ -27,7 +29,6 @@
 #define NCODE         4
 #define NCATG         8
 
-#include "tools.h"
 extern int noisy, NFunCall;
 extern char BASEs[];
 
@@ -145,7 +146,7 @@ int main(int argc, char *argv[])
       printf ("\n birth & death & sample & mut: %9.4f%9.4f%9.4f%9.4f",
           com.birth, com.death, com.sample, com.mut);
       
-      Initialize (fout, space, 0);
+      Initialize (fout, space);
       if (com.model==JC69) PatternJC69like (fout);
       if (com.lkl) free(com.lkl);
       com.lkl=(double*)malloc((com.ns-1)*com.ncode*com.npatt*sizeof(double));

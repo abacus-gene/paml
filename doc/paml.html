@@ -9,10 +9,8 @@
 face="Bookman Old Style">Phylogenetic Analysis by Maximum
 Likelihood (PAML) </font></h1>
 
-<p align="center"><font color="#FF0000" size="4">Version 3.0c, January 2001</font></p>
-
-<p align="center"><font size="4"><strong>© </strong></font><a
-href="http://abacus.gene.ucl.ac.uk/"><font size="4"><strong>Ziheng
+<p align="center"><font color="#FF0000" size="4">Version 3.1, July 2001</font></p>
+<p align="center"><a href="http://abacus.gene.ucl.ac.uk/"><font size="4"><strong>Ziheng
 Yang</strong></font></a><strong> (</strong><a
 href="mailto:z.yang@ucl.ac.uk"><strong>z.yang@ucl.ac.uk</strong></a><strong>)</strong></p>
 
@@ -26,8 +24,9 @@ href="mailto:z.yang@ucl.ac.uk"><strong>z.yang@ucl.ac.uk</strong></a><strong>)</s
     <li><a href="#PAMLorNot">What does PAML do?</a> </li>
     <li><a href="#GetPAML">Downloading and Compiling PAML</a> </li>
     <li><a href="#Running">Running Programs in PAML </a></li>
-    <li><a href="#Bug">Bugs and Problems noted. Check this.</a> </li>
-    <li><a href="pamlDOC.pdf">Viewing and printing the Manual (pamlDOC.pdf)</a>
+    <li><a href="#History">History and Bug Fixes</a> </li>
+    <li><a href="pamlDOC.pdf">PAML Manual (pamlDOC.pdf)</a>
+    <li><a href="pamlFAQs.html">PAML FAQs</a>
     </li>
 </ul>
 
@@ -62,7 +61,7 @@ more information about running programs in the package.  </p>
     <li>Simulation of nucleotide, codon, and amino acid sequence
         data sets; </li>
     <li>Phylogenetic tree reconstruction by maximum likelihood
-        and Bayesian methods. </li>
+        and Bayesian methods (??). </li>
 </ul>
 
 <p>A summary of the types of analyses performed by different
@@ -124,7 +123,7 @@ programs in the package is given below. </p>
         Bayesian estimation of phylogenies using DNA sequence
         data (Rannala and Yang, 1996; Yang and Rannala, 1997).
         Markov chain Monte Carlo calculation of posterior
-        probabilities of trees. </li>
+        probabilities of trees.  The algorithm is too slow to be usable.</li>
     <li><font color="#FF0000" size="4"><code><b>evolver</b></code></font><b>:</b>
         This program used to be named <code>listtree</code> and
         does miscellaneous things, such as listing all rooted and
@@ -157,13 +156,7 @@ compare trees from relatively large data sets, one possibility is
 to get a collection of candidate trees and then compare them
 using more sophisticated models implemented in PAML. You can get
 candidate trees by using other programs/methods implemented in
-PAUP*, PHYLIP, MOLPHY etc. The new version of PAUP* 4.0 has
-implemented a number of likelihood models for nucleotide
-sequences, including the gamma model of variable rates among
-sites. Programs like DNAML in PHYLIP, NucML in MOLPHY, and
-fastDNAML are all good for tree search by maximum likelihood
-using nucleotide sequence data. ProtML in MOLPHY does a nice tree
-search using protein maximum likelihood.</p>
+PAUP*, PHYLIP, MOLPHY etc. </p>
 
 <p>PAML may be useful if you are interested in the process of
 sequence evolution. The two main programs, baseml and codeml,
@@ -245,11 +238,7 @@ compiler (say cc) by typing <br>
 optimization. The <code>-lm</code> switch forces a link to the
 math library. With some compilers or installations, this switch
 is unnecessary but using it does not harm. With some others, the
-switch causes compiling errors and has to be removed. </p>
-
-<p>Also a few files like <code>paml.cc</code> and <code>paml.gcc</code>
-have commands for compiling the programs using different
-compilers. Make sure you turn on the optimization.</p>
+switch causes compiling errors and has to be removed.  Look at the readme.txt file in the paml/src directory.</p>
 
 <p><b>PowerMacs (PPC or G3). </b>Download the compressed
 self-extracting archive for the PowerMac.  When you
@@ -306,29 +295,27 @@ and run K80 to get <i>l</i><sub>1</sub>. Then we compare 2(<i>l</i><sub>1</sub>
 - <i>l</i><sub>0</sub>) with the chi-square distribution with one
 degree of freedom.</p>
 
-<p><b>Running PAML.</b> Most programs in the PAML package have
-control files that specify the names of the sequence data file,
-the tree structure file, and models and options for the analysis.
-The control files are <code>baseml.ctl</code> for <code>baseml</code>
-and <code>basemlg</code>, <code>codeml.ctl</code> for <code>codeml</code>,
+<p><b>Running PAML.</b> Most programs in the PAML package have control
+files that specify the names of the sequence data file, the tree
+structure file, and models and options for the analysis.  The default
+control files are <code>baseml.ctl</code> for <code>baseml</code> and
+<code>basemlg</code>, <code>codeml.ctl</code> for <code>codeml</code>,
 <code>pamp.ctl</code> for <code>pamp</code>, <code>mcmctree.ctl</code>
-for <code>mcmctree</code>. The progam <code>evolver</code> does
-not have a control file, and uses a simple user interface. All
-you do is to type <code>evolver</code> and then choose the
-options. For other programs, you should prepare a sequence data
-file and a tree structure file, and modify the appropriate
-control files before running the programs. The formats of those
-files are detailed in the documentation in the package. </p>
+for <code>mcmctree</code>. The progam <code>evolver</code> does not
+have a control file, and uses a simple user interface. All you do is
+to type <code>evolver</code> and then choose the options. For other
+programs, you should prepare a sequence data file and a tree structure
+file, and modify the appropriate control files before running the
+programs. The formats of those files are detailed in the documentation
+in the package. </p>
 
-<p>You need to prepare a sequence data file (<i>e.g.</i>, <code>brown.nuc</code>)
-and modify the options in the appropriate control file (the
-defaults are <code>baseml.ctl</code> for <code>baseml</code>, <code>codeml.ctl</code>
-for <code>codeml</code>, <code>mcmctree.ctl</code> for <code>mcmctree</code>).
-If you have chosen <code>runmode</code> = 0 or 1 in the control
-file, which means that the tree topologies are specified, you
-also need to prepare a <i>tree structure file </i>(<i>e.g.</i>, <code>trees.4s</code>).
-On UNIX or Windows systems, you run the programs from a command
-prompt by </p>
+<p>You need to prepare a sequence data file (<i>e.g.</i>,
+<code>brown.nuc</code>) and modify the options in the appropriate
+control file.  If you have chosen <code>runmode</code> = 0 or 1 in the
+control file, which means that the tree topologies are specified, you
+also need to prepare a <i>tree structure file </i>(<i>e.g.</i>,
+<code>trees.4s</code>).  On UNIX or Windows systems, you run the
+programs from a command prompt by </p>
 
 <dir>
     <i>ProgramName</i> [for example, baseml]
@@ -342,42 +329,33 @@ prompt by </p>
 
 <p>On the Mac, you simply click on the program name or icon. You
 can do this on a Windows machine too, but it is better if you
-open a command box and run the program from there. On UNIX
-machines, one can use aliases to define new commands. For
-example, you can prepare a control file <code>aaml.ctl</code> for
-amino acid sequences and another control file <code>codonml.ctl</code>
-for codon sequences. Then you can define new commands <code>aaml</code>
-and <code>codonml</code> as following </p>
+open a command box and run the program from there. 
 
-<dir>
-    <code>alias aaml 'codeml aaml.ctl' <br>
-        alias codonml 'codeml codonml.ctl' </code>
-</dir>
+<h2><a name="History">History and Bug Fixes </a></h2>
 
+<p><a href="PamlHistory.txt">Update history and bug fixes </a>
+collected here. </p>
 
-<h2><a name="Bug">Bugs and Problems </a></h2>
-
-<p><a href="PamlHistory.txt">Notes and bugs since the last release</a>
-will be collected here. </p>
-
-<p>Your suggestions and criticisms are appreciated. If you are
-struggling with the output format for example, please let me
-know. Sometimes the change is minimal, but I often have problems
-in deciding which format will be most convenient. Send a message
+<p>Your suggestions and criticisms are appreciated. Send a message
 to <a href="mailto:z.yang@ucl.ac.uk">z.yang@ucl.ac.uk</a>. </p>
 
-<p><b>When reporting problems, please mention the version number
-of the package you use (for example, 2.0k for UNIX) and include a
-copy of the control file (</b><code><b>baseml.ctl</b></code><b>
-or </b><code><b>codeml.ctl</b></code><b>). I would also like to
-know the number of sequences and the sequence length in the data,
-if the problem has to do with the size of the data. Please let me
-know exactly what happened and when, and inlcude error messages
-and screen output generated by the program. </b></p>
+<p><b>When reporting problems, please mention the version number of
+the package you use (for example, 3.0c for UNIX) and include a copy of
+the control file (</b><code><b>baseml.ctl</b></code><b> or
+</b><code><b>codeml.ctl</b></code><b>).  Please let me know exactly
+what happened and when, and inlcude screen output generated by the
+program, especially the last few lines on the screen.  I would also
+like to know the number of sequences and the sequence length in case
+the problem has to do with the size of the data set.</b> <p>
+
+Try to provide enough information for me to understand and reproduce the
+problem.  The most frustrating email I get says "PAML does not work on
+my data.  Can you help?", without any explanation about what the
+problem is.
 
 <hr>
 
 <p>Last modified by Ziheng Yang<br>
-Thurs11 May, 1999 </p>
+15 July, 2001 </p>
 </body>
 </html>

@@ -10,15 +10,14 @@
   Codon sequences are encoded as 0,1,...,63, different from codeml.c.
   Routines in the two files should not be mixed.
 */
-#include "tools.h"
+#include "paml.h"
 #define NS            500
 #define LSPNAME       30
 #define NCODE         64
 #define NGENE         1
 
 int GetOptions (char *ctlf);
-int ReadSeq1 (FILE *fout, FILE *fseq);
-int EncodeSeq(void);
+int EncodeSeqCodon(void);
 int Statistics(FILE *fout, double space[]);
 int DistanceMatNG86 (FILE *fout, double alpha);
 int DistanceYN00(int is, int js, double*S, double*N, double*dS,double*dN,
@@ -60,7 +59,7 @@ enum {Fequal, F1x4, F3x4, Fcodon} CodonFreqs;
 
 FILE *frst, *frst1, *frub;
 extern char BASEs[], AAs[], Nsensecodon[];
-extern int GenetCode[][64];
+extern int GeneticCode[][64];
 extern int noisy;
 enum {NODEBUG, KAPPA, SITES, DIFF} DebugFunctions;
 int debug=0;
@@ -101,7 +100,7 @@ int main(int argc, char *argv[])
 
    k=max2(64*64,com.ls/3)*sizeof(double);
    if ((com.fpatt=(double*)malloc(k))==NULL)  error2("oom fpatt");
-   EncodeSeq();   /* ls changed to ls/3 in this */
+   EncodeSeqCodon();   /* ls changed to ls/3 in this */
    com.npatt=com.ls;  FOR(k,com.ls) com.fpatt[k]=1;
 
    fprintf (fout,"YN00 %15s", com.seqf);
@@ -112,8 +111,7 @@ int main(int argc, char *argv[])
    fputs("\nEstimation by the method of Yang & Nielsen (2000):\n",fout);
    if(!com.iteration) fputs("(equal weighting of pathways)\n",fout);
 
-   if(com.fcommon) GetFreqs(-1,-1,f3x4,com.pi);
-   matout(frst,f3x4,3,4);
+   if(com.fcommon)  GetFreqs(-1,-1,f3x4,com.pi);
    if(com.kcommon) {
       GetKappa();
       printf("kappa = %.2f\n\n",com.kappa);
@@ -137,9 +135,9 @@ int main(int argc, char *argv[])
          j=DistanceYN00(is, js, &S, &N, &dS,&dN, &t,space);
 
          fprintf(fout,"%7.1f %7.1f %8.4f%8.4f%8.4f%7.4f%7.4f\n",S,N,t,com.kappa,com.omega,dN,dS);
-	 /*
-         fprintf(frst,"%8.4f%8.4f%8.4f%7.4f%7.4f\n",t,com.kappa,com.omega,dN,dS);
-	 */
+	 
+         /* fprintf(frst,"YN: %8.4f%8.4f%8.4f%7.4f%7.4f\n",t,com.kappa,com.omega,dN,dS); */
+	 
          fprintf(fds," %7.4f",dS); fprintf(fdn," %7.4f",dN); fprintf(ft," %7.4f",t);
       }    /* for (js) */
       FPN(fds); FPN(fdn); FPN(ft);   fflush(fds); fflush(fdn); fflush(ft);
@@ -153,9 +151,9 @@ int main(int argc, char *argv[])
 
 int GetOptions (char *ctlf)
 {
-   int i, nopt=7, lline=255; 
+   int i, nopt=8, lline=255; 
    char line[255], *pline, opt[20], comment='*';
-   char *optstr[]={"seqfile","outfile", "verbose", "icode", 
+   char *optstr[]={"seqfile","outfile", "verbose", "noisy", "icode", 
         "weighting","commonkappa", "commonf3x4"};
    double t;
    FILE *fctl;
@@ -179,10 +177,11 @@ int GetOptions (char *ctlf)
                case (0): sscanf(pline+2, "%s", com.seqf);    break;
                case (1): sscanf(pline+2, "%s", com.outf);    break;
                case (2): com.verbose=(int)t;     break;
-               case (3): com.icode=(int)t;       break;
-               case (4): com.iteration=(int)t;   break;
-               case (5): com.kcommon=(int)t;     break;
-               case (6): com.fcommon=(int)t;     break;
+               case (3): noisy=(int)t;           break;
+               case (4): com.icode=(int)t;       break;
+               case (5): com.iteration=(int)t;   break;
+               case (6): com.kcommon=(int)t;     break;
+               case (7): com.fcommon=(int)t;     break;
             }
             break;
          }
@@ -253,27 +252,27 @@ int DistanceYN00(int is, int js, double*S, double*N, double*dS,double*dN,
 
 
 
-int EncodeSeq(void)
+int EncodeSeqCodon(void)
 {
-/* encode sequences into 0, 1, ..., 63
-   check for stop codons
+/* encode sequences into 0, 1, ..., 63.  Checks for stop codons
+   The sequences are already transformed in ReadSeq()
 */
-   char str[4]="";
+   char str[4]="   ";
    int is,h,j, it, indel=0, c[3];
 
    FOR (is, com.ns) {
       for (h=0; h<com.ls; h++) {
          for(j=0,it=0;j<3;j++) {
-            c[j]=CodeChara(com.z[is][h*3+j],0);
+            c[j]=com.z[is][h*3+j];
             if(c[j]<0 || c[j]>3) { it=-1; indel=1; }
          }
          if (it)
             printf("Strange character at codon %d seq. %d",h+1,is+1);
          com.z[is][h]=(char)(it=c[0]*16+c[1]*4+c[2]);
-         if (GenetCode[com.icode][it]==-1) {
+         if (GeneticCode[com.icode][it]==-1) {
            printf("\a\nStop codon %s at %d seq %d\n",getcodon(str,it),h+1,is+1);
            exit(-1);
-	 }
+         }
       }
    }
    if (indel) error2("indel?");
@@ -344,7 +343,7 @@ int GetFreqs(int is1, int is2, double f3x4[], double pi[])
    if (noisy>=9)  matout(F0,f3x4,3,4);
    FOR(j,64) {
       pi[j] = f3x4[j/16] * f3x4[4+(j%16)/4] * f3x4[8+j%4];
-      if (GenetCode[com.icode][j]==-1) { fstop+=pi[j]; pi[j]=0; }
+      if (GeneticCode[com.icode][j]==-1) { fstop+=pi[j]; pi[j]=0; }
    }
    FOR(j,64) pi[j]/=(1-fstop);
    if (fabs(1-sum(pi,64))>1e-6) error2("err GetFreqs()");
@@ -360,7 +359,7 @@ int DistanceMatNG86 (FILE *fout, double alpha)
    changed coding com.z[][] for this program.
 */
    int i,j, h, wname=15, status=0, ndiff;
-   char codon1[4], codon2[4], str[4]="";
+   char codon1[4], codon2[4], str[4]="   ";
    double dS=-1,dN=-1,dN_dS=-1, ns, na, nst, nat, S,N, St,Nt, y;
 
    if(noisy) puts("\nEstimation by the method of Nei & Gojobori (1986):\n");
@@ -422,7 +421,7 @@ int GetKappa(void)
    double ka[2], F[2][16],S[2],wk[2], t,P,Q,pi[4];
                  /* F&S&wk [0]: non-degenerate; [1]:4-fold;  S:sites */
    double kdefault=(com.kappa>0?com.kappa:(com.icode==1?10:2));
-   char str1[4]="",str2[4]="", *metstr[2]={"non-degenerate","4-fold"};
+   char str1[4]="   ",str2[4]="   ", *metstr[2]={"non-degenerate","4-fold"};
 
    for(is=0,com.kappa=0;is<com.ns;is++) {
       FOR (js,is) {
@@ -432,7 +431,7 @@ int GetKappa(void)
             c[0]=com.z[is][h]; c[1]=com.z[js][h];
             FOR(k,2) {
                b[k][0]=c[k]/16; b[k][1]=(c[k]%16)/4; b[k][2]=c[k]%4;
-               aa[k]=GenetCode[com.icode][c[k]];
+               aa[k]=GeneticCode[com.icode][c[k]];
             }
 /*
 printf("\nh=%2d: %s (%c) .. %s (%c) ", h+1,getcodon(str1,c[0]),AAs[aa[0]],
@@ -443,7 +442,7 @@ printf("\nh=%2d: %s (%c) .. %s (%c) ", h+1,getcodon(str1,c[0]),AAs[aa[0]],
                for(k=0,ndeg=0;k<2;k++) {       /* two codons */
                   FOR(i1,4) {
                      if(i1==b[k][pos]) continue;
-                     a=GenetCode[com.icode][c[k]+(i1-b[k][pos])*by[pos]];
+                     a=GeneticCode[com.icode][c[k]+(i1-b[k][pos])*by[pos]];
                      if(a==aa[k]) break;
                   }
                   if(i1==4) ndeg++;
@@ -457,7 +456,7 @@ printf("\nh=%2d: %s (%c) .. %s (%c) ", h+1,getcodon(str1,c[0]),AAs[aa[0]],
             /* find 4-fold degenerate sites at 3rd positions */
             for(k=0,ndeg=0;k<2;k++) {       /* two codons */
                for(j=0,i1=c[k]-b[k][2]; j<4; j++) 
-                  if(j!=b[k][2] && GenetCode[com.icode][i1+j]!=aa[k]) break;
+                  if(j!=b[k][2] && GeneticCode[com.icode][i1+j]!=aa[k]) break;
                if(aa[0]==aa[1] && j==4) ndeg++;
             }
 /*
@@ -513,13 +512,13 @@ int CountSites(char z[],double pi[],double*Stot,double*Ntot,double fbS[],double 
    *Stot=*Ntot=0;  FOR(k,4) fbS[k]=fbN[k]=0;
    for (h=0; h<com.npatt; h++)  {
       c[0]=z[h]; b[0]=c[0]/16; b[1]=(c[0]%16)/4; b[2]=c[0]%4;
-      aa[0]=GenetCode[com.icode][c[0]];
+      aa[0]=GeneticCode[com.icode][c[0]];
       if (aa[0]==-1) error2("stop codon");
       for (j=0,S=N=0; j<3; j++) {
          FOR (k,4) {    /* b[j] changes to k */
             if (k==b[j]) continue;
             c[1]=c[0]+(k-b[j])*by[j];
-            aa[1]=GenetCode[com.icode][c[1]];
+            aa[1]=GeneticCode[com.icode][c[1]];
             if(aa[1]==-1) continue;
             r=pi[c[1]];
             if (k+b[j]==1 || k+b[j]==5) r*=kappa; /* transition */
@@ -550,8 +549,8 @@ int GetPMatCodon(double P[],double t, double kappa, double omega, double pi[],
    for (i=0; i<n; i++) FOR (j,i) {
       from[0]=i/16; from[1]=(i/4)%4; from[2]=i%4;
       to[0]=j/16;   to[1]=(j/4)%4;   to[2]=j%4;
-      c[0]=GenetCode[com.icode][i];
-      c[1]=GenetCode[com.icode][j];
+      c[0]=GeneticCode[com.icode][i];
+      c[1]=GeneticCode[com.icode][j];
       if (c[0]==-1 || c[1]==-1)  continue;
       for (k=0,ndiff=0; k<3; k++)  if (from[k]!=to[k]) { ndiff++; pos=k; }
       if (ndiff!=1)  continue;
@@ -602,7 +601,7 @@ int CountDiffs(char z1[],char z2[],
    stspath[k] stvpath[k] ntspath[k] ntvpath[k] are syn ts & tv and 
    nonsyn ts & tv differences on path k (k=2,6).
 */
-   char str[4]="";
+   char str[4]="   ";
    int h,i1,i2,i,k, transi, c[2],ct[2],aa[2], by[3]={16,4,1};
    int dmark[3], step[3], b[2][3], bt1[3], bt2[3];
    int ndiff, npath, nstop, stspath[6],stvpath[6],ntspath[6],ntvpath[6];
@@ -614,7 +613,7 @@ int CountDiffs(char z1[],char z2[],
       if (c[0]==c[1]) continue;
       FOR(i,2) {
          b[i][0]=c[i]/16; b[i][1]=(c[i]%16)/4; b[i][2]=c[i]%4;
-         aa[i]=GenetCode[com.icode][c[i]];
+         aa[i]=GeneticCode[com.icode][c[i]];
       }
       if (aa[0]==-1||aa[1]==-1)
          error2("stop codon in sequence.");
@@ -657,7 +656,7 @@ if(debug==DIFF) printf("\npath %d: ", k+1);
                   ct[1]+=bt2[i2]*by[i2];
                }
                ppath[k]*=PMat[ct[0]*64+ct[1]];
-               FOR(i2,2) aa[i2]=GenetCode[com.icode][ct[i2]];
+               FOR(i2,2) aa[i2]=GeneticCode[com.icode][ct[i2]];
 
 if(debug==DIFF) printf("%s (%c) %.5f: ", getcodon(str,ct[1]),AAs[aa[1]],PMat[ct[0]*64+ct[1]]);
 
@@ -688,7 +687,9 @@ if(debug==DIFF) printf("  p =%.9f", ppath[k]);
 
                getchar(); exit(-1);
 
-               sump=1; FOR(k,npath) if(ppath[k]) ppath[k]=1./(npath-nstop);
+               /* 
+               sump=1; FOR(k,npath) if(ppath[k]) ppath[k]=1./(npath-nstop); 
+               */
             }
             for(k=0;k<npath;k++) { 
                p=ppath[k]/sump;
@@ -839,7 +840,7 @@ int ExpPattFreq(double t,double kappa,double omega,double pi[],double space[])
 
    GetPMatCodon(PMat, t, kappa, omega, pi, 1e-8, space);
    for(i=0,h=0;i<n;i++) for(j=0;j<=i;j++) {
-      if(GenetCode[com.icode][i]==-1 || GenetCode[com.icode][j]==-1) continue;
+      if(GeneticCode[com.icode][i]==-1 || GeneticCode[com.icode][j]==-1) continue;
       com.z[0][h]=(char)i; com.z[1][h]=(char)j;
       y=pi[i]*PMat[i*n+j];
       if(i!=j) y+=pi[j]*PMat[j*n+i];
@@ -869,7 +870,7 @@ int InfiniteData(double t,double kappa,double omega,double f3x4_0[],double space
 
    for(j=0,s=0; j<64; j++) {
       pi0[j]=f3x4_0[j/16]*f3x4_0[4+(j%16)/4]*f3x4_0[8+j%4];
-      if (GenetCode[com.icode][j]==-1) pi0[j]=0;
+      if (GeneticCode[com.icode][j]==-1) pi0[j]=0;
       s+=pi0[j];
    }
    FOR(j,64) pi0[j]=com.pi[j]=pi0[j]/s;
@@ -980,14 +981,14 @@ void SimulateData2s64(FILE* fout, double f3x4_0[], double space[])
    int ip,nil=1, ls[]={500, 100,500};
    double y, t=.5, x[6], S,N,dS=0,dN=0, f3x4[12];
    double t0,kappa0,omega0,pi0[NCODE],Efij[NCODE*NCODE], mx[6],vx[6],mse[2];
-   char str[4]="";
+   char str[4]="   ";
    FILE*ftmp=NULL;
 
    puts("\nThis simulates data and analyses them using NG86 & YN00.");
 
    for(j=0,y=0; j<64; j++) {
       pi0[j]=f3x4_0[j/16]*f3x4_0[4+(j%16)/4]*f3x4_0[8+j%4];
-      if (GenetCode[com.icode][j]==-1) pi0[j]=0;
+      if (GeneticCode[com.icode][j]==-1) pi0[j]=0;
       y+=pi0[j];
    }
    FOR(j,64) pi0[j]/=y;
@@ -1017,7 +1018,7 @@ void SimulateData2s64(FILE* fout, double f3x4_0[], double space[])
          xtoy(com.fpatt,Efij,npatt0);
          for(h=1;h<npatt0; h++) Efij[h]+=Efij[h-1];
          if(fabs(1-Efij[npatt0-1])>1e-6) puts("Sum p_ij != 1.");
-   
+
          com.ls=ls[il];
          printf("\nls = %d\n", com.ls);
          zero(mx,6); zero(vx,6); mse[0]=mse[1]=0;
@@ -1027,7 +1028,7 @@ void SimulateData2s64(FILE* fout, double f3x4_0[], double space[])
             MultiNomial (com.ls, npatt0, Efij, nobs, NULL);
    
             for(i=h=com.npatt=0; i<NCODE; i++) for(j=0;j<=i;j++) {
-               if(GenetCode[com.icode][i]==-1 || GenetCode[com.icode][j]==-1) 
+               if(GeneticCode[com.icode][i]==-1 || GeneticCode[com.icode][j]==-1) 
                   continue;
                if(nobs[h++]==0) continue;
                com.z[0][com.npatt]=(char)i; com.z[1][com.npatt]=(char)j;

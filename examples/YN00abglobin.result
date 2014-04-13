@@ -1,3 +1,12 @@
+This file has estimates of dN and dS in pairwise comparisons of
+sequences in the abglobin.nuc data set.  The methods used include that
+of Nei and Gojobori (1986), implemented in codeml and yn00, the method
+of Yang and Nielsen (2000), implemented in yn00, as well as the ML
+method of Goldman and Yang (1994), implemented in codeml.
+
+Ziheng Yang
+
+
 ns =   5	ls = 285
 
 Nei & Gojobori 1986. dN/dS (dN, dS)

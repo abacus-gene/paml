@@ -4,23 +4,26 @@ Ziheng Yang
 Please report any bugs or comments to Ziheng Yang at z.yang@ucl.ac.uk.
 
 
-TO BE RELEASED
 Version 3.1
 
 Changed the way of counting base or amino acid frequencies so that
 this version of baseml or codeml might generate different results from
-previous versions under the following model specifications.  There is
-no difference if your data do not contain any alignment gaps or
-ambiguity characters or if you choose to remove them before any
+previous versions under the following model specifications.  
+
+   . baseml & aaml: if you have multiple genes and the model uses the same
+   frequencies in the model for the different site partitions.  
+
+   . codonml:
+   if you have ambiguity characters at all.  Ambiguity characters were ignored 
+   when counting frequencies in previous versions but are used now.
+
+There is no difference if your data do not contain any alignment gaps
+or ambiguity characters or if you choose to remove them before any
 analysis (cleandata = 1).  The early versions used two ad hoc methods
 in dealing with such ambiguity characters in different places of the
-programs.  The new version uses another ad hoc method and in all places.
-
-baseml & aaml: if you have multiple genes and the model uses the same
-frequencies in the model for the different site partitions.  
-codonml:
-if you have ambiguity characters at all.  Ambiguity characters were ignored 
-when counting frequencies in previous versions but are used now.
+programs.  The new version uses another ad hoc method and in all
+places.  I think it will be fine which ever version you use, but do
+not use different versions in the same analysis.
 
 codonml (codeml with seqtype = 1) with Mgene = 1 does not work
 correctly if the sequences have alignment gaps or ambiguity
@@ -35,7 +38,7 @@ output for the codon + gamma model, parameter alpha is not correctly
 identified.  If you have fix_kappa = 0, fix_omega =0, and fix_alpha=0,
 the last three numbers should be kappa, omega (dn/ds), and alpha.  The
 detailed output did not identify alpha correctly, although the
-likelhood value and the outputted rates and frequences (r and f) are
+likelihood value and the outputted rates and frequencies (r and f) are
 correct.  I believe this is now corrected.
 
 
@@ -46,20 +49,25 @@ codonml (codeml with seqtype = 1) with model = 1: The program crashes
 when you have a small tree with <= 5 branches.  This is a new error
 introduced in version 3.0c.  It is now fixed.
 
+baseml and codeml (clock = 1 or clock = 2) sometimes print out ridiculous
+tree lengths and branch lengths.  
+
+yn00 in version 3.0c ignores icode and uses the universal code only.
+It was correct in vesion 3.0b.  This is fixed in version 3.0d.
 
 
 20 February 2001, versions 3.0c-3.0d
 
 We bought a Pentium III cluster running redhat linux 6.2.  The gcc
-compiler 2.61 has bugs and codeml does not run for NSsites = 7 or 8.
-The program might output "points out of order" or "Det goes to 0"
-error messages.  3.0d seems to be safer for these models.
+compiler 2.61 seems to have bugs and codeml does not run for NSsites =
+7 or 8.  The program might output "points out of order" or "Det goes
+to 0" error messages.  3.0d seems to be safer for these models.
 
 codonml (codeml with seqtype = 1) with NSsites = 3 might generate a
 message "error: sortwM3." and then stop with no output after the
 iteration.  This is now fixed.  During the iteration, there was no
 restriction on the w values, so that w0 can be greater than w1 and so
-on.  At the end of the iteration, I sort the three w values so taht w0
+on.  At the end of the iteration, I sort the three w values so that w0
 < w1 < w2 before outputting.  3.0c has a bug at sorting.  If you don't
 see the error message, everything is fine.
 
@@ -86,7 +94,7 @@ times.  In earlier versions, the output list proportions.
 calculation was o.k., but identification of sites under positive
 selection was incorrect as the program attempted to list sites in
 another gene when it was analyzing data for one gene.  (1) Mgene
-options for codons and aminos:
+options for codons and amino acids:
 
 
 

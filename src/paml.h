@@ -1,13 +1,16 @@
-/*   tools.h */
+/* paml.h 
+*/
 
-#ifndef TOOLS_H
-#define TOOLS_H
+#ifndef PAML_H
+#define PAML_H
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
 #include <math.h>
+#include <limits.h>
+#include <float.h>
 #include <time.h>
 
 #define square(a) ((a)*(a))
@@ -17,14 +20,12 @@
 #define min2(a,b) ((a)<(b)?(a):(b))
 #define max2(a,b) ((a)>(b)?(a):(b))
 #define PI 3.141592653
-#define MACHINEPRESICISION 1e-328
-#define logMACHINEPRESICISION -747
 
 #define beep putchar('\a')
 #define spaceming2(n) ((n)*((n)*2+9+2)*(int)sizeof(double))
 
 int ReadSeq (FILE *fout, FILE *fseq);
-int Initialize (FILE *fout, double space[], int seqtype);
+int Initialize (FILE *fout, double space[]);
 int MoveCodonSeq (int ns, int ls, char *z[]);
 int PatternWeight (FILE *fout, double space[]);
 int PatternJC69like (FILE *fout);
@@ -82,8 +83,10 @@ int PickExtreme (FILE *fout, char z[], int ls,int iring,int lfrag,int ffrag[]);
 int print1seq (FILE*fout, char *z, int ls, int encoded, int pose[]);
 void printSeqs(FILE *fout, int *pose, char keep[], int format);
 int printSeqsMgenes (void);
-int printsma(FILE*fout,char*spname[],char*z[],int ns, int l, int lline, 
-    int gap, int simple, int pose[]);
+int printsma(FILE*fout, char*spname[], char*z[],
+    int ns, int l, int lline, int gap, int seqtype, 
+    int transformed, int simple, int pose[]);
+int printsmaCodon (FILE *fout,char * z[],int ns,int ls,int lline,int simple);
 int zztox ( int n31, int l, char z1[], char z2[], double *x );
 int testXMat (double x[]);
 double SeqDivergence (double x[], int model, double alpha, double *kapa);
@@ -101,8 +104,8 @@ int PMatCijk (double PMat[], double t);
 int EvolveHKY85 (char source[], char target[], int ls, double t, 
     double rates[], double pi[], double kapa, int isHKY85);
 int DistanceMatNuc (FILE *fout, int model, double alfa);
-int EigenREV (FILE* fout, double kapa[], double pi[], 
-              int *nR, double Root[], double Cijk[]);
+int EigenREVbase (FILE* fout, double kapa[], double pi[], 
+                  int *nR, double Root[], double Cijk[]);
 
 int BootstrapSeq (char* seqfilename);
 int rell(FILE*flnf, FILE*fout, int ntree);
@@ -151,9 +154,7 @@ int matout2 (FILE *fout, double x[], int n, int m, int wid, int deci);
 int mattransp1 (double x[], int n);
 int mattransp2 (double x[], double y[], int n, int m);
 int matinv (double x[], int n, int m, double space[]);
-int QRdecomp (double A[], int m, int n, double Q[]);
-int CholeskyDecomp (double A[], int n, double L[]);
-
+int eigenRealSym(double A[], int n, double Root[], double Offdiag[]);
 int eigen (int job, double A[], int n, double rr[], double ri[],
           double vr[], double vi[], double w[]);
 
@@ -298,5 +299,7 @@ void EvolveJC (int inode);
 /*
 #define DEBUG 9
 */
+
+#define VerStr "paml 3.1 July 2001"
 
 #endif

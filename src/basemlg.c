@@ -7,6 +7,9 @@
                         basemlg <ControlFileName>
 */
 
+
+#include "paml.h"
+
 #ifdef __MWERKS__
 /* Added by Andrew Rambaut to accommodate Macs -
    Brings up dialog box to allow command line parameters.
@@ -23,7 +26,6 @@
 #define NCODE    4
 #define NP       (NBRANCH+NGENE+5)
 
-#include "tools.h"
 extern char BASEs[];
 extern int noisy, NFunCall, *ancestor;
 extern double *SeqDistance;
@@ -81,7 +83,7 @@ int LASTROUND=0; /* no use for this */
 int main(int argc, char *argv[])
 {
    char ctlf[32]="baseml.ctl";
-   double  *space, kappat=0;
+   double  *space;
    FILE *fout, *fseq;
 
 #ifdef __MWERKS__
@@ -121,7 +123,7 @@ int main(int argc, char *argv[])
    ancestor=(int*)malloc(com.ns*(com.ns-1)/2*sizeof(int));
    if (SeqDistance==NULL||ancestor==NULL) error2("oom");
 
-   Initialize (fout, space, 0);
+   Initialize (fout, space);
    if (com.model==JC69) PatternJC69like (fout);
 
    DistanceMatNuc (fout, com.model, com.alpha);

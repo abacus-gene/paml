@@ -2,7 +2,7 @@
    collection of tree perturbation routines
 */
 
-#include"tools.h"
+#include "paml.h"
 
 int MakeTreeIb (int ns, int Ib[], int rooted)
 {
