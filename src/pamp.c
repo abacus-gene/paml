@@ -31,7 +31,8 @@ double lfunAlpha_Sullivan (double x);
 double lfunAlpha_YK96 (double x);
 
 struct CommonInfo {
-   char *z[NS], *spname[NS], seqf[256],outf[256],treef[256];
+   unsigned char *z[NS];
+   char *spname[NS], seqf[256],outf[256],treef[256];
    int seqtype, ns, ls, ngene, posG[NGENE+1],lgene[NGENE],*pose,npatt, readpattern;
    int np, ntime, ncode,fix_kappa,fix_rgene,fix_alpha, clock, model, ncatG, cleandata;
    int print, nhomo;
@@ -78,7 +79,7 @@ int main (int argc, char *argv[])
    GetOptions(ctlf);
    if(argc>1) { strcpy(ctlf, argv[1]); printf("\nctlfile set to %s.\n",ctlf);}
 
-   printf("PAMP in %s\n",  VerStr);
+   printf("PAMP in %s\n", pamlVerStr);
    if ((fseq=fopen(com.seqf, "r"))==NULL) error2 ("seqfile err.");
    if ((fout=fopen (com.outf, "w"))==NULL) error2("outfile creation err.");
    if((fseq=fopen (com.seqf,"r"))==NULL)  error2("No sequence file!");

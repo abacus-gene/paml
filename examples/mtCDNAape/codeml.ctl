@@ -14,7 +14,7 @@
    aaRatefile = ../../dat/wag.dat * only used for aa seqs with model=empirical(_F)
                    * dayhoff.dat, jones.dat, wag.dat, mtmam.dat, or your own
 
-        model = 2
+        model = 0
                    * models for codons:
                       * 0:one, 1:b, 2:2 or more dN/dS ratios for branches
 

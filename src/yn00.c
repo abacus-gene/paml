@@ -8,11 +8,7 @@
                  cl -O2 yn00.c tools.o
                  yn00 <SequenceFileName>
 
-  Codon sequences are encoded as 0,1,...,63, and matrices P(t) and Q
-  etc. have size 64x64.  This is different from codeml.c.  
-  Care should be taken when moving routines between yn00 and codeml.
-
-  Routines in the two files should not be mixed.
+  Codon sequences are encoded as 0,1,...,61, as in codeml.c.
 */
 #include "paml.h"
 #define NS            1000
@@ -44,9 +40,10 @@ int InfiniteData(double t,double kappa,double omega,double f3x4_0[],
 void SimulateData2s64(FILE* fout, double f3x4_0[], double space[]);
 
 struct common_info {
-   char *z[NS], *spname[NS], seqf[256],outf[256];
+   unsigned char *z[NS];
+   char *spname[NS], seqf[512],outf[512];
    int ns,ls,npatt,codonf,icode,ncode,getSE,*pose,verbose, seqtype, readpattern;
-   int cleandata, fcommon,kcommon, iteration, ndata, print;
+   int cleandata, fcommon,kcommon, weighting, ndata, print;
    double *fpatt, pi[NCODE], f3x4s[NS][12], kappa, omega;
    int ngene,posG[NGENE+1],lgene[NGENE],fix_rgene, model;
    double rgene[NGENE],piG[NGENE][NCODE], alpha;
@@ -75,7 +72,7 @@ double omega_NG, dN_NG, dS_NG;  /* what are these for? */
 
 int main(int argc, char *argv[])
 {
-   char dsf[32]="2YN.dS", dnf[32]="2YN.dN", tf[32]="2YN.t";
+   char dsf[512]="2YN.dS", dnf[512]="2YN.dN", tf[512]="2YN.t";
    FILE *fout, *fseq, *fds, *fdn, *ft;
    char ctlf[96]="yn00.ctl", timestr[64];
    int    n=com.ncode, is,js, j, idata, wname=20, sspace;
@@ -83,7 +80,7 @@ int main(int argc, char *argv[])
 
    /* ConsistencyMC(); */
 
-   printf("YN00 in %s\n",  VerStr);
+   printf("YN00 in %s\n", pamlVerStr);
    starttimer();
    if (argc>1)  strcpy(ctlf, argv[1]); 
    com.seqtype=1;  com.cleandata=1;  /* works for clean data only? */
@@ -125,15 +122,14 @@ int main(int argc, char *argv[])
       Statistics(fout, space);
 
       if(noisy) printf("\n\n(A) Nei-Gojobori (1986) method\n");
-      fprintf(fout,"\n\n(A) Nei-Gojobori (1986) method\n\n");
-      fprintf(fout,"Nei M, Gojobori T (1986) Simple methods for estimating the numbers of synonymous and nonsynonymous nucleotide substitutions. Mol. Biol. Evol. 3:418-426\n");
+      fprintf(fout,"\n\n(A) Nei-Gojobori (1986) method\n");
       DistanceMatNG86 (fout, NULL, NULL, NULL, 0);
       fflush(fout);
 
       if(noisy) printf("\n\n(B) Yang & Nielsen (2000) method\n\n");
       fprintf(fout,"\n\n(B) Yang & Nielsen (2000) method\n\n");
       fprintf(fout,"Yang Z, Nielsen R (2000) Estimating synonymous and nonsynonymous substitution rates under realistic evolutionary models. Mol. Biol. Evol. 17:32-43\n");
-      if(!com.iteration) fputs("\n(equal weighting of pathways)\n",fout);
+      if(!com.weighting) fputs("\n(equal weighting of pathways)\n",fout);
 
       if(com.fcommon)  GetFreqs(-1, -1, f3x4, com.pi);
       if(com.kcommon) {
@@ -147,12 +143,11 @@ int main(int argc, char *argv[])
       fprintf(fdn,"%6d\n", com.ns);
       fprintf(ft,"%6d\n", com.ns);
       for(is=0; is<com.ns; is++) {
-         if(noisy) printf (" %3d", is+1);
          fprintf(fds,"%-*s ", wname,com.spname[is]);
          fprintf(fdn,"%-*s ", wname,com.spname[is]);
          fprintf(ft,"%-*s ", wname,com.spname[is]);
          for(js=0; js<is; js++) {
-            if(noisy>3) printf(" vs. %3d", js+1);
+            if(noisy) printf("%3d vs. %3d\n", is+1, js+1);
             fprintf(fout, " %3d  %3d ", is+1, js+1);
 
             if(!com.fcommon) GetFreqs(is, js, f3x4, com.pi);
@@ -198,7 +193,7 @@ int GetOptions (char *ctlf)
    FILE *fctl;
 
    if((fctl=fopen(ctlf,"r"))==NULL) error2("\nctl file open error.\n");
-   printf ("\n\nReading options from %s..\n", ctlf);
+   printf ("\nReading options from %s..\n", ctlf);
    for (;;) {
       if (fgets (line, lline, fctl) == NULL) break;
       for (i=0,t=0,pline=line; i<lline&&line[i]; i++)
@@ -218,7 +213,7 @@ int GetOptions (char *ctlf)
                case (2): com.verbose=(int)t;     break;
                case (3): noisy=(int)t;           break;
                case (4): com.icode=(int)t;       break;
-               case (5): com.iteration=(int)t;   break;
+               case (5): com.weighting=(int)t;   break;
                case (6): com.kcommon=(int)t;     break;
                case (7): com.fcommon=(int)t;     break;
                case (8): com.ndata=(int)t;       break;
@@ -234,23 +229,25 @@ int GetOptions (char *ctlf)
       if (GeneticCode[com.icode][i]!=-1) Nsensecodon++;
    com.ncode = Nsensecodon;
    fclose (fctl);
+   FPN(F0);
    return (0);
 }
 
 int DistanceYN00(int is, int js, double*S, double*N, double*dS,double*dN,
     double *SEdS, double *SEdN, double *t,double space[])
 {
-/* calculates dS, dN, w, t by iteration.
+/* calculates dS, dN, w, t by weighting.
    com.kappa & com.pi[] are calculated beforehand are not updated.
 */
    int j,k,ir,nround=10, status=0;
-   double fbS[4],fbN[4],fbSt[4],fbNt[4], St,Nt, Sdts,Sdtv,Ndts,Ndtv,y;
+   double fbS[4],fbN[4],fbSt[4],fbNt[4], St,Nt, Sdts,Sdtv,Ndts,Ndtv, kappaS,kappaN;
    double w0=0,dS0=0,dN0=0, accu=5e-4, minomega=1e-5,maxomega=99;
 
    if(*t==0) *t=.5;  
    if(com.omega<=0) com.omega=1;
    for(k=0; k<4; k++) fbS[k] = fbN[k] = 0;
    if(debug) printf("\nCountSites\n");
+   if(noisy>3) printf("\n");
    for(k=0,*S=*N=0; k<2; k++) {
       CountSites(com.z[k==0?is:js], com.pi, &St, &Nt, fbSt, fbNt);
       *S += St/2;
@@ -263,18 +260,20 @@ int DistanceYN00(int is, int js, double*S, double*N, double*dS,double*dN,
    }
    if(noisy>3) {
       printf("Ave.  : S = %9.3f N=%9.3f\n\n",*S,*N);
-      printf("Base freqs at syn & nonsyn sites");
-      matout(F0, fbS, 1, 4);
-      matout(F0, fbN, 1, 4);
+      printf("Base freqs at syn & nonsyn sites\n%10s%10s%10s%10s\n", "T", "C", "A", "G");
+      for(k=0; k<4; k++) printf(" %9.6f", fbS[k]);  FPN(F0);
+      for(k=0; k<4; k++) printf(" %9.6f", fbN[k]);  FPN(F0);
    }
-   if(noisy>3) printf("\n      %-34s t k w dN dS\n","Diffs");
+   if(noisy>3) 
+      printf(" #    Sdts   Sdtv   Ndts   Ndtv |       t   kappa       w      dN      dS |   kappaS  kappaN\n");
+
    /* initial values? */
-   if(com.iteration) { 
+   if(com.weighting) { 
       if(*t<0.001 || *t>5) *t=0.5; 
       if(com.omega<0.01 || com.omega>5) com.omega=.5;
    }
-   for (ir=0; ir<(com.iteration?nround:1); ir++) {   /* iteration */
-      if(com.iteration) 
+   for (ir=0; ir<(com.weighting?nround:1); ir++) {   /* weighting or iteration */
+      if(com.weighting)
          GetPMatCodon(PMat,*t,com.kappa,com.omega,space);
       else
          for(j=0; j<com.ncode*com.ncode; j++) 
@@ -282,21 +281,20 @@ int DistanceYN00(int is, int js, double*S, double*N, double*dS,double*dN,
 
       CountDiffs(com.z[is], com.z[js], &Sdts, &Sdtv, &Ndts, &Ndtv, PMat);
 
-      if(DistanceF84(*S, Sdts/ *S, Sdtv/ *S, fbS, &y, dS, SEdS)) status=-1;
-      if(noisy>3) printf("   syn kappa=%8.4f\n",y);
-      if(DistanceF84(*N, Ndts/ *N, Ndtv/ *N, fbN, &y, dN, SEdN)) status=-1;
-      if(noisy>3) printf("nonsyn kappa=%8.4f\n",y);
+      if(DistanceF84(*S, Sdts/ *S, Sdtv/ *S, fbS, &kappaS, dS, SEdS)) status=-1;
+      if(DistanceF84(*N, Ndts/ *N, Ndtv/ *N, fbN, &kappaN, dN, SEdN)) status=-1;
 
       if(*dS<1e-9) { 
          status = -1;
-         com.omega = maxomega; 
+         com.omega = maxomega;
       }
       else
          com.omega= max2(minomega, *dN/ *dS);
       *t = *dS * 3 * *S/(*S + *N) + *dN * 3 * *N/(*S + *N);
       if(noisy>3) {
-         printf("%2d %7.2f%7.2f %7.2f%7.2f |",ir+1, Sdts,Sdtv,Ndts,Ndtv);
-         printf("%8.4f%8.4f%8.4f%8.4f%8.4f\n",*t,com.kappa,com.omega,*dN,*dS);
+         printf("%2d %7.2f%7.2f%7.2f%7.2f |", ir+1, Sdts,Sdtv,Ndts,Ndtv);
+         printf("%8.4f%8.4f%8.4f%8.4f%8.4f", *t, com.kappa,com.omega,*dN,*dS);
+         printf(" | %8.4f%8.4f\n", kappaS,kappaN);
       }
       if(fabs(*dS-dS0)<accu && fabs(*dN-dN0)<accu && fabs(com.omega-w0)<accu)
          break;
@@ -364,8 +362,7 @@ int GetFreqs(int is1, int is2, double f3x4[], double pi[])
    Codon frequencies pi[] are calculated from the f3x4 table.
    The calculation is duplicated when com.fcommon=1.
 */
-   int j, k, n=64;
-   double fstop=0;
+   int n=com.ncode, j, k, ic, b[3];
 
    if (com.fcommon)
       for(j=0,zero(f3x4,12);j<com.ns;j++)
@@ -377,15 +374,10 @@ int GetFreqs(int is1, int is2, double f3x4[], double pi[])
    if (noisy>=9)
       matout(F0, f3x4, 3, 4);
    for(j=0; j<n; j++) {
-      pi[j] = f3x4[j/16] * f3x4[4+(j%16)/4] * f3x4[8+j%4];
-      if (GeneticCode[com.icode][j]==-1) {
-         fstop += pi[j];
-         pi[j] = 0;
-      }
+      ic=FROM61[j]; b[0]=ic/16; b[1]=(ic%16)/4; b[2]=ic%4;
+      pi[j] = f3x4[b[0]] * f3x4[4+b[1]] * f3x4[8+b[2]];
    }
-   for(j=0; j<n; j++) 
-      pi[j] /= (1-fstop);
-   if (fabs(1-sum(pi,n))>1e-6) error2("err GetFreqs()");
+   abyx(1/sum(pi,n), pi, n);
 
    return (0);
 }
@@ -396,7 +388,6 @@ int DistanceMatLWL85 (FILE *fout)
 /* This implements 3 methods: LWL85 (Li, Wu & Luo 1985), LPB (Li 1993, 
    Pamilo & Bianchi 1993), and LWL85m (equation 12 in book; check other refs).
    alpha is not used.
-   com.z[][] goes from 0, 1, ..., 63.
 */
    int i,j,k, h, wname=15;
    char *codon1, *codon2, str[4]="   ";
@@ -473,7 +464,7 @@ int GetKappa(void)
    double ka[2], F[2][16],S[2],wk[2], t,P,Q,pi[4];
                  /* F&S&wk [0]: non-degenerate; [1]:4-fold;  S:sites */
    double kdefault=(com.kappa>0?com.kappa:(com.icode==1?10:2));
-   char str1[4]="   ",str2[4]="   ", *metstr[2]={"non-degenerate","4-fold"};
+   char str1[4]="   ",str2[4]="   ", *sitestr[2]={"non-degenerate","4-fold"};
 
    for(is=0,com.kappa=0;is<com.ns;is++) {
       for(js=0; js<is; js++) {
@@ -511,15 +502,14 @@ int GetKappa(void)
                   if(j!=b[k][2] && GeneticCode[com.icode][i1+j]!=aa[k]) break;
                if(aa[0]==aa[1] && j==4) ndeg++;
             }
-/*
-fprintf(frub,"  %c ", (ndeg==2?'+':'-')); fflush(frub);
-*/
             if (ndeg<2) continue;
             F[1][b[0][2]*4+b[1][2]] += .5*com.fpatt[h]; 
             F[1][b[1][2]*4+b[0][2]] += .5*com.fpatt[h];
          }  /* for (h) */
          for(k=0; k<2; k++) {  /* two kinds of sites */
-            if(noisy>3) printf("\n%s:\n",metstr[k]);
+            /*
+            if(noisy>3) printf("\n%s:\n",sitestr[k]);
+            */
             S[k] = sum(F[k],16); 
             if(S[k]<=0) { wk[k]=0; continue; }
             for(j=0; j<16; j++) F[k][j]/=S[k];
@@ -531,8 +521,10 @@ fprintf(frub,"  %c ", (ndeg==2?'+':'-')); fflush(frub);
             wk[k] = (ka[k]>0?S[k]:0);
 
             /* matout(F0,F[k],4,4);  matout(F0,pi,1,4);  */
+            /*
             if(noisy>3)
                printf("\nSPQkt:%9.4f%9.5f%9.5f%9.4f%9.4f\n",S[k],P,Q,ka[k],t);
+            */
          }
          if(wk[0]+wk[1]==0) {
             status = -1;
@@ -578,7 +570,7 @@ int CountSites(char z[],double pi[],double*Stot,double*Ntot,double fbS[],double 
             c[1]  = c[0]+(k-b[j])*by[j];
             aa[1] = GeneticCode[com.icode][c[1]];
             if(aa[1] == -1) continue;
-            r = pi[c[1]];
+            r = pi[FROM64[c[1]]];
             if (k+b[j]==1 || k+b[j]==5)  r *= kappa; /* transition */
             if (aa[0]==aa[1]) { S += r; fbS[b[j]] += r*com.fpatt[h]; }
             else              { N += r; fbN[b[j]] += r*com.fpatt[h]; }
@@ -619,8 +611,10 @@ int GetPMatCodon(double P[],double t, double kappa, double omega, double space[]
          Q[j*n+i] = Q[i*n+j];
       }
    }
+
    for(i=0; i<n; i++) for(j=0; j<n; j++)
       Q[i*n+j] *= com.pi[j];
+
    for (i=0,mr=0; i<n; i++) { 
       Q[i*n+i] = -sum(Q+i*n,n); 
       mr -= com.pi[i]*Q[i*n+i]; 
@@ -629,12 +623,13 @@ int GetPMatCodon(double P[],double t, double kappa, double omega, double space[]
    eigenQREV(Q, com.pi, n, Root, U, V, spacesqrt);
    for(i=0; i<n; i++) Root[i] /= mr;
    PMatUVRoot(P, t, n, U, V, Root);
-
-/*
-testTransP(PMat, n);
-fprintf(frub,"\nP(%.5f)", t);
-matout (frub,PMat,n,n); fflush(frub);
-*/
+   /*
+   testTransP(PMat, n);
+   fprintf(frub,"\a\nP(%.5f)\n", t);
+   for(i=0; i<n; i++,FPN(frub)) for(j=0; j<n; j++)
+   fprintf(frub, " %9.5g", PMat[i*n+j]);
+   fflush(frub);
+   */
    return (0);
 }
 
@@ -682,15 +677,13 @@ int CountDiffs(char z1[],char z2[], double*Sdts,double*Sdtv,double*Ndts,double*N
          else               { if (transi) nts++; else ntv++; }
       }
       else {   /* ndiff=2 or 3 */
-
-if(debug==DIFF) {
-   printf("\n\nh=%d %s (%c) .. ", h+1,getcodon(str,c[0]),AAs[aa[0]]);
-   printf("%s (%c): ", getcodon(str,c[1]),AAs[aa[1]]);
-}
+         if(debug==DIFF) {
+            printf("\n\nh=%d %s (%c) .. ", h+1,getcodon(str,c[0]),AAs[aa[0]]);
+            printf("%s (%c): ", getcodon(str,c[1]), AAs[aa[1]]);
+         }
          nstop=0;
          for(k=0; k<npath; k++) {
-
-if(debug==DIFF) printf("\npath %d: ", k+1);
+            if(debug==DIFF) printf("\npath %d: ", k+1);
 
             for(i1=0; i1<3; i1++)  step[i1] = -1;
             if (ndiff==2) {
@@ -715,7 +708,7 @@ if(debug==DIFF) printf("\npath %d: ", k+1);
                ppath[k] *= PMat[ FROM64[ct[0]]*n + FROM64[ct[1]] ];
                for(i2=0; i2<2; i2++) aa[i2] = GeneticCode[com.icode][ct[i2]];
 
-if(debug==DIFF) printf("%s (%c) %.5f: ", getcodon(str,ct[1]),AAs[aa[1]],PMat[ct[0]*n+ct[1]]);
+               if(debug==DIFF) printf("%s (%c) %.5f: ", getcodon(str,ct[1]),AAs[aa[1]],PMat[ct[0]*n+ct[1]]);
 
                if (aa[1]==-1) {
                   nstop++;  ppath[k]=0; break;
@@ -728,7 +721,7 @@ if(debug==DIFF) printf("%s (%c) %.5f: ", getcodon(str,ct[1]),AAs[aa[1]],PMat[ct[
                for(i2=0; i2<3; i2++) bt1[i2] = bt2[i2];
             }
 
-if(debug==DIFF) printf("  p =%.9f", ppath[k]);
+            if(debug==DIFF) printf("  p =%.9f", ppath[k]);
 
          }  /* for(k,npath) */
          if (npath==nstop) {  /* all paths through stop codons */
@@ -737,20 +730,20 @@ if(debug==DIFF) printf("  p =%.9f", ppath[k]);
             else          { nts=.5; ntv=2.5; }
          }
          else {
-            sump=sum(ppath,npath);
+            sump = sum(ppath,npath);
             if(sump<1e-20) { 
-               printf("\nsump=0, npath=%4d\nh=%d (%d,%d)\np:",
-                    npath,h+1,c[0],c[1]);
-               matout2(F0, ppath, 1, npath, 16, 12);
-               matout(frub, PMat, n, n); fflush(frub);
-
-               getchar(); exit(-1);
+               printf("\nsump=0, npath=%4d\nh=%2d ", npath, h+1);
+               printf("(%s ", getcodon(str,c[0]));
+               printf("%s)", getcodon(str,c[1]));
+               for(k=0; k<npath; k++) printf(" %9.6g", ppath[k]); FPN(F0);
+               matout(frub, PMat, n, n); 
+               exit(-1);
 
                /* 
                sump=1; FOR(k,npath) if(ppath[k]) ppath[k]=1./(npath-nstop); 
                */
             }
-            for(k=0;k<npath;k++) { 
+            for(k=0; k<npath; k++) { 
                p = ppath[k]/sump;
                sts += stspath[k]*p;
                stv += stvpath[k]*p;  
@@ -758,13 +751,13 @@ if(debug==DIFF) printf("  p =%.9f", ppath[k]);
                ntv += ntvpath[k]*p;
             }
 
-if(debug==DIFF) {
-   for(k=0; k<npath; k++) printf("\n p =%.5f", ppath[k]/sump);  FPN(F0);
-   printf(" syn ts & tv, nonsyn ts & tv:%9.5f%9.5f%9.5f%9.5f\n",sts,stv,nts,ntv);
-}
+            if(debug==DIFF) {
+               for(k=0; k<npath; k++) printf("\n p =%.5f", ppath[k]/sump);  FPN(F0);
+               printf(" syn ts & tv, nonsyn ts & tv:%9.5f%9.5f%9.5f%9.5f\n",sts,stv,nts,ntv);
+            }
          }
 
-if(debug==DIFF) getchar();
+         if(debug==DIFF) getchar();
 
       }     /* if (ndiff) */
       *Sdts += com.fpatt[h]*sts;
@@ -810,8 +803,8 @@ int DistanceF84(double n, double P, double Q, double pi[],
       a=-.5*log(a); b=-.5*log(b);
       if(b<=0) failF84=1;
       else {
-         k_F84=a/b-1;
-         *t = 4*b*(tc*(1+ k_F84/Y)+ag*(1+ k_F84/R)+C);
+         k_F84 = a/b-1;
+         *t = 4*b*(tc*(1+ k_F84/Y) + ag*(1+ k_F84/R)+C);
          *k_HKY = (B + (tc/Y+ag/R)* k_F84)/B; /* k_F84=>k_HKY85 */
          if(SEt) {
             a = A*C/(A*C-C*P/2-(A-B)*Q/2);
@@ -910,259 +903,5 @@ printf("\nt = %.5f\n", t);
    return (0);
 }
 
-
-int ExpPattFreq(double t,double kappa,double omega,double pi[],double space[])
-{
-/* This puts site pattern probabilities into com.fpatt[]
-*/
-   int i,j,h, n=com.ncode;
-   double y, sum=0;
-
-   GetPMatCodon(PMat, t, kappa, omega, pi, 1e-8, space);
-   for(i=0,h=0; i<n; i++) {
-      for(j=0; j<=i; j++) {
-         if(GeneticCode[com.icode][i]==-1 || GeneticCode[com.icode][j]==-1) continue;
-         com.z[0][h] = (char)i;
-         com.z[1][h] = (char)j;
-         y = pi[i]*PMat[i*n+j];
-         if(i!=j) y += pi[j]*PMat[j*n+i];
-         com.fpatt[h++] = y;
-         sum += y;
-
-         y = pi[i]*PMat[i*n+j] - pi[j]*PMat[j*n+i];
-         if (fabs(y)>1e-5) { 
-            printf("F(%.4f)[%d, %d] not sym %.6f?\n", t,i,j,y);
-            getchar();
-         }
-      }
-   }
-   if(fabs(sum-1)>1e-5) printf("\nExpPattFreq: sum=1=%.6f?",sum);
-   return(0);
-}
-
-
-
-int InfiniteData(double t,double kappa,double omega,double f3x4_0[],double space[])
-{
-/* This generates site pattern freqs, data when seq length is infinite
-*/
-   int j, n=com.ncode;
-   double s, pi0[NCODE];
-
-   for(j=0,s=0; j<64; j++) {
-      pi0[j]=f3x4_0[j/16]*f3x4_0[4+(j%16)/4]*f3x4_0[8+j%4];
-      if (GeneticCode[com.icode][j]==-1) pi0[j]=0;
-      s+=pi0[j];
-   }
-   FOR(j,64) pi0[j]=com.pi[j]=pi0[j]/s;
-
-   printf("\nsum pi=1=%.6f\n",sum(pi0,NCODE));
-   printf("\nt=%.3f\tkappa=%.3f\tomega=%.3f\n",t,kappa,omega);
-
-   com.ns=2;
-   com.ls=1; com.npatt=n*(n+1)/2;
-   for(j=0; j<com.ns; j++) sprintf(com.spname[j],"seq.%d",j+1);
-   for(j=0; j<com.ns; j++) com.z[j] = (char*)realloc(com.z[j], com.npatt*sizeof(char));
-   if (com.z[com.ns-1]==NULL) error2("oom");
-   if (com.fpatt) free(com.fpatt);
-   if ((com.fpatt=(double*)malloc(com.npatt*sizeof(double)))==NULL)  
-      error2("oom fpatt");
-
-   ExpPattFreq(t, kappa, omega, pi0, space);
-   return(0);
-}
-
-int ConsistencyMC(void)
-{
-/* This does consistency analysis and computer simulation for 
-   the YN00 method.  Needs testing since untested chagnes were made when 
-   preparing a release in the paml package.
-*/
-   FILE *fout;
-   char outf[64]="yn";
-   int n=com.ncode, j, wname=30, sspace, realseq,fcodon;
-   double t=0.4, dS=0.1,dN=0.1, S,N, f3x4[12], *space;
-   double f3x4_data[][3*4]={
-                            {0.25, 0.25, 0.25, 0.25,
-                             0.25, 0.25, 0.25, 0.25,
-                             0.25, 0.25, 0.25, 0.25},
-
-                            {0.20517, 0.28293, 0.30784, 0.20406, /* mt pri */
-                             0.40979, 0.27911, 0.18995, 0.12116,
-                             0.15105, 0.43290, 0.37123, 0.04482},
-
-                            {0.19020, 0.16201, 0.36655, 0.28124, /* hiv */
-                             0.28889, 0.18805, 0.30179, 0.22127,
-                             0.24875, 0.16894, 0.36822, 0.21410},
-
-                            {0.14568, 0.24519, 0.33827, 0.27086,
-                             0.35556, 0.18765, 0.24049, 0.21630, 
-                             0.26444, 0.25728, 0.21012, 0.26815}, /* lysinNew*/
-                           }; 
-
-   noisy=1;        com.ns=2;
-   com.icode=0;    com.ncode=Nsensecodon;
-   realseq=0;      fcodon=1;
-
-   printf("\nrandom number seed & fcodon? ");
-   scanf("%d%d", &j,&fcodon);
-   SetSeed(j);
-   printf("\nicode: %d fcommon: %d kcommon: %d & fcodon: %d\n",
-      com.icode,com.fcommon,com.kcommon,fcodon);
-   matout(F0,f3x4_data[fcodon],3,4);
-   fout=fopen (outf,"w"); frst=fopen("rst","w"); frst1=fopen("rst1","w"); 
-   frub=fopen ("rub","w");
-   if (fout==NULL || frst==NULL) error2("outfile creation err.");
-
-   sspace=max2(200000,64*com.ns*sizeof(double));
-   sspace=max2(sspace,64*64*5*sizeof(double));
-   if ((space=(double*)malloc(sspace))==NULL) error2("oom space");
-
-   com.kappa=4.6;  com.omega=1;
-
-/* SimulateData2s64(fout, f3x4_data[fcodon], space); */
-
-   fputs("\nConsistency analysis: YN00\n",fout);
-   if(!com.iteration) fputs("(equal weighting of pathways)\n",fout);
-
-   for (; ; ) {
-      printf("\nInfinite data\nt k w? ");
-      scanf("%lf%lf%lf",&t,&com.kappa,&com.omega);
-      if(t<=0 || com.kappa<=0 || com.omega<=0) break;
-      InfiniteData(t, com.kappa, com.omega, f3x4_data[fcodon], space);
-      fprintf(frst,"%7.3f%7.3f%7.3f%  ",t,com.kappa,com.omega);
-      if(noisy) matout(F0,f3x4_data[fcodon],3,4);
-      Statistics(fout, space); 
-      GetKappa ();
-      printf("\nEstimated kappa = %.2f\n\n", com.kappa);
-
-      fputs("\n    S       N        t   kappa   omega     dN     dS\n\n",fout);
-      GetFreqs(0,1,f3x4,com.pi);
-      j=DistanceYN00(0,1, &S, &N, &dS,&dN, &SEdS, &SEdN, &t,space);
-      fprintf(fout,"%7.1f %7.1f %8.4f%8.4f%8.4f%7.4f%7.4f\n",S,N,t,com.kappa,com.omega,dN,dS);
-      fprintf(frst,"%8.4f%8.4f%8.4f%7.4f%7.4f\n",t,com.kappa,com.omega,dN,dS);
-      fflush(frst);
-   }
-   return (0);
-}
-
-void SimulateData2s64(FILE* fout, double f3x4_0[], double space[])
-{
-/* This simulates two codon sequences and analyze using NG86 and YN00.
-   It generates site pattern freqs and then samples from them to generate
-   the seq data.  It is modified from a routine of a similar name from
-   codeml.c, and differs from it in that codons are coded as 0,1,...,63.
-   This should not be mixed with any thing in codeml.c
-   f3x4 table is used to generate codon frequencies.
-   x[0-2]: w,dN,dS for NG86; x[3-5]:w,dN,dS for YN00;
-*/
-   int il,ir,nr=2000, i,j,h, n=Nsensecodon;
-   int npatt0=n*(n+1)/2, nobs[NCODE*NCODE], nfail, nfail2;
-   int ip,nil=1, ls[]={500, 100,500};
-   double y, t=.5, x[6], S,N,dS=0,dN=0, f3x4[12];
-   double t0,kappa0,omega0,pi0[NCODE],Efij[NCODE*NCODE], mx[6],vx[6],mse[2];
-   char str[4]="   ";
-   FILE*ftmp=NULL;
-
-   puts("\nThis simulates data and analyses them using NG86 & YN00.");
-
-   for(j=0,y=0; j<64; j++) {
-      pi0[j]=f3x4_0[j/16]*f3x4_0[4+(j%16)/4]*f3x4_0[8+j%4];
-      if (GeneticCode[com.icode][j]==-1) pi0[j]=0;
-      y+=pi0[j];
-   }
-   FOR(j,64) pi0[j]/=y;
-
-   matout(frst,f3x4_0,3,4);
-   com.icode=0; com.ns=2; com.ls=1;
-   for(j=0; j<com.ns; j++) 
-      com.z[j] = (char*) malloc(npatt0*sizeof(char));
-   if(com.z[com.ns-1]==NULL) error2 ("oom");
-   if((com.fpatt=(double*)malloc(npatt0*sizeof(double)))==NULL)
-      error2("oom fpatt");
-
-   printf("\nSite pattern probabilities.\nsum pi=1=%.6f\n",sum(pi0,NCODE));
-   printf("%d categories in the multinomial.\n",npatt0);
-
-   for(ip=0; ip<99; ip++) {
-      t0=1; kappa0=1; omega0=1; FOR(i,6) x[i]=0;
-      /* com.kappa=-999; */ com.omega=-999; 
-      printf("\nt0 & kappa0 & omega0? ");
-      scanf("%lf%lf%lf",&t0,&kappa0,&omega0);
-      printf("\nt & k & w: %8.2f%8.2f%8.2f\n", t0,kappa0,omega0);
-      if(t0<=0 || kappa0<=0 || omega0<=0) exit(0);
-      fprintf(frst, "\nt & k & w: %8.2f%8.2f%8.2f\n\n", t0,kappa0,omega0);
-   
-      fputs("Lc & t & k & w & dS & dN\n",frst);
-      for(il=0; il<nil; il++,FPN(F0)) {
-         ExpPattFreq(t0, kappa0, omega0, pi0, space);
-         xtoy(com.fpatt,Efij,npatt0);
-         for(h=1;h<npatt0; h++) Efij[h]+=Efij[h-1];
-         if(fabs(1-Efij[npatt0-1])>1e-6) puts("Sum p_ij != 1.");
-
-         com.ls=ls[il];
-         printf("\nls = %d\n", com.ls);
-         zero(mx,6); zero(vx,6); mse[0]=mse[1]=0;
-         for(ir=0,nfail=nfail2=0; ir<nr; ir++){
-            if((ir+1)%10==0) printf("\r%3d(%2d %2d)", ir+1,nfail,nfail2);
-            if(noisy) printf("\n\nReplicate %3d\n", ir+1);
-            MultiNomial (com.ls, npatt0, Efij, nobs, NULL);
-   
-            for(i=h=com.npatt=0; i<com.ncode; i++) for(j=0;j<=i;j++) {
-               if(GeneticCode[com.icode][FROM61[i]] == -1 
-               || GeneticCode[com.icode][FROM61[j]] == -1) 
-                  continue;
-               if(nobs[h++]==0) continue;
-               com.z[0][com.npatt] = (char)i; 
-               com.z[1][com.npatt] = (char)j;
-               com.fpatt[com.npatt++] = nobs[h-1];
-            }
-            if(h!=npatt0) error2("h!=npatt0");
-            j = DistanceMatNG86 (NULL, NULL, NULL, NULL, 0);
-
-            if(j==-1 || omega_NG<1e-6 || dS_NG<1e-6 || dN_NG<1e-6) 
-               { ir--; nfail++; continue; }
-            x[0]=omega_NG; x[1]=dN_NG; x[2]=dS_NG; 
-
-            if (GetKappa())  { ir--; nfail++; continue; }
-            if(noisy) printf("\nEstimated kappa = %.2f\n\n", com.kappa);
-            Statistics(NULL, space);
-            GetFreqs(0,1,f3x4,com.pi);
-            t=(.25*dS_NG+.75*dN_NG)*3;
-            j = DistanceYN00(0, 1, &S, &N, &dS,&dN, &SEdS, &SEdN, &t,space);
-            if(j==2) nfail2++;
-            if(dS<1e-6 || dN<-1e-6) { ir--; continue; }
-            x[3]=dN/dS; x[4]=dN; x[5]=dS;
-
-if(noisy &&(x[0]<omega0/4 || x[0]>omega0*4 || x[3]<omega0/4 || x[3]>omega0*4))
-  printf("w_NG=%.5f w_YN=%.5f\n",x[0],x[3]);
-
-            for(j=0; j<6; j++) {
-               vx[j] += (x[j]-mx[j])*(x[j]-mx[j]);
-               mx[j] = (mx[j]*ir+x[j])/(ir+1.);
-            }
-            mse[0] += square(x[0] - omega0);
-            mse[1] += square(x[3] - omega0);
-            if((ir+1)%10==0) {
-               for(i=0; i<6; i++) {
-                  printf("%6.3f",mx[i]); 
-                  if(i==2) printf(" "); 
-               }
-            }
-         }  /* for(ir) */
-         if(nr>1) {
-            for(j=0; j<6; j++)  vx[j] = sqrt(vx[j]/(nr-1.)/nr); 
-            for(j=0; j<2; j++) mse[j] = sqrt(mse[j]/nr);
-         }
-         fprintf(frst,"%4d (%3d %2d)", com.ls,nfail,nfail2);
-         for(i=0; i<6; i++) fprintf(frst,"%7.3f +%6.3f", mx[i], vx[i]);
-         FPN(frst); fflush(frst);
-         fprintf(frst1,"%6d%6d %7.2f%7.2f%7.2f: %8.3f +%7.3f %8.3f +%7.3f\n",
-             com.ls,nr, t0,kappa0,omega0, mx[0],vx[0],mx[3],vx[3]);
-         fflush(frst1);
-      }  /* for(il) */
-   }     /* for(ip) */
-   exit(0);
-}
 
 #endif

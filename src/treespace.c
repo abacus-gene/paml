@@ -264,23 +264,26 @@ void ReRootTree (int newroot)
 
    tree.root=newroot;
    BranchToNode ();
-   for (b=oldroot,a=nodes[b].father; b!=newroot; b=a,a=nodes[b].father)
-      { nodes[b].branch=nodes[a].branch; nodes[b].label=nodes[a].label; }
-   nodes[newroot].branch=-1;  nodes[newroot].label=-1;
+   for (b=oldroot,a=nodes[b].father; b!=newroot; b=a,a=nodes[b].father) { 
+      nodes[b].branch = nodes[a].branch; 
+      nodes[b].label  = nodes[a].label;
+   }
+   nodes[newroot].branch = -1;
+   nodes[newroot].label = -1;
 
 #if (CODEML)
    /* omega's are moved in updateconP for NSbranchsites models */
    if(com.model && com.NSsites==0) { 
       for (b=oldroot,a=nodes[b].father; b!=newroot; b=a,a=nodes[b].father)
-         nodes[b].omega=nodes[a].omega;
-      nodes[newroot].omega=-1;
+         nodes[b].omega = nodes[a].omega;
+      nodes[newroot].omega = -1;
    }
 #endif
 #if (BASEML)
    if(com.nhomo==2) { 
       for (b=oldroot,a=nodes[b].father; b!=newroot; b=a,a=nodes[b].father)
-         nodes[b].kappa=nodes[a].kappa;
-      nodes[newroot].kappa=-1;
+         nodes[b].pkappa = nodes[a].pkappa;
+      nodes[newroot].pkappa = NULL;
    }
 #endif
 

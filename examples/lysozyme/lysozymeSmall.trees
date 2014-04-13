@@ -1,6 +1,8 @@
     1
 
-((1,2), ((3,4) #1, 5), (6,7) );     / * table 1B&F */
+
+((Hsa_Human, Hla_gibbon),((Cgu/Can_colobus, Pne_langur) '#1', Mmu_rhesus), (Ssc_squirrelM, Cja_marmoset)); / * table 1B&F */
+
 
 // end of file
 

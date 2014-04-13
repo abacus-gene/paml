@@ -5,7 +5,260 @@ Ziheng Yang
 
 If you find problems or have questions, please visit the PAML
 discussion site
-(http://www.ucl.ac.uk/discussions/viewforum.php?f=54&sid=577cc7a5ea677a16eef670fac7f51807).
+https://groups.google.com/forum/#!forum/pamlsoftware.
+
+
+
+
+
+
+Version 4.7a, October 2013
+
+(*) codeml.  The mutation-selection model of Yang and Nielsen (2008)
+is noted to work for the site and branch-site models but not for the
+branch models.  This is now fixed.
+
+(*) mcmctree.  I fixed and modified the infinitesites program, which
+generates the limiting distribution when the amount of sequence data
+approaches infinity.  This works for both the clock (clock=1) and
+relaxed clock models (clock=2 or 3).  The mcmctree tutorial explains
+how to run this program.
+
+
+Version 4.7, January 2013
+
+(*) mcmctree.  This version includes a method for dating divergences
+using sampled tips, as in viral datasets.  The prior for node ages in
+the given rooted tree is generated using a
+birth-death-sequential-sampling model, described in Stadler and Yang
+(2012 Syst Biol, submitted).  The SIV/HIV-2 example dataset analyzed
+in the paper is in the examples/TipDate/ folder.  Look at the readme
+file there.
+
+(*) codeml.  Version 4.6 crashes if you have a lot of ambiguity codons
+in the alignment, or precisely if the total number of fully determined
+codons (61 in the standard code) and the ambiguous codons exceed 127.
+I was using "unsigned char" to represent the codons, which go from 0
+to 255 and can represent 256 distinct codons.  Somehow I changed this
+to "char", which on some systems goes from -128 to 127.  Can't
+remember why I made the change.  Anyway this is now fixed.  Versions
+4.5 or earlier do not have this problem.  Thanks to David Yu for
+pointing out the problem.
+
+
+
+Version 4.6, September 2012
+
+(*) baseml. The model of autocorrelated-rates among sites (Yang 1995
+Genetics 139:993-1005) is broken in paml versions 4.3 to 4.5
+inclusive.  Earlier versions were apparently fine.  When you select
+the auto-discrete-gamma model (alpha > 0, rho > 0) or the
+nonparametric autocorrelated-rates model (fix_alpha = 0, ncatG = 3,
+nparK = 4), the program aborts with the following error message:
+
+"Error: use 10, 20, 32, 64, 128, 512, 1024 for npoints for legendre.."
+
+This is now fixed.  The option of nparK = 3 seems to have problems in
+all versions, and the program prints out the following warning
+message.  
+
+"nparK==3, double stochastic, may not work.  Use nparK=4?"
+
+This option is supposed to fit a Markov-dependent model with equal
+proportions in the rate categies.  I have not got time to investigate
+this option, but a glance at table 3 in that paper indicates that this
+model was not used in the table and probably never properly
+implemented, so please follow the advice and use nparK = 4 instead.
+
+(*) codeml.  I have now added the site model M2a_rel of Weadick & Chang
+(2012 Mol. Biol. Evol.), in which w2 > 0.  This is specified using
+NSsites = 22 while model M2a is specified as NSsites = 2 (with w2 >
+1).  M2a_rel is the null model for the likelihood ratio test based on
+clade model C, suggested by Weadick & Chang (2012 Mol. Biol. Evol.).
+Note that the very old site model M2 from Nielsen & Yang (1998
+Genetics) assumes w0 = 0.  Yang, Wong, Nielsen (2005 MBE) changed the
+model so that 0 < w0 < 1 and renamed the model M2a.  My tests using
+the versions around that time reveals the following:
+
+3.13d (M2):  w0 = 0, w2 > 0
+3.14a (M2a): w0 > 0, w2 >= 1
+3.14b (M2a): w0 > 0, w2 >= 1
+
+If seems that when we changed M2 into M2a, we also changed the
+constraint on w2.  I don't have a copy of version 3.14 to check.
+
+(*) basseml & codeml.  To following option
+    bootstrap = 1000
+
+should produce 1000 bootstrap samples in the file boot.txt.  A bug is
+introduced in versions 4.4 and 4.5, so that garbiage is created
+instead of bootstrap datasets.  Versions 4.3 and earlier were correct.
+This bug is now fixed.
+
+(*) evolver.  The simulation of codon sequences (evolver 6
+MCcodon.dat) is incorrect when a genetic code different from the
+universal code is used.  This is a conceptual error I made and it has
+been in all previous versions when simulation of codon sequences is
+allowed.  I have assumed incorrectly that setting the frequencies of
+stop codons to 0 should be sufficient to get correct results.  The
+zero frequencies allow the program to identify the stop codons
+correctly, but one still needs the code table to know which changes
+are synonymous and which nonsynonymous.  evolver has been using the
+universal code to simulate codon sequences.  Simulation using the
+universal code has been correct, and simulation using the
+mitochondrial code (for example) is affcted and the results should be
+incorrect although the impact may be slight.  This bug is now fixed.
+A variable is added in the control file MCcodon.dat right below the
+codon frequencies, which tells the program which genetic code to use.
+
+1   * genetic code (0:universal; 1:mammalian mt; 2-10:see below)
+
+The program also checks that the stop codons have frequency 0 and that
+the frequencies of the sense codons sum to 1.  Thanks to Mario dos
+Reis for pointing this out.
+
+(*) mcmctree.  A bug is found in the calculation of the prior on rates
+under the correlated-rates model (clock=3).  This bug has been in
+version 4 (July 2007) to version 4.5 (December 2011), inclusive.  The
+prior is calculated by multiplying the conditional densities of
+equation (7) in Rannala & Yand (2007) over all interior nodes on the
+master tree (see also Figure 1 in that paper).  However, the rA used
+in the program was not for the current branch: it was instead for the
+ancestral branch.  The correct formula used was correct for the root
+of the master tree, but incorrect for other interior nodes.  The
+impact of the bug on posterior time estimates may be expected to be
+small, but if the clock is seriously violated and rates change over
+neighboring branches, this may be a concern.
+
+
+
+Version 4.5, December 2011
+
+baseml.  I have added the joint ancestral reconstruction under the
+nonhomogeneous models (nhomo = 3 or 4).  This works for the model of
+one rate for all sites, and does not work for the model of gamma rates
+for sites or the partition models.  Also I implemented the joint
+reconstruction only and not the marginal reconstruction.
+
+mcmctree.  The program now prints out a file called FigTree.tre in the
+current working directory that is readable by FigTree.  The branch
+lengths show the posterior means of times while the bars generated by
+FigTree will indicate the 95% CIs.  I have also added an option to
+deal with TipDate data, such as viral sequences with dates.  See
+examples/TipDate/README.txt for more notes.
+
+
+
+Version 4.4e, May 2011
+
+mcmctree.  I have added an option of automatically adjusting the step
+lengths for proposals in the MCMC algorithm.  The program will use the
+burn in to automatically adjust the step lengths, using those values
+specified in the control file as initial values.
+
+codeml: The iteration method that updates one branch length at a time
+(method = 1) is broken for the free-ratios model (model = 1) from
+versions 4.3 to 4.4d inclusive.  When codeml runs, you will see
+messages like the following on the screen: 
+Warning rounding error? b=3 cycle=0 lnL=6036.9413757 != 6070.1069284 
+Version 4.2 and earlier are correct.  This bug is now fixed.  
+Thanks to Tae-Kun Seo for reporting the bug.
+
+
+
+Version 4.4d, March 2011
+
+yn00.  The option of using weighting (weighting = 1) in the
+calculation of dN and dS by the YN00 method (Yang and Nielsen 2000)
+has been broken since Version 4.4 (February 2010).  A bug was
+introduced when I changed the character coding in Version 4.4, so that
+this bug affects Versions 4.4, 4.4a, 4.4b, and 4.4c.  The bug
+typically causes a crash.  The result for weighting = 0 is not
+affected.  Versions before 4.4 are correct.  This bug is now fixed.
+Thanks for Charlie
+(http://www.ucl.ac.uk/discussions/viewtopic.php?t=8726&highlight=yn00).
+
+
+
+Version 4.4c, August 2010
+
+mcmctree.  A bug causes the exotic calibrations (gamma, skew normal
+and skew t) to be sometimes ignored, if you have multiple loci
+(partitions) and if some species/sequences are missing at some loci.
+If all calibrations are bounds (minimum, maximum, and joint), or if
+the partitions have the same number of species/sequences, the
+calculation is still correct.  This bug is in versions 4.1-4.4b.  This
+is now fixed.  Thanks to Mike Steiper.
+
+
+
+Version 4.4b, July 2010
+
+mcmctree.  A serious bug has been discovered which affects the option
+of approximate likelihood calculation (usedata = 2).  If the first
+child of the root in the tree for any locus is a tip, the MLEs of
+branch lengths in the in.BV file are assigned to wrong branches, so
+that the results are entirely incorrect, and also very different from
+those obtained using the exact likelihood calculation (usedata = 1).
+Suppose the tree for a locus is (A, B), with a bifurcation at the
+root, and with A and B representing species or clades.  If A is a tip,
+the program is incorrect, while if A is an internal node, the program
+is correct.  This bug is in versions 4.2b - 4.4a.  Hopefully this is
+now corrected.  Thanks to Mario dos Reis.
+
+mcmctree.  I also changed the specification on L, U, and B bounds to
+allow the user to specify the tail probabilities (which used to be
+fixed at 2.5%) for each fossil calibration.  See table 8 in
+pamlDOC.pdf for details.  You will still have to run the program
+without data to get the effective prior of times used by the program.
+
+
+
+Version 4.4a, June 2010
+
+codeml (RateAncestor=1).  For ancestral reconstruction under codon
+models, the program prints out the translated amino acids when it
+prints the codons.  A bug caused the translation to be incorrect,
+so instead of the amino acid, the program prints something like h or
+H.  This bug was introduced in Version 4.4, February 2010 when I
+changed the way that the characters are coded.  This is fixed now.
+
+baseml (clock = 1, 2, or 3 Mgene option).  If you assign different
+rates for different genes (or site parations) and the model assumes
+global clock or local clock, the program fails to print out the
+relative rates for genes.  This bug seems to be introduced between
+3.13 and 3.14 and has since.  The log likelihood value and estimates
+of parameters are all correct, and the problem is only that MLEs of
+rates for genes are not printed in the output file properly.
+
+
+
+Version 4.4a, April 2010
+
+In versions 4.2, 4.3, 4.4, Clade model D does not print the w
+estimates for the site classes correctly.  For the example run in
+examples/datasets2/, the incorrect output looks like the following
+
+site class             0         1         2
+proportion        0.48590   0.10718   0.40692
+branch type 0:    0.10557   4.17186   4.17186
+branch type 1:    0.10557   4.17186   3.05340
+
+while the correct results (from version 4.1) are 
+
+site class         0         1         2
+proportion       0.48590  0.10718  0.40692
+background w     0.10557  4.17186  3.05340
+foreground w     0.10557  4.17186  0.95081
+
+The ratios w2 and w3 for site class 2 are incorrectly printed, with w2
+equal to w1.  The branch lengths and lnL values etc. are all correct.
+This bug affects versions 4.2, 4.3, and 4.4, and version 4.1 and
+earlier versions appear to be correct.  Also the bug affects clade
+model D, and clade model C appears to be fine.  This is fixed now.
+Thanks to cajawe for reporting the bug (see
+http://www.ucl.ac.uk/discussions/viewtopic.php?p=28240#28240).
+
 
 
 Version 4.4, February 2010
@@ -21,8 +274,9 @@ iteration to fail to converge, with messages like the following
 printed on the monitor: 
 "Warning rounding error? b=5 cycle=0 lnL=1718.5667685 != 1749.4724545".
 
-mcmctree.  If the gamma prior for rates has alpha < 1/3, the initial
+mcmctree.  If the gamma prior for rates has alpha <1/3, the initial
 values are generated incorrectly.  This is now fixed.
+
 
 
 Version 4.3b, November 2009
@@ -147,19 +401,21 @@ The default file name for the MCMC samples is mcmc.out.  To change
 this, add the following line in the control file mcmctree.ctl:
       mcmcfile = mcmc.out 
 
-codeml: Clade model C is extended to accommodate more than two branch
-types.  The old model accept two branch types only, referred to as
-foreground and background branches.  The structure of the new model is
-as follows.  You use branch/node numbers to specify the branch types
-(with #0 to be the default, followed by #1, #2, #3, ...).  However, I
-don't expect this model to be used for more than a few branch types.
-For each additional branch type, the BEB computation is 10 times more
-expensive.
+codeml: Clade models C and D are extended to accommodate more than two
+branch types.  The old models accept two branch types only, referred
+to as foreground and background branches.  The structure of the new
+models are below.  You use branch/node numbers to specify the branch
+types (with #0 to be the default, followed by #1, #2, #3, ...).  As
+before, the BEB calculation is implemented for clade model C only, and
+is not available for clade model D.  The BEB calculation is expensive,
+so I expect clade model C will work if you have only a few branch
+types.  For each additional branch type, the BEB computation is 10
+times more expensive.
 
 Site class   Proportion    w ratio
 
   0             p0         0 < w0 < 1
-  1             p1         w1 = 1
+  1             p1         w1 (w1 = 1 is fixed in model C)
   2             p2         w2, w3, w4, ...
 
 I also added an option of fixing the last w to 1 in clade model C,
@@ -442,8 +698,11 @@ Version 3.14, September 2004
 
 (1a) NSsites models M1 (neutral), M2 (selection), and M8 (beta& ) have
 been changed.  The references are two manuscripts that are not yet
-published (Wong and Nielsen 2004; Yang, Wong, and Nielsen 2005).  The
-details are as in the following table.
+published (Wong, Yang, Goldman & Nielsen, 2004 Genetics 168:
+1041-1051; Yang, Wong, and Nielsen 2005 MBE).  The details are as in the
+following table.
+
+[table missing or never written.]
 
 The old models M1 and M2 are noted to be rather unrealistic as they do
 not account for sites with 0 < w0 < 1.  Thus in the new models 0 < w0 < 1
@@ -462,7 +721,7 @@ M1a (NearlyNeutral) < M2a (PositiveSelection) < M3 (discrete), and M7
 special case of the model on the right:.  Two LRTs can be constructed
 using those models.  The first one compares M1a against M2a, using a
 chi square with df 2, and the second one compares M7 against M8, using
-a chi square with d.f. 2.
+a chi square with d.f. = 2.
 
 (1b) Similarly branch-site model A (Yang and Nielsen 2002) is changed.
 The old model assumes 0 = 0 and is unrealistic.  This is replaced by 0
@@ -1224,7 +1483,7 @@ July 1997
 
 
 
-Version 1.1a-d: (UC Berkeley)
+Version 1.1a-d: (University of California, Berkeley)
 1995-1996 
 
 1.1a No records of changes remain.

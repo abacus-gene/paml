@@ -13,7 +13,7 @@
        aaDist = 0   * 0:equal, +:geometric; -:linear, {1-5:G1974,Miyata,c,p,v}
         model = 0
 
-      NSsites = 0 1 2 
+      NSsites = 0 1 2
                     * 0:one w; 1:NearlyNeutral; 2:PositiveSelection; 3:discrete;
                     * 4:freqs; 5:gamma;6:2gamma;7:beta;8:beta&w;9:beta&gamma;10:3normal
         icode = 0   * 0:standard genetic code; 1:mammalian mt; 2-10:see below

@@ -33,7 +33,7 @@ Yang et al. (1998) implemented the model for codon sequences only
 sequences as well (seqtype = 2), with one fewer parameter required.
 However, such models (for amino acid sequences) are either not tested
 properly or never made to work.  If you need to apply such models to 
-amino acid sequences, you can let me know and I'll try to savalge the model.
+amino acid sequences, you can let me know and I'll try to check.
 
 
 (2) Table 4.  Mechanistic models of codon substitution.  You should have

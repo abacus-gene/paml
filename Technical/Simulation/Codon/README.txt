@@ -95,9 +95,9 @@ set up allows you to simulate under much more general models than the
 branch-site model A implemented in paml/codeml (see Yang & Nielsen
 2002; Yang et al. 2005).
 
-evolverNSbranchsites samples sites from the site partitoins at random,
+evolverNSbranchsites samples sites from the site partitions at random,
 so that the number of sites in each partition varies among replicate
-data sets.  This is assumed by the branch-site models of Yang and
+datasets.  This is assumed by the branch-site models of Yang and
 Nielsen (2002).  In the simulations of Zhang (2004) and Zhang, Nielsen
 & Yang (2005), the number of sites in each partition is fixed.  These
 authors also considered various violations of the branch-site models
@@ -191,7 +191,7 @@ more descriptions of those measures in Yang, Wong & Nielsen
 
 
 
-(C) Appensix: Testing the NEB algorithm.  This may not interest you
+(C) Appendix: Testing the NEB algorithm.  This may not interest you
 anymore since it is about NEB, which is now superceded by the BEB.  It
 is not deleted yet as I spent time writing it and as it does explain
 what the posterior probabilities calculated by the NEB and BEB

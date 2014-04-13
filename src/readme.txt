@@ -9,9 +9,9 @@ Instructions for compiling
 
 Method I
 
-Use the Makefile.  The default Makefile is for MS Windows/MSVC++.  You use Makefile.UNIX for UNIX/Linux/OSX:
+Use the Makefile.  The default Makefile is for UNIX/Linux/OSX.  
 
-   make -f Makefile.UNIX
+   make
 
    cp baseml basemlg codeml evolver pamp yn00 mcmctree chi2 ..
    rm *.o
@@ -19,6 +19,9 @@ Use the Makefile.  The default Makefile is for MS Windows/MSVC++.  You use Makef
 
 On some systems you might have to edit the Makefile and change a few
 flags at the beginning of the file.
+
+To compile using MSVC++, use Makefile.MSVC:
+   nmake -f Makefile.MSVC
 
 
 Method II
@@ -53,7 +56,7 @@ gcc -O3 -o evolver evolver.c tools.c
 gcc -O3 -o yn00 yn00.c tools.c 
 gcc -O3 -o chi2 chi2.c 
 
-(2c) Digital UNIX/Digital cc compiler
+(2c) UNIX cc compiler
 
 cc -fast -o baseml baseml.c tools.c -lm
 cc -fast -o basemlg basemlg.c tools.c -lm
@@ -65,4 +68,5 @@ cc -fast -o yn00 yn00.c tools.c -lm
 cc -fast -o chi2 chi2.c -lm
 
 
-// EOF
+// End of file
+

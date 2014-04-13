@@ -9,6 +9,9 @@
 char BASEs[]="TCAGUYRMKSWHBVD-N?";
 char *EquateBASE[]={"T","C","A","G", "T", "TC","AG","CA","TG","CG","TA",
      "TCA","TCG","CAG","TAG", "TCAG","TCAG","TCAG"};
+char BASEs5[]="TCAGEUYRMKSWHBVD-N?";
+char *EquateBASE5[]={"T","C","A","G", "E", "T", "TC","AG","CA","TG","CG","TA",
+     "TCA","TCG","CAG","TAG", "TCAG","TCAG","TCAG"};
 char CODONs[256][4], AAs[] = "ARNDCQEGHILKMFPSTWYV-*?X";
 char nChara[256], CharaMap[256][64];
 char AA3Str[]= {"AlaArgAsnAspCysGlnGluGlyHisIleLeuLysMetPheProSerThrTrpTyrVal***"};
@@ -125,7 +128,7 @@ int CodeChara (char b, int seqtype)
 /* This codes nucleotides or amino acids into 0, 1, 2, ...
 */
    int i, n=(seqtype<=1?4:(seqtype==2?20:2));
-   char *pch=(seqtype<=1?BASEs:(seqtype==2?AAs:BINs));
+   char *pch=(seqtype<=1 ? BASEs : (seqtype==2 ? AAs: (seqtype==5 ? BASEs5 : BINs)));
 
    if (seqtype<=1)
       switch (b) {
@@ -149,11 +152,13 @@ int dnamaker (char z[], int ls, double pi[])
    double p[4], r, small=1e-5;
 
    xtoy(pi, p, 4);
-   for (i=1; i<4; i++) p[i]+=p[i-1];
-   if(fabs(p[3]-1)>small) error2("sum pi != 1..");
+   for (i=1; i<4; i++) p[i] += p[i-1];
+   if(fabs(p[3]-1)>small)
+      error2("sum pi != 1..");
    for(i=0; i<ls; i++) {
-      for(j=0,r=rndu(); j<4; j++) if(r<p[j]) break;
-      z[i]=(char)j;
+      for(j=0,r=rndu(); j<4; j++)
+         if(r<p[j]) break;
+      z[i] = (char)j;
    }
    return (0);
 }
@@ -163,7 +168,8 @@ int transform (char *z, int ls, int direction, int seqtype)
 /* direction==1 from TCAG to 0123, ==0 from 0123 to TCGA.
 */
    int il, status=0;
-   char *p, *pch=((seqtype==0||seqtype==1)?BASEs:(seqtype==2?AAs:BINs));
+   char *p;
+   char *pch=(seqtype<=1 ? BASEs : (seqtype==2 ? AAs: (seqtype==5 ? BASEs5 : BINs)));
 
    if (direction)
       for (il=0,p=z; il<ls; il++,p++) {
@@ -418,6 +424,8 @@ int difcodonLWL85 (char codon1[], char codon2[], double sites[3], double sdiff[3
    and add the differences to the transition and transversion differences for use 
    in LWL85 and similar methods.
    The two codons (codon1 & codon2) should not contain ambiguity characters. 
+   c[0] & c[1] are the two codons, coded 0, 1, ..., 63.
+   b[][] has the nucleotides, coded 0123 for TCAG.
 */
    int b[2][3], by[3] = {16, 4, 1}, i,j, ifold[2], c[2], ct, aa[2], ibase,nsame;
    char str[4]="";
@@ -428,37 +436,37 @@ int difcodonLWL85 (char codon1[], char codon2[], double sites[3], double sdiff[3
       for (j=0,c[i]=0; j<3; j++)   {
          if (transfed) b[i][j] = (i?codon1[j]:codon2[j]);
          else          b[i][j] = (int)CodeChara((char)(i?codon1[j]:codon2[j]),0);
-         c[i]+=b[i][j]*by[j];
-         if(b[i][j]<0||b[i][j]>3) { 
-            if(noisy>=9) 
+         c[i] += b[i][j]*by[j];
+         if(b[i][j]<0 || b[i][j]>3) { 
+            if(noisy>=9)
                printf("\nwarning ambiguity in difcodonLWL85: %s %s", codon1,codon2);
             return(0);
          }
       }
-      aa[i]=GeneticCode[icode][c[i]];
+      aa[i] = GeneticCode[icode][c[i]];
       if(aa[i]==-1) {
-         printf("\nLWL85: stop codon %s.\n",getcodon(str,c[i]));
+         printf("\nLWL85: stop codon %s.\n", getcodon(str,c[i]));
          exit(-1);
       }
    }
 
    for (j=0; j<3; j++) {    /* three codon positions */
       for (i=0; i<2; i++) { /* two codons */
-         for(ibase=0,nsame=0; ibase<4; ibase++) {
-            ct=c[i]+(ibase-b[i][j])*by[j];
+         for(ibase=0,nsame=0; ibase<4; ibase++) {  /* change codon i pos j into ibase  */
+            ct = c[i] + (ibase-b[i][j])*by[j];
             if(ibase!=b[i][j] && aa[i]==GeneticCode[icode][ct]) nsame++;
          }
-         if(nsame==0)                    ifold[i]=0;
-         else if (nsame==1 || nsame==2)  ifold[i]=1;
-         else                            ifold[i]=2;
-         sites[ifold[i]]+=.5;
+         if(nsame==0)                    ifold[i]=0; /* codon i pos j is 0-fold */
+         else if (nsame==1 || nsame==2)  ifold[i]=1; /* codon i pos j is 2-fold */
+         else                            ifold[i]=2; /* codon i pos j is 4-fold */
+         sites[ifold[i]] += .5;
       }
 
       if(b[0][j]==b[1][j]) continue;
-      if(b[0][j]+b[1][j]==1 || b[0][j]+b[1][j]==5) { /* transition */
+      if(b[0][j]+b[1][j]==1 || b[0][j]+b[1][j]==5) { /* pos j has a transition */
          sdiff[ifold[0]]+=.5;  sdiff[ifold[1]]+=.5;
       }
-      else {                   /* transversion */
+      else {                                         /* pos j has a transversion */
          vdiff[ifold[0]]+=.5;  vdiff[ifold[1]]+=.5;
       }
    }
@@ -483,6 +491,23 @@ int testTransP (double P[], int n)
    return (status);
 }
 
+double testDetailedBalance (double P[], double pi[], int n)
+{
+/* this calculates maxdiff for the detailed balance check.  maxdiff should be close 
+   to 0 if the detailed balance condition holds.
+*/
+   int i,j, status=0;
+   double small=1e-10, maxdiff=0, d;
+
+   for (i=0; i<n; i++) {
+      for (j=0; j<n; j++) {
+         d = fabs(pi[i]*P[i*n+j] - pi[j]*P[j*n+i]);
+         if(d>maxdiff) maxdiff = d;
+      }
+   }
+   return (maxdiff);
+}
+
 
 int PMatUVRoot (double P[], double t, int n, double U[], double V[], double Root[])
 {
@@ -494,13 +519,17 @@ int PMatUVRoot (double P[], double t, int n, double U[], double V[], double Root
 
    NPMatUVRoot++;
    if (t<-0.1) printf ("\nt = %.5f in PMatUVRoot", t);
-   if (t<1e-100) { identity (P, n); return(0); }
+   if (t<1e-100) {
+      identity (P, n); 
+      return(0); 
+   }
    for (k=0,zero(P,n*n); k<n; k++)
       for (i=0,pP=P,expt=exp(t*Root[k]); i<n; i++)
          for (j=0,uexpt=U[i*n+k]*expt; j<n; j++)
             *pP++ += uexpt*V[k*n+j];
 
-   for(i=0;i<n*n;i++)  if(P[i]<smallp)  P[i]=0;
+   for(i=0; i<n*n; i++)
+      if(P[i]<smallp)  P[i] = 0;
 
 #if (DEBUG>=5)
       if (testTransP(P,n)) {
@@ -674,7 +703,7 @@ int Rates4Sites (double rates[],double alpha,int ncatG,int ls, int cdf,
       { if(rates) FOR(h,ls) rates[h]=1; }
    else {
       if (K>1) {
-         DiscreteGamma (freqK, rK, alpha, alpha, K, DGammaMean);
+         DiscreteGamma(freqK, rK, alpha, alpha, K, DGammaUseMedian);
 
          MultiNomialAliasSetTable(K, freqK, Falias, Lalias, space+5*K);
          MultiNomialAlias(ls, K, Falias, Lalias, counts);
@@ -765,14 +794,14 @@ int Codon2AA(char codon[3], char aa[3], int icode, int *iaa)
          }
 
    if(naa==0) {
-      printf("stop codon %c%c%c\n",codon[0],codon[1],codon[2]);
-      *iaa=20;
+      printf("stop codon %c%c%c\n", codon[0], codon[1], codon[2]);
+      *iaa = 20;
    }
-   else if(naa==2)  *iaa=20; 
-   else             *iaa=iaa0;
+   else if(naa==2)  *iaa = 20; 
+   else             *iaa = iaa0;
    strncpy(aa, AA3Str+*iaa*3, 3);
 
-   return(naa==1?0: (naa==0?-1:1));
+   return(naa==1 ? 0 : (naa==0 ? -1 : 1));
 }
 
 int DNA2protein(char dna[], char protein[], int lc, int icode)
@@ -785,7 +814,7 @@ int DNA2protein(char dna[], char protein[], int lc, int icode)
 
    for(h=0; h<lc; h++) {
       k = Codon2AA(dna+h*3,aa3,icode,&iaa);
-      if(k==-1) printf(" stop codon at %d out of %d\n",h+1,lc);
+      if(k == -1) printf(" stop codon at %d out of %d\n",h+1,lc);
       protein[h] = AAs[iaa];
    }
    return(0);
@@ -837,7 +866,7 @@ int printcu (FILE *fout, double fcodon[], int icode)
 
 int printcums (FILE *fout, int ns, double fcodons[], int icode)
 {
-   int neach0=6, neach=neach0, wc=3,wd=0;  /* wc: for codon, wd: decimal  */
+   int neach0=6, neach=neach0, wc=4,wd=0;  /* wc: for codon, wd: decimal  */
    int iaa,it, i,j,k, i1, ngroup, igroup;
    char *word="|-", aa3[4]="   ",codon[4]="   ", ss3[4][4], *noodle;
 
@@ -903,14 +932,14 @@ int PtoPi (double P[], double pi[], int n, double space[])
    int i,j;
    double *T = space;      /* T[n*(n+1)]  */
 
-   for(i=0;i<n+1;i++) T[i]=1;
-   for(i=1;i<n;i++) {
-      for(j=0;j<n;j++)
-         T[i*(n+1)+j] = P[j*n+i]-(double)(i==j);     /* transpose */
+   for(i=0; i<n+1; i++) T[i]=1;
+   for(i=1; i<n; i++) {
+      for(j=0; j<n; j++)
+         T[i*(n+1)+j] = P[j*n+i] - (double)(i==j);     /* transpose */
       T[i*(n+1)+n] = 0;
    }
    matinv(T, n, n+1, pi);
-   for(i=0;i<n;i++) pi[i] = T[i*(n+1)+n];
+   for(i=0; i<n; i++) pi[i] = T[i*(n+1)+n];
    return (0);
 }
 
@@ -920,8 +949,8 @@ int PtoX (double P1[], double P2[], double pi[], double X[])
 */
    int i, j, k;
 
-   FOR (i,4)
-      FOR (j,4)
+   for(i=0; i<4; i++)
+      for(j=0; j<4; j++)
          for (k=0,X[i*4+j]=0.0; k<4; k++)  {
             X[i*4+j] += pi[k] * P1[k*4+i] * P2[k*4+j];
          }
@@ -929,24 +958,34 @@ int PtoX (double P1[], double P2[], double pi[], double X[])
 }
 
 
-int ScanFastaFile (FILE *f, int *ns, int *ls, int *aligned)
+int ScanFastaFile (FILE *fin, int *ns, int *ls, int *aligned)
 {
 /* This scans a fasta alignment file to get com.ns & com.ls.
    Returns -1 if the sequences are not aligned and have different lengths.
 */
-   int len=0, ch, starter='>';
-   char name[200];
+   int len=0, ch, starter='>', stop='/';  /* both EOF and / mark the end of the file. */
+   char name[200], *p;
 
+   if(noisy) printf("\nprocessing fasta file");
    for (*aligned=1,*ns=-1,*ls=0; ; ) {
-      ch = fgetc(f);
-      if(ch == starter || ch == EOF) {
+      ch = fgetc(fin);
+      if(ch==starter || ch==EOF || ch==stop) {
          if(*ns >= 0) {  /* process end of the sequence */
-            if(*ns>1 && len!= *ls)  *aligned = 0;
-            if(len> *ls)            *ls = len;
+            if(noisy) printf(" %7d sites", len);
+
+            if(*ns>1 && len!= *ls) {
+               *aligned = 0;
+               printf("previous sequence %s has len %d, current seq has %d\n", name, *ls, len);
+            }
+            if(len > *ls) *ls = len;
          }
          (*ns)++;      /* next sequence */
-         if(ch == EOF) break;
-         fscanf(f, "%s", name);
+         if(ch==EOF || ch==stop) break;
+         /* fscanf(fin, "%s", name); */
+         p= name;
+         while((ch=getc(fin)) != '\n' && ch != EOF) *p++ = ch;
+         *p = '\0';
+         if(noisy) printf("\nreading seq#%2d %-50s", *ns+1, name);
          len = 0;
       }
       else if(isgraph(ch)) {
@@ -955,7 +994,7 @@ int ScanFastaFile (FILE *f, int *ns, int *ls, int *aligned)
          len++;
       }
    }
-   rewind(f);
+   rewind(fin);
    return(0);
 }
 
@@ -974,7 +1013,7 @@ int printaSeq (FILE *fout, char z[], int ls, int lline, int gap)
    return (0);
 }
 
-int printsma (FILE*fout, char*spname[], char*z[], int ns, int l, int lline, int gap, int seqtype, 
+int printsma (FILE*fout, char*spname[], unsigned char*z[], int ns, int l, int lline, int gap, int seqtype, 
     int transformed, int simple, int pose[])
 {
 /* print multiple aligned sequences.
@@ -983,9 +1022,9 @@ int printsma (FILE*fout, char*spname[], char*z[], int ns, int l, int lline, int 
    printing out the original sequences after site patterns are collapsed. 
    Sequences z[] are coded if(transformed) and not if otherwise.
 */
-   int igroup, ngroup, lt, h,hp, i, b,b0=-1,igap, lspname=41, lseqlen=7;
+   int igroup, ngroup, lt, h,hp, i, b,b0=-1,igap, lspname=30, lseqlen=7;
    char indel='-', ambi='?', equal='.';
-   char *pch=(seqtype<=1 ? BASEs : (seqtype==2?AAs:BINs));
+   char *pch=(seqtype<=1 ? BASEs : (seqtype==2 ? AAs: (seqtype==5 ? BASEs5 : BINs)));
    char codon[4]="   ";
 
    if(l==0) return(1);
@@ -993,17 +1032,17 @@ int printsma (FILE*fout, char*spname[], char*z[], int ns, int l, int lline, int 
    if (gap==0) gap=lline+1;
    ngroup=(l-1)/lline+1;
    for (igroup=0,FPN(fout); igroup<ngroup; igroup++,FPN(fout))  {
-      lt=min2(l,(igroup+1)*lline);  /* seqlen mark at the end of block */
-      igap=lline+(lline/gap)+lspname+1-lseqlen-1; /* spaces */
-      if(igroup+1==ngroup)
-         igap=(l-igroup*lline)+(l-igroup*lline)/gap+lspname+1-lseqlen-1;
+      lt = min2(l, (igroup+1)*lline);  /* seqlen mark at the end of block */
+      igap = lline + (lline/gap) + lspname + 1 - lseqlen - 1; /* spaces */
+      if(igroup+1 == ngroup)
+         igap = (l-igroup*lline) + (l-igroup*lline)/gap + lspname + 1 - lseqlen - 1;
       /* fprintf (fout,"%*s[%*d]\n", igap, "", lseqlen,lt); */
       for(i=0; i<ns; i++)  {
          if(spname) fprintf(fout,"%-*s  ", lspname,spname[i]);
          for (h=igroup*lline,lt=0,igap=0; lt<lline && h<l; h++,lt++) {
             hp = (pose ? pose[h] : h);
             if(seqtype==CODONseq && transformed) {
-               fprintf(fout," %s", CODONs[z[i][hp]]);
+               fprintf(fout," %s", CODONs[(int)z[i][hp]]);
                continue;
             }
             b0 = (int)z[0][hp];
@@ -1012,9 +1051,12 @@ int printsma (FILE*fout, char*spname[], char*z[], int ns, int l, int lline, int 
                b0 = pch[b0];
                b = pch[b];
             }
-            if(i&&simple && b==b0 && b!=indel && b!=ambi)  b=equal;
+            if(i&&simple && b==b0 && b!=indel && b!=ambi)
+               b = equal;
             fputc(b, fout);
-            if (++igap==gap)  { fputc(' ', fout); igap=0; }
+            if (++igap==gap) {
+               fputc(' ', fout); igap=0; 
+            }
          }
          FPN (fout);
       }
@@ -1043,8 +1085,10 @@ char* printtime (char timestr[])
    time_t t;
    int h, m, s;
 
-   t=time(NULL)-time_start;
-   h=t/3600; m=(t%3600)/60; s=t-(t/60)*60;
+   t = time(NULL)-time_start;
+   h = (int)t/3600;
+   m = (int)(t%3600)/60;
+   s = (int)(t-(t/60)*60);
    if(h)  sprintf(timestr,"%d:%02d:%02d", h,m,s);
    else   sprintf(timestr,"%2d:%02d", m,s);
    return(timestr);
@@ -1055,7 +1099,7 @@ void sleep2(int wait)
 /* Pauses for a specified number of seconds. */
    time_t t_cur=time(NULL);
 
-   while(time(NULL)<t_cur+wait) ;
+   while(time(NULL) < t_cur+wait) ;
 }
 
 
@@ -1122,7 +1166,7 @@ int appendfile(FILE*fout, char*filename)
 
 
 void error2 (char * message)
-{ printf("\nError: %s.\n", message); exit(-1); }
+{ fprintf(stderr, "\nError: %s.\n", message); exit(-1); }
 
 int zero (double x[], int n)
 { int i; for(i=0; i<n; i++) x[i]=0; return (0);}
@@ -1221,27 +1265,63 @@ int f_and_x(double x[], double f[], int n, int fromf, int LastItem)
 
    if (fromf) {  /* f => x */
       if((tot=1-sum(f,n-1))<1e-80) error2("f[n-1]==1, not dealt with.");
-      tot=1/tot;
-      FOR(i,n-1)  x[i]=log(f[i]*tot);
-      if(LastItem) x[n-1]=0;
+      tot = 1/tot;
+      for(i=0; i<n-1; i++)  x[i] = log(f[i]*tot);
+      if(LastItem) x[n-1] = 0;
    }
    else {        /* x => f */
-      for(i=0,tot=1; i<n-1; i++)  tot+=(f[i]=exp(x[i]));
-      FOR(i,n-1)  f[i]/=tot;
-      if(LastItem) f[n-1]=1/tot;
+      for(i=0,tot=1; i<n-1; i++)  tot  += (f[i]=exp(x[i]));
+      for(i=0; i<n-1; i++)        f[i] /= tot;
+      if(LastItem) f[n-1] = 1/tot;
    }
    return(0);
+}
+
+void bigexp(double lnx, double *a, double *b)
+{
+/* this prints out x = e^lnx as a x 10^b
+*/
+   double z;
+   z = lnx*log10(2.71828);
+   *b = floor(z);
+   *a = pow(10, z-(*b));
 }
 
 static unsigned int z_rndu=1237;
 static int          w_rndu=1237;
 
-void SetSeed (unsigned int seed)
+void SetSeed (int seed, int PrintSeed)
 {
-   if(sizeof(int) != 4) 
+   int i;
+   FILE *frand, *fseed;
+
+   if(sizeof(unsigned int) != 4) 
       error2("oh-oh, we are in trouble.  int not 32-bit?");
-   z_rndu = seed;
-   w_rndu = abs(seed);
+
+   if(seed <= 0) {
+      frand = fopen("/dev/urandom", "r");
+      if (frand) {
+         for (i=0,seed=0; i<sizeof(unsigned int); i++)
+            seed += (seed << 8) + getc(frand);
+         seed = 2*seed + 1;
+         fclose(frand);
+      }
+      else {
+         seed = 1234567891*(int)time(NULL) + 1;
+      }
+
+      seed = abs(seed);
+
+      if(PrintSeed) {
+         fseed = fopen("SeedUsed", "w");
+         if(fseed == NULL) error2("can't open file SeedUsed.");
+         fprintf(fseed, "%d\n", seed);
+         fclose(fseed);
+      }
+   }
+
+   z_rndu = (unsigned int)seed;
+   w_rndu = seed;
 }
 
 
@@ -1251,10 +1331,10 @@ double rndu (void)
 {
 /* 32-bit integer assumed.
    From Ripley (1987) p. 46 or table 2.4 line 2. 
-   This may return 0, which can be a problem.
+   This may return 0 or 1, which can be a problem.
 */
    z_rndu = z_rndu*69069 + 1;
-   if(z_rndu==0)  z_rndu = 13;
+   if(z_rndu==0 || z_rndu==4294967295)  z_rndu = 13;
    return z_rndu/4294967295.0;
 }
 
@@ -1263,7 +1343,7 @@ double rndu2 (void)
 /* 32-bit integer assumed.
    From Ripley (1987) table 2.4 line 4. 
 */
-   w_rndu = abs(w_rndu*16807)%2147483647;
+   w_rndu = abs(w_rndu*16807) % 2147483647;
    if(w_rndu==0)  w_rndu = 13;
    return w_rndu/2147483647.0;
 }
@@ -1297,25 +1377,86 @@ double rndu (void)
 #endif
 
 
-double reflect(double x, double a, double b)
+double rnduM0V1 (void)
+{
+   /* uniform with mean 0 and variance 1 */
+   return  1.732050807568877*(-1 + rndu()*2);
+}
+
+
+double reflect (double x, double a, double b)
 {
 /* This returns a variable in the range (a,b) by reflecting x back into the range
 */
-   int rounds=0;
-   double x0=x, nroundsVirtual, small=1e-50;
+   int n=0, side;  /* side = 0 for left and 1 for right.  n is number of jumps over interval */
+   double e=0, small=1e-100;   /* e is excess */
 
    if(b-a<small) {
-      printf("\nimproper range x0=%.6g (%.6g, %.6g)\n", x0,a,b);
+      printf("\nimproper range x0=%.6g (%.6g, %.6g)\n", x, a, b);
       exit(-1);
    }
-   nroundsVirtual = floor((x-a)/(2*(b-a)));
-   x -= nroundsVirtual *2*(b-a);
-   for ( ; ; rounds++) {
-      if(x<=a)       x = a*2 - x;
-      else if(x>=b)  x = b*2 - x;
-      else break;
+   if(x<a)      {  e = a-x;  side = 0;  }
+   else if(x>b) {  e = x-b;  side = 1;  }
+   if(e) {
+      n = (int)(e/(b-a));
+      if(n%2) side = 1-side;  /* change side if n is odd */
+      e -= n*(b-a);
+      x = (side ? b-e : a+e);
    }
    return(x);
+}
+
+
+double PjumpOptimum = 0.30; /* this is the optimum for the Bactrian move. */
+
+int ResetFinetuneSteps(FILE *fout, double Pjump[], double finetune[], int nsteps)
+{
+   int j, verybadstep=0;
+
+   if(noisy>=3) {
+      printf("\n\nCurrent Pjump:    ");
+      for(j=0; j<nsteps; j++)
+         printf(" %8.5f", Pjump[j]);
+      printf("\nCurrent finetune: ");
+      for(j=0; j<nsteps; j++)
+         printf(" %8.5f", finetune[j]);
+   }
+   if(fout) {
+      fprintf(fout, "\nCurrent Pjump:    ");
+      for(j=0; j<nsteps; j++)
+         fprintf(fout, " %8.5f", Pjump[j]);
+      fprintf(fout, "\nCurrent finetune: ");
+      for(j=0; j<nsteps; j++)
+         fprintf(fout, " %8.5f", finetune[j]);
+   }
+
+   for(j=0; j<nsteps; j++) {
+      if(Pjump[j] < 0.001) {
+         finetune[j] /= 100;
+         verybadstep = 1;
+      }
+      else if(Pjump[j] > 0.999) {
+         finetune[j] *= 100;
+         verybadstep = 1;
+      }
+      else
+         finetune[j] *= tan(Pi/2*Pjump[j]) / tan(Pi/2*PjumpOptimum);
+   }
+
+   if(noisy>=3) {
+      printf("\nNew     finetune: ");
+      for(j=0; j<nsteps; j++)
+         printf(" %8.5f", finetune[j]);
+      printf("\n\n");
+   }
+   if(fout) {
+      fprintf(fout, "\nNew     finetune: ");
+      for(j=0; j<nsteps; j++)
+         fprintf(fout, " %8.5f", finetune[j]);
+      fprintf(fout, "\n");
+   }
+
+   return(verybadstep);
 }
 
 
@@ -1338,10 +1479,9 @@ void randorder(int order[], int n, int space[])
 double rndNormal (void)
 {
 /* Standard normal variate, using the Box-Muller method (1958), improved by 
-   Marsaglia and Bray (1964).  The method generates a pair of random
-   variates, and only one used.
-   See N. L. Johnson et al. (1994), Continuous univariate distributions, 
-   vol 1. p.153.
+   Marsaglia and Bray (1964).  The method generates a pair of N(0,1) variates, 
+   but only one is used.
+   Johnson et al. (1994), Continuous univariate distributions, vol 1. p.153.
 */
    double u, v, s;
 
@@ -1352,22 +1492,65 @@ double rndNormal (void)
       if (s>0 && s<1) break;
    }
    s = sqrt(-2*log(s)/s);
-   return (u*s);
+   return (u*s);  /* (v*s) is the other N(0,1) variate, wasted. */
 }
 
 
-double rnd2NormalSym (double m)
+double rndBactrian (void)
 {
-/* This returns a variate from the 1:1 mixture of two normals
-   N(-m, 1-m^2) and N(m, 1-m^2), which has mean 0 and variance 1.
+/* This returns a variate from the 1:1 mixture of two normals N(-m, 1-m^2) and N(m, 1-m^2),
+   which has mean 0 and variance 1.
 
-   The value m = 0.94 is useful for generating MCMC proposals
+   The value m = 0.95 is useful for generating MCMC proposals
 */
-   double z = m + rndNormal()*sqrt(1-m*m);
+   double z = mBactrian + rndNormal()*sBactrian;
    if(rndu()<0.5) z = -z;
    return (z);
 }
 
+
+double rndBactrianTriangle (void){
+/* This returns a variate from the 1:1 mixture of two Triangle Tri(-m, 1-m^2) and Tri(m, 1-m^2),
+   which has mean 0 and variance 1. 
+*/
+   double z = mBactrian + rndTriangle()*sBactrian;
+   if(rndu() < 0.5) z = -z;
+   return (z);
+}
+
+double rndBactrianLaplace (void){
+/* This returns a variate from the 1:1 mixture of two Laplace Lap(-m, 1-m^2) and Lap(m, 1-m^2),
+   which has mean 0 and variance 1. 
+*/
+   double z = mBactrian + rndLaplace()*sBactrian;
+   if(rndu() < 0.5) z = -z;
+   return (z);
+}
+
+
+
+double rndloglogistic (double loc, double s)
+{
+   double t = rndlogistic(), logt=1E300;
+   if(t<800) logt = exp(loc + s*t);
+   return(logt);
+}
+
+double rndlogistic (void)
+{
+/* log-logistic variate */
+   double u;
+
+   u = rndu();
+   return log(u/(1-u));
+}
+
+double rndlogt2 (double loc, double s)
+{
+   double t2 = rndt2(), logt2=1E300;
+   if(t2<800) logt2 = exp(loc + s*t2);
+   return(logt2);
+}
 
 double rndCauchy (void)
 {
@@ -1376,11 +1559,45 @@ double rndCauchy (void)
    return tan(Pi*(rndu()-0.5));
 }
 
+
+double rndTriangle(void){
+	double u, z;
+/* Standard Triangle variate, generated using inverse CDF  */
+	u = rndu();
+	if(u > 0.5)
+		z =  sqrt(6.0) - 2.0*sqrt(3.0*(1.0 - u));
+   else
+		z = -sqrt(6.0) + 2.0*sqrt(3.0*u);
+	return z;
+}
+
+double rndLaplace (void){
+	double u;
+/* Standard Laplace variate, generated using inverse CDF  */
+	u = -0.5 + rndu();
+   return (u>=0 ? log(1 - 2*fabs(u)) : -log(1 - 2*fabs(u)));
+}
+
+
+double rndt2 (void)
+{
+/* Standard Student's t_2 variate, with d.f. = 2.  t2 has mean 0 and variance infinity. */
+   double u, t2;
+
+   u = 2 * rndu() - 1;
+   u *= u;
+   t2 = sqrt(2*u/(1-u));
+   if(rndu()<0.5) t2 = -t2;
+   return t2;
+}
+
 double rndt4 (void)
 {
-/* Standard Student's t_4 variate, with d.f. = 4.
+/* Student's t_4 variate, with d.f. = 4.  
+   This has variance 1, and is the standard t4 variate divided by sqrt(2).
+   The standard t4 variate has variance 2.
 */
-   double u, v, w, c2, r2, t4;
+   double u, v, w, c2, r2, t4, sqrt2=0.707106781;
 
    for( ; ; ) {
       u = 2 * rndu() - 1;
@@ -1393,7 +1610,7 @@ double rndt4 (void)
    t4 = sqrt(r2*c2);
    if(rndu()<0.5) t4 = -t4;
 
-   return t4;
+   return t4 * sqrt2;
 }
 
 
@@ -1475,7 +1692,7 @@ double rndgamma (double a)
    if(a0 < 1) 
       v *= pow(rndu(), 1/a0);
    if(v==0) 
-      printf("\nrndgamma returning 0.\n");
+      printf("\a\nrndgamma returning 0.\n");
    return v;
 }
 
@@ -1512,8 +1729,8 @@ int MultiNomialAliasSetTable (int ncat, double prob[], double F[], int L[], doub
    signed char *I = (signed char *)space;
    int i,j,k, nsmall;
 
-   for(i=0; i<ncat; i++)  L[i]=-9;
-   for(i=0; i<ncat; i++)  F[i]=ncat*prob[i];
+   for(i=0; i<ncat; i++)  L[i] = -9;
+   for(i=0; i<ncat; i++)  F[i] = ncat*prob[i];
    for(i=0,nsmall=0; i<ncat; i++) {
       if(F[i]>=1)  I[i]=1;
       else       { I[i]=-1; nsmall++; }
@@ -1706,6 +1923,43 @@ double PDFCauchy (double x, double m, double sigma)
    return 1/(Pi*sigma*(1 + z*z));
 }
 
+double PDFloglogistic (double x, double loc, double s)
+{
+   double y = (log(x)-loc)/s, e=exp(-y);
+   return 1/(s*x)*e/((1+e)*(1+e));
+}
+
+double PDFlogt2 (double x, double loc, double s)
+{
+   double y=(log(x)-loc)/s, pdf;
+   y = 2+y*y;  y *= y*y;   /* [2 + y*y]^3 */
+   if(y<1E-300)
+      error2("y==0");
+   pdf = 1/(sqrt(y)*x*s);
+   return pdf;
+}
+
+double PDFt2 (double x, double m, double s)
+{
+   double y = (x-m)/s;
+   y = 2 + y*y;  y *= y*y;   /* [2 + y*y]^3 */
+   if(y<1e-300)
+      error2("y==0");
+   return 1/(sqrt(y)*s);
+}
+
+double PDFt4 (double x, double m, double s)
+{
+/* This t4 PDF has mean m and variance s*s.  Note that the standard t4 has variance 2*s*s.
+*/
+   double z = (x-m)/s, pdf;
+
+   pdf = 3/(4*1.414213562*s)*pow(1 + z*z/2, -2.5);
+
+   return pdf;
+}
+
+
 double PDFt (double x, double loc, double scale, double df, double lnConst)
 {
 /* CDF of t distribution with lococation, scale, and degree of freedom
@@ -1762,6 +2016,77 @@ double PDFSkewN (double x, double loc, double scale, double shape)
 }
 
 
+int StirlingS2(int n, int k)
+{
+/* Stirling number of the second type, calculated using the recursion (loop)
+   S(n, k) = S(n - 1, k - 1) + k*S(n - 1, k).
+   This works for small numbers of n<=15.
+*/
+   int S[16]={0}, i, j;
+
+   if((n==0 && k==0) || k==1 || k==n)
+      return 1;
+   if(k==0 || k>n)
+      return 0;
+   if(k==2)
+      return (int) ldexp(1,n-1) - 1;
+   if(k==n-1)
+      return n*(n-1)/2;
+   if(n>15)
+      error2("n>15 too large in StirlingS2()");
+
+   S[1] = S[2] = 1;  /* start with n = 2 */
+   for(i=3; i<=n; i++) {
+      for(j=min2(k,i); j>=2; j--)
+         S[j] = S[j-1] + j*S[j];
+   }
+   return S[k];
+}
+
+double lnStirlingS2(int n, int k)
+{
+/* This calculates the logarithm of the Stirling number of the second type.
+   Temme NM. 1993. Asymptotic estimates of Stirling numbers. Stud Appl Math 89:233-243.
+*/
+   int i;
+   double lnS=0, t0, x0, x, A, nk, y;
+
+   if(k>n) error2("k<n in lnStirlingS2");
+
+   if(n==0 && k==0)
+      return 0;
+   if(k==0)
+      return -1e300;
+   if(k==1 || k==n) 
+      return (0);
+   if(k==2)
+      return (n<50 ? log(ldexp(1,n-1) - 1) : (n-1)*0.693147);
+   if(k==n-1)
+      return log(n*(n-1)/2.0);
+   if(n<8)
+      return log((double)StirlingS2(n, k));
+   
+   nk = (double)n/k;
+   for(i=0,x0=x=1; i<10000; i++) {
+      x = (x0 + nk - nk*exp(-x0))/2;
+      if(fabs(x-x0)/(1+x) < 1e-10) break;
+      x0 = x;
+   }
+   t0 = n/(double)k - 1;
+   if(x<100)
+      A = -n * log(x) + k*log(exp(x) - 1);
+   else 
+      A = -n * log(x) + k*x;
+
+   A += -k*t0 + (n-k)*log(t0);
+   lnS = A + (n-k)*log((double)k) + 0.5*log(t0/((1 + t0)*(x - t0)));
+   lnS += log(Binomial(n, k, &y));
+   lnS += y;
+
+   return(lnS);
+}
+
+
 double LnGamma (double x)
 {
 /* returns ln(gamma(x)) for x>0, accurate to 10 decimal places.
@@ -1793,9 +2118,8 @@ double LnGamma (double x)
          f = -log(f);
       }
       z = 1/(x*x);
-      lng = fneg+ f + (x-0.5)*log(x) - x + .918938533204673 
-             + (((-.000595238095238*z+.000793650793651)*z-.002777777777778)*z
-                  +.083333333333333)/x;
+      lng = fneg + f + (x-0.5)*log(x) - x + .918938533204673 
+             + (((-.000595238095238*z + .000793650793651)*z - .002777777777778)*z + .083333333333333)/x;
    }
    return  lng;
 }
@@ -1950,32 +2274,69 @@ l4:
 }
 
 
-int DiscreteGamma (double freqK[], double rK[], double alpha, double beta, int K, int dgammamean)
+int DiscreteBeta (double freq[], double x[], double p, double q, int K, int UseMedian)
 {
-/* discretization of gamma distribution with equal proportions in each 
-   category.
+/* discretization of beta(p, q), with equal proportions in each category.
 */
    int i;
-   double t, factor=alpha/beta*K, lnga1;
+   double mean=p/(p+q), lnbeta, lnbeta1, t;
 
-   if (dgammamean==0) {
-      lnga1=LnGamma(alpha+1);
-      for (i=0; i<K-1; i++) /* cutting points, Eq. 9 */
-         freqK[i]=QuantileGamma((i+1.0)/K, alpha, beta);
-      for (i=0; i<K-1; i++) /* Eq. 10 */
-         freqK[i] = IncompleteGamma(freqK[i]*beta, alpha+1, lnga1);
+   lnbeta = LnBeta(p, q);
+   if(UseMedian) {   /* median */
+      for(i=0,t=0; i<K; i++)
+         t += x[i] = QuantileBeta((i+0.5)/K, p, q, lnbeta);
+      for(i=0; i<K; i++)
+         x[i] *= mean*K/t;
 
-      rK[0] = freqK[0]*factor;
-      rK[K-1] = (1-freqK[K-2])*factor;
-      for (i=1; i<K-1; i++)  rK[i] = (freqK[i]-freqK[i-1])*factor;
+      /* printf("\nmedian  ");  for(i=0; i<K; i++) printf("%9.5f", x[i]); */
    }
-   else {
+   else {            /* mean */
+      for(i=0; i<K-1; i++) /* cutting points */
+         freq[i] = QuantileBeta((i+1.0)/K, p, q, lnbeta);
+      freq[K-1] = 1;
+
+      /* printf("\npoints  ");  for(i=0; i<K; i++) printf("%9.5f", freq[i]); */
+      lnbeta1 = lnbeta - log(1 + q/p);
+      for(i=0; i<K-1; i++) /* CDF */
+         freq[i] = CDFBeta(freq[i], p+1, q, lnbeta1);
+
+      x[0] = freq[0]*mean*K;
+      for (i=1; i<K-1; i++)  x[i] = (freq[i] - freq[i-1])*mean*K;
+      x[K-1] = (1 - freq[K-2])*mean*K;
+ 
+      /* printf("\nmean    ");  for(i=0; i<K; i++) printf("%9.5f", x[i]); */
+      for(i=0,t=0; i<K; i++) t += x[i]/K;
+   }
+
+   for (i=0; i<K; i++) freq[i] = 1.0/K;
+   return (0);
+}
+
+int DiscreteGamma (double freqK[], double rK[], double alpha, double beta, int K, int UseMedian)
+{
+/* discretization of G(alpha, beta) with equal proportions in each category.
+*/
+   int i;
+   double t, mean=alpha/beta, lnga1;
+
+   if(UseMedian) {   /* median */
       for(i=0; i<K; i++) rK[i] = QuantileGamma((i*2.+1)/(2.*K), alpha, beta);
       for(i=0,t=0; i<K; i++) t += rK[i];
-      for(i=0; i<K; i++) rK[i] *= factor/t;
+      for(i=0; i<K; i++) rK[i] *= mean*K/t;   /* rescale so that the mean is alpha/beta. */
    }
-   for (i=0; i<K; i++) freqK[i] = 1.0/K;
+   else {            /* mean */
+      lnga1 = LnGamma(alpha+1);
+      for (i=0; i<K-1; i++) /* cutting points, Eq. 9 */
+         freqK[i] = QuantileGamma((i+1.0)/K, alpha, beta);
+      for (i=0; i<K-1; i++) /* Eq. 10 */
+         freqK[i] = IncompleteGamma(freqK[i]*beta, alpha+1, lnga1);
+      rK[0] = freqK[0]*mean*K;
+      for (i=1; i<K-1; i++)  rK[i] = (freqK[i] - freqK[i-1])*mean*K;
+      rK[K-1] = (1-freqK[K-2])*mean*K;
+   }
 
+   for (i=0; i<K; i++) freqK[i] = 1.0/K;
+   
    return (0);
 }
 
@@ -2015,7 +2376,7 @@ int AutodGamma (double M[], double freqK[], double rK[], double *rho1, double al
       }
    }
 
-   DiscreteGamma (freqK, rK, alpha, alpha, K, DGammaMean);
+   DiscreteGamma(freqK, rK, alpha, alpha, K, DGammaUseMedian);
 
    for (i=0,v1=*rho1=0; i<K; i++) {
       v1+=rK[i]*rK[i]*freqK[i];
@@ -2025,195 +2386,6 @@ int AutodGamma (double M[], double freqK[], double rK[], double *rho1, double al
    v1-=1;
    *rho1=(*rho1-1)/v1;
    return (0);
-}
-
-
-
-double LBinormal2Delete (double h, double k, double r)
-{
-/* L(h,k,r) = prob(x>h, y>k), where x and y are standard binormal, 
-   with r = corr(x,y).
-
-      (1) Drezner Z., and G.O. Wesolowsky (1990) On the computation of the
-          bivariate normal integral.  J. Statist. Comput. Simul. 35:101-107.
-
-      (2) Genz, A.C., Numerical computation of rectangular bivariate and 
-          trivariate normal and t probabilities. Statist. Comput., 2004. 14: p. 1573-1375.
-
-   This uses the algorithm of Genz (2004) for r>0, and 
-        L(h,k,r) = F(-k) - L(-h, k, -r), if r<0.
-   Here h<k is assumed.  If h>k, a swapping between h and k is performed.
-
-   Gauss-Legendre quadrature points used.
-
-     |r|                Genz     nGL
-     <0.3   (eq. 3)       6       10
-     <0.75  (eq. 3)      12       20
-     <0.925 (eq. 3)      20       20
-     <1     (eq. 6)      20       20
-*/
-   int nGL = (fabs(r)<0.3 ? 10 : 20), i,j, signr = (r>=0 ? 1 : -1);
-   double *x=NULL, *w=NULL;  /* Gauss-Legendre quadrature points */
-   double hk=h*k, h0=h,k0=k, L=0, t[2], hk2, y, a=0,b,c,d, bs, as, rs, smallr=1e-10;
-
-   h=min2(h0,k0);  k=max2(h0,k0);
-   if(signr==-1) { r=-r; h=-h; hk=h*k; }
-   if(r>1) error2("|r| > 1 in LBinormal");
-   GaussLegendreRule(&x, &w, nGL);
-
-   if(r < 0.925) {  /* equation 3 */
-      if(r>smallr) {
-         hk2 = (h*h + k*k)/2; 
-         a = asin(r)/2;
-         for(i=0,L=0; i<nGL/2; i++) {
-            t[0] = a*(1 - x[i]);  t[0] = sin(t[0]);
-            t[1] = a*(1 + x[i]);  t[1] = sin(t[1]);
-            for(j=0; j<2; j++)
-               L += w[i]*exp((t[j]*hk - hk2)/(1 - t[j]*t[j]));
-         }
-      }
-      L = L*a/(2*Pi) + CDFNormal(-h)*CDFNormal(-k);
-   }
-   else {   /* equation 6, using equation 7 instead of equation 5. */
-      if(r>-1+smallr && r<1-smallr) {
-         /* first term in equation (6), analytical */
-         as = 1-r*r; 
-         a = sqrt(as);
-         b = fabs(h - k);
-         bs = b*b;
-         c = (4 - hk)/8 ; 
-         d = (12 - hk)/16; 
-         y = -(bs/as + hk)/2;
-         if(y > -500) 
-            L = a*exp(y)*(1 - c*(bs-as)*(1-d*bs/5)/3 + c*d*as*as/5);
-         if(hk > -500) {
-            L -= exp(-hk/2)*sqrt(2*Pi) * CDFNormal(-b/a) * b * (1 - c*bs*(1 - d*bs/5)/3);
-         }
-         /* second term in equation (6), numerical */
-         a /= 2;
-         for(i=0; i<nGL/2; i++) {
-            t[0] = a*(1 - x[i]);  t[0] = t[0]*t[0];
-            t[1] = a*(1 + x[i]);  t[1] = t[1]*t[1];
-            for(j=0; j<2; j++) {
-               rs = sqrt(1 - t[j]);
-               y = -(bs/t[j] + hk)/2;
-               if(y > -500)
-                  L += a*w[i]*exp(y)*(exp(-hk*(1-rs)/(2*(1+rs)))/rs - (1+c*t[j]*(1+d*t[j])));
-            }
-         }
-      }
-      L = CDFNormal(-max2(h, k)) - L/(2*Pi);
-   }
-   if(signr<0)
-      L = CDFNormal(-k) - L;
-   if(L<-1e-12) printf("L = %.9g very negative.  Let me know please.\n", L);
-   if(L<0) L=0;
-   return (L);
-}
-
-
-double logLBinormal2Delete (double h, double k, double r)
-{
-/* this is to calculate the logarithm of tail probabilities of bivariate normal 
-   distribution, modified from LBinormal().
-   When r < 0, we use L(h,k,r) = F(-k) - L(-h, k, -r), where h < k.  
-   In other words, 
-   L(-10, 9, -1) = F(-9) - F(-10) is better than L(-10, 9, -1) = F(10) - F(9).
-   So we use L(-10, 9, -0.3) = L(-9) - L(10, 9, 0.3).
-   not       L(-10, 9, -0.3) = L(10) - L(-10, -9, 0.3).
-
-   Results for the left tail, the very negative log(L), are reliable.  
-   Results for the right tail are not reliable, that is, 
-   if log(L) is close to 0 and L ~= 1.  Perhaps try to use the following to reflect:
-      L(-5,-9,r) = 1 - [ F(-5) + F(-9) - L(5,9,r) ]
-   Check the routine logCDFNormal() to see the idea.
-*/
-   int nGL = (fabs(r)<0.3 ? 10 : 20), i,j, signr = (r>=0 ? 1 : -1);
-   double *x=NULL, *w=NULL;  /* Gauss-Legendre quadrature points */
-   double hk=h*k, h0=h,k0=k, L, t[2], hk2, a,b,c,d, bs, as, rs;
-   double S1,S2=-1e300,S3=-1e300, y,L2=0,L3=0, largeneg=-1e300, smallr=1e-10;
-
-   h=min2(h0,k0);  k=max2(h0,k0);
-   if(signr==-1) { r=-r; h=-h; hk=-hk; }
-   if(fabs(r)>1+smallr) error2("|r| > 1 in LBinormal");
-   GaussLegendreRule(&x, &w, nGL);
-
-   if(r < 0.925) {  /* equation 3 */
-      S1 = L = logCDFNormal(-h) + logCDFNormal(-k);
-      if(r>smallr) {
-         hk2 = (h*h + k*k)/2;
-         a = asin(r)/2;
-         for(i=0,L=0,S2=-hk2; i<nGL/2; i++) {
-            t[0] = a*(1 - x[i]);  t[0] = sin(t[0]);
-            t[1] = a*(1 + x[i]);  t[1] = sin(t[1]);
-            for(j=0; j<2; j++) {
-               y = -(hk2 - t[j]*hk)/(1 - t[j]*t[j]);
-               if(y>S2+30) {
-                  L *= exp(S2-y);
-                  S2 = y;
-               }
-               L += w[i]*exp(y-S2);
-            }
-         }
-         y = max2(S1,S2);
-         a = exp(S1-y) + L*a/(2*Pi)*exp(S2-y);
-         L = (a>0 ? y + log(a) : largeneg);
-      }
-   }
-   else {   /* equation 6, using equation 7 instead of equation 5. */
-      /*  log(L) = exp(S1) + L2*exp(S2) + L3*exp(S3)  */
-      if(r>-1+smallr && r<1-smallr) {
-
-         /* first term in equation (6), analytical:  L2 & S2 */
-         as = 1-r*r; 
-         a = sqrt(as); 
-         b = fabs(h - k);
-         bs = b*b;
-         c = (4 - hk)/8;
-         d = (12 - hk)/16;
-         S2 = -(bs/as + hk)/2;  /* is this too large? */
-         L2 = a*(1 - c*(bs-as)*(1-d*bs/5)/3 + c*d*as*as/5);
-         y = -hk/2 + logCDFNormal(-b/a);
-         if(y>S2+30) {
-            L2 *= exp(S2-y);
-            S2 = y;
-         }
-         L2 -= sqrt(2*Pi) * exp(y-S2) * b * (1 - c*bs*(1 - d*bs/5)/3);
-
-         /* second term in equation (6), numerical: L3 & S3 */
-         a /= 2;
-         for(i=0,L3=0,S3=-1e300; i<nGL/2; i++) {
-            t[0] = a*(1 - x[i]);  t[0] = t[0]*t[0];
-            t[1] = a*(1 + x[i]);  t[1] = t[1]*t[1];
-            for(j=0; j<2; j++) {
-               rs = sqrt(1 - t[j]);
-               y = -(bs/t[j] + hk)/2;
-               if(y > S3+30) {
-                  L3 *= exp(S3-y);
-                  S3 = y;
-               }
-               L3 += a*w[i]*exp(y-S3) * (exp(-hk*(1-rs)/(2*(1+rs)))/rs - (1+c*t[j]*(1+d*t[j])));
-            }
-         }
-      }
-
-      S1 = logCDFNormal(-max2(h, k));
-      y = max2(S1,S2); y = max2(y,S3);
-      a = exp(S1-y) - (L2*exp(S2-y) + L3*exp(S3-y))/(2*Pi);
-      L = (a>0 ? y + log(a) : largeneg);
-   }
-
-   if(signr==-1) {  /* r<0:  L(h,k,-r) = F(-k) - L(-h,k,r) */
-      S1 = logCDFNormal(-k);
-      y = max2(S1,L);
-      a = exp(S1-y) - exp(L-y);
-      L = (a > 0 ? y + log(a) : largeneg);
-   }
-   if(L>1e-12)
-      printf("ln L(%2g, %.2g, %.2g) = %.6g is very large.\n", h0,k0,r*signr, L);
-   if(L>0)  L=0;
-
-   return(L);
 }
 
 
@@ -2239,7 +2411,7 @@ double LBinormal (double h, double k, double r)
      <0.925 (eq. 3)      20       20
      <1     (eq. 6)      20       20
 */
-   int nGL = (fabs(r)<0.3 ? 10 : 20), i,j;
+   int nGL = (fabs(r)<0.3 ? 16 : 32), i,j;
    double *x=NULL, *w=NULL;  /* Gauss-Legendre quadrature points */
    double shk, h0=h,k0=k, sk, L=0, t[2], hk2, y, a=0,b,c,d, bs, as, rs, smallr=1e-10;
 
@@ -2322,7 +2494,7 @@ double logLBinormal (double h, double k, double r)
       L(-5,-9,r) = 1 - [ F(-5) + F(-9) - L(5,9,r) ]
    See logCDFNormal() for more details of the idea.
 */
-   int nGL = (fabs(r)<0.3 ? 10 : 20), i,j;
+   int nGL = (fabs(r)<0.3 ? 16 : 32), i,j;
    double *x=NULL, *w=NULL;  /* Gauss-Legendre quadrature points */
    double shk, h0=h,k0=k, sk, L, t[2], hk2, a,b,c,d, bs, as, rs, signr=(r>=0?1:-1);
    double S1=0,S2=-1e300,S3=-1e300, y,L1=0,L2=0,L3=0, largeneg=-1e300, smallr=1e-10;
@@ -2449,6 +2621,22 @@ void testLBinormal (void)
 #endif
 
 
+
+
+int probBinomialDistribution (int n, double p, double prob[])
+{
+/* calculates  {n\choose k} * p^k * (1-p)^(n-k), for k=0,1,...,n and store in prob[].
+*/
+   int k;
+   double y;
+
+   prob[0] = y = pow(1-p, (double)n);
+   for(k=1; k<=n; k++)
+      prob[k] = y *= ((n-k+1)*p) / (k*(1-p));
+   return 0;
+}
+
+
 double probBinomial (int n, int k, double p)
 {
 /* calculates  {n\choose k} * p^k * (1-p)^(n-k)
@@ -2456,7 +2644,7 @@ double probBinomial (int n, int k, double p)
    double C, up, down;
 
    if (n<40 || (n<1000&&k<10)) {
-      for (down=min2(k,n-k),up=n,C=1; down>0; down--,up--) C*=up/down;
+      for (down=min2(k,n-k),up=n,C=1; down>0; down--,up--) C *= up/down;
       if (fabs(p-.5)<1e-6) C *= pow(p,(double)n);
       else                 C *= pow(p,(double)k)*pow((1-p),(double)(n-k));
    }
@@ -2546,7 +2734,7 @@ double CDFBeta (double x, double pin, double qin, double lnbeta)
       q = pin;
    }
 
-   if(lnbeta==0) lnbeta = LnGamma(p) + LnGamma(q) - LnGamma(p+q);
+   if(lnbeta==0) lnbeta = LnBeta(p, q);
 
    if ((p + q) * y / (p + 1) < eps) {  /* tail approximation */
       ans = 0;
@@ -2645,7 +2833,7 @@ double QuantileBeta(double prob, double p, double q, double lnbeta)
    if (prob == 0 || prob == 1)
       return prob;
 
-   if(lnbeta==0) lnbeta=LnGamma(p)+LnGamma(q)-LnGamma(p+q);
+   if(lnbeta==0) lnbeta = LnBeta(p, q);
 
    /* change tail if necessary;  afterwards   0 < a <= 1/2    */
    if (prob <= 0.5) {
@@ -2689,10 +2877,9 @@ double QuantileBeta(double prob, double p, double q, double lnbeta)
    adj = 1.;
 
 
-   
-/* Changes made by Ziheng to fix a bug in qbeta()
-   qbeta(0.25, 0.143891, 0.05) = 3e-308   wrong (correct value is 0.457227)
-*/
+   /* Changes made by Ziheng to fix a bug in qbeta()
+      qbeta(0.25, 0.143891, 0.05) = 3e-308   wrong (correct value is 0.457227)
+   */
    if(xinbta<=lower || xinbta>=upper)  xinbta=(a+.5)/2;
 
    /* Desired accuracy should depend on (a,p)
@@ -2749,8 +2936,8 @@ double diff_Quantile(double x)
    return(square(prob_Quantile-px));
 }
 
-double Quantile(double(*cdf)(double x,double par[]),
-       double p,double x,double par[],double xb[2])
+double Quantile(double(*cdf)(double x, double par[]),
+       double p, double x, double par[], double xb[2])
 {
 /* Use x for initial value if in range
 */
@@ -3826,7 +4013,7 @@ int GaussLegendreRule(double **x, double **w, int npoints)
    case (1024):
       *x = x1024;  *w = w1024; break;
    default :
-      error2("use 10, 20, 32, 64, 128, 512, 1024 for npoints for legendre.");
+      error2("use 4, 8, 16, 32, 64, 128, 512, 1024 for npoints for legendre.");
    }
    return(status);
 }
@@ -3838,30 +4025,21 @@ double NIntegrateGaussLegendre (double(*fun)(double x), double a, double b, int 
 /* this approximates the integral Nintegrate[fun[x], {x,a,b}].
    npoints is 10, 20, 32 or 64 nodes for legendre.");
 */
-   int j;
-   double *x=NULL, *w=NULL, s=0, t[2];
+   int j, ixw;
+   double *x=NULL, *w=NULL, sign, s=0, t;
 
+   if(npoints%2 != 0)
+      error2("this assumes even number of points.");
    GaussLegendreRule(&x, &w, npoints);
 
-   /* this goes through the natural order from a to b */
-   for(j=npoints/2-1; j>=0; j--) {
-      t[1] = (a+b)/2 - (b-a)/2*x[j];
-      s += w[j]*fun(t[1]);
+   /* x changes monotonically from a to b. */
+   for(j=0; j<npoints; j++) {
+      if(j<npoints/2) { ixw = npoints/2-1-j;  sign=-1; }
+      else            { ixw = j-npoints/2;    sign=1; }
+      t = (a+b)/2 + sign*(b-a)/2*x[ixw];
+      s += w[ixw]*fun(t);
    }
-   for(j=0; j<npoints/2; j++) {
-      t[0] = (a+b)/2 + (b-a)/2*x[j];
-      s += w[j]*fun(t[0]);
-   }
-
-/*
-   for(j=0,s=0; j<npoints/2; j++) {
-      t[0] = (a+b)/2 + (b-a)/2*x[j];
-      t[1] = (a+b)/2 - (b-a)/2*x[j];
-      for(i=0; i<2; i++)
-         s += w[j]*fun(t[i]);
-   }
-*/
-   return s *= (b-a)/2;
+   return s *= (b - a)/2;
 }
 
 
@@ -4141,18 +4319,36 @@ double Det3x3 (double x[3*3])
      - x[0*3+2]*x[1*3+1]*x[2*3+0] ;
 }
 
-int matby (double a[], double b[], double c[], int n,int m,int k)
+int matby (double a[], double b[], double c[], int n, int m, int k)
 /* a[n*m], b[m*k], c[n*k]  ......  c = a*b
 */
 {
-   int i,j,i1;
+   int i1, i2, i3;
    double t;
-   FOR (i,n)  FOR(j,k) {
-      for (i1=0,t=0; i1<m; i1++) t+=a[i*m+i1]*b[i1*k+j];
-      c[i*k+j] = t;
+
+   for(i1=0; i1<n; i1++)
+      for(i2=0; i2<k; i2++) {
+         for (i3=0,t=0; i3<m; i3++) t += a[i1*m+i3]*b[i3*k+i2];
+      c[i1*k+i2] = t;
    }
    return (0);
 }
+
+int matbytransposed (double a[], double b_transposed[], double c[], int n, int m, int k)
+/* a[n*m], b[m*k], c[n*k]  ......  c = a*b, but with b_transposed[k*m]
+*/
+{
+   int i1, i2, i3;
+   double t;
+
+   for(i1=0; i1<n; i1++)
+      for(i2=0; i2<k; i2++) {
+         for (i3=0,t=0; i3<m; i3++) t += a[i1*m+i3]*b_transposed[i2*m+i3];
+      c[i1*k+i2] = t;
+   }
+   return (0);
+}
+
 
 
 int matIout (FILE *fout, int x[], int n, int m)
@@ -4225,70 +4421,78 @@ int matinv (double x[], int n, int m, double space[])
          exit(-1);
       }
       if (irow[i] != i) {
-         FOR (j,m) {
+         for(j=0; j<m; j++) {
             t = x[i*m+j];
             x[i*m+j] = x[irow[i]*m+j];
             x[irow[i]*m+j] = t;
          }
       }
       t = 1./x[i*m+i];
-      FOR (j,n) {
+      for(j=0; j<n; j++) {
          if (j == i) continue;
          t1 = t*x[j*m+i];
          FOR(k,m)  x[j*m+k] -= t1*x[i*m+k];
          x[j*m+i] = -t1;
       }
-      FOR(j,m)   x[i*m+j] *= t;
+      for(j=0; j<m; j++)   x[i*m+j] *= t;
       x[i*m+i] = t;
    }                            /* for(i) */
    for (i=n-1; i>=0; i--) {
       if (irow[i] == i) continue;
-      FOR(j,n)  {
+      for(j=0; j<n; j++)  {
          t = x[j*m+i];
          x[j*m+i] = x[j*m + irow[i]];
          x[j*m + irow[i]] = t;
       }
    }
-   space[0]=det;
+   space[0] = det;
    return(0);
 }
 
 
-int matexp (double Q[], double t, int n, int TimeSquare, double space[])
+int matexp (double A[], int n, int nTaylorTerms, int nSquares, double space[])
 {
-/* This calculates the matrix exponential P(t) = exp(t*Q).
-   Input: Q[] has the rate matrix, and t is the time or branch length.
-          TimeSquare is the number of times the matrix is squared and should 
-          be from 5 to 31.
-   Output: Q[] has the transition probability matrix, that is P(Qt).
-   space[n*n]: required working space.
+/* This calculates the matrix exponential e^A and returns the result in A[].
+   space[n*n*3]: required working space.
 
-      P(t) = (I + Qt/m + (Qt/m)^2/2)^m, with m = 2^TimeSquare.
+      e^A = (I + A/m + (A/m)^2/2! + ...)^m, with m = 2^TimeSquare.
 
-   T[it=0] is the current matrix, and T[it=1] is the squared result matrix,
-   used to avoid copying matrices.
-   Use an even TimeSquare to avoid one round of matrix copying.
+   See equation (2.22) in Yang (2006) and the discussion below it.  
+   This is method 3 in Moler & Van Loan (2003. Nineteen dubious ways to compute 
+   the exponential of a matrix, twenty-five years later. SIAM Review 45:3-49).
+
+   In the Taylor step, T[1] and T[2] are used to avoid matrix copying.
+   In the squaring step, T[0] and T[1] are used to avoid matrix copying.
+   Use an even nSquares to avoid one round of matrix copying.
 */
-   int it, i;
-   double *T[2];
+   int it, i, j;
+   double *T[3], *B, m1, factor=1;   /*  B = A/2^nSquares  */
 
-   if(TimeSquare<2 || TimeSquare>31) error2("TimeSquare not good");
-   T[0]=Q; T[1]=space;
-   for(i=0; i<n*n; i++)  T[0][i] = ldexp( Q[i]*t, -TimeSquare );
+   if(nSquares>31) error2("nSquares too large");
+   T[0] = A;
+   T[1] = space;
+   T[2] = T[1] + n*n;
+   B    = T[2] + n*n;
 
-   matby (T[0], T[0], T[1], n, n, n);
-   for(i=0; i<n*n; i++)  T[0][i] += T[1][i]/2;
-   for(i=0; i<n; i++)  T[0][i*n+i] ++;
+   m1 = 1.0/(1 << nSquares);
+   for(i=0; i<n*n; i++)  B[i] = T[1][i] = A[i] *= m1;
 
-   for(i=0,it=0; i<TimeSquare; i++) {
-      it = !it;
-      matby (T[1-it], T[1-it], T[it], n, n, n);
+   /*  Taylor for e^B, with result in A = T[0].  Calculate I + B first. */
+   for(i=0; i<n; i++)    A[i*n+i] ++;
+   for(j=2,it=2; j<=nTaylorTerms; j++,it=3-it) {  /* it flips between 1 and 2. */
+      matby(T[3-it], B, T[it], n, n, n);
+      factor /= j;
+      for(i=0; i<n*n; i++)
+         A[i] += T[it][i]*factor;
+   }
+
+   for(i=0,it=0; i<nSquares; i++,it = 1-it) {
+      matby(T[it], T[it], T[1-it], n, n, n);
    }
    if(it==1) 
-      for(i=0;i<n*n;i++) Q[i]=T[1][i];
+      for(i=0; i<n*n; i++) A[i] = T[1][i];
    return(0);
 }
-
 
 
 void HouseholderRealSym(double a[], int n, double d[], double e[]);
@@ -4306,14 +4510,14 @@ int matsqrt (double A[], int n, double work[])
 
    xtoy(A, U, n*n);
    HouseholderRealSym(U, n, Root, V);
-   status=EigenTridagQLImplicit(Root, V, n, U);
+   status = EigenTridagQLImplicit(Root, V, n, U);
    mattransp2 (U, V, n, n);
    for(i=0;i<n;i++) 
       if(Root[i]<0) error2("negative root in matsqrt?");
       else          Root[i]=sqrt(Root[i]);
    for(i=0;i<n;i++) for(j=0;j<n;j++) 
       U[i*n+j] *= Root[j];
-   matby (U, V, A, n, n, n);
+   matby(U, V, A, n, n, n);
 
    return(status);
 }
@@ -4382,22 +4586,21 @@ int CholeskyInverse (double L[], int n)
    for (i=0; i<n; i++) {
       L[i*n+i]=1/L[i*n+i];
       for (j=i+1; j<n; j++) {
-         for (k=i,t=0; k<j; k++) t-=L[j*n+k]*L[k*n+i];
-         L[j*n+i]=t/L[j*n+j];
+         for (k=i,t=0; k<j; k++) t -= L[j*n+k]*L[k*n+i];
+         L[j*n+i] = t/L[j*n+j];
       }
    }
    return (0);
 }
 
 
-int eigenQREV (double Q[], double pi[], int n, 
-               double Root[], double U[], double V[], double spacesqrtpi[])
+int eigenQREV (double Q[], double pi[], int n, double Root[], double U[], double V[], double spacesqrtpi[])
 {
 /* 
    This finds the eigen solution of the rate matrix Q for a time-reversible 
    Markov process, using the algorithm for a real symmetric matrix.
    Rate matrix Q = S * diag{pi} = U * diag{Root} * V, 
-   where S is symmetrical, all elements of pi are positive, and U*V = I.
+   where S is symmetrical, all elements of pi are positive, and UV = I.
    space[n] is for storing sqrt(pi).
 
    [U 0] [Q_0 0] [U^-1 0]    [Root  0]
@@ -4419,7 +4622,7 @@ int eigenQREV (double Q[], double pi[], int n,
          for(j=0,U[i*n+i] = Q[i*n+i]; j<i; j++)
             U[i*n+j] = U[j*n+i] = (Q[i*n+j] * pi_sqrt[i]/pi_sqrt[j]);
 
-      status=eigenRealSym(U, n, Root, V);
+      status = eigenRealSym(U, n, Root, V);
       for(i=0; i<n; i++) for(j=0; j<n; j++)  V[i*n+j] = U[j*n+i] * pi_sqrt[j];
       for(i=0; i<n; i++) for(j=0; j<n; j++)  U[i*n+j] /= pi_sqrt[i];
    }
@@ -4437,7 +4640,7 @@ int eigenQREV (double Q[], double pi[], int n,
          }
       }
 
-      status=eigenRealSym(U, nnew, Root, V);
+      status = eigenRealSym(U, nnew, Root, V);
 
       for(i=n-1,inew=nnew-1; i>=0; i--)   /* construct Root */
          Root[i] = (pi[i]>small ? Root[inew--] : 0);
@@ -4482,9 +4685,6 @@ int eigenQREV (double Q[], double pi[], int n,
 
 
 /* eigen solution for real symmetric matrix */
-
-void HouseholderRealSym(double a[], int n, double d[], double e[]);
-int EigenTridagQLImplicit(double d[], double e[], int n, double z[]);
 void EigenSort(double d[], double U[], int n);
 
 int eigenRealSym(double A[], int n, double Root[], double work[])
@@ -4509,26 +4709,28 @@ int eigenRealSym(double A[], int n, double Root[], double work[])
 
 void EigenSort(double d[], double U[], int n)
 {
-/* this sorts the eigen values d[] and rearrange the (right) eigen vectors U[]
+/* this sorts the eigenvalues d[] in decreasing order and rearrange the (right) eigenvectors U[].
 */
    int k,j,i;
    double p;
 
-   for (i=0;i<n-1;i++) {
-      p=d[k=i];
-      for (j=i+1;j<n;j++)
-         if (d[j] >= p) p=d[k=j];
+   for (i=0; i<n-1; i++) {
+      p = d[k=i];
+      for (j=i+1; j<n; j++)
+         if (d[j] >= p) p = d[k=j];
       if (k != i) {
-         d[k]=d[i];
-         d[i]=p;
+         d[k] = d[i];
+         d[i] = p;
          for (j=0;j<n;j++) {
-            p=U[j*n+i];
-            U[j*n+i]=U[j*n+k];
-            U[j*n+k]=p;
+            p = U[j*n+i];
+            U[j*n+i] = U[j*n+k];
+            U[j*n+k] = p;
          }
       }
    }
 }
+
+
 
 void HouseholderRealSym(double a[], int n, double d[], double e[])
 {
@@ -4684,6 +4886,9 @@ int EigenTridagQLImplicit(double d[], double e[], int n, double z[])
 
 
 
+
+
+
 int MeanVar (double x[], int n, double *m, double *v)
 {
    int i;
@@ -4717,21 +4922,23 @@ int variance (double x[], int n, int nx, double mx[], double vx[])
    return(0);
 }
 
-int correl (double x[], double y[], int n, double *mx, double *my,
-    double *v11, double *v12, double *v22, double *r)
+int correl (double x[], double y[], int n, double *mx, double *my, double *vxx, double *vxy, double *vyy, double *r)
 {
    int i;
 
-   *mx = *my = *v11 = *v12 = *v22 = 0.0;
+   *mx = *my = *vxx = *vxy = *vyy = 0.0;
    for (i=0; i<n; i++) {
-       *v11 += square(x[i] - *mx) * i/(i+1.);
-       *v22 += square(y[i] - *my) * i/(i+1.);
-       *v12 += (x[i] - *mx) * (y[i] - *my) * i/(i+1.);
-       *mx = (*mx * i + x[i])/(i+1.);
-       *my = (*my * i + y[i])/(i+1.);
+      /* update vxx & vyy before mx & my */
+      *vxx += square(x[i] - *mx) * i/(i+1.);
+      *vyy += square(y[i] - *my) * i/(i+1.);
+      *vxy += (x[i] - *mx) * (y[i] - *my) * i/(i+1.);
+      *mx = (*mx * i + x[i])/(i+1.);
+      *my = (*my * i + y[i])/(i+1.);
    }
-
-   if (*v11>0.0 && *v22>0.0)  *r = *v12/sqrt(*v11 * *v22);
+   *vxx /= (n-1.0);
+   *vyy /= (n-1.0);
+   *vxy /= (n-1.0);
+   if (*vxx>0.0 && *vyy>0.0)  *r = *vxy/sqrt(*vxx * *vyy);
    else                       *r = -9;
    return(0);
 }
@@ -4785,10 +4992,12 @@ int splitline (char line[], int fields[])
 
 int scanfile (FILE*fin, int *nrecords, int *nx, int *ReadHeader, char line[], int ifields[])
 {
-   int  i, lline=640000, nxline;
+   int  i, lline=640000, nxline, eof=0;
 
+   *ReadHeader = 0;
    for (*nrecords=0; ; ) {
       if (!fgets(line,lline,fin)) break;
+      eof = feof(fin);
       if(*nrecords==0 && strchr(line, '\n')==NULL)
          puts(" line too short or too long?");
 
@@ -4803,8 +5012,15 @@ int scanfile (FILE*fin, int *nrecords, int *nx, int *ReadHeader, char line[], in
          continue;
       if(*nrecords == 0)
          *nx = nxline;
-      else if (*nx != nxline)  
-         break;
+      else if (*nx != nxline){
+         if(eof) 
+            break;
+         else {
+            printf("file format error: %d fields in line %d while %d fields in first line.", 
+               nxline, *nrecords+1, *nx);
+            error2("error in scanfile()");
+         }
+      }
 
       if(*nx>MAXNFIELDS) error2("raise MAXNFIELDS?");
 
@@ -4814,10 +5030,10 @@ int scanfile (FILE*fin, int *nrecords, int *nx, int *ReadHeader, char line[], in
    rewind(fin);
 
    if(*ReadHeader) {
-      fgets(line,lline,fin);
+      fgets(line, lline, fin);
       splitline(line, ifields);
    }
-   if(*ReadHeader)    
+   if(*ReadHeader)
       (*nrecords) --;
 
    return(0);
@@ -5008,8 +5224,68 @@ int density2d (FILE* fout, double y1[], double y2[], int n, int nbin,
 }
 
 
+int HPDinterval(double x[], int n, double HPD[2], double alpha)
+{
+/* This calculates the HPD interval at the alpha level.
+*/
+   int jL0=(int)(n*alpha/2), jU0=(int)(n*(1-alpha/2)), jL,jU, jLb=jL0;
+   double w0 = x[jU0]-x[jL0], w=w0;
+   int debug=0;
 
-int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int nrho, int propternary)
+   HPD[0]=x[jL0];   HPD[1]=x[jU0]; 
+   if(n<3) return(-1);
+   for(jL=0,jU=jL+(jU0-jL0); jU<n; jL++,jU++) {
+      if(x[jU]-x[jL] < w) {
+         jLb = jL;
+         w = x[jU]-x[jL];
+      }
+   }
+   HPD[0] = x[jLb];  
+   HPD[1] = x[jLb+jU0-jL0]; 
+   return(0);
+}
+
+
+double Eff_IntegratedCorrelationTime (double x[], int n)
+{
+   double Tint, rho0, rho, a,b,c,d, e;
+   int  i, nrho=200;
+
+   for(i=0,Tint=1,rho0=0; i<min2(nrho,n-1); i++) {
+      correl(x, x+1+i, n-1-i, &a, &b, &c, &d, &e, &rho);
+      if(i>10 && rho+rho0<0) break;
+      Tint += rho*2;
+      rho0 = rho;
+   }
+   return (1/Tint);
+}
+
+double Eff_IntegratedCorrelationTime2 (double x[], int n, int nbatch, double mx)
+{
+/* This calculates Eff, by using batch means.  Tau, the integrated correlation time, is 1/Eff.
+   mx is input.
+   This is found to be unreliable.
+*/
+   int lb, i, j;
+   double mxb, vx=0, E=0;
+   
+   if(n<1000) printf("chain too short for calculating Eff? ");
+   lb = n/nbatch;
+   for(i=0; i<nbatch; i++) {
+      for(j=0,mxb=0; j<lb; j++) {
+         mxb += x[i*lb+j];
+         vx += square(x[i*lb+j] - mx);
+      }
+      mxb /= lb;
+      E += square(mxb - mx)/nbatch;
+   }
+   E = (vx/n) / (E*lb);
+   return(E);
+}
+
+
+
+int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int propternary)
 {
 /* This routine reads n records (observations) each of p continuous variables,
    to calculate summary statistics such as the mean, SD, median, min, max
@@ -5031,7 +5307,7 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int nrho, int pr
 
    Space requirement:
       x[p];    mean[p]; median[p]; minx[p]; maxx[p]; x005[p]; x995[p];
-      x025[p]; x975[p]; x25[p];  x75[p];  var[p*p];  gap[p]; rho[p*nrho];  
+      x025[p]; x975[p]; xHPD025[p];  xHPD975[p];  var[p*p];  gap[p];  
 
    Each line in the data file has p variables, read into x[p], and the variable 
    to be sorted or processed is moved into y[].  The vector y[] contains the 
@@ -5045,28 +5321,30 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int nrho, int pr
    Future work: Sorting data to avoid useless computation.
 */
    FILE *fin=gfopen(infile,"r");
-   int  n, p, i,j,k, jj,kk;
+   int  n, p, i,j,k, jj,kk, nrho=200;
    char *fmt=" %9.6f", *fmt1=" %9.1f", timestr[32];
-   double *x, *mean, *median, *minx, *maxx, *x005,*x995,*x025,*x975,*x25,*x75,*var, t;
-   double *Tint;
-   double h, *y, *rho, *gap, *space, a,b,c,d, v2d[4];
+   double *x, *mean, *median, *minx, *maxx, *x005,*x995,*x025,*x975,*xHPD025,*xHPD975,*var;
+   double *Tint, tmp[2], d;
+   double h, *y, *gap, *space, v2d[4];
    int nf2d=0, ivar_f2d[MAXNF2D][2]={{5,6},{0,2}}, k2d;
 
-   int  lline=640000, ifields[MAXNFIELDS], Ignore1stColumn=1, ReadHeader=0;
-   char line[640000];
+   int  lline=320000, ifields[MAXNFIELDS], SkipColumn=1, ReadHeader=1;
+   char *line;
    char varstr[MAXNFIELDS][32]={""};
 
+   if((line=(char*)malloc(lline*sizeof(char)))==NULL) error2("oom ds");
    scanfile(fin, &n, &p, &ReadHeader, line, ifields);
+   printf("\n%d records, %d variables\n", n, p);
+
    if(ReadHeader)
       for(i=0; i<p; i++) sscanf(line+ifields[i], "%s", varstr[i]);
 
-   x = (double*)malloc((p*13+p*p + p*nrho)*sizeof(double));
+   x = (double*)malloc((p*13+p*p)*sizeof(double));
    if (x==NULL) error2("oom DescriptiveStatistics.");
-   for(j=0;j<p*13+p*p + p*nrho; j++) x[j]=0;
+   for(j=0;j<p*13+p*p; j++) x[j]=0;
    mean=x+p; median=mean+p; minx=median+p; maxx=minx+p; 
-   x005=maxx+p; x995=x005+p; x025=x995+p; x975=x025+p; x25=x975+p; x75=x25+p;
-   var=x75+p;   gap=var+p*p; rho=gap+p;
-   Tint=rho+p*nrho;
+   x005=maxx+p; x995=x005+p; x025=x995+p; x975=x025+p; xHPD025=x975+p; xHPD975=xHPD025+p;
+   var=xHPD975+p;   gap=var+p*p;  Tint=gap+p;
 
    /*
    if(p>1) {
@@ -5086,16 +5364,18 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int nrho, int pr
    /* min, max, and mean */
    printf("\n(1) collecting min, max, and mean");
    for(i=0; i<n; i++) {
-      for(j=0;j<p;j++) 
-         fscanf(fin,"%lf", &x[j]);
+      for(j=0; j<p; j++) 
+         fscanf(fin, "%lf", &x[j]);
       if(i==0)
-         for(j=Ignore1stColumn;j<p;j++) minx[j]=maxx[j]=x[j];
+         for(j=SkipColumn; j<p; j++)
+            minx[j] = maxx[j] = x[j];
       else {
-         for(j=Ignore1stColumn;j<p;j++) 
-            if      (minx[j]>x[j]) minx[j]=x[j];
-            else if (maxx[j]<x[j]) maxx[j]=x[j];
+         for(j=SkipColumn;j<p;j++) 
+            if      (minx[j]>x[j]) minx[j] = x[j];
+            else if (maxx[j]<x[j]) maxx[j] = x[j];
       }
-      for(j=Ignore1stColumn; j<p; j++) mean[j]+=x[j]/n;
+      for(j=SkipColumn; j<p; j++)
+         mean[j] += x[j]/n;
    }
 
    /* variance-covariance matrix */
@@ -5103,20 +5383,22 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int nrho, int pr
    rewind(fin);
    if(ReadHeader) fgets(line, lline, fin);
    for (i=0; i<n; i++) {
-      for(j=0;j<p;j++) 
-         fscanf(fin,"%lf", &x[j]);
-      for(j=Ignore1stColumn; j<p; j++) for(k=Ignore1stColumn; k<=j; k++)
-         var[j*p+k] += (x[j]-mean[j])*(x[k]-mean[k])/n;
+      for(j=0; j<p; j++) 
+         fscanf(fin, "%lf", &x[j]);
+      for(j=SkipColumn; j<p; j++)
+         for(k=SkipColumn; k<=j; k++)
+            var[j*p+k] += (x[j] - mean[j]) * (x[k] - mean[k])/n;
    }
-   for(j=Ignore1stColumn; j<p; j++) for(k=Ignore1stColumn; k<j; k++)
-      var[k*p+j]=var[j*p+k];
+   for(j=SkipColumn; j<p; j++)
+      for(k=SkipColumn; k<j; k++)
+         var[k*p+j] = var[j*p+k];
 
    /* sorting to get median and percentiles */
-   printf("%10s\n(3) median, percentiles & serial correlation",printtime(timestr));
+   printf("%10s\n(3) median, percentiles and ESS", printtime(timestr));
    y=(double*)malloc((n*(2+(nf2d>0))+nbin*nbin*3)*sizeof(double));
    if(y==NULL) { printf("not enough mem for %d variables\n",n); exit(-1); }
    space=y+(1+(nf2d>0))*n;  /* space[] points to y after the data */
-   for(jj=Ignore1stColumn; jj<p; jj++) {
+   for(jj=SkipColumn; jj<p; jj++) {
       rewind(fin);
       if(ReadHeader) fgets(line, lline, fin);
 
@@ -5125,62 +5407,42 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int nrho, int pr
          y[i] = x[jj];
       }
 
-      for(i=0,Tint[jj]=1; i<nrho; i++) {
-         correl(y, y+1+i, n-1-i, &a, &b, &c, &d, &x[0], &rho[jj*nrho+i]);
-         if(rho[jj*nrho+i]<0) break;
-         Tint[jj] += rho[jj*nrho+i]*2;
-      }
-
+      Tint[jj] = 1/Eff_IntegratedCorrelationTime(y, n);
       qsort(y, (size_t)n, sizeof(double), comparedouble);
       if(n%2==0)  median[jj]=(y[n/2]+y[n/2+1])/2;
       else        median[jj]=y[(n+1)/2];
-      x005[jj] = y[(int)(n*.005)];  x995[jj] = y[(int)(n*.995)];
-      x025[jj] = y[(int)(n*.025)];  x975[jj] = y[(int)(n*.975)];
-      x25[jj]  = y[(int)(n*.25)];    x75[jj] = y[(int)(n*.75)];
+      x005[jj] = y[(int)(n*.005)];       x995[jj] = y[(int)(n*.995)];
+      x025[jj] = y[(int)(n*.025)];       x975[jj] = y[(int)(n*.975)];
+
+      HPDinterval(y, n, tmp, 0.05);
+      xHPD025[jj] = tmp[0];
+      xHPD975[jj] = tmp[1];
    }
 
    fprintf(fout,"\n(A) Descriptive statistics\n\n       ");
-   for (j=Ignore1stColumn; j<p; j++) fprintf(fout,"   %s", varstr[j]);
-   fprintf(fout,"\nmean    ");  for(j=Ignore1stColumn;j<p;j++) fprintf(fout,fmt,mean[j]);
-   fprintf(fout,"\nmedian  ");  for(j=Ignore1stColumn;j<p;j++) fprintf(fout,fmt,median[j]);
-   fprintf(fout,"\nS.D.    ");  for(j=Ignore1stColumn;j<p;j++) fprintf(fout,fmt,sqrt(var[j*p+j]));
-   fprintf(fout,"\nmin     ");  for(j=Ignore1stColumn;j<p;j++) fprintf(fout,fmt,minx[j]);
-   fprintf(fout,"\nmax     ");  for(j=Ignore1stColumn;j<p;j++) fprintf(fout,fmt,maxx[j]);
-   fprintf(fout,"\n2.5%%    "); for(j=Ignore1stColumn;j<p;j++) fprintf(fout,fmt,x025[j]);
-   fprintf(fout,"\n97.5%%   "); for(j=Ignore1stColumn;j<p;j++) fprintf(fout,fmt,x975[j]);
-   fprintf(fout,"\nESS*    ");  for(j=Ignore1stColumn;j<p;j++) fprintf(fout,fmt1,n/Tint[j]);
+   for (j=SkipColumn; j<p; j++) fprintf(fout,"   %s", varstr[j]);
+   fprintf(fout,"\nmean    ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,mean[j]);
+   fprintf(fout,"\nmedian  ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,median[j]);
+   fprintf(fout,"\nS.D.    ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,sqrt(var[j*p+j]));
+   fprintf(fout,"\nmin     ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,minx[j]);
+   fprintf(fout,"\nmax     ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,maxx[j]);
+   fprintf(fout,"\n2.5%%    "); for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,x025[j]);
+   fprintf(fout,"\n97.5%%   "); for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,x975[j]);
+   fprintf(fout,"\n2.5%%HPD "); for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,xHPD025[j]);
+   fprintf(fout,"\n97.5%%HPD"); for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,xHPD975[j]);
+   fprintf(fout,"\nESS     ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt1,n/Tint[j]);
+   FPN(F0);  FPN(fout); 
    fflush(fout);
 
    /*
    FPN(F0); FPN(F0);
-   for(j=Ignore1stColumn; j<p; j++) printf("%.3f(%.3f,%.3f)\n",mean[j], x025[j],x975[j]);
+   for(j=SkipColumn; j<p; j++) printf("%.3f(%.3f,%.3f)\n",mean[j], x025[j],x975[j]);
    free(x); free(y); return(0);
    */
 
-
-   fprintf(fout, "\n\n(B) Matrix of correlation coefficients between variables\n\n");
-   for (j=Ignore1stColumn; j<p; j++,fputc('\n',fout)) {
-      for (k=Ignore1stColumn; k<=j; k++) {
-         t = sqrt(var[j*p+j]*var[k*p+k]);
-         fprintf(fout, fmt, (t>0?var[j*p+k]/t:-9));
-      }
-   }
-
-   fprintf(fout, "\n\n(C) Serial correlation coefficients within variables\n");
-   fprintf(fout, "\nlag  variables ...\n\n");
-   for(i=0; i<nrho; i++,FPN(fout)) {
-      fprintf(fout, "%d", i+1);
-      for(j=Ignore1stColumn; j<p; j++)
-         fprintf(fout, "\t%.6f", rho[j*nrho+i]);
-   }
-   fflush(fout);
-
-/*
-return(0);
-*/
-   printf(" %10s\n(4) Histograms and 1-D densities\n",printtime(timestr));
-   fprintf(fout, "\n(D) Histograms and 1-D densities\n");
-   for(jj=Ignore1stColumn; jj<p; jj++) {
+   printf(" %10s\n(4) Histograms and 1-D densities\n", printtime(timestr));
+   fprintf(fout, "\n(B) Histograms and 1-D densities\n");
+   for(jj=SkipColumn; jj<p; jj++) {
       rewind(fin);
       if(ReadHeader) fgets(line, lline, fin);
 
@@ -5196,10 +5458,13 @@ return(0);
       if(propternary) {
          minx[jj]=0;  maxx[jj]=1;
       }
-      gap[jj]=(maxx[jj]-minx[jj])/nbin;
+      gap[jj] = (maxx[jj]-minx[jj])/nbin;
 
       d = sqrt(var[jj*p+jj]);
+      h = d;   /* the quartiles are not calculated now, so this may not be very good */
+      /*
       h = min2(d,(x75[jj]-x25[jj])/1.34) * 0.9*pow((double)n,-0.2);
+      */
       qsort(y, (size_t)n, sizeof(double), comparedouble);
       density1d(fout, y, n, nbin, minx[jj], gap[jj], h, space, propternary);
 
@@ -5210,7 +5475,7 @@ return(0);
    if(nf2d<=0) return(0);
    h = 2.4*pow((double)n, -1/6.0);
    printf("(5) 2-d histogram and density (h = %.6g)\n",h);
-   fprintf(fout, "\n(E) 2-D histogram and density\n");
+   fprintf(fout, "\n(C) 2-D histogram and density\n");
 
    for(k2d=0; k2d<nf2d; k2d++) {
       jj=min2(ivar_f2d[k2d][0],ivar_f2d[k2d][1]);
@@ -5233,11 +5498,98 @@ return(0);
       density2d (fout, y, y+n, n, nbin, minx[jj], minx[kk], gap[jj], gap[kk], v2d, 
          h, space, propternary);
    }
-   free(x); free(y);
+   fclose(fin); free(x); free(y); free(line);
    printf("\n%10s used\n", printtime(timestr));
    return(0);
 }
 
+int DescriptiveStatisticsSimple (FILE *fout, char infile[], int nbin, int SkipColumn)
+{
+   FILE *fin=gfopen(infile,"r");
+   int  n, p, i,j, jj, nrho=200;
+   char *fmt=" %9.6f", *fmt1=" %9.1f", timestr[32];
+   double *x, *mean, *median, *minx, *maxx, *x005,*x995,*x025,*x975,*xHPD025,*xHPD975,*var;
+   double *Tint, tmp[2], *y;
+   int  lline=320000, ifields[MAXNFIELDS], ReadHeader=1;
+   char *line;
+   char varstr[MAXNFIELDS][96]={""};
+
+   if((line=(char*)malloc(lline*sizeof(char)))==NULL) error2("oom ds");
+   scanfile(fin, &n, &p, &ReadHeader, line, ifields);
+   printf("\n%d records, %d variables\n", n, p);
+   if(ReadHeader)
+      for(i=0; i<p; i++) sscanf(line+ifields[i], "%s", varstr[i]);
+
+   x = (double*)malloc((p*13+p*p)*sizeof(double));
+   if (x==NULL) error2("oom DescriptiveStatistics.");
+   for(j=0;j<p*13+p*p; j++) x[j]=0;
+   mean=x+p; median=mean+p; minx=median+p; maxx=minx+p; 
+   x005=maxx+p; x995=x005+p; x025=x995+p; x975=x025+p; xHPD025=x975+p; xHPD975=xHPD025+p;
+   var=xHPD975+p;   Tint=var+p;
+
+   /* min, max, mean, var */
+   printf("   Collecting min, max, and mean");
+   for(i=0; i<n; i++) {
+      for(j=0; j<p; j++) 
+         fscanf(fin, "%lf", &x[j]);
+      if(i==0)
+         for(j=SkipColumn; j<p; j++)
+            minx[j] = maxx[j] = x[j];
+      else {
+         for(j=SkipColumn;j<p;j++) 
+            if      (minx[j]>x[j]) minx[j] = x[j];
+            else if (maxx[j]<x[j]) maxx[j] = x[j];
+      }
+      for(j=SkipColumn; j<p; j++) {
+         var[j] += square(x[j] - mean[j]) * i/(i+1.0);
+         mean[j] = (mean[j]*i + x[j])/(i+1);
+      }   
+   }
+   for(j=SkipColumn; j<p; j++)
+      var[j] /= n-1.0;
+
+   /* sorting to get median and percentiles */
+   printf("%10s\n   Collecting median, percentiles",printtime(timestr));
+   y=(double*)malloc(n*sizeof(double));
+   if(y==NULL) error2("oom for y");
+   for(jj=SkipColumn; jj<p; jj++) {
+      rewind(fin);
+      if(ReadHeader) fgets(line, lline, fin);
+
+      for(i=0;i<n;i++) {
+         for(j=0; j<p; j++) fscanf(fin,"%lf", &x[j]);
+         y[i] = x[jj];
+      }
+
+      Tint[jj] = 1/Eff_IntegratedCorrelationTime(y, n);
+      qsort(y, (size_t)n, sizeof(double), comparedouble);
+      if(n%2==0)  median[jj] = (y[n/2]+y[n/2+1])/2;
+      else        median[jj] = y[(n+1)/2];
+      x005[jj] = y[(int)(n*.005)];      x995[jj] = y[(int)(n*.995)];
+      x025[jj] = y[(int)(n*.025)];      x975[jj] = y[(int)(n*.975)];
+
+      HPDinterval(y, n, tmp, 0.05);
+      xHPD025[jj] = tmp[0];    xHPD975[jj] = tmp[1];
+   }
+
+   fprintf(fout,"\n\n       ");
+   for (j=SkipColumn; j<p; j++) fprintf(fout,"   %s", varstr[j]);
+   fprintf(fout,"\nmean    ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,mean[j]);
+   fprintf(fout,"\nmedian  ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,median[j]);
+   fprintf(fout,"\nS.D.    ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,sqrt(var[j]));
+   fprintf(fout,"\nmin     ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,minx[j]);
+   fprintf(fout,"\nmax     ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,maxx[j]);
+   fprintf(fout,"\n2.5%%    "); for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,x025[j]);
+   fprintf(fout,"\n97.5%%   "); for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,x975[j]);
+   fprintf(fout,"\n2.5%%HPD "); for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,xHPD025[j]);
+   fprintf(fout,"\n97.5%%HPD"); for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,xHPD975[j]);
+   fprintf(fout,"\nESS*    ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt1,n/Tint[j]);
+   fprintf(fout,"\nEff*    ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt1,1/Tint[j]);
+   fflush(fout);
+
+   fclose(fin); free(x); free(y); free(line);
+   return(0);
+}
 
 #undef MAXNFIELDS
 
@@ -5315,18 +5667,20 @@ int Hessian (int n, double x[], double f0, double g[], double H[],
    for(i=0; i<n; i++) {
       for (j=i; j<n; j++)  {
          for(k=0; k<n; k++) x1[k] = x[k];
-         x1[i] += h[i];    x1[j] += h[j];
+         x1[i] += h[i]; 
+         x1[j] += h[j];
          fpp = (*fun)(x1,n);                  /* (+hi, +hj) */
-         x1[i] -= h[i]*2;  x1[j] -= h[j]*2;
+         x1[i] -= h[i]*2;
+         x1[j] -= h[j]*2;
          fmm = (*fun)(x1,n);                  /* (-hi, -hj) */
          if (i==j)  {
-             H[i*n+i] = (fpp+fmm-2*f0)/(4*h[i]*h[i]);
+             H[i*n+i] = (fpp + fmm - 2*f0)/(4*h[i]*h[i]);
              g[i] = (fpp - fmm)/(h[i]*4);
          }
          else {
             x1[i] += 2*h[i];                     fpm = (*fun)(x1,n);  /* (+hi, -hj) */
             x1[i] -= 2*h[i];   x1[j] += 2*h[j];  fmp = (*fun)(x1,n);  /* (-hi, +hj) */
-            H[i*n+j] = H[j*n+i] = (fpp+fmm-fpm-fmp)/(4*h[i]*h[j]);
+            H[i*n+j] = H[j*n+i] = (fpp + fmm - fpm - fmp)/(4*h[i]*h[j]);
          }
       }
    }
@@ -5856,18 +6210,18 @@ int gradientB (int n, double x[], double f0, double g[],
    int i,j;
    double *x0=space, *x1=space+n, eh0=Small_Diff, eh;  /* eh0=1e-6 || 1e-7 */
 
-   FOR(i,n) {
-      eh=eh0*(fabs(x[i])+1);
+   for(i=0; i<n; i++) {
+      eh = eh0*(fabs(x[i])+1);
       if (xmark[i]==0 && (AlwaysCenter || SIZEp<1)) {   /* central */
-         FOR (j, n)  x0[j]=x1[j]=x[j];
-         eh=pow(eh,.67);  x0[i]-=eh; x1[i]+=eh;
-         g[i]=((*fun)(x1,n)-(*fun)(x0,n))/(eh*2.0);
+         for(j=0; j<n; j++)  x0[j] = x1[j] = x[j];
+         eh = pow(eh, .67);  x0[i] -= eh;  x1[i] += eh;
+         g[i] = ((*fun)(x1,n) - (*fun)(x0,n))/(eh*2.0);
       }
       else  {                         /* forward or backward */
-         FOR (j, n)  x1[j]=x[j];
-         if (xmark[i]) eh*=-xmark[i];
+         for(j=0; j<n; j++)  x1[j] = x[j];
+         if (xmark[i]) eh *= -xmark[i];
          x1[i] += eh;
-         g[i]=((*fun)(x1,n)-f0)/eh;
+         g[i] = ((*fun)(x1,n) - f0)/eh;
       }
    }
    return(0);
@@ -5926,7 +6280,7 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
    SIZEp=99;
    if (noisy>2) {
       printf ("\nIterating by ming2\nInitial: fx= %12.6f\nx=",f0);
-      FOR(i,n) printf(" %8.5f",x[i]);   FPN(F0);
+      FOR(i,n) printf(" %8.5f", x[i]);   FPN(F0);
    }
 
    if (dfun)  (*dfun) (x0, &f0, g0, n);
@@ -5982,8 +6336,10 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
             && H_end(x0,x,f0,*f,e,e,n))
             break;
       }
-      if (dfun)  (*dfun) (x, f, g, n);
-      else       gradientB (n, x, *f, g, fun, tv, xmark);
+      if (dfun)
+         (*dfun) (x, f, g, n);
+      else
+         gradientB (n, x, *f, g, fun, tv, xmark);
 /*
 for(i=0; i<n; i++) fprintf(frst,"%9.5f", x[i]); fprintf(frst, "%6d",AlwaysCenter);
 for(i=0; i<n; i++) fprintf(frst,"%9.2f", g[i]); FPN(frst);
@@ -6041,22 +6397,21 @@ for(i=0; i<n; i++) fprintf(frst,"%9.2f", g[i]); FPN(frst);
       FOR (i,nfree)  FOR (j,nfree)  
          H[i*nfree+j] += s[i]*s[j]/v - z[i]*z[j]/w;
 #else /* BFGS */
-      for (i=0,w=v=0.; i<nfree; i++) {
-         for (j=0,z[i]=0.; j<nfree; j++) z[i]+=H[i*nfree+j]*y[j];
-         w+=y[i]*z[i];    v+=y[i]*s[i];
+      for(i=0,w=v=0.; i<nfree; i++) {
+         for(j=0,z[i]=0.; j<nfree; j++) z[i] += H[i*nfree+j]*y[j];
+         w += y[i]*z[i];    v += y[i]*s[i];
       }
       if (fabs(v)<small)   { identity(H,nfree); fail=1; continue; }
       FOR (i,nfree)  FOR (j,nfree)
          H[i*nfree+j] += ((1+w/v)*s[i]*s[j]-z[i]*s[j]-s[i]*z[j])/v;
 #endif
-
    }    /* for (Iround,maxround)  */
 
    /* try to remove this after updating LineSearch2() */
-   *f=(*fun)(x,n);  
+   *f = (*fun)(x,n);
    if(noisy>2) FPN(F0);
 
-   if (Iround==maxround) {
+   if(Iround==maxround) {
       if (fout) fprintf (fout,"\ncheck convergence!\n");
       return(-1);
    }
@@ -6177,3 +6532,4 @@ int ming1 (FILE *fout, double *f, double (* fun)(double x[], int n),
    }
    return(0);
 }
+

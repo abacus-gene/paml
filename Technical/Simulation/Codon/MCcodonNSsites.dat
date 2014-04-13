@@ -11,7 +11,7 @@
 
 3            * number of site classes, followed by frequencies and omega's.
   0.6    0.3   0.1
-  0.1    0.8   3.2
+  0.1    1.0   2.5
 
 
 1.65560     * kappa
@@ -32,6 +32,8 @@
 0.012712 0.011524 0.009661 0.015068 
 0.020196 0.018309 0.015349 0.023938 
 0.015117 0.013704 0.011488 0.017919
+
+0    * genetic code (0:universal; 1:mammalian mt; 2-10:see below)
 
 //end of file
 

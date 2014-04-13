@@ -1,0 +1,368 @@
+#NEXUS
+begin taxa;
+	dimensions ntax=289;
+	taxlabels
+	1_179_Avian_H1N6_USA_1976
+	2_165_Avian_H1N1_Canada_1977
+	3_177_Avian_H1N1_Canada_1977
+	4_105_Avian_H1N1_Canada_1976
+	5_267_Avian_H1N1_Canada_1976
+	6_195_Avian_H1N6_Canada_1977
+	7_162_Avian_H1N1_Canada_1977
+	8_213_Avian_H1N5_USA_1978
+	9_164_Avian_H1N1_Canada_1979
+	10_163_Avian_H1N1_Canada_1979
+	11_158_Avian_H1N1_USA_1981
+	12_309_Avian_H1N1_USA_1980
+	13_153_Avian_H1N5_Canada_1981
+	14_156_Avian_H1N1_Canada_2002
+	15_196_Avian_H1N1_Canada_1998
+	16_180_Avian_H1N9_USA_1987
+	17_274_Avian_H1N1_USA_1987
+	18_279_Avian_H1N1_USA_1980
+	19_116_Avian_H1N1_USA_1985
+	20_106_Avian_H1N1_USA_1981
+	21_199_Avian_H1N2_USA_1982
+	22_155_Avian_H1N1_Canada_1988
+	23_169_Avian_H1N1_USA_1987
+	24_264_Avian_H1N1_USA_1986
+	25_197_Avian_H1N1_USA_1990
+	26_289_Avian_H1N1_USA_1993
+	27_255_Avian_H1N1_USA_1994
+	28_181_Avian_H1N1_USA_1993
+	29_200_Avian_H1N1_USA_1993
+	30_154_Avian_H1N1_Canada_1996
+	31_198_Avian_H1N1_USA_1999
+	32_223_Avian_H1N1_USA_2002
+	33_224_Avian_H1N1_USA_2007
+	34_233_Avian_H1N1_USA_2005
+	35_182_Avian_H1N6_USA_2002
+	36_302_Avian_H1N1_USA_2003
+	37_303_Avian_H1N1_USA_2003
+	38_157_Avian_H1N3_NewZealand_1976
+	39_125_Avian_H1N1_Japan_1977
+	40_285_Avian_H1N1_HongKong_1979
+	41_132_Avian_H1N1_Australia_1980
+	42_102_Avian_H1N1_Japan_1996
+	43_126_Avian_H1N9_Japan_1998
+	44_307_Avian_H1N1_Italy_2003
+	45_276_Avian_H1N1_Italy_2007
+	46_277_Avian_H1N1_Italy_2006
+	47_133_Avian_H1N1_Germany_1977
+	48_248_Avian_H1_HongKong_1977
+	49_134_Swine_H1N1_Netherlands_1980[&!color=#-16777063]
+	50_234_Swine_H1N1_Belgium_1979[&!color=#-16777063]
+	51_237_Swine_H1N1_France_1984[&!color=#-16777063]
+	52_107_Swine_H1N1_Netherlands_1985[&!color=#-16777063]
+	53_117_Swine_H1N1_Belgium_1983[&!color=#-16777063]
+	54_135_Swine_H1N1_Italy_1987[&!color=#-16777063]
+	55_149_Swine_H1N1_Germany_1995[&!color=#-16777063]
+	56_235_Swine_H1N1_France_1995[&!color=#-16777063]
+	57_288_Swine_H1N1_Germany_1992[&!color=#-16777063]
+	58_227_Swine_H1N1_Spain_1991[&!color=#-16777063]
+	59_226_Swine_H1N1_France_1985[&!color=#-16777063]
+	60_238_Swine_H1N1_UnitedKingdom_1992[&!color=#-16777063]
+	61_210_Swine_H1N1_UnitedKingdom_1995[&!color=#-16777063]
+	62_236_Swine_H1N1_UnitedKingdom_1996[&!color=#-16777063]
+	63_225_Swine_H1N1_UnitedKingdom_1993[&!color=#-16777063]
+	64_212_Swine_H1N1_UnitedKingdom_1999[&!color=#-16777063]
+	65_246_Swine_H1N1_UnitedKingdom_1994[&!color=#-16777063]
+	66_211_Swine_H1N1_UnitedKingdom_1998[&!color=#-16777063]
+	67_247_Swine_H1N1_UnitedKingdom_1997[&!color=#-16777063]
+	68_141_Swine_H1N1_Italy_1997[&!color=#-16777063]
+	69_123_Swine_H1N1_Italy_1996[&!color=#-16777063]
+	70_140_Swine_H1N1_Italy_1998[&!color=#-16777063]
+	71_191_Swine_H1N1_Italy_1997[&!color=#-16777063]
+	72_310_Swine_H1N1_Germany_1993[&!color=#-16777063]
+	73_228_Swine_H1N1_Denmark_1993[&!color=#-16777063]
+	74_305_Swine_H1N1_Belgium_1998[&!color=#-16777063]
+	75_168_Swine_H1N1_Spain_2003[&!color=#-16777063]
+	76_159_Swine_H1N1_Spain_2004[&!color=#-16777063]
+	77_278_Swine_H1N1_Hungary_2006[&!color=#-16777063]
+	78_124_Swine_H1N1_France_1999[&!color=#-16777063]
+	79_304_Swine_H1N1_China_2007[&!color=#-16777063]
+	80_287_Swine_H1N1_Germany_2003[&!color=#-16777063]
+	81_167_Swine_H1N1_Spain_2003[&!color=#-16777063]
+	82_192_Swine_H1N2_Germany_2000[&!color=#-16777063]
+	83_1_Human_H1N1_USA_1918[&!color=#-6750208]
+	84_3_Human_H1N1_UnitedKingdom_1933[&!color=#-6750208]
+	85_2_Human_H1N1_UnitedKingdom_1933[&!color=#-6750208]
+	86_23_Human_H1_Japan_1967[&!color=#-6750208]
+	87_7_Human_H1N1_Australia_1935[&!color=#-6750208]
+	88_6_Human_H1N1_USA_1935[&!color=#-6750208]
+	89_8_Human_H1N1_1936[&!color=#-6750208]
+	90_4_Human_H1N1_PuertoRico_1934[&!color=#-6750208]
+	91_5_Human_H1N1_PuertoRico_1934[&!color=#-6750208]
+	92_10_Human_H1N1_USA_1942[&!color=#-6750208]
+	93_11_Human_H1N1_USA_1943[&!color=#-6750208]
+	94_12_Human_H1N1_USA_1943[&!color=#-6750208]
+	95_13_Human_H1N1_USA_1945[&!color=#-6750208]
+	96_9_Human_H1N1_USA_1940[&!color=#-6750208]
+	97_14_Human_H1N1_1946[&!color=#-6750208]
+	98_15_Human_H1N1_USA_1947[&!color=#-6750208]
+	99_16_Human_H1N1_USA_1947[&!color=#-6750208]
+	100_18_Human_H1N1_USA_1950[&!color=#-6750208]
+	101_22_Human_H1N1_USA_1957[&!color=#-6750208]
+	102_19_Human_H1N1_USA_1951[&!color=#-6750208]
+	103_20_Human_H1N1_Malaysia_1954[&!color=#-6750208]
+	104_17_Human_H1N1_USA_1948[&!color=#-6750208]
+	105_21_Human_H1N1_Russia_1954[&!color=#-6750208]
+	106_26_Human_H1N1_HongKong_1977_1954[&!color=#-6750208]
+	107_27_Human_H1N1_USA_1978_1955[&!color=#-6750208]
+	108_31_Human_H1N1_USA_1983_1960[&!color=#-6750208]
+	109_29_Human_H1N1_UnitedKingdom_1982_1959[&!color=#-6750208]
+	110_30_Human_H1N1_Fiji_1983_1960[&!color=#-6750208]
+	111_28_Human_H1N1_India_1980_1957[&!color=#-6750208]
+	112_33_Human_H1N1_USA_1986_1963[&!color=#-6750208]
+	113_36_Human_H1N1_Italy_1989_1966[&!color=#-6750208]
+	114_39_Human_H1N1_Mongolia_1991_1968[&!color=#-6750208]
+	115_35_Human_H1N1_Japan_1989_1966[&!color=#-6750208]
+	116_37_Human_H1N1_Italy_1989_1966[&!color=#-6750208]
+	117_38_Human_H1N1_USA_1991_1968[&!color=#-6750208]
+	118_44_Human_H1N1_USA_1995_1972[&!color=#-6750208]
+	119_43_Human_H1N1_Switzerland_1995_1972[&!color=#-6750208]
+	120_55_Human_H1N1_Australia_2000_1977[&!color=#-6750208]
+	121_41_Human_H1N1_USA_1995_1972[&!color=#-6750208]
+	122_48_Human_H1N1_Taiwan_1996_1973[&!color=#-6750208]
+	123_42_Human_H1N1_China_1995_1972[&!color=#-6750208]
+	124_45_Human_H1N1_USA_1995_1972[&!color=#-6750208]
+	125_47_Human_H1N1_USA_1996_1973[&!color=#-6750208]
+	126_40_Human_H1N1_China_1995_1972[&!color=#-6750208]
+	127_46_Human_H1N1_China_1996_1973[&!color=#-6750208]
+	128_52_Human_H1N1_HongKong_1998_1975[&!color=#-6750208]
+	129_49_Human_H1N1_Taiwan_1997_1974[&!color=#-6750208]
+	130_51_Human_H1N1_HongKong_1998_1975[&!color=#-6750208]
+	131_50_Human_H1N1_HongKong_1998_1975[&!color=#-6750208]
+	132_60_Human_H1N1_Taiwan_2002_1979[&!color=#-6750208]
+	133_54_Human_H1N1_NewCaledonia_1999_1976[&!color=#-6750208]
+	134_53_Human_H1N1_Taiwan_1999_1976[&!color=#-6750208]
+	135_56_Human_H1N1_USA_2000_1977[&!color=#-6750208]
+	136_57_Human_H1N1_NewZealand_2000_1977[&!color=#-6750208]
+	137_58_Human_H1N1_NewZealand_2000_1977[&!color=#-6750208]
+	138_61_Human_H1N2_USA_2002_1979[&!color=#-6750208]
+	139_62_Human_H1N2_Denmark_2003_1980[&!color=#-6750208]
+	140_64_Human_H1N2_USA_2003_1980[&!color=#-6750208]
+	141_59_Human_H1N1_Japan_2001_1978[&!color=#-6750208]
+	142_63_Human_H1N1_USA_2003_1980[&!color=#-6750208]
+	143_65_Human_H1N1_Denmark_2004_1981[&!color=#-6750208]
+	144_68_Human_H1N1_Australia_2005_1982[&!color=#-6750208]
+	145_79_Human_H1N1_USA_2007_1984[&!color=#-6750208]
+	146_76_Human_H1N1_USA_2006_1983[&!color=#-6750208]
+	147_82_Human_H1N1_USA_2007_1984[&!color=#-6750208]
+	148_72_Human_H1N1_Thailand_2006_1983[&!color=#-6750208]
+	149_77_Human_H1N1_SolomonIslands_2006_1983[&!color=#-6750208]
+	150_74_Human_H1N1_China_2006_1983[&!color=#-6750208]
+	151_75_Human_H1N1_China_2006_1983[&!color=#-6750208]
+	152_81_Human_H1N1_USA_2007_1984[&!color=#-6750208]
+	153_71_Human_H1N1_China_2006_1983[&!color=#-6750208]
+	154_73_Human_H1N1_China_2006_1983[&!color=#-6750208]
+	155_98_Human_H1N1_USA_2008_1985[&!color=#-6750208]
+	156_83_Human_H1N1_USA_2007_1984[&!color=#-6750208]
+	157_84_Human_H1N1_USA_2007_1984[&!color=#-6750208]
+	158_67_Human_H1N1_NewZealand_2004_1981[&!color=#-6750208]
+	159_97_Human_H1N1_Australia_2008_1985[&!color=#-6750208]
+	160_78_Human_H1N1_USA_2006_1983[&!color=#-6750208]
+	161_80_Human_H1N1_USA_2007_1984[&!color=#-6750208]
+	162_86_Human_H1N1_USA_2007_1984[&!color=#-6750208]
+	163_92_Human_H1N1_USA_2008_1985[&!color=#-6750208]
+	164_87_Human_H1N1_USA_2007_1984[&!color=#-6750208]
+	165_88_Human_H1N1_USA_2007_1984[&!color=#-6750208]
+	166_85_Human_H1N1_USA_2007_1984[&!color=#-6750208]
+	167_95_Human_H1N1_USA_2008_1985[&!color=#-6750208]
+	168_89_Human_H1N1_USA_2007_1984[&!color=#-6750208]
+	169_93_Human_H1N1_USA_2008_1985[&!color=#-6750208]
+	170_94_Human_H1N1_USA_2008_1985[&!color=#-6750208]
+	171_96_Human_H1N1_USA_2008_1985[&!color=#-6750208]
+	172_90_Human_H1N1_USA_2008_1985[&!color=#-6750208]
+	173_100_Human_H1N1_USA_2008_1985[&!color=#-6750208]
+	174_91_Human_H1N1_USA_2008_1985[&!color=#-6750208]
+	175_99_Human_H1N1_USA_2008_1985[&!color=#-6750208]
+	176_115_Swine_H1N1_USA_1930[&!color=#-16777063]
+	177_166_Swine_H1N1_1931[&!color=#-16777063]
+	178_292_Swine_H1N1_USA_1945[&!color=#-16777063]
+	179_243_Swine_H1N1_USA_1942[&!color=#-16777063]
+	180_244_Swine_H1N1_USA_1935[&!color=#-16777063]
+	181_232_Swine_H1N1_USA_1957[&!color=#-16777063]
+	182_104_Swine_H1N1_USA_1961[&!color=#-16777063]
+	183_293_Swine_H1N1_USA_1968[&!color=#-16777063]
+	184_219_Swine_H1N1_USA_1966[&!color=#-16777063]
+	185_207_Swine_H1N1_USA_1967[&!color=#-16777063]
+	186_190_Swine_H1N1_USA_1970[&!color=#-16777063]
+	187_188_Swine_H1N1_USA_1971[&!color=#-16777063]
+	188_257_Swine_H1N1_USA_1973[&!color=#-16777063]
+	189_202_Swine_H1N1_USA_1975[&!color=#-16777063]
+	190_308_Swine_H1N1_USA_1976[&!color=#-16777063]
+	191_171_Swine_H1N1_USA_1977[&!color=#-16777063]
+	192_240_Swine_H1N1_USA_1977[&!color=#-16777063]
+	193_217_Swine_H1N1_USA_1977[&!color=#-16777063]
+	194_242_Swine_H1N1_USA_1977[&!color=#-16777063]
+	195_214_Swine_H1N1_USA_1976[&!color=#-16777063]
+	196_170_Swine_H1N1_USA_1976[&!color=#-16777063]
+	197_178_Swine_H1N1_USA_1977[&!color=#-16777063]
+	198_205_Swine_H1N1_USA_1977[&!color=#-16777063]
+	199_184_Swine_H1N1_USA_1977[&!color=#-16777063]
+	200_187_Swine_H1N1_USA_1978[&!color=#-16777063]
+	201_144_Swine_H1N1_Japan_1977[&!color=#-16777063]
+	202_290_Swine_H1N1_UnitedKingdom_1993[&!color=#-16777063]
+	203_312_Swine_H1N1_UnitedKingdom_1986[&!color=#-16777063]
+	204_103_Swine_H1N1_Japan_1979[&!color=#-16777063]
+	205_113_Swine_H1N2_Japan_1996[&!color=#-16777063]
+	206_110_Swine_H1N2_Japan_2003[&!color=#-16777063]
+	207_128_Swine_H1N2_Japan_2006[&!color=#-16777063]
+	208_183_Swine_H1N1_USA_1976[&!color=#-16777063]
+	209_209_Swine_H1N1_USA_1978[&!color=#-16777063]
+	210_231_Swine_H1N1_USA_1977[&!color=#-16777063]
+	211_127_Swine_H1N2_Japan_1980[&!color=#-16777063]
+	212_145_Swine_H1N1_Japan_1981[&!color=#-16777063]
+	213_215_Swine_H1N1_USA_1976[&!color=#-16777063]
+	214_218_Swine_H1N1_USA_1977[&!color=#-16777063]
+	215_221_Swine_H1N1_USA_1978[&!color=#-16777063]
+	216_208_Swine_H1N1_USA_1978[&!color=#-16777063]
+	217_220_Swine_H1N1_USA_1978[&!color=#-16777063]
+	218_112_Swine_H1N2_Thailand_2005[&!color=#-16777063]
+	219_261_Swine_H1N1_Thailand_2005[&!color=#-16777063]
+	220_143_Swine_H1N1_Thailand_2004[&!color=#-16777063]
+	221_262_Swine_H1N1_Thailand_2005[&!color=#-16777063]
+	222_206_Swine_H1N1_USA_1980[&!color=#-16777063]
+	223_186_Swine_H1N1_USA_1979[&!color=#-16777063]
+	224_189_Swine_H1N1_USA_1980[&!color=#-16777063]
+	225_203_Swine_H1N1_Canada_1981[&!color=#-16777063]
+	226_216_Swine_H1N1_Canada_1981[&!color=#-16777063]
+	227_222_Swine_H1N1_USA_1987[&!color=#-16777063]
+	228_299_Swine_H1N1_USA_1992[&!color=#-16777063]
+	229_268_Swine_H1N1_Canada_2004[&!color=#-16777063]
+	230_281_Swine_H1N1_Canada_2003[&!color=#-16777063]
+	231_253_Swine_H1N1_Canada_2004[&!color=#-16777063]
+	232_301_Swine_H1_Canada_1991[&!color=#-16777063]
+	233_194_Swine_H1N2_Taiwan_2003[&!color=#-16777063]
+	234_282_Swine_H1N2_Taiwan_2004[&!color=#-16777063]
+	235_249_Swine_H1N1_Canada_2003[&!color=#-16777063]
+	236_251_Swine_H1N1_Canada_2003[&!color=#-16777063]
+	237_245_Swine_H1N1_USA_1986[&!color=#-16777063]
+	238_185_Swine_H1N1_USA_1985[&!color=#-16777063]
+	239_230_Swine_H1N1_USA_1987[&!color=#-16777063]
+	240_142_Swine_H1N1_Thailand_2000[&!color=#-16777063]
+	241_118_Swine_H1N1_USA_1997[&!color=#-16777063]
+	242_175_Swine_H1N2_USA_2001[&!color=#-16777063]
+	243_300_Swine_H1N1_USA_1988[&!color=#-16777063]
+	244_111_Swine_H1N1_Thailand_2003[&!color=#-16777063]
+	245_241_Swine_H1N1_USA_1988[&!color=#-16777063]
+	246_201_Swine_H1N1_USA_1988[&!color=#-16777063]
+	247_239_Swine_H1N1_China_2001[&!color=#-16777063]
+	248_294_Swine_H1N1_China_2005[&!color=#-16777063]
+	249_204_Swine_H1N1_USA_1991[&!color=#-16777063]
+	250_136_Swine_H1N1_USA_1997[&!color=#-16777063]
+	251_108_Swine_H1N1_USA_1997[&!color=#-16777063]
+	252_109_Swine_H1N1_USA_1998[&!color=#-16777063]
+	253_146_Swine_H1N1_USA_1998[&!color=#-16777063]
+	254_280_Swine_H1N2_China_2004[&!color=#-16777063]
+	255_284_Swine_H1N2_China_2005[&!color=#-16777063]
+	256_306_Swine_H1N2_China_2007[&!color=#-16777063]
+	257_271_Swine_H1N1_USA_1999[&!color=#-16777063]
+	258_148_Swine_H1N2_USA_2000[&!color=#-16777063]
+	259_138_Swine_H1N2_USA_2001[&!color=#-16777063]
+	260_272_Swine_H1N1_USA_2002[&!color=#-16777063]
+	261_172_Swine_H1N2_USA_2001[&!color=#-16777063]
+	262_120_Swine_H1N2_USA_2001[&!color=#-16777063]
+	263_193_Swine_H1N2_SouthKorea_2002[&!color=#-16777063]
+	264_160_Swine_H1N2_USA_2001[&!color=#-16777063]
+	265_260_Swine_H1N1_USA_2004[&!color=#-16777063]
+	266_296_Swine_H1N1_SouthKorea_2004[&!color=#-16777063]
+	267_297_Swine_H1N1_SouthKorea_2005[&!color=#-16777063]
+	268_174_Swine_H1N2_USA_2001[&!color=#-16777063]
+	269_147_Swine_H1N2_USA_2001[&!color=#-16777063]
+	270_258_Swine_H1N2_USA_2001[&!color=#-16777063]
+	271_139_Swine_H1N2_USA_2000[&!color=#-16777063]
+	272_101_Human_H1N1_USA_2009[&!color=#-6750208]
+	273_313_Human_H1N1_USA_2009[&!color=#-6750208]
+	274_269_Swine_H1N2_China_2006[&!color=#-16777063]
+	275_283_Swine_H1N2_China_2005[&!color=#-16777063]
+	276_119_Swine_H1N2_USA_1999[&!color=#-16777063]
+	277_173_Swine_H1N2_USA_2001[&!color=#-16777063]
+	278_121_Swine_H1N2_USA_2001[&!color=#-16777063]
+	279_122_Swine_H1N2_USA_2001[&!color=#-16777063]
+	280_137_Swine_H1N2_USA_2001[&!color=#-16777063]
+	281_263_Swine_H1N1_USA_2007[&!color=#-16777063]
+	282_273_Swine_H1N2_USA_2003[&!color=#-16777063]
+	283_151_Swine_H1N2_USA_2001[&!color=#-16777063]
+	284_259_Swine_H1N2_USA_2004[&!color=#-16777063]
+	285_291_Swine_H1N2_SouthKorea_2005[&!color=#-16777063]
+	286_266_Swine_H1N2_SouthKorea_2005[&!color=#-16777063]
+	287_298_Swine_H1N2_SouthKorea_2005[&!color=#-16777063]
+	288_265_Swine_H1N2_SouthKorea_2004[&!color=#-16777063]
+	289_275_Swine_H1N2_SouthKorea_2006[&!color=#-16777063]
+;
+end;
+
+begin trees;
+	tree tree_1 = [&R] (((1_179_Avian_H1N6_USA_1976:1.0,((2_165_Avian_H1N1_Canada_1977:1.0,(3_177_Avian_H1N1_Canada_1977:1.0,(4_105_Avian_H1N1_Canada_1976:1.0,5_267_Avian_H1N1_Canada_1976:1.0)[&label=296]:1.0)[&label=295]:1.0)[&label=294]:1.0,(6_195_Avian_H1N6_Canada_1977:1.0,((7_162_Avian_H1N1_Canada_1977:1.0,(8_213_Avian_H1N5_USA_1978:1.0,(9_164_Avian_H1N1_Canada_1979:1.0,(10_163_Avian_H1N1_Canada_1979:1.0,(11_158_Avian_H1N1_USA_1981:1.0,12_309_Avian_H1N1_USA_1980:1.0)[&label=303]:1.0)[&label=302]:1.0)[&label=301]:1.0)[&label=300]:1.0)[&label=299]:1.0,((13_153_Avian_H1N5_Canada_1981:1.0,((14_156_Avian_H1N1_Canada_2002:1.0,15_196_Avian_H1N1_Canada_1998:1.0)[&label=307]:1.0,(16_180_Avian_H1N9_USA_1987:1.0,17_274_Avian_H1N1_USA_1987:1.0)[&label=308]:1.0)[&label=306]:1.0)[&label=305]:1.0,(18_279_Avian_H1N1_USA_1980:1.0,((19_116_Avian_H1N1_USA_1985:1.0,(20_106_Avian_H1N1_USA_1981:1.0,21_199_Avian_H1N2_USA_1982:1.0)[&label=312]:1.0)[&label=311]:1.0,((22_155_Avian_H1N1_Canada_1988:1.0,23_169_Avian_H1N1_USA_1987:1.0)[&label=314]:1.0,(24_264_Avian_H1N1_USA_1986:1.0,(25_197_Avian_H1N1_USA_1990:1.0,((26_289_Avian_H1N1_USA_1993:1.0,(27_255_Avian_H1N1_USA_1994:1.0,(28_181_Avian_H1N1_USA_1993:1.0,29_200_Avian_H1N1_USA_1993:1.0)[&label=320]:1.0)[&label=319]:1.0)[&label=318]:1.0,(30_154_Avian_H1N1_Canada_1996:1.0,(31_198_Avian_H1N1_USA_1999:1.0,((32_223_Avian_H1N1_USA_2002:1.0,33_224_Avian_H1N1_USA_2007:1.0)[&label=324]:1.0,(34_233_Avian_H1N1_USA_2005:1.0,(35_182_Avian_H1N6_USA_2002:1.0,(36_302_Avian_H1N1_USA_2003:1.0,37_303_Avian_H1N1_USA_2003:1.0)[&label=327]:1.0)[&label=326]:1.0)[&label=325]:1.0)[&label=323]:1.0)[&label=322]:1.0)[&label=321]:1.0)[&label=317]:1.0)[&label=316]:1.0)[&label=315]:1.0)[&label=313]:1.0)[&label=310]:1.0)[&label=309]:1.0)[&label=304]:1.0)[&label=298]:1.0)[&label=297]:1.0)[&label=293]:1.0)[&label=292]:1.0,(38_157_Avian_H1N3_NewZealand_1976:1.0,((39_125_Avian_H1N1_Japan_1977:1.0,(40_285_Avian_H1N1_HongKong_1979:1.0,(41_132_Avian_H1N1_Australia_1980:1.0,(42_102_Avian_H1N1_Japan_1996:1.0,(43_126_Avian_H1N9_Japan_1998:1.0,(44_307_Avian_H1N1_Italy_2003:1.0,(45_276_Avian_H1N1_Italy_2007:1.0,46_277_Avian_H1N1_Italy_2006:1.0)[&label=336]:1.0)[&label=335]:1.0)[&label=334]:1.0)[&label=333]:1.0)[&label=332]:1.0)[&label=331]:1.0)[&label=330]:1.0,(47_133_Avian_H1N1_Germany_1977:1.0,(48_248_Avian_H1_HongKong_1977:1.0,(49_134_Swine_H1N1_Netherlands_1980:1.0,(50_234_Swine_H1N1_Belgium_1979:1.0,((51_237_Swine_H1N1_France_1984:1.0,(52_107_Swine_H1N1_Netherlands_1985:1.0,53_117_Swine_H1N1_Belgium_1983:1.0)[&label=343]:1.0)[&label=342]:1.0,((54_135_Swine_H1N1_Italy_1987:1.0,55_149_Swine_H1N1_Germany_1995:1.0)[&label=345]:1.0,(56_235_Swine_H1N1_France_1995:1.0,((57_288_Swine_H1N1_Germany_1992:1.0,(58_227_Swine_H1N1_Spain_1991:1.0,(59_226_Swine_H1N1_France_1985:1.0,(60_238_Swine_H1N1_UnitedKingdom_1992:1.0,((61_210_Swine_H1N1_UnitedKingdom_1995:1.0,62_236_Swine_H1N1_UnitedKingdom_1996:1.0)[&label=353]:1.0,(63_225_Swine_H1N1_UnitedKingdom_1993:1.0,(64_212_Swine_H1N1_UnitedKingdom_1999:1.0,(65_246_Swine_H1N1_UnitedKingdom_1994:1.0,(66_211_Swine_H1N1_UnitedKingdom_1998:1.0,67_247_Swine_H1N1_UnitedKingdom_1997:1.0)[&label=357]:1.0)[&label=356]:1.0)[&label=355]:1.0)[&label=354]:1.0)[&label=352]:1.0)[&label=351]:1.0)[&label=350]:1.0)[&label=349]:1.0)[&label=348]:1.0,((68_141_Swine_H1N1_Italy_1997:1.0,(69_123_Swine_H1N1_Italy_1996:1.0,70_140_Swine_H1N1_Italy_1998:1.0)[&label=360]:1.0)[&label=359]:1.0,((71_191_Swine_H1N1_Italy_1997:1.0,72_310_Swine_H1N1_Germany_1993:1.0)[&label=362]:1.0,(73_228_Swine_H1N1_Denmark_1993:1.0,(74_305_Swine_H1N1_Belgium_1998:1.0,((75_168_Swine_H1N1_Spain_2003:1.0,(76_159_Swine_H1N1_Spain_2004:1.0,77_278_Swine_H1N1_Hungary_2006:1.0)[&label=367]:1.0)[&label=366]:1.0,((78_124_Swine_H1N1_France_1999:1.0,79_304_Swine_H1N1_China_2007:1.0)[&label=369]:1.0,(80_287_Swine_H1N1_Germany_2003:1.0,(81_167_Swine_H1N1_Spain_2003:1.0,82_192_Swine_H1N2_Germany_2000:1.0)[&label=371]:1.0)[&label=370]:1.0)[&label=368]:1.0)[&label=365]:1.0)[&label=364]:1.0)[&label=363]:1.0)[&label=361]:1.0)[&label=358]:1.0)[&label=347]:1.0)[&label=346]:1.0)[&label=344]:1.0)[&label=341]:1.0)[&label=340]:1.0)[&label=339]:1.0)[&label=338]:1.0)[&label=337]:1.0)[&label=329]:1.0)[&label=328]:1.0)[&label=291]:1.0,((83_1_Human_H1N1_USA_1918:1.0,((84_3_Human_H1N1_UnitedKingdom_1933:1.0,(85_2_Human_H1N1_UnitedKingdom_1933:1.0,86_23_Human_H1_Japan_1967:1.0)[&label=376]:1.0)[&label=375]:1.0,((87_7_Human_H1N1_Australia_1935:1.0,(88_6_Human_H1N1_USA_1935:1.0,(89_8_Human_H1N1_1936:1.0,(90_4_Human_H1N1_PuertoRico_1934:1.0,91_5_Human_H1N1_PuertoRico_1934:1.0)[&label=381]:1.0)[&label=380]:1.0)[&label=379]:1.0)[&label=378]:1.0,(92_10_Human_H1N1_USA_1942:1.0,((93_11_Human_H1N1_USA_1943:1.0,(94_12_Human_H1N1_USA_1943:1.0,95_13_Human_H1N1_USA_1945:1.0)[&label=385]:1.0)[&label=384]:1.0,(((96_9_Human_H1N1_USA_1940:1.0,97_14_Human_H1N1_1946:1.0)[&label=388]:1.0,((98_15_Human_H1N1_USA_1947:1.0,99_16_Human_H1N1_USA_1947:1.0)[&label=390]:1.0,((100_18_Human_H1N1_USA_1950:1.0,101_22_Human_H1N1_USA_1957:1.0)[&label=392]:1.0,(102_19_Human_H1N1_USA_1951:1.0,103_20_Human_H1N1_Malaysia_1954:1.0)[&label=393]:1.0)[&label=391]:1.0)[&label=389]:1.0)[&label=387]:1.0,(104_17_Human_H1N1_USA_1948:1.0,(105_21_Human_H1N1_Russia_1954:1.0,(106_26_Human_H1N1_HongKong_1977_1954:1.0,(107_27_Human_H1N1_USA_1978_1955:1.0,((108_31_Human_H1N1_USA_1983_1960:1.0,(109_29_Human_H1N1_UnitedKingdom_1982_1959:1.0,110_30_Human_H1N1_Fiji_1983_1960:1.0)[&label=400]:1.0)[&label=399]:1.0,(111_28_Human_H1N1_India_1980_1957:1.0,(112_33_Human_H1N1_USA_1986_1963:1.0,((113_36_Human_H1N1_Italy_1989_1966:1.0,114_39_Human_H1N1_Mongolia_1991_1968:1.0)[&label=404]:1.0,(115_35_Human_H1N1_Japan_1989_1966:1.0,(116_37_Human_H1N1_Italy_1989_1966:1.0,((117_38_Human_H1N1_USA_1991_1968:1.0,(118_44_Human_H1N1_USA_1995_1972:1.0,((119_43_Human_H1N1_Switzerland_1995_1972:1.0,120_55_Human_H1N1_Australia_2000_1977:1.0)[&label=411]:1.0,(121_41_Human_H1N1_USA_1995_1972:1.0,(122_48_Human_H1N1_Taiwan_1996_1973:1.0,(123_42_Human_H1N1_China_1995_1972:1.0,(124_45_Human_H1N1_USA_1995_1972:1.0,125_47_Human_H1N1_USA_1996_1973:1.0)[&label=415]:1.0)[&label=414]:1.0)[&label=413]:1.0)[&label=412]:1.0)[&label=410]:1.0)[&label=409]:1.0)[&label=408]:1.0,(126_40_Human_H1N1_China_1995_1972:1.0,(127_46_Human_H1N1_China_1996_1973:1.0,(128_52_Human_H1N1_HongKong_1998_1975:1.0,(129_49_Human_H1N1_Taiwan_1997_1974:1.0,(130_51_Human_H1N1_HongKong_1998_1975:1.0,(131_50_Human_H1N1_HongKong_1998_1975:1.0,(132_60_Human_H1N1_Taiwan_2002_1979:1.0,(133_54_Human_H1N1_NewCaledonia_1999_1976:1.0,((134_53_Human_H1N1_Taiwan_1999_1976:1.0,135_56_Human_H1N1_USA_2000_1977:1.0)[&label=425]:1.0,(((136_57_Human_H1N1_NewZealand_2000_1977:1.0,137_58_Human_H1N1_NewZealand_2000_1977:1.0)[&label=428]:1.0,(138_61_Human_H1N2_USA_2002_1979:1.0,(139_62_Human_H1N2_Denmark_2003_1980:1.0,140_64_Human_H1N2_USA_2003_1980:1.0)[&label=430]:1.0)[&label=429]:1.0)[&label=427]:1.0,(141_59_Human_H1N1_Japan_2001_1978:1.0,((142_63_Human_H1N1_USA_2003_1980:1.0,(143_65_Human_H1N1_Denmark_2004_1981:1.0,((144_68_Human_H1N1_Australia_2005_1982:1.0,145_79_Human_H1N1_USA_2007_1984:1.0)[&label=436]:1.0,(146_76_Human_H1N1_USA_2006_1983:1.0,147_82_Human_H1N1_USA_2007_1984:1.0)[&label=437]:1.0)[&label=435]:1.0)[&label=434]:1.0)[&label=433]:1.0,((148_72_Human_H1N1_Thailand_2006_1983:1.0,149_77_Human_H1N1_SolomonIslands_2006_1983:1.0)[&label=439]:1.0,(((150_74_Human_H1N1_China_2006_1983:1.0,151_75_Human_H1N1_China_2006_1983:1.0)[&label=442]:1.0,(152_81_Human_H1N1_USA_2007_1984:1.0,(153_71_Human_H1N1_China_2006_1983:1.0,(154_73_Human_H1N1_China_2006_1983:1.0,(155_98_Human_H1N1_USA_2008_1985:1.0,(156_83_Human_H1N1_USA_2007_1984:1.0,157_84_Human_H1N1_USA_2007_1984:1.0)[&label=447]:1.0)[&label=446]:1.0)[&label=445]:1.0)[&label=444]:1.0)[&label=443]:1.0)[&label=441]:1.0,(158_67_Human_H1N1_NewZealand_2004_1981:1.0,(159_97_Human_H1N1_Australia_2008_1985:1.0,((160_78_Human_H1N1_USA_2006_1983:1.0,161_80_Human_H1N1_USA_2007_1984:1.0)[&label=451]:1.0,((162_86_Human_H1N1_USA_2007_1984:1.0,163_92_Human_H1N1_USA_2008_1985:1.0)[&label=453]:1.0,((164_87_Human_H1N1_USA_2007_1984:1.0,(165_88_Human_H1N1_USA_2007_1984:1.0,(166_85_Human_H1N1_USA_2007_1984:1.0,167_95_Human_H1N1_USA_2008_1985:1.0)[&label=457]:1.0)[&label=456]:1.0)[&label=455]:1.0,((168_89_Human_H1N1_USA_2007_1984:1.0,(169_93_Human_H1N1_USA_2008_1985:1.0,170_94_Human_H1N1_USA_2008_1985:1.0)[&label=460]:1.0)[&label=459]:1.0,(171_96_Human_H1N1_USA_2008_1985:1.0,((172_90_Human_H1N1_USA_2008_1985:1.0,173_100_Human_H1N1_USA_2008_1985:1.0)[&label=463]:1.0,(174_91_Human_H1N1_USA_2008_1985:1.0,175_99_Human_H1N1_USA_2008_1985:1.0)[&label=464]:1.0)[&label=462]:1.0)[&label=461]:1.0)[&label=458]:1.0)[&label=454]:1.0)[&label=452]:1.0)[&label=450]:1.0)[&label=449]:1.0)[&label=448]:1.0)[&label=440]:1.0)[&label=438]:1.0)[&label=432]:1.0)[&label=431]:1.0)[&label=426]:1.0)[&label=424]:1.0)[&label=423]:1.0)[&label=422]:1.0)[&label=421]:1.0)[&label=420]:1.0)[&label=419]:1.0)[&label=418]:1.0)[&label=417]:1.0)[&label=416]:1.0)[&label=407]:1.0)[&label=406]:1.0)[&label=405]:1.0)[&label=403]:1.0)[&label=402]:1.0)[&label=401]:1.0)[&label=398]:1.0)[&label=397]:1.0)[&label=396]:1.0)[&label=395]:1.0)[&label=394]:1.0)[&label=386]:1.0)[&label=383]:1.0)[&label=382]:1.0)[&label=377]:1.0)[&label=374]:1.0)[&label=373]:1.0,(((176_115_Swine_H1N1_USA_1930:1.0,177_166_Swine_H1N1_1931:1.0)[&label=467]:1.0,(178_292_Swine_H1N1_USA_1945:1.0,179_243_Swine_H1N1_USA_1942:1.0)[&label=468]:1.0)[&label=466]:1.0,(180_244_Swine_H1N1_USA_1935:1.0,(181_232_Swine_H1N1_USA_1957:1.0,(182_104_Swine_H1N1_USA_1961:1.0,(183_293_Swine_H1N1_USA_1968:1.0,(184_219_Swine_H1N1_USA_1966:1.0,(185_207_Swine_H1N1_USA_1967:1.0,(186_190_Swine_H1N1_USA_1970:1.0,((187_188_Swine_H1N1_USA_1971:1.0,188_257_Swine_H1N1_USA_1973:1.0)[&label=477]:1.0,(189_202_Swine_H1N1_USA_1975:1.0,(190_308_Swine_H1N1_USA_1976:1.0,(((191_171_Swine_H1N1_USA_1977:1.0,192_240_Swine_H1N1_USA_1977:1.0)[&label=482]:1.0,(193_217_Swine_H1N1_USA_1977:1.0,194_242_Swine_H1N1_USA_1977:1.0)[&label=483]:1.0)[&label=481]:1.0,((195_214_Swine_H1N1_USA_1976:1.0,(196_170_Swine_H1N1_USA_1976:1.0,(197_178_Swine_H1N1_USA_1977:1.0,(198_205_Swine_H1N1_USA_1977:1.0,(199_184_Swine_H1N1_USA_1977:1.0,200_187_Swine_H1N1_USA_1978:1.0)[&label=489]:1.0)[&label=488]:1.0)[&label=487]:1.0)[&label=486]:1.0)[&label=485]:1.0,((201_144_Swine_H1N1_Japan_1977:1.0,((202_290_Swine_H1N1_UnitedKingdom_1993:1.0,203_312_Swine_H1N1_UnitedKingdom_1986:1.0)[&label=493]:1.0,(204_103_Swine_H1N1_Japan_1979:1.0,(205_113_Swine_H1N2_Japan_1996:1.0,(206_110_Swine_H1N2_Japan_2003:1.0,207_128_Swine_H1N2_Japan_2006:1.0)[&label=496]:1.0)[&label=495]:1.0)[&label=494]:1.0)[&label=492]:1.0)[&label=491]:1.0,((208_183_Swine_H1N1_USA_1976:1.0,(209_209_Swine_H1N1_USA_1978:1.0,210_231_Swine_H1N1_USA_1977:1.0)[&label=499]:1.0)[&label=498]:1.0,(((211_127_Swine_H1N2_Japan_1980:1.0,212_145_Swine_H1N1_Japan_1981:1.0)[&label=502]:1.0,213_215_Swine_H1N1_USA_1976:1.0)[&label=501]:1.0,(214_218_Swine_H1N1_USA_1977:1.0,(215_221_Swine_H1N1_USA_1978:1.0,(216_208_Swine_H1N1_USA_1978:1.0,(217_220_Swine_H1N1_USA_1978:1.0,((218_112_Swine_H1N2_Thailand_2005:1.0,(219_261_Swine_H1N1_Thailand_2005:1.0,(220_143_Swine_H1N1_Thailand_2004:1.0,221_262_Swine_H1N1_Thailand_2005:1.0)[&label=510]:1.0)[&label=509]:1.0)[&label=508]:1.0,(222_206_Swine_H1N1_USA_1980:1.0,(223_186_Swine_H1N1_USA_1979:1.0,((224_189_Swine_H1N1_USA_1980:1.0,(225_203_Swine_H1N1_Canada_1981:1.0,226_216_Swine_H1N1_Canada_1981:1.0)[&label=515]:1.0)[&label=514]:1.0,(((227_222_Swine_H1N1_USA_1987:1.0,228_299_Swine_H1N1_USA_1992:1.0)[&label=518]:1.0,((229_268_Swine_H1N1_Canada_2004:1.0,230_281_Swine_H1N1_Canada_2003:1.0)[&label=520]:1.0,(231_253_Swine_H1N1_Canada_2004:1.0,232_301_Swine_H1_Canada_1991:1.0)[&label=521]:1.0)[&label=519]:1.0)[&label=517]:1.0,((233_194_Swine_H1N2_Taiwan_2003:1.0,234_282_Swine_H1N2_Taiwan_2004:1.0)[&label=523]:1.0,((235_249_Swine_H1N1_Canada_2003:1.0,236_251_Swine_H1N1_Canada_2003:1.0)[&label=525]:1.0,(237_245_Swine_H1N1_USA_1986:1.0,(238_185_Swine_H1N1_USA_1985:1.0,(239_230_Swine_H1N1_USA_1987:1.0,(240_142_Swine_H1N1_Thailand_2000:1.0,((241_118_Swine_H1N1_USA_1997:1.0,242_175_Swine_H1N2_USA_2001:1.0)[&label=531]:1.0,(243_300_Swine_H1N1_USA_1988:1.0,((244_111_Swine_H1N1_Thailand_2003:1.0,245_241_Swine_H1N1_USA_1988:1.0)[&label=534]:1.0,(246_201_Swine_H1N1_USA_1988:1.0,((247_239_Swine_H1N1_China_2001:1.0,248_294_Swine_H1N1_China_2005:1.0)[&label=537]:1.0,((249_204_Swine_H1N1_USA_1991:1.0,(250_136_Swine_H1N1_USA_1997:1.0,(251_108_Swine_H1N1_USA_1997:1.0,(252_109_Swine_H1N1_USA_1998:1.0,253_146_Swine_H1N1_USA_1998:1.0)[&label=542]:1.0)[&label=541]:1.0)[&label=540]:1.0)[&label=539]:1.0,((254_280_Swine_H1N2_China_2004:1.0,(255_284_Swine_H1N2_China_2005:1.0,256_306_Swine_H1N2_China_2007:1.0)[&label=545]:1.0)[&label=544]:1.0,((257_271_Swine_H1N1_USA_1999:1.0,((258_148_Swine_H1N2_USA_2000:1.0,(259_138_Swine_H1N2_USA_2001:1.0,260_272_Swine_H1N1_USA_2002:1.0)[&label=550]:1.0)[&label=549]:1.0,(261_172_Swine_H1N2_USA_2001:1.0,(262_120_Swine_H1N2_USA_2001:1.0,(263_193_Swine_H1N2_SouthKorea_2002:1.0,(264_160_Swine_H1N2_USA_2001:1.0,(265_260_Swine_H1N1_USA_2004:1.0,(266_296_Swine_H1N1_SouthKorea_2004:1.0,267_297_Swine_H1N1_SouthKorea_2005:1.0)[&label=556]:1.0)[&label=555]:1.0)[&label=554]:1.0)[&label=553]:1.0)[&label=552]:1.0)[&label=551]:1.0)[&label=548]:1.0)[&label=547]:1.0,(268_174_Swine_H1N2_USA_2001:1.0,(269_147_Swine_H1N2_USA_2001:1.0,(270_258_Swine_H1N2_USA_2001:1.0,((271_139_Swine_H1N2_USA_2000:1.0,((272_101_Human_H1N1_USA_2009:1.0,273_313_Human_H1N1_USA_2009:1.0)[&label=563]:1.0,(274_269_Swine_H1N2_China_2006:1.0,275_283_Swine_H1N2_China_2005:1.0)[&label=564]:1.0)[&label=562]:1.0)[&label=561]:1.0,(276_119_Swine_H1N2_USA_1999:1.0,((277_173_Swine_H1N2_USA_2001:1.0,(278_121_Swine_H1N2_USA_2001:1.0,279_122_Swine_H1N2_USA_2001:1.0)[&label=568]:1.0)[&label=567]:1.0,(280_137_Swine_H1N2_USA_2001:1.0,((281_263_Swine_H1N1_USA_2007:1.0,282_273_Swine_H1N2_USA_2003:1.0)[&label=571]:1.0,(283_151_Swine_H1N2_USA_2001:1.0,((284_259_Swine_H1N2_USA_2004:1.0,285_291_Swine_H1N2_SouthKorea_2005:1.0)[&label=574]:1.0,(286_266_Swine_H1N2_SouthKorea_2005:1.0,(287_298_Swine_H1N2_SouthKorea_2005:1.0,(288_265_Swine_H1N2_SouthKorea_2004:1.0,289_275_Swine_H1N2_SouthKorea_2006:1.0)[&label=577]:1.0)[&label=576]:1.0)[&label=575]:1.0)[&label=573]:1.0)[&label=572]:1.0)[&label=570]:1.0)[&label=569]:1.0)[&label=566]:1.0)[&label=565]:1.0)[&label=560]:1.0)[&label=559]:1.0)[&label=558]:1.0)[&label=557]:1.0)[&label=546]:1.0)[&label=543]:1.0)[&label=538]:1.0)[&label=536]:1.0)[&label=535]:1.0)[&label=533]:1.0)[&label=532]:1.0)[&label=530]:1.0)[&label=529]:1.0)[&label=528]:1.0)[&label=527]:1.0)[&label=526]:1.0)[&label=524]:1.0)[&label=522]:1.0)[&label=516]:1.0)[&label=513]:1.0)[&label=512]:1.0)[&label=511]:1.0)[&label=507]:1.0)[&label=506]:1.0)[&label=505]:1.0)[&label=504]:1.0)[&label=503]:1.0)[&label=500]:1.0)[&label=497]:1.0)[&label=490]:1.0)[&label=484]:1.0)[&label=480]:1.0)[&label=479]:1.0)[&label=478]:1.0)[&label=476]:1.0)[&label=475]:1.0)[&label=474]:1.0)[&label=473]:1.0)[&label=472]:1.0)[&label=471]:1.0)[&label=470]:1.0)[&label=469]:1.0)[&label=465]:1.0)[&label=372]:1.0)[&label=290];
+end;
+
+begin figtree;
+	set appearance.backgroundColorAttribute="User Selection";
+	set appearance.backgroundColour=#-1;
+	set appearance.branchColorAttribute="User Selection";
+	set appearance.branchLineWidth=1.0;
+	set appearance.foregroundColour=#-16777216;
+	set appearance.selectionColour=#-2144520576;
+	set branchLabels.colorAttribute="User Selection";
+	set branchLabels.displayAttribute="Branch times";
+	set branchLabels.fontName="sansserif";
+	set branchLabels.fontSize=8;
+	set branchLabels.fontStyle=0;
+	set branchLabels.isShown=false;
+	set branchLabels.significantDigits=4;
+	set layout.expansion=0;
+	set layout.layoutType="RECTILINEAR";
+	set layout.zoom=0;
+	set nodeBars.barWidth=4.0;
+	set nodeLabels.colorAttribute="User Selection";
+	set nodeLabels.displayAttribute="label";
+	set nodeLabels.fontName="sansserif";
+	set nodeLabels.fontSize=8;
+	set nodeLabels.fontStyle=0;
+	set nodeLabels.isShown=true;
+	set nodeLabels.significantDigits=4;
+	set polarLayout.alignTipLabels=false;
+	set polarLayout.angularRange=0;
+	set polarLayout.rootAngle=0;
+	set polarLayout.rootLength=100;
+	set polarLayout.showRoot=true;
+	set radialLayout.spread=0.0;
+	set rectilinearLayout.alignTipLabels=true;
+	set rectilinearLayout.curvature=0;
+	set rectilinearLayout.rootLength=100;
+	set scale.offsetAge=0.0;
+	set scale.rootAge=1.0;
+	set scale.scaleFactor=1.0;
+	set scale.scaleRoot=false;
+	set scaleAxis.automaticScale=true;
+	set scaleAxis.fontSize=8.0;
+	set scaleAxis.isShown=false;
+	set scaleAxis.lineWidth=1.0;
+	set scaleAxis.majorTicks=10.0;
+	set scaleAxis.origin=0.0;
+	set scaleAxis.reverseAxis=false;
+	set scaleAxis.showGrid=true;
+	set scaleAxis.significantDigits=4;
+	set scaleBar.automaticScale=true;
+	set scaleBar.fontSize=10.0;
+	set scaleBar.isShown=false;
+	set scaleBar.lineWidth=1.0;
+	set scaleBar.scaleRange=6.0;
+	set scaleBar.significantDigits=4;
+	set tipLabels.colorAttribute="User Selection";
+	set tipLabels.displayAttribute="Names";
+	set tipLabels.fontName="sansserif";
+	set tipLabels.fontSize=8;
+	set tipLabels.fontStyle=0;
+	set tipLabels.isShown=true;
+	set tipLabels.significantDigits=4;
+	set trees.order=true;
+	set trees.orderType="increasing";
+	set trees.rooting=false;
+	set trees.rootingType="User Selection";
+	set trees.transform=false;
+	set trees.transformType="cladogram";
+end;
+

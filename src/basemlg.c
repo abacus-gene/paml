@@ -40,7 +40,7 @@ int lfunG_d (double x[], double *lnL, double dl[], int np);
 int lfunG_dd (double x[], double *lnL, double dl[], double ddl[], int np);
 
 struct CommonInfo {
-   char *z[NS], *spname[NS], seqf[32],outf[32],treef[32];
+   unsigned char *z[NS], *spname[NS], seqf[32],outf[32],treef[32];
    int  seqtype, ns, ls, ngene, posG[NGENE+1],lgene[NGENE],*pose,npatt, readpattern;
    int  clock,fix_alpha,fix_kappa,fix_rgene,Malpha,print,verbose;
    int  model, runmode, cleandata, ndata;
@@ -83,7 +83,7 @@ int main (int argc, char *argv[])
 {
    FILE *fout, *fseq=NULL, *fpair[6];
    char pairfs[1][32]={"2base.t"};
-   char ctlf[32]="baseml.ctl";
+   char ctlf[96]="baseml.ctl";
    double  space[50000];
 
    noisy=2;  com.cleandata=1;  /* works with clean data only */
@@ -96,12 +96,11 @@ int main (int argc, char *argv[])
    com.ncode=4;
 
    starttimer();
-   SetSeed(4*(int)time(NULL)+1);
 
-   printf("BASEMLG in %s\n",  VerStr);
+   printf("BASEMLG in %s\n", pamlVerStr);
    frate=fopen(ratef,"w");  frub=fopen("rub","w");  flfh=fopen("lnf","w");
 
-   if (argc>1) { strcpy(ctlf, argv[1]); printf ("\nctlfile is %s.\n", ctlf); }
+   if (argc>1) { strncpy(ctlf, argv[1], 95); printf ("\nctlfile is %s.\n", ctlf); }
    GetOptions (ctlf);
    finitials=fopen("in.basemlg","r");
 
@@ -125,7 +124,7 @@ int main (int argc, char *argv[])
 
    DistanceMatNuc (fout, fpair[0], com.model, com.alpha);
    if (com.model<=HKY85)
-      EigenTN93 (com.model, com.kappa, com.kappa, com.pi, &nR, Root, Cijk);
+      eigenTN93 (com.model, com.kappa, com.kappa, com.pi, &nR, Root, Cijk);
    Forestry (fout, space);
    fclose(fseq);  fclose(fpair[0]);
    if(finitials) { fclose(finitials);  finitials=NULL; }
@@ -297,7 +296,7 @@ int GetInitials (double x[], int *fromfile)
    else if (!com.fix_kappa)
       { com.nrate=1; x[com.ntime+com.nrgene]=com.kappa; }
    if (com.model<=HKY85)
-      EigenTN93 (com.model, com.kappa, com.kappa, com.pi, &nR, Root, Cijk);
+      eigenTN93 (com.model, com.kappa, com.kappa, com.pi, &nR, Root, Cijk);
 
    com.np = com.ntime+com.nrgene+com.nrate+(!com.fix_alpha);
    FOR (j,com.nrgene) x[com.ntime+j]=1;
@@ -322,7 +321,7 @@ void TestFunction (FILE* fout, double x[], double space[])
    double lnL;
 
    printf ("\ntest functions\n");
-   SetSeed (23);
+   SetSeed (1, 0);
    FOR (i,np) x[i]=(double)i*rndu()+0.0001;
    matout (F0, x, 1, np);    matout (fout, x, 1, np);
 
@@ -437,7 +436,7 @@ int RhoRate (double x[])
        RootTN93 (com.model, kappa, kappa, com.pi, &rh, Root);
 #ifdef REV_UNREST
    if (com.model==REV)
-       EigenREV (NULL, x+com.ntime+com.nrgene, com.pi, &nR, Root, Cijk);
+       eigenREV (NULL, x+com.ntime+com.nrgene, com.pi, &nR, Root, Cijk);
 #endif
    if (SetBranch (x)) puts ("\nx[] err..");
    GetSave (2, &nm, M, alpha, 1);
@@ -499,7 +498,7 @@ int lfunG_print (double x[], int np)
        RootTN93(com.model,kappa,kappa,com.pi,&y,Root);
 #ifdef REV_UNREST
    if (com.model==REV)
-       EigenREV(NULL,x+com.ntime+com.nrgene,com.pi,&nR,Root,Cijk);
+       eigenREV(NULL,x+com.ntime+com.nrgene,com.pi,&nR,Root,Cijk);
 #endif
    if (SetBranch(x)) puts("\nx[] err..");
    for(j=0,nm=1; j<tree.nbranch; j++)  nm*=nR;
@@ -563,7 +562,7 @@ double lfunG (double x[], int np)
        RootTN93 (com.model, kappa, kappa, com.pi, &y, Root);
 #ifdef REV_UNREST
    if (com.model==REV)
-       EigenREV (NULL, x+com.ntime+com.nrgene, com.pi, &nR, Root, Cijk);
+       eigenREV (NULL, x+com.ntime+com.nrgene, com.pi, &nR, Root, Cijk);
 #endif
    if (SetBranch (x)) puts ("\nx[] err..");
 

@@ -1,0 +1,10 @@
+cd ../c1r1;  nice +20 ../mcmctree ../mcmctreeClock1.ctl > log &
+cd ../c1r2;  nice +20 ../mcmctree ../mcmctreeClock1.ctl > log &
+cd ../c2r1;  nice +20 ../mcmctree ../mcmctreeClock2.ctl > log &
+cd ../c2r2;  nice +20 ../mcmctree ../mcmctreeClock2.ctl > log &
+cd ../c3r1;  nice +20 ../mcmctree ../mcmctreeClock3.ctl > log &
+cd ../c3r2;  nice +20 ../mcmctree ../mcmctreeClock3.ctl > log &
+
+cd ../b1r1;  nice +20 beast -overwrite ../H1.trimmed.redated..beast.xml > log &
+cd ../b1r2;  nice +20 beast -overwrite ../H1.trimmed.redated.beast.xml > log &
+

@@ -1,5 +1,6 @@
 /* chi2.c 
           cc -o chi2 chi2.c -lm
+          cl -O2 chi2.c
 
    This program calculates the chi-square significance values for given 
    degrees of freedom and the tail probability (type I error rate) for 
@@ -12,33 +13,23 @@
 #include <stdlib.h>
 #include <math.h>
 
-double PointChi2 (double prob, double v);
+double QuantileChi2 (double prob, double v);
 
-#define PointGamma(prob,alpha,beta) PointChi2(prob,2.0*(alpha))/(2.0*(beta))
+#define QuantileGamma(prob,alpha,beta) QuantileChi2(prob,2.0*(alpha))/(2.0*(beta))
 #define CDFGamma(x,alpha,beta) IncompleteGamma((beta)*(x),alpha,LnGammaFunction(alpha))
 #define CDFChi2(x,v) CDFGamma(x,(v)/2.0,0.5)
 
-double PointNormal (double prob);
+double QuantileNormal (double prob);
 double CDFNormal (double x);
 double LnGammaFunction (double alpha);
 double IncompleteGamma (double x, double alpha, double ln_gamma_alpha);
 
 int main(int argc, char*argv[])
 {
-   int i,j, n=20, ndf=200, nprob=8, option=0; /* 0:table, 1:prob */
-   double df,chi2, d=1.0/n, prob[]={.005, .025, .1, .5, .90, .95, .99, .999};
+   int i,j, n=20, ndf=200, nprob=8, option=0;
+   double df, chi2, d=1.0/n, prob[]={.005, .025, .1, .5, .90, .95, .99, .999};
 
-   option=(argc>1);
-   if (option) {
-      for (; ; ) {
-         printf ("\nd.f. & Chi^2 value (Ctrl-c to break)? ");
-         scanf ("%lf%lf", &df, &chi2);
-         if(df<1 || chi2<0) break;
-         prob[0]=1-CDFChi2(chi2,df);
-         printf ("\nprob = %.9f = %.3e\n", prob[0],prob[0]);
-      }
-   }
-   else {
+   if (argc!=2 && argc!=3) {
       printf ("\n\nChi-square critical values\n");
       for (i=0; i<ndf; i++) {
          if (i%15==0) {
@@ -49,7 +40,7 @@ int main(int argc, char*argv[])
          }
          printf ("\n%3d ", i+1);
          for (j=0; j<nprob; j++)
-            printf ("%9.4f", PointChi2(prob[j],(double)(i+1)));
+            printf ("%9.4f", QuantileChi2(prob[j],(double)(i+1)));
          if (i%5==4) printf ("\n");
          if (i%15==14) {
             printf ("\nENTER for more, (q+ENTER) for quit... ");
@@ -57,11 +48,30 @@ int main(int argc, char*argv[])
          }
       }
    }
+   else if(argc==2) {
+      for (; ; ) {
+         printf ("\nd.f. & Chi^2 value (Ctrl-c to break)? ");
+         scanf ("%lf%lf", &df, &chi2);
+         if(df<1 || chi2<0) break;
+         prob[0] = 1-CDFChi2(chi2,df);
+         printf ("\ndf = %2.0f  prob = %.9f = %.3e\n", df, prob[0], prob[0]);
+      }
+   }
+   else if(argc==3) {
+      df = atoi(argv[1]);
+      chi2 = atof(argv[2]);
+      if(df<1 || chi2<0) {
+         printf("df = %d  ch2 = %.4f invalid");
+         exit(-1);
+      }
+      prob[0] = 1 - CDFChi2(chi2, df);
+      printf ("\ndf = %2.0f  prob = %.9f = %.3e\n", df, prob[0], prob[0]);
+   }
    printf ("\n");
    return (0);
 }
 
-double PointNormal (double prob)
+double QuantileNormal (double prob)
 {
 /* returns z so that Prob{x<z}=prob where x ~ N(0,1) and (1e-12)<prob<1-(1e-12)
    returns (-9999) if in error
@@ -190,12 +200,12 @@ double IncompleteGamma (double x, double alpha, double ln_gamma_alpha)
 }
 
 
-double PointChi2 (double prob, double v)
+double QuantileChi2 (double prob, double v)
 {
 /* returns z so that Prob{x<z}=prob where x is Chi2 distributed with df=v
    returns -1 if in error.   0.000002<prob<0.999998
    RATNEST FORTRAN by
-       Best DJ & Roberts DE (1975) The percentage points of the 
+       Best DJ & Roberts DE (1975) The percentage Quantiles of the 
        Chi2 distribution.  Applied Statistics 24: 385-388.  (AS91)
    Converted into C by Ziheng Yang, Oct. 1993.
 */
@@ -222,7 +232,7 @@ l2:
    else                       goto l2;
   
 l3: 
-   x=PointNormal (p);
+   x = QuantileNormal (p);
    p1=0.222222/v;   ch=v*pow((x*sqrt(p1)+1-p1), 3.0);
    if (ch>2.2*v+6)  ch=-2*(log(1-p)-c*log(.5*ch)+g);
 l4:

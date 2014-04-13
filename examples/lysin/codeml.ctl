@@ -14,7 +14,7 @@
                     * models for codons:
                         * 0:one, 1:b, 2:2 or more dN/dS ratios for branches
 
-      NSsites = 8   * 0:one w;1:neutral;2:positive; 3:discrete;4:freqs;
+      NSsites = 2   * 0:one w;1:neutral;2:positive; 3:discrete;4:freqs;
                     * 5:gamma;6:2gamma;7:beta;8:beta&w;9:beta&gamma;
                     * 10:beta&1+gamma; 11:beta&1>normal; 12:0&2normal; 13:3normal
         icode = 0   * 0:standard genetic code; 1:mammalian mt; 2-10:see below

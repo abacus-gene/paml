@@ -26,9 +26,9 @@ analyzed by Yang and Nielsen (2008, table 1).  The new models described in that
 paper are implemented using the two control variables CodonFreq and estFreq in 
 the control file codeml.ctl.  You can try to duplicate our results.
 
-    CodonFreq = 2  * 0:1/61 each, 1:F1X4, 2:F3X4, 3:codon table
+    CodonFreq = 7  * 0:1/61 each, 1:F1X4, 2:F3X4, 3:codon table
                    * 4:F1x4MG, 5:F3x4MG, 6:FMutSel0, 7:FMutSel
-      estFreq = 0
+      estFreq = 1
 
 Run the analysis by 
     codeml codeml.HC.ctl
