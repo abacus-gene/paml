@@ -1,0 +1,28 @@
+ 7  1
+
+((((human, (chimpanzee, bonobo)) >.06=0.0693<.08, gorilla),
+(orangutan, sumatran)) >.12=0.139<.16, gibbon);      // prior 1
+
+
+//end of file
+
+
+
+
+
+
+((((human, (chimpanzee, bonobo)) >.06<.08, gorilla),
+(orangutan, sumatran)) >.12<.16, gibbon);      // prior 2
+
+
+
+((((human, (chimpanzee, bonobo)) >.05<.09, gorilla),
+(orangutan, sumatran)) >.11<.18, gibbon);      // prior 3
+
+
+
+((((human, (chimpanzee, bonobo)) >.06<.08, gorilla),
+(orangutan, sumatran)) >.12<.18, gibbon);
+
+((((human, (chimpanzee, bonobo)) >.06=.068<.08, gorilla),
+(orangutan, sumatran)) >.2=.248<.3, gibbon);

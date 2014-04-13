@@ -27,7 +27,7 @@ Rambaut, A. 2000. Estimating the rate of molecular evolution: incorporating
 non-comptemporaneous sequences into maximum likelihood phylogenetics. 
 Bioinformatics 16:395-399.
 
-Yang, Z., and A. D. Yoder. 2003. Likelihood and Bayesian methods for estimating divergence times using multiple gene loci and calibration points, with application to a cryptic species radiation. Syst. Biol. 
+Yang, Z., and A. D. Yoder. 2003. Comparison of likelihood and Bayesian methods for estimating divergence times using multiple gene loci and calibration points, with application to a radiation of cute-looking mouse lemur species. Syst. Biol. 52:705-716.
 
 Ziheng Yang
 
@@ -89,50 +89,52 @@ SEs for parameters:
   0.03565  0.03264  0.00829  0.00795  0.00479  0.00480  0.00702  0.00454  0.00454  0.00463  0.00550  0.02551  0.00860  0.01028  0.02008  0.01185  0.01934  2.97312
 
 Note: mutation rate is not applied to tree length.  Tree has times, for TreeView
-tree length =   1.46676
 
 (((((((((Brazi@82, (ElSal@83, NewCal@84)), Mexico@84), ElSal@94), (PRico@86, Tahiti@85)), Tahiti@79), Indon@77), Indon@76), (((Philip@64, Philip@84), Philip@56), (SLanka@78, (Thai@78, Thai@84)))), Thai@63);
 
+(((((((((Brazi@82: 1.523930, (ElSal@83: 0.869570, NewCal@84: 1.869570): 1.654360): 0.000002, Mexico@84: 3.523932): 1.376981, ElSal@94: 14.900913): 1.904789, (PRico@86: 7.725130, Tahiti@85: 6.725130): 1.080572): 0.000005, Tahiti@79: 1.805707): 4.792057, Indon@77: 4.597763): 1.055732, Indon@76: 4.653495): 39.696751, (((Philip@64: 3.862769, Philip@84: 23.862769): 7.335980, Philip@56: 3.198749): 13.222004, (SLanka@78: 21.637157, (Thai@78: 6.998700, Thai@84: 12.998700): 14.638457): 16.783596): 7.929492): 7.555240, Thai@63: 38.905485);
+
 Detailed output identifying parameters
 
-substitution rate is per time unit
-    0.000774 +- 0.000102
+Substitution rate is per time unit
+    0.000774 +- 0.000101
 
 Nodes and Times
+(JeffNode is for Thorne's multidivtime.  ML analysis uses ingroup data only.)
 
-Node   1   Time   82.00 
-Node   2   Time   83.00 
-Node   3   Time   94.00 
-Node   4   Time   76.00 
-Node   5   Time   77.00 
-Node   6   Time   84.00 
-Node   7   Time   84.00 
-Node   8   Time   64.00 
-Node   9   Time   56.00 
-Node  10   Time   84.00 
-Node  11   Time   86.00 
-Node  12   Time   78.00 
-Node  13   Time   79.00 
-Node  14   Time   85.00 
-Node  15   Time   63.00 
-Node  16   Time   78.00 
-Node  17   Time   84.00 
-Node  18   Time   24.09  +-   6.77
-Node  19   Time   31.65  +-   6.20
-Node  20   Time   71.35  +-   1.58
-Node  21   Time   72.40  +-   1.51
-Node  22   Time   77.19  +-   0.91
-Node  23   Time   77.19  +-   0.91
-Node  24   Time   79.10  +-   1.33
-Node  25   Time   80.48  +-   0.86
-Node  26   Time   80.48  +-   0.86
-Node  27   Time   82.13  +-   0.88
-Node  28   Time   78.27  +-   1.05
-Node  29   Time   39.58  +-   4.85
-Node  30   Time   52.80  +-   1.63
-Node  31   Time   60.14  +-   1.95
-Node  32   Time   56.36  +-   3.81
-Node  33   Time   71.00  +-   2.25
+Node   1 (Jeffnode   0) Time   82.00 
+Node   2 (Jeffnode   1) Time   83.00 
+Node   3 (Jeffnode   2) Time   94.00 
+Node   4 (Jeffnode   3) Time   76.00 
+Node   5 (Jeffnode   4) Time   77.00 
+Node   6 (Jeffnode   5) Time   84.00 
+Node   7 (Jeffnode   6) Time   84.00 
+Node   8 (Jeffnode   7) Time   64.00 
+Node   9 (Jeffnode   8) Time   56.00 
+Node  10 (Jeffnode   9) Time   84.00 
+Node  11 (Jeffnode  10) Time   86.00 
+Node  12 (Jeffnode  11) Time   78.00 
+Node  13 (Jeffnode  12) Time   79.00 
+Node  14 (Jeffnode  13) Time   85.00 
+Node  15 (Jeffnode  14) Time   63.00 
+Node  16 (Jeffnode  15) Time   78.00 
+Node  17 (Jeffnode  16) Time   84.00 
+Node  18 (Jeffnode  32) Time   24.09  +-   6.73
+Node  19 (Jeffnode  31) Time   31.65  +-   6.17
+Node  20 (Jeffnode  30) Time   71.35  +-   1.57
+Node  21 (Jeffnode  29) Time   72.40  +-   1.51
+Node  22 (Jeffnode  28) Time   77.19  +-   0.91
+Node  23 (Jeffnode  27) Time   77.19  +-   0.91
+Node  24 (Jeffnode  26) Time   79.10  +-   1.33
+Node  25 (Jeffnode  25) Time   80.48  +-   0.86
+Node  26 (Jeffnode  24) Time   80.48  +-   0.86
+Node  27 (Jeffnode  23) Time   82.13  +-   0.88
+Node  28 (Jeffnode  22) Time   78.27  +-   1.04
+Node  29 (Jeffnode  21) Time   39.58  +-   4.82
+Node  30 (Jeffnode  20) Time   52.80  +-   1.63
+Node  31 (Jeffnode  19) Time   60.14  +-   1.95
+Node  32 (Jeffnode  18) Time   56.36  +-   3.80
+Node  33 (Jeffnode  17) Time   71.00  +-   2.25
 
 Parameters (kappa) in the rate matrix (HKY85) (Yang 1994 J Mol Evol 39:105-111):
  17.02252

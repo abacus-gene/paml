@@ -5,9 +5,11 @@
         noisy = 9  * 0,1,2,3,9: how much rubbish on the screen
       verbose = 0  * 0: concise; 1: detailed, 2: too much
       runmode = 0
+
       seqtype = 1  * 1:codons; 2:AAs; 3:codons-->AAs
     CodonFreq = 2  * 0:1/61 each, 1:F1X4, 2:F3X4, 3:codon table
-       aaDist = 1  * 0:equal, +:geometric; -:linear, 1-6:G1974,Miyata,c,p,v,a
+        clock = 0
+       aaDist = 0  * 0:equal, +:geometric; -:linear, 1-6:G1974,Miyata,c,p,v,a
    aaRatefile = wag.dat * only used for aa seqs with model=empirical(_F)
                    * dayhoff.dat, jones.dat, wag.dat, mtmam.dat, or your own
 
@@ -24,7 +26,6 @@
     fix_omega = 0
         omega = 0.2
 
-        clock = 0
         getSE = 0
  RateAncestor = 0
 

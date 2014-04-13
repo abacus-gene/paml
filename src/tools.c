@@ -140,7 +140,7 @@ int transform (char *z, int ls, int direction, int seqtype)
       for (il=0,p=z; il<ls; il++,p++)
          { if ((*p=(char)CodeChara(*p, seqtype))==(char)(-1))  status=-1; }
    else 
-      for (il=0,p=z; il<ls; il++,p++)  *p=pch[*p];
+      for (il=0,p=z; il<ls; il++,p++)  *p=pch[(int) (*p)];
    return (status);
 }
 
@@ -277,13 +277,13 @@ int difcodonNG (char codon1[], char codon2[], double *SynSite,double *AsynSite,
    I made some arbitrary decisions when the two codons have ambiguity characters
    20 September 2002.
 */
-   int i,j,k, i1,i2, iy[2], iaa[2],ic[2];
+   int i,j,k, i1,i2, iy[2]={0}, iaa[2],ic[2];
    int ndiff,npath,nstop,sdpath,ndpath,dmark[3],step[3],b[2][3],bt1[3],bt2[3];
    int by[3] = {16, 4, 1};
    char str[4]="";
 
    for (i=0,*SynSite=0,nstop=0; i<2; i++) {
-      for (j=0,iy[0]=iy[1]=0; j<3; j++)   {
+      for (j=0; j<3; j++)   {
          if (transfed) b[i][j]=(i?codon1[j]:codon2[j]);
          else          b[i][j]=(int)CodeChara((char)(i?codon1[j]:codon2[j]),0);
          iy[i]+=by[j]*b[i][j];
@@ -312,8 +312,8 @@ int difcodonNG (char codon1[], char codon2[], double *SynSite,double *AsynSite,
    *SynSite*=3/18.;     /*  2 codons, 2*9 possibilities. */
    *AsynSite=3*(1-nstop/18.) - *SynSite;
 
-#if 0    /* MEGA 1.1 error */
-   *AsynSite=3 - *SynSite;
+#if 0    /* MEGA 1.1  */
+   *AsynSite = 3 - *SynSite;
 #endif
 
    ndiff=0;  *SynDif=*AsynDif=0;
@@ -362,6 +362,64 @@ int difcodonNG (char codon1[], char codon2[], double *SynSite,double *AsynSite,
    }
    return (ndiff);
 }
+
+
+
+int difcodonLWL85 (char codon1[], char codon2[], double sites[3], double sdiff[3], 
+                    double vdiff[3], int transfed, int icode)
+{
+/* This partitions codon sites according to degeneracy, that is sites[3] has 
+   L0, L2, L4, averaged between the two codons.  It also compares the two codons 
+   and add the differences to the transition and transversion differences for use 
+   in LWL85 and similar methods.
+   The two codons (codon1 & codon2) should not contain ambiguity characters. 
+*/
+   int b[2][3], by[3] = {16, 4, 1}, i,j, ifold[2], c[2], ct, aa[2], ibase,nsame;
+   char str[4]="";
+
+   for(i=0; i<3; i++) sites[i]=sdiff[i]=vdiff[i]=0;
+   /* check the two codons and code them */
+   for (i=0; i<2; i++) {
+      for (j=0,c[i]=0; j<3; j++)   {
+         if (transfed) b[i][j]=(i?codon1[j]:codon2[j]);
+         else          b[i][j]=(int)CodeChara((char)(i?codon1[j]:codon2[j]),0);
+         c[i]+=b[i][j]*by[j];
+         if(b[i][j]<0||b[i][j]>3) { 
+            if(noisy>=9) 
+               printf("\nwarning ambiguity in difcodonLWL85: %s %s", codon1,codon2);
+            return(0);
+         }
+      }
+      aa[i]=GeneticCode[icode][c[i]];
+      if(aa[i]==-1) {
+         printf("\nLWL85: stop codon %s.\n",getcodon(str,c[i]));
+         exit(-1);
+      }
+   }
+
+   for (j=0; j<3; j++) {    /* three codon positions */
+      for (i=0; i<2; i++) { /* two codons */
+         for(ibase=0,nsame=0; ibase<4; ibase++) {
+            ct=c[i]+(ibase-b[i][j])*by[j];
+            if(ibase!=b[i][j] && aa[i]==GeneticCode[icode][ct]) nsame++;
+         }
+         if(nsame==0)                    ifold[i]=0;
+         else if (nsame==1 || nsame==2)  ifold[i]=1;
+         else                            ifold[i]=2;
+         sites[ifold[i]]+=.5;
+      }
+
+      if(b[0][j]==b[1][j]) continue;
+      if(b[0][j]+b[1][j]==1 || b[0][j]+b[1][j]==5) { /* transition */
+         sdiff[ifold[0]]+=.5;  sdiff[ifold[1]]+=.5;
+      }
+      else {                   /* transversion */
+         vdiff[ifold[0]]+=.5;  vdiff[ifold[1]]+=.5;
+      }
+   }
+   return (0);
+}
+
 
 
 int testTransP (double P[], int n)
@@ -492,9 +550,9 @@ int PMatT92 (double P[], double t, double kappa, double pGC)
 int PMatTN93 (double P[], double a1t, double a2t, double bt, double pi[])
 {
    double T=pi[0],C=pi[1],A=pi[2],G=pi[3], Y=T+C, R=A+G;
-   double e1, e2, e3, small=-1e-4;
+   double e1, e2, e3, small=-1e-3;
 
-   if (a1t<small||a2t<small||bt<small)
+   if(noisy && (a1t<small||a2t<small||bt<small))
       printf ("\nat=%12.6f %12.6f  bt=%12.6f", a1t,a2t,bt);
 
    if (a1t+a2t+bt<1e-200)  { identity(P,4);  return(0); }
@@ -559,18 +617,21 @@ int Rates4Sites (double rates[],double alpha,int ncatG,int ls, int cdf,
 /* Rates for sites from the gamma (ncatG=0) or discrete-gamma (ncatG>1).
    Rates are converted into the c.d.f. if cdf=1, which is useful for
    simulation under JC69-like models. 
-   space[ncatG*2]
+   space[ncatG*5]
 */
-   int h, ir,j, *counts=(int*)(space+2*ncatG);
-   double *rK=space, *freqK=space+ncatG;
+   int h, ir, j, K=ncatG, *Lalias=(int*)(space+3*K), *counts=(int*)(space+4*K);
+   double *rK=space, *freqK=space+K, *Falias=space+2*K;
 
    if (alpha==0) 
       { if(rates) FOR(h,ls) rates[h]=1; }
    else {
-      if (ncatG>1) {
-         DiscreteGamma (freqK, rK, alpha, alpha, ncatG, 0);
-         MultiNomial (ls, ncatG, freqK, counts, space+3*ncatG);
-         for (ir=0,h=0; ir<ncatG; ir++) 
+      if (K>1) {
+         DiscreteGamma (freqK, rK, alpha, alpha, K, 0);
+
+         MultiNomialAliasSetTable(K, freqK, Falias, Lalias, space+5*K);
+         MultiNomialAlias(ls, K, Falias, Lalias, counts);
+
+         for (ir=0,h=0; ir<K; ir++) 
             for (j=0; j<counts[ir]; j++)  rates[h++]=rK[ir];
       }
       else 
@@ -912,13 +973,13 @@ void sleep2(int wait)
 
 
 
-char *strc (int n, char c)
+char *strc (int n, int c)
 {
    static char s[256];
    int i;
 
    if (n>255) error2("line >255 in strc");
-   FOR (i,n) s[i]=c;    s[n]=0;
+   FOR (i,n) s[i]=(char)c;    s[n]=0;
    return (s);
 }
 
@@ -939,8 +1000,12 @@ void strcase (char *str, int direction)
 
 FILE *gfopen(char *filename, char *mode)
 {
-   FILE *fp=(FILE*)fopen(filename, mode);
+   FILE *fp;
 
+   if(filename==NULL || filename[0]==0) 
+      error2("file name empty.");
+
+   fp=(FILE*)fopen(filename, mode);
    if(fp==NULL) {
       printf("\nerror when opening file %s\n", filename);
       if(!strchr(mode,'r')) exit(-1);
@@ -953,15 +1018,19 @@ FILE *gfopen(char *filename, char *mode)
    return(fp);
 }
 
+
 int appendfile(FILE*fout, char*filename)
 {
-   FILE *fin=gfopen(filename,"r");
+   FILE *fin=fopen(filename,"r");
    int ch;
 
-   while((ch=fgetc(fin))!=EOF) fputc(ch,fout);
-   fclose(fin);
+   if(fin) {
+      while((ch=fgetc(fin))!=EOF) fputc(ch,fout);
+      fclose(fin);
+   }
    return(0);
 }
+
 
 void error2 (char * message)
 { printf("\nError: %s.\n", message); exit(-1); }
@@ -1003,17 +1072,18 @@ double norm (double x[], int n)
 { int i; double t=0;  FOR (i,n) t+=x[i]*x[i];  return sqrt(t); }
 
 
-int sort1 (double x[], int n, int rank[], int descending, int space[])
+int indexing (double x[], int n, int index[], int descending, int space[])
 {
-/* inefficient bubble sort.  This also puts ranks into rank[] and does not 
-   change x[].
+/* bubble sort to calculate the indeces for the vector x[].  
+   x[index[2]] will be the third largest or smallest number in x[].
+   This does not change x[].     
 */
    int i,j, it=0, *mark=space;
    double t=0;
 
-   FOR (i,n) mark[i]=1;
-   FOR (i,n) {
-      FOR(j,n)  
+   for(i=0; i<n; i++) mark[i]=1;
+   for(i=0; i<n; i++) {
+      for(j=0; j<n; j++)
          if(mark[j]) { t=x[j]; it=j++; break; } /* first unused number */
       if (descending) {
          for ( ; j<n; j++)
@@ -1023,7 +1093,7 @@ int sort1 (double x[], int n, int rank[], int descending, int space[])
          for ( ; j<n; j++)
             if (mark[j] && x[j]<t) { t=x[j]; it=j; }
       }
-      mark[it]=0;   rank[i]=it;
+      mark[it]=0;   index[i]=it;
    }
    return (0);
 }
@@ -1075,6 +1145,20 @@ double rndu (void)
    w_rndu = w_rndu*69069+1;
    return ldexp((double)w_rndu, -32);
 }
+
+
+void rndu_vector (double r[], int n)
+{
+/* From Ripley (1987, page 46). 32-bit integer assumed */
+   int i;
+
+   for(i=0; i<n; i++) {
+      w_rndu = w_rndu*69069+1;
+      r[i] = ldexp((double)w_rndu, -32);
+   }
+}
+
+
 #else 
 
 double rndu (void)
@@ -1108,24 +1192,21 @@ double reflect(double x, double a, double b)
 {
 /* This returns a variable in the range (a,b) by reflecting x back into the range
 */
-   int rounds=0;
+   int rounds=0, nround=10;
    double x0=x, small=1e-12, verysmall=1e-17;
 
    if(b-a<small)
       printf("\nimproper range x0=%.6g (%.6g, %.6g)\n", x0,a,b);
    /* small *= min2(0.5, fabs(a+b)/2); */
    small=0;
-   for ( ; ; rounds++) {
+   for ( ; rounds<nround; rounds++) {
       if(x>a && x<b) return x;  /* note strict inequality */
       if(x<=a)       x = a + a - x + small;
       else if(x>=b)  x = b - (x - b) - small;
    }
-   if(noisy>2 && rounds>2)
-      printf("reflected %d times x0 = %9.6f (%9.6f, %9.6ff)\n", rounds, x0,a,b);
-   if(noisy>2 && (x<=a+verysmall || x<=b-verysmall))
-      puts("close to the boundary.");
+   printf("\nreflect more rounds?\n");
+   return(x);
 }
-
 
 void randorder(int order[], int n, int space[])
 {
@@ -1300,22 +1381,64 @@ int rndNegBinomial (double shape, double mean)
    return (rndpoisson(rndgamma(shape)/shape*mean));
 }
 
-int SampleCat (double P[], int ncat, double space[])
-{
-/*  sample from ncat categories, based on probability P[]
-*/
-   int i;
-   double *p=space, r;
 
-   FOR (i,ncat) p[i]=P[i];
-   for (i=1; i<ncat; i++) p[i]+=p[i-1];
-   if (fabs(p[ncat-1]-1) > 1e-5) puts ("Sum P != 1.."), exit (-1);
-   r=rndu();
-   FOR (i, ncat) if (r<p[i]) break;
-   return (i);
+int MultiNomialAliasSetTable (int ncat, double prob[], double F[], int L[], double space[])
+{
+/* This sets up the tables F and L for the alias algorithm for generating samples from the 
+   multinomial distribution MN(ncat, p) (Walker 1974; Kronmal & Peterson 1979).  
+   
+   F[i] has cutoff probabilities, L[i] has aliases.
+   I[i] is an indicator: -1 for F[i]<1; +1 for F[i]>=1; 0 if the cell is now empty.
+
+   Should perhaps check whether prob[] sums to 1.
+*/
+   signed char *I = (signed char *)space;
+   int i,j,k, nsmall;
+
+   for(i=0; i<ncat; i++)  L[i]=-9;
+   for(i=0; i<ncat; i++)  F[i]=ncat*prob[i];
+   for(i=0,nsmall=0; i<ncat; i++) {
+      if(F[i]>=1)  I[i]=1;
+      else       { I[i]=-1; nsmall++; }
+   }
+   for(i=0; nsmall>0; i++) {
+      for(j=0; j<ncat; j++)  if(I[j]==-1) break;
+      for(k=0; k<ncat; k++)  if(I[k]==1)  break;
+      if(k==ncat)  break;
+
+      L[j] = k;
+      F[k] -= 1-F[j];
+      if(F[k]<1) { I[k]=-1; nsmall++; }
+      I[j]=0;  nsmall--;
+   }
+   return(0);
 }
 
-int MultiNomial (int n, int ncat, double prob[], int nobs[], double space[])
+
+int MultiNomialAlias (int n, int ncat, double F[], int L[], int nobs[])
+{
+/* This generates multinomial samples using the F and L tables set up before, 
+   using the alias algorithm (Walker 1974; Kronmal & Peterson 1979).
+   
+   F[i] has cutoff probabilities, L[i] has aliases.
+   I[i] is an indicator: -1 for F[i]<1; +1 for F[i]>=1; 0 if the cell is now empty.
+*/
+   int i,k;
+   double r;
+
+   for(i=0; i<ncat; i++)  nobs[i]=0;
+   for(i=0; i<n; i++)  {
+      r = rndu()*ncat;
+      k = (int)r;
+      r -= k;
+      if(r<=F[k]) nobs[k]++;
+      else        nobs[L[k]]++;
+   }
+   return (0);
+}     
+
+
+int MultiNomial2 (int n, int ncat, double prob[], int nobs[], double space[])
 {
 /* sample n times from a mutinomial distribution M(ncat, prob[])
    prob[] is considered cumulative prob if (space==NULL)
@@ -1333,7 +1456,7 @@ int MultiNomial (int n, int ncat, double prob[], int nobs[], double space[])
       for(i=1; i<ncat; i++) pcdf[i]+=pcdf[i-1];
    }
    if (fabs(pcdf[ncat-1]-1) > small) 
-      error2("sum P!=1 in MultiNomial");
+      error2("sum P!=1 in MultiNomial2");
    if (crude) {
       for(j=1,lcrude[0]=i=0; j<ncrude; j++)  {
          while (pcdf[i]<(double)j/ncrude) i++;
@@ -1591,44 +1714,51 @@ l4:
 }
 
 
+int InverseGamma=0;  /* 0 for gamma; 1 for inverse gamma */
+double *gamma_modetiles, gamma_pexp[2]; /* gamma_modetiles[3]: mode, 2.5%, 97.5% */
 
-double *gamma_modetiles, gamma_pexp[2]; /* mode, 2.5%, 97.5% */
-
-double fun_ab_beta(double x)
+double fun_ab_gamma (double x)
 {
    int i;
-   double diff=0, a=x, b, p[2]={0.025,0.975}, *pe=gamma_pexp, weight[3]={2,2,1};
+   double diff=0, a=x, b, p[2]={0.025,0.975}, *pe=gamma_pexp;
    
    if(a<=1) error2("a should be > 1");
-   b=(a-1)/gamma_modetiles[0];
+   if(!InverseGamma)
+      b=(a-1)/gamma_modetiles[0];
+   else 
+      b=(a+1)/gamma_modetiles[0];
    for(i=0; i<2; i++)
       pe[i] = CDFGamma(gamma_modetiles[i+1],a,b);
 
-   diff = fabs(p[0]-pe[0])*weight[0] + fabs(p[1]-pe[1])*weight[1]
-        + fabs(pe[1]-pe[0]-0.95)*weight[2];
+   diff = fabs(p[0]+1-p[1]- (pe[0]+1-pe[1])) * 2 + fabs(p[0]-pe[0]);
+   /* diff = fabs(p[0]-pe[0]) + fabs(p[1]-pe[1]); */
 
-/*
-   if(!RELEASE && noisy) printf("ab %9.5f %9.5f p %9.5f %9.5f %9.5f\n",
-      a,b,pe[0],pe[1],pe[1]-pe[0]);
-*/
    return(diff);
 }
 
-int getab_gamma(double *a, double* b, double xmodetiles[3])
+int getab_gamma (double *a, double *b, double xmodetiles[3])
 {
 /* This gets parameters a (alpha) and b (beta) for the gamma distribution,
-   given the mode, and the 2.5% and 97.5% percentiles (soft bounds).
+   given the mode, and the 2.5% and 97.5% percentiles.  This is used to
+   construct the gamma prior for fossil date using soft bounds.
    The mode is matched perfectly so that  b = (a-1)/mode, 
    and a is solved to minimize the differences in CDFs at the soft bounds.
    a > 1 is assumed.
 */
-   double x=1+2*rndu(), xb[2]={1.0001,99999}, S, e=1e-15;
+   int noisy0=noisy;
+   double x=InverseGamma+1+1+2*rndu(), xb[2]={1.01,999}, S, e=1e-15;
 
    if(xmodetiles[0]<=xmodetiles[1] || xmodetiles[0]>xmodetiles[2]) 
       error2("modetiles for gamma out of range.");
+   noisy=0;
    gamma_modetiles = xmodetiles;
-   LineSearch(fun_ab_beta, &S, &x, xb, 0.2, e);
-   *a=x; *b=(*a-1)/gamma_modetiles[0];
+   LineSearch(fun_ab_gamma, &S, &x, xb, 0.2, e);
+   *a=x; 
+   if(!InverseGamma)
+      *b=(*a-1)/gamma_modetiles[0];
+   else 
+      *b=(*a+1)/gamma_modetiles[0];
+   noisy=noisy0;
    return(0);
 }
 
@@ -1637,7 +1767,7 @@ int DiscreteGamma (double freqK[], double rK[],
     double alpha, double beta, int K, int median)
 {
 /* discretization of gamma distribution with equal proportions in each 
-   category
+   category.
 */
    int i;
    double t, factor=alpha/beta*K, lnga1;
@@ -1800,6 +1930,21 @@ double probBetaBinomial (int n, int k, double p, double q)
    return C1*exp(scale1+scale2-scale3);
 }
 
+
+double PDFBeta(double x, double p, double q)
+{
+/* Returns pdf of beta(p,q)
+*/
+   double y, small=1e-20;
+
+   if(x<small || x>1-small) 
+      error2("bad x in PDFbeta");
+
+   y = (p-1)*log(x) + (q-1)*log(1-x);
+   y-= LnGamma(p)+LnGamma(q)-LnGamma(p+q);
+
+   return(exp(y));
+}
 
 double CDFBeta(double x, double pin, double qin, double lnbeta)
 {
@@ -2065,7 +2210,7 @@ double InverseCDF(double(*cdf)(double x,double par[]),
 
 
 
-int GaussLegendreRule(double **x, double **w, int order)
+int GaussLegendreRule(double **x, double **w, int npoints)
 {
 /* this returns the Gauss-Legendre nodes and weights in x[] and w[].
 */
@@ -2138,13 +2283,13 @@ int GaussLegendreRule(double **x, double **w, int order)
                         0.0088467598263639477230309146597, 0.0065044579689783628561173604000, 
                         0.0041470332605624676352875357286, 0.0017832807216964329472960791450};
 
-   if(order==10)
+   if(npoints==10)
       { *x=x10;  *w=w10; }
-   else if(order==20)
+   else if(npoints==20)
       { *x=x20;  *w=w20; }
-   else if(order==32)
+   else if(npoints==32)
       { *x=x32;  *w=w32; }
-   else if(order==64)
+   else if(npoints==64)
       { *x=x64;  *w=w64; }
    else {
       puts("use 10, 20, 32 or 64 nodes for legendre.");
@@ -2155,16 +2300,17 @@ int GaussLegendreRule(double **x, double **w, int order)
 
 
 
-double NIntegrateGaussLegendre(double(*fun)(double x), double a, double b, int order)
+double NIntegrateGaussLegendre(double(*fun)(double x), double a, double b, int npoints)
 {
 /* this approximates the integral Nintegrate[fun[x], {x,a,b}].
+   npoints is 10, 20, 32 or 64 nodes for legendre.");
 */
    int i,j;
    double *x, *w, s, t[2];
 
-   GaussLegendreRule(&x, &w, order);
+   GaussLegendreRule(&x, &w, npoints);
 
-   for(j=0,s=0; j<order/2; j++) {
+   for(j=0,s=0; j<npoints/2; j++) {
       t[0]=(a+b)/2 + (b-a)/2*x[j];
       t[1]=(a+b)/2 - (b-a)/2*x[j];
       for(i=0; i<2; i++)
@@ -2174,7 +2320,7 @@ double NIntegrateGaussLegendre(double(*fun)(double x), double a, double b, int o
 }
 
 
-int GaussLaguerreRule(double **x, double **w, int order)
+int GaussLaguerreRule(double **x, double **w, int npoints)
 {
 /* this returns the Gauss-Laguerre nodes and weights in x[] and w[].
 */
@@ -2251,14 +2397,14 @@ int GaussLaguerreRule(double **x, double **w, int order)
                    		0.153952214058234355346383319667E-19,
                    		0.528644272556915782880273587683E-23,
 		                	0.165645661249902329590781908529E-27};
-   if(order==5)
+   if(npoints==5)
       { *x=x5;  *w=w5; }
-   else if(order==10)
+   else if(npoints==10)
       { *x=x10;  *w=w10; }
-   else if(order==20)
+   else if(npoints==20)
       { *x=x20;  *w=w20; }
    else {
-      puts("use 10, 20, 32 or 64 nodes for legendre.");
+      puts("use 5, 10, 20 nodes for GaussLaguerreRule.");
       status=-1;
    }
    return(status);
@@ -2517,7 +2663,9 @@ int matinv (double x[], int n, int m, double space[])
    int *irow=(int*) space;
    double ee=1.0e-30, t,t1,xmax, det=1;
 
-   FOR (i,n)  {
+   for(i=0; i<n; i++) irow[i]=-999999;
+
+   for(i=0; i<n; i++)  {
       for (j=i,xmax=0; j<n; j++)
          if (xmax<fabs(x[j*m+i]))
             { xmax = fabs(x[j*m+i]); irow[i]=j; }
@@ -2712,12 +2860,11 @@ int eigenQREV (double Q[], double pi[], int n,
 
    /* store in U the symmetrical matrix S = sqrt(D) * Q * sqrt(-D) */
 
-printf("");
-
    if(nnew==n) {
       for(i=0; i<n; i++)
          for(j=0,U[i*n+i] = Q[i*n+i]; j<i; j++)
             U[i*n+j] = U[j*n+i] = (Q[i*n+j] * pi_sqrt[i]/pi_sqrt[j]);
+
       status=eigenRealSym(U, n, Root, V);
       for(i=0;i<n;i++) for(j=0;j<n;j++)  V[i*n+j] = U[j*n+i] * pi_sqrt[j];
       for(i=0;i<n;i++) for(j=0;j<n;j++)  U[i*n+j] /= pi_sqrt[i];
@@ -2735,6 +2882,7 @@ printf("");
             inew++;
          }
       }
+
       status=eigenRealSym(U, nnew, Root, V);
 
       for(i=n-1,inew=nnew-1; i>=0; i--)   /* construct Root */
@@ -2770,7 +2918,7 @@ printf("");
       }
    }
 
-/*   This routine is also used for P(t) as well as Q. */
+/*   This routine works on P(t) as well as Q. */
 /*
    if(fabs(Root[0])>1e-10 && noisy) printf("Root[0] = %.5e\n",Root[0]);
    Root[0]=0; 
@@ -2788,7 +2936,8 @@ void EigenSort(double d[], double U[], int n);
 int eigenRealSym(double A[], int n, double Root[], double work[])
 {
 /* This finds the eigen solution of a real symmetrical matrix A[n*n].  In return, 
-   A has the right vectors and Root has the eigenvalues. work[n] is the working space.
+   A has the right vectors and Root has the eigenvalues. 
+   work[n] is the working space.
    The matrix is first reduced to a tridiagonal matrix using HouseholderRealSym(), 
    and then using the QL algorithm with implicit shifts.  
 
@@ -3311,7 +3460,7 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int nrho)
    }
 
    if(nf2d>MAXNF2D) error2("I don't want to do that many!");
-   FOR(i,nf2d) {
+   for(i=0; i<nf2d; i++) {
       printf("pair #%d (e.g., type  1 3  to use variables #1 and #3)? ",i+1);
       scanf("%d%d", &ivar_f2d[i][0], &ivar_f2d[i][1]);
       ivar_f2d[i][0]--; ivar_f2d[i][1]--;
@@ -3354,18 +3503,20 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int nrho)
          for(j=0;j<p;j++) fscanf(fin,"%lf", &x[j]);
          y[i]=x[jj];
       }
+
       for(i=0; i<nrho; i++)
          correl(y, y+1+i, n-1-i, &a, &b, &c, &d, &x[0], &rho[jj*nrho+i]);
 
       qsort(y, (size_t)n, sizeof(double), comparedouble);
-      median[jj]=y[(n+1)/2];
-      x005[jj]=y[(int)(n*.005+.5)];  x995[jj]=y[(int)(n*.995+.5)];
-      x025[jj]=y[(int)(n*.025+.5)];  x975[jj]=y[(int)(n*.975+.5)];
-      x25[jj]=y[(int)(n*.25+.5)];    x75[jj]=y[(int)(n*.75+.5)];
+      if(n%2==0) median[jj]=(y[n/2]+y[n/2+1])/2;
+      else        median[jj]=y[(n+1)/2];
+      x005[jj]=y[(int)(n*.005)];  x995[jj]=y[(int)(n*.995)];
+      x025[jj]=y[(int)(n*.025)];  x975[jj]=y[(int)(n*.975)];
+      x25[jj]=y[(int)(n*.25)];    x75[jj]=y[(int)(n*.75)];
    }
 
-   fprintf(fout,"\n(A) Descriptive statistics\n\n        ");
-   for (j=0; j<p; j++) fprintf(fout,"   x%-5d", j+1);
+   fprintf(fout,"\n(A) Descriptive statistics\n\n       ");
+   for (j=0; j<p; j++) fprintf(fout,"   x%-6d", j+1);
    fprintf(fout,"\nmean    ");  for(j=0;j<p;j++) fprintf(fout,fmt,mean[j]);
    fprintf(fout,"\nmedian  ");  for(j=0;j<p;j++) fprintf(fout,fmt,median[j]);
    fprintf(fout,"\nS.D.    ");  for(j=0;j<p;j++) fprintf(fout,fmt,sqrt(var[j*p+j]));
@@ -3373,6 +3524,14 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int nrho)
    fprintf(fout,"\nmax     ");  for(j=0;j<p;j++) fprintf(fout,fmt,maxx[j]);
    fprintf(fout,"\n2.5%%    "); for(j=0;j<p;j++) fprintf(fout,fmt,x025[j]);
    fprintf(fout,"\n97.5%%   "); for(j=0;j<p;j++) fprintf(fout,fmt,x975[j]);
+
+
+   /*
+   FPN(F0); FPN(F0);
+   for(j=0;j<p;j++) printf("%.3f(%.3f,%.3f)\n",mean[j], x025[j],x975[j]);
+   free(x); free(y); return(0);
+   */
+
 
    fprintf(fout, "\n\n(B) Matrix of correlation coefficients between variables\n\n");
    for (j=0; j<p; j++,fputc('\n',fout)) {
@@ -3457,7 +3616,7 @@ int H_end (double x0[], double x1[], double f0, double f1,
 }
 
 int AlwaysCenter=0;
-double Small_Diff=5e-6;  /* reasonable values 1e-5, 1e-7 */
+double Small_Diff=1e-6;  /* reasonable values 1e-5, 1e-7 */
 
 int gradient (int n, double x[], double f0, double g[], 
     double (*fun)(double x[],int n), double space[], int Central)
@@ -3569,10 +3728,13 @@ int nls2 (FILE *fout, double *sx, double * x0, int nx,
       increase=0;
       if (jacobi)  (*jacobi) (x0, J, n, ny);
       else         jacobi_gradient (x0, J, fun, space_J, n, ny);
+
       if (ii == 0) {
-         for (j=0,t=0; j<ny*n; j++)  t += J[j] * J[j];
+         for (j=0,t=0; j<ny*n; j++)
+            t += J[j] * J[j];
          v = sqrt (t) / (double) (ny*n);     /*  v = 0.0;  */
       }
+
       FOR (i,n)  {
          for (j=0,t=0; j<ny; j++)  t += J[j*n+i] * y[j];
          g[i] = 2*t;
@@ -3583,6 +3745,7 @@ int nls2 (FILE *fout, double *sx, double * x0, int nx,
          }
          C[i*(n+1)+i] += v*v;
       }
+
       if (matinv( C,n,n+1, y+ny) == -1)  {
          v *= bigger;
          continue;
@@ -3789,10 +3952,10 @@ if(noisy>=9 && (a6=percentUse/ii)<.5)
 
 
 
-double fun_ls (double t, double (*fun)(double x[],int n), 
+double fun_LineSearch (double t, double (*fun)(double x[],int n), 
        double x0[], double p[], double x[], int n);
 
-double fun_ls (double t, double (*fun)(double x[],int n), 
+double fun_LineSearch (double t, double (*fun)(double x[],int n), 
        double x0[], double p[], double x[], int n)
 {  int i;   FOR (i,n) x[i]=x0[i] + t*p[i];   return( (*fun)(x, n) ); }
 
@@ -3831,13 +3994,13 @@ double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[],
       return (0);
    }
    a0=a1=0; f1=f0=*f;
-   a2=a0+step; f2=fun_ls(a2, fun,x0,p,x,n);
+   a2=a0+step; f2=fun_LineSearch(a2, fun,x0,p,x,n);
    if (f2>f1) {  /* reduce step length so the algorithm is decreasing */
       for (; ;) {
          step/=factor;
          if (step<small) return (0);
          a3=a2;    f3=f2;
-         a2=a0+step;  f2=fun_ls(a2, fun,x0,p,x,n);
+         a2=a0+step;  f2=fun_LineSearch(a2, fun,x0,p,x,n);
          if (f2<=f1) break;
          if(!RELEASE && noisy>2) { printf("-"); nsymb++; }
       }
@@ -3846,7 +4009,7 @@ double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[],
       for (; ;) {
          step*=factor;
          if (step>limit) step=limit;
-         a3=a0+step;  f3=fun_ls(a3, fun,x0,p,x,n);
+         a3=a0+step;  f3=fun_LineSearch(a3, fun,x0,p,x,n);
          if (f3>=f2) break;
 
          if(!RELEASE && noisy>2) { printf("+"); nsymb++; }
@@ -3875,7 +4038,7 @@ double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[],
          else 
             status='C';
       }
-      f4 = fun_ls(a4, fun,x0,p,x,n);
+      f4 = fun_LineSearch(a4, fun,x0,p,x,n);
       if(!RELEASE && noisy>2) putchar(status);
       if (fabs(f2-f4)<e*(1+fabs(f2))) {
          if(!RELEASE && noisy>2) 
@@ -3891,7 +4054,7 @@ double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[],
          for(a5=a1; a5<=a3; a5+=(a3-a1)/20) {
             printf("\t%.6e ",a5);
             if(n<5) FOR(i,n) printf("\t%.6f",x0[i] + a5*p[i]);
-            printf("\t%.6f\n", fun_ls(a5, fun,x0,p,x,n));
+            printf("\t%.6f\n", fun_LineSearch(a5, fun,x0,p,x,n));
          }
          puts("Linesearch2 a4: multiple optima?");
       }
@@ -3902,16 +4065,16 @@ double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[],
          }
          else {
             if (f4>f2) {
-               a5=(a2+a3)/2; f5=fun_ls(a5, fun,x0,p,x,n);
+               a5=(a2+a3)/2; f5=fun_LineSearch(a5, fun,x0,p,x,n);
                if (f5>f2) { a1=a4; a3=a5;  f1=f4; f3=f5; }
                else       { a1=a2; a2=a5;  f1=f2; f2=f5; }
             }
             else {
-               a5=(a1+a4)/2; f5=fun_ls(a5, fun,x0,p,x,n);
+               a5=(a1+a4)/2; f5=fun_LineSearch(a5, fun,x0,p,x,n);
                if (f5>=f4)
                   { a3=a2; a2=a4; a1=a5;  f3=f2; f2=f4; f1=f5; }
                else {
-                  a6=(a1+a5)/2; f6=fun_ls(a6, fun,x0,p,x,n);
+                  a6=(a1+a5)/2; f6=fun_LineSearch(a6, fun,x0,p,x,n);
                   if (f6>f5)
                        { a1=a6; a2=a5; a3=a4;  f1=f6; f2=f5; f3=f4; }
                   else { a2=a6; a3=a5; f2=f6; f3=f5; }
@@ -3926,16 +4089,16 @@ double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[],
          }
          else {
             if (f4>f2) {
-               a5=(a1+a2)/2; f5=fun_ls(a5, fun,x0,p,x,n);
+               a5=(a1+a2)/2; f5=fun_LineSearch(a5, fun,x0,p,x,n);
                if (f5>f2) { a1=a5; a3=a4;  f1=f5; f3=f4; }
                else       { a3=a2; a2=a5;  f3=f2; f2=f5; }
             }
             else {
-               a5=(a3+a4)/2; f5=fun_ls(a5, fun,x0,p,x,n);
+               a5=(a3+a4)/2; f5=fun_LineSearch(a5, fun,x0,p,x,n);
                if (f5>=f4)
                   { a1=a2; a2=a4; a3=a5;  f1=f2; f2=f4; f3=f5; }
                else {
-                  a6=(a3+a5)/2; f6=fun_ls(a6, fun,x0,p,x,n);
+                  a6=(a3+a5)/2; f6=fun_LineSearch(a6, fun,x0,p,x,n);
                   if (f6>f5)
                       { a1=a4; a2=a5; a3=a6;  f1=f4; f2=f5; f3=f6; }
                   else { a1=a5; a2=a6;  f1=f5; f2=f6; }
@@ -4102,12 +4265,12 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
       FPN(F0);  FOR(j,n) printf(" %9.6f", x[j]);  FPN(F0);
       FOR(j,n) printf(" %9.5f", xb[j][0]);  FPN(F0);
       FOR(j,n) printf(" %9.5f", xb[j][1]);  FPN(F0);
-      if(nfree<n) printf("warning: ming2, %d paras at boundary.",n-nfree);
+      if(nfree<n && noisy>=3) printf("warning: ming2, %d paras at boundary.",n-nfree);
    }
 
    f0=*f=(*fun)(x,n);
    xtoy(x,x0,n);
-   SIZEp=999; 
+   SIZEp=99;
    if (noisy>2) {
       printf ("\nIterating by ming2\nInitial: fx= %12.6f\nx=",f0);
       FOR(i,n) printf(" %8.5f",x[i]);   FPN(F0);
@@ -4118,6 +4281,12 @@ int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
 
    identity (H,nfree);
    FOR (Iround, maxround) {
+      if (fout) {
+         fprintf (fout, "\n%3d %7.4f %13.6f  x: ", Iround,sizep0,f0);
+         FOR (i,n) fprintf (fout, "%8.5f  ", x0[i]);
+         fflush (fout);
+      }
+
       for (i=0,zero(p,n); i<nfree; i++)  FOR (j,nfree)
          p[ix[i]] -= H[i*nfree+j]*g0[ix[j]];
       sizep0=SIZEp; SIZEp=norm(p,n);      /* check this */
@@ -4137,6 +4306,7 @@ else                      e_branches=max2(e,1e-6);
       if (Iround==0) {
          h=fabs(2*f0*.01/innerp(g0,p,n));  /* check this?? */
          h=min2(h,am/2000);
+
       }
       else {
          h=norm(s,nfree)/SIZEp;
@@ -4157,16 +4327,11 @@ else                      e_branches=max2(e,1e-6);
       else  {
          fail=0;
          FOR(i,n)  x[i]=x0[i]+alpha*p[i];
-         if (fout) {
-            fprintf (fout, "\n%3d %7.4f %13.6f  x: ", Iround+1,SIZEp,*f);
-            FOR (i,n) fprintf (fout, "%8.5f  ", x[i]);
-            fflush (fout);
-         }
          w=min2(2,e*1000); if(e<1e-4 && e>1e-6) w=0.01;
 
          if(Iround==0 || SIZEp<sizep0 || (SIZEp<.001 && sizep0<.001)) goodtimes++;
          else  goodtimes=0;
-         if((n==1||goodtimes>=Ngoodtimes) && SIZEp<(e>1e-5?.05:.001) && (f0- *f<0.1)
+         if((n==1||goodtimes>=Ngoodtimes) && SIZEp<(e>1e-5?1:.001)
             && H_end(x0,x,f0,*f,e,e,n))
             break;
       }

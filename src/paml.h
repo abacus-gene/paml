@@ -24,19 +24,20 @@
 #define beep putchar('\a')
 #define spaceming2(n) ((n)*((n)*2+9+2)*(int)sizeof(double))
 
-int ReadSeq (FILE *fout, FILE *fseq);
+int ReadSeq (FILE *fout, FILE *fseq, int cleandata);
 void EncodeSeqs (void);
 void ReadPatternFreq (FILE* fout, char* fpattf);
 int Initialize (FILE *fout);
 int MoveCodonSeq (int ns, int ls, char *z[]);
-int PatternWeight (FILE *fout);
+int PatternWeight (void);
 int PatternJC69like (FILE *fout);
-int PatternWeightSimple (int CollapsJC, double space[]);
+int PatternWeightSimple (int CollapsJC);
 int Site2Pattern (FILE *fout);
 
 int f_and_x(double x[], double f[], int n, int fromx, int LastItem);
 void SetSeed (unsigned int seed);
 double rndu (void);
+void rndu_vector (double r[], int n);
 void randorder(int order[], int n, int space[]);
 #define rnduab(a,b) ((a)+((b)-(a))*rndu())
 double reflect(double x, double a, double b);
@@ -47,7 +48,9 @@ double rndbeta(double p, double q);
 int rndpoisson(double m);
 int rndNegBinomial(double shape, double mean);
 int SampleCat (double P[], int n, double space[]);
-int MultiNomial (int n, int nclass, double Prob[], int nobs[], double space[]);
+int MultiNomialAliasSetTable (int ncat, double prob[], double F[], int L[], double space[]);
+int MultiNomialAlias (int n, int ncat, double F[], int L[], int nobs[]);
+int MultiNomial2 (int n, int ncat, double prob[], int nobs[], double space[]);
 int AutodGamma (double M[], double freqK[], double rK[], double *rho1,
     double alfa, double rho, int K);
 int DiscreteGamma (double freqK[], double rK[], 
@@ -60,6 +63,7 @@ double  PDF_IGamma(double x, double alpha, double beta);
 #define CDF_IGamma(x,alpha,beta) (1-CDFGamma(1/(x),alpha,beta))
 #define CDFChi2(x,v) CDFGamma(x,(v)/2.0,0.5)
 int getab_gamma(double *a, double* b, double xmodetiles[3]);
+double PDFBeta(double x, double p, double q);
 double CDFBeta(double x, double p, double q, double lnbeta);
 double InverseCDFBeta(double prob, double p, double q, double lnbeta);
 double InverseCDF(double(*cdf)(double x,double par[]),
@@ -110,6 +114,8 @@ int dSdNNG1986(char *z1, char *z2, int lc, int icode, int transfed,
     double *dS, double *dN, double *S, double *N);
 int difcodonNG(char codon1[], char codon2[], double *SynSite,double *AsynSite, 
     double *SynDif, double *AsynDif, int transfed, int icode);
+int difcodonLWL85 (char codon1[], char codon2[], double sites[3], double sdiff[3], 
+                   double vdiff[3], int transfed, int icode);
 int testTransP (double P[], int n);
 void pijJC69 (double pij[2], double t);
 int PMatK80 (double P[], double t, double kapa);
@@ -149,11 +155,11 @@ int PtoX (double P1[], double P2[], double Pi[], double X[]);
 void starttime(void);
 char* printtime(char timestr[]);
 void sleep2(int wait);
-char *strc (int n, char c);
+char *strc (int n, int c);
 int printdouble(FILE*fout, double a);
 void strcase (char *str, int direction);
 void error2(char * message);
-int  sort1(double x[], int n, int rank[], int descending, int space[]);
+int  indexing(double x[], int n, int index[], int descending, int space[]);
 FILE *gfopen(char *filename, char *mode);
 int  appendfile(FILE*fout, char*filename);
 
@@ -192,6 +198,7 @@ int comparefloat  (const void *a, const void *b);
 int comparedouble (const void *a, const void *b);
 int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int nrho);
 int splitline (char line[], int fields[]);
+int scanfile(FILE*fin, int *nrecords, int *nx);
 
 double bound (int nx, double x0[], double p[], double x[],
     int (*testx) (double x[], int nx));
@@ -269,7 +276,7 @@ int NSameBranch (char partition1[],char partition2[], int nib1,int nib2,
     int IBsame[]);
 
 int RootTN93 (int ischeme, double kapa1, double kapa2, double pi[], 
-    double *f, double Root[]);
+    double *scalefactor, double Root[]);
 int EigenTN93 (int ischeme, double kapa1, double kapa2, double pi[],
     int *nR, double Root[], double Cijk[]);
 
@@ -313,18 +320,16 @@ void copySptree(void);
 void printSptree(void);
 
 
-#define  BASEseq     0
-#define  CODONseq    1
-#define  AAseq       2
-#define  CODON2AAseq 3
+enum {BASEseq=0, CODONseq, AAseq, CODON2AAseq} DataTypes;
+enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrAge=8} OutTreeOptions;
 
 
 #define FAST_RANDOM_NUMBER
 
 
-#define RELEASE      0
+#define RELEASE      1
 
-#define VerStr "paml 3.14, January 2004"
+#define VerStr "paml 3.15, November 2005"
 
 
 /*

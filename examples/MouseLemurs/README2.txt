@@ -150,29 +150,54 @@ classification scheme.  The programs print out a file named
 RateDist.txt, which contains a distance matrix for each locus, with
 the distance calculated as the difference between two rates.  You can
 use an algorithm such as UPGMA to cluster the rates into groups
-(clades) to help with the classification.  This is how I did figure 5b
-and constructed the 4-rate manual (4RM) model.
+(clades) to help with the classification.  I used the neighbor program
+in J. Felsenstein's phylip package to do this (figure 5b and the
+4-rate manual (4RM) model in Yang 2004).
 
 
 (E)  Notes
 
- 1.  The options are implemented in baseml for nucleotide sequences
+ 1.  The example control files are baseml2.ctl, aaml2.ctl, codonml2.ctl.
+
+ 2.  In early versions of baseml and codeml, the order of the control
+     variables in the control files does not matter to the
+     specification.  Unfortunately that is not the case anymore for
+     clock = 5 or 6.  The variables clock and ndata should be
+     specified in the control file before some other variables such as
+     fix_kappa, kappa, fix_alpha, alpha etc.  See the example files
+     baseml2.ctl and codonml2.ctl etc. included in the same folder.
+     The reason for this is that you can fix the kappa values for
+     different genes at certain values during Step 1, and for the
+     program to know how many kappa values to read, it needs to know
+     the number of genes (ndata); see note 5 below.
+
+ 3.  The options are implemented in baseml for nucleotide sequences
      and in codeml for amino acid and codon sequences.  
 
- 2.  Only rooted binary trees are accepted in the tree file.
+ 4.  Only rooted binary trees are accepted in the tree file.
 
- 3.  If the model involves substitution parameters such as kappa,
-     alpha, you can estimate them in Step 1 of the algorithm and then
-     use them as fixed constants in Step 3.  (Step 2 does not use a
-     substitution model and so those parameters are irrelevant.)  Step
-     1 in the clock = 6 model always uses the algorithm of iterating
-     one branch at a time, and may be problematic if the gamma shape
-     parameter (for rate variation among sites) is estimated at the
-     same time.  Note that the calculation in step 1 is just the old
-     clock = 0 analysis and is in older versions of the programs.
-     Thus you can use clock = 0 method = 0 to try and estimate the
-     substitution parameters and then fix them when you run clock = 6.
-     You fix the parameters by say, 
+ 5.  Estimating and fixing substitution parameters in step 1.  If the
+     model involves substitution parameters such as kappa, alpha, you
+     can run the program multiple times to guarantee getting correct
+     estimates for them Step 1 of the algorithm and then use them as
+     fixed constants in both Step 1 (when you rerun the program) and
+     Step 3.  (Step 2 does not use a substitution model and so those
+     parameters are irrelevant.)  Step 1 in the clock = 6 model always
+     uses the algorithm of iterating one branch at a time, and may be
+     problematic if the gamma shape parameter (for rate variation
+     among sites) is estimated at the same time.  Note that the
+     calculation in step 1 is just the old clock = 0 analysis and is
+     in older versions of the programs, if the coccrect tree files are
+     supplied for each locus.  In that case you can use clock = 0
+     method = 0 to try and estimate the substitution parameters and
+     then fix them when you run clock = 6.  If you have different
+     numbers of species at different loci, the tree for each locus is
+     different and it would be awkward to use clock = 0 to complete
+     step 1.  In that case you can use clock = 6 so that the correct
+     trees are extracted and used for each locus, but you run the
+     algorithms multiple times to make sure the correct MLEs are
+     obtained.  Either way, when step 1 is successful, you can fix the
+     parameters in the control file, by say,
 
                   data = 3
              fix_alpha = 1
@@ -185,9 +210,7 @@ and constructed the 4-rate manual (4RM) model.
      baseml, alpha and aaRatefile for amino acid sequences, and icode
      (genetic code table) kappa, and omega for codon-based analsis.
  
- 4.  The example control files are baseml2.ctl, aaml2.ctl, codonml2.ctl.
-
- 5.  I notice that minor differences in the rate estimates might lead
+ 6.  I notice that minor differences in the rate estimates might lead
      to assignment of one or two branches in a different rate group,
      leading to differences in final time estimates.  As a result,
      multiple runs using the same setting may lead to slightly
@@ -195,7 +218,7 @@ and constructed the 4-rate manual (4RM) model.
      the iteration algorithm in any of the three steps, which can
      cause differences between runs.
 
- 6.  For protein sequences, you can use different substitution rate
+ 7.  For protein sequences, you can use different substitution rate
      matrices.  In the following, three nuclear proteins (using wag)
      are followed by one mitochondrial protein (using mtmam).
 
@@ -207,7 +230,7 @@ and constructed the 4-rate manual (4RM) model.
 
              icode = 0 0 0 1
 
- 7.  Separating codon positions into different files.  You can use
+ 8.  Separating codon positions into different files.  You can use
      Mgene = 1 option in baseml to separate the three codon positions
      into three different files (named Gene1.seq, Gene2.seq, etc.).
      You need to use verbose = 1 to do this, I think.  Then you can
@@ -218,7 +241,6 @@ Good luck.
 
 References
 
-Yang, Z., 2004 A heuristic rate smoothing procedure for maximum likelihood estimation of species divergence times. Acta Zoologica Sinica.
-
+Yang, Z. 2004. A heuristic rate smoothing procedure for maximum likelihood estimation of species divergence times. Acta Zoologica Sinica 50:645-656.
 
 //end of file

@@ -66,15 +66,18 @@ int GetTreeI (int itree, int ns, int rooted)
    return (0);
 }
 
+
+/*
 int NumberofTrees (int ns, int rooted)
 {
    int i, ntree=1;
 
    if (ns>15) error2 ("ns too large in NumberofTrees().");
-   for (i=4; i<=ns; i++)  ntree*=2*i-5;
-   if (rooted) ntree*=2*i-3;
+   for (i=4; i<=ns; i++)  ntree *= 2*i-5;
+   if (rooted) ntree *= 2*i-3;
    return (ntree);
 }
+*/
 
 
 int ListTrees (FILE* fout, int ns, int rooted)
@@ -90,11 +93,17 @@ int ListTrees (FILE* fout, int ns, int rooted)
          printf ("%20d%20d%20d\n", i, (NTrees*=2*i-5), (NTreeRoot*=2*i-3));
       fprintf (fout, "%10d %10d\n", com.ns, (!rooted?NTrees:NTreeRoot));
    }
+
+   if(com.ns<=26) {
+      for (i=0; i<com.ns; i++)
+         sprintf(com.spname[i], "%c\0", 'a'+i);
+   }
+
    for (i=0;i<nM;i++) Ib[i]=0;
    for (NTrees=0; ; ) {
       MakeTreeIb(ns, Ib, rooted);
-      OutaTreeN(fout, 0, 0);
-      fprintf(fout, " %7d\n", NTrees++);
+      OutaTreeN(fout, (com.ns<=26), 0);
+      fprintf(fout, " [%7d]\n", NTrees++);
 
       for (i=nM-1,Ib[nM-1]++,finish=0; i>=0; i--) {
          if (Ib[i]<2*i+3) break;

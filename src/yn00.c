@@ -18,12 +18,13 @@
 #define NS            1000
 #define LSPNAME       30
 #define NCODE         64
-#define NGENE         1
+#define NGENE         2000
 
 int GetOptions (char *ctlf);
 int EncodeSeqCodon(void);
 int Statistics(FILE *fout, double space[]);
-int DistanceMatNG86 (FILE *fout, double alpha);
+int DistanceMatNG86_C64 (FILE *fout, double alpha);
+int DistanceMatLWL85 (FILE *fout);
 int DistanceYN00(int is, int js, double*S, double*N, double*dS,double*dN,
     double *SEdS, double *SEdN, double *t,double space[]);
 int GetKappa (void);
@@ -44,17 +45,13 @@ int InfiniteData(double t,double kappa,double omega,double f3x4_0[],
 void SimulateData2s64(FILE* fout, double f3x4_0[], double space[]);
 
 struct common_info {
-   char *z[NS], *spname[NS], seqf[96],outf[96];
-   int ns,ls,npatt,codonf,icode,ncode,getSE,*pose,verbose, seqtype, cleandata;
-   int fcommon,kcommon, iteration, ndata, print;
+   char *z[NS], *spname[NS], seqf[256],outf[256];
+   int ns,ls,npatt,codonf,icode,ncode,getSE,*pose,verbose, seqtype, readpattern;
+   int cleandata, fcommon,kcommon, iteration, ndata, print;
    double *fpatt, pi[NCODE], f3x4s[NS][12], kappa, omega;
-   int ngene,posG[NGENE+1],lgene[NGENE],fix_rgene, model, readpattf;
+   int ngene,posG[NGENE+1],lgene[NGENE],fix_rgene, model;
    double rgene[NGENE],piG[NGENE][NCODE], alpha;
 }  com;
-
-
-#define REALSEQUENCE
-#include "treesub.c"
 
 
 double PMat[NCODE*NCODE];
@@ -71,23 +68,29 @@ int debug=0;
 double omega_NG, dN_NG, dS_NG;  /* what are these for? */
 
 
+#define YN00
+#define REALSEQUENCE
+#include "treesub.c"
+
+
+
 int main(int argc, char *argv[])
 {
    char dsf[32]="2YN.dS",dnf[32]="2YN.dN",tf[32]="2YN.t";
    FILE *fout, *fseq, *fds,*fdn,*ft;
    char ctlf[96]="yn00.ctl", timestr[64];
-   int    n=com.ncode, is,js, j,k, idata, wname=20, sspace;
+   int    n=com.ncode, is,js, j, idata, wname=20, sspace;
    double t=0.4, dS=0.1,dN=0.1, S,N, SEdS, SEdN, f3x4[12], *space=NULL;
-   int compressdata=0;
 
    /* ConsistencyMC(); */
 
    printf("YN00 in %s\n",  VerStr);
    starttime();
-  if (argc>1)  strcpy(ctlf, argv[1]); 
-   com.seqtype=1;  com.cleandata=1; com.ndata=1;  com.print=0;
+   if (argc>1)  strcpy(ctlf, argv[1]); 
+   com.seqtype=1;  com.cleandata=1;  /* works for clean data only? */
+   com.ndata=1;  com.print=0;
    noisy=1; com.icode=0;  com.fcommon=0;  com.kcommon=1;
-   GetOptions (ctlf);
+   GetOptions(ctlf);
    fout=fopen (com.outf,"w"); frst=fopen("rst","w"); frst1=fopen("rst1","w"); 
    frub=fopen ("rub","w");
    if (fout==NULL || frst==NULL) error2("outfile creation err.");
@@ -105,29 +108,26 @@ int main(int argc, char *argv[])
          fprintf(frst, "\t%d", idata+1);
       }
 
-      ReadSeq ((com.verbose?fout:NULL), fseq);
+      ReadSeq((com.verbose?fout:NULL), fseq, com.cleandata);
+
       sspace=max2(200000,64*com.ns*sizeof(double));
       sspace=max2(sspace,64*64*5*sizeof(double));
       if ((space=(double*)realloc(space,sspace))==NULL) error2("oom space");
 
       com.kappa=4.6;  com.omega=1;
-      EncodeSeqCodon();
-
-      if(compressdata)
-         PatternWeight(fout); 
-      else {
-         com.npatt=com.ls;  
-         k = max2(64*64,com.ls)*sizeof(double);
-         if ((com.fpatt=(double*)realloc(com.fpatt,k))==NULL) error2("oom fpatt");
-         FOR(k,com.ls) com.fpatt[k]=1;
-      }
-      fprintf (fout,"YN00 %15s", com.seqf);
+      fprintf(fout,"YN00 %15s", com.seqf);
       Statistics(fout, space);
-      DistanceMatNG86(fout,0);  fflush(fout);
 
-      if(noisy) puts("\nEstimation by the method of Yang & Nielsen (2000):");
-      fputs("\nEstimation by the method of Yang & Nielsen (2000):\n",fout);
-      if(!com.iteration) fputs("(equal weighting of pathways)\n",fout);
+      if(noisy) printf("\n\n(A) Nei-Gojobori (1986) method\n");
+      fprintf(fout,"\n\n(A) Nei-Gojobori (1986) method\n\n");
+      fprintf(fout,"Nei M, Gojobori T (1986) Simple methods for estimating the numbers of synonymous and nonsynonymous nucleotide substitutions. Mol. Biol. Evol. 3:418-426\n");
+      DistanceMatNG86_C64 (fout,0);  fflush(fout);
+
+
+      if(noisy) printf("\n\n(B) Yang & Nielsen (2000) method\n\n");
+      fprintf(fout,"\n\n(B) Yang & Nielsen (2000) method\n\n");
+      fprintf(fout,"Yang Z, Nielsen R (2000) Estimating synonymous and nonsynonymous substitution rates under realistic evolutionary models. Mol. Biol. Evol. 17:32-43\n");
+      if(!com.iteration) fputs("\n(equal weighting of pathways)\n",fout);
 
       if(com.fcommon)  GetFreqs(-1,-1,f3x4,com.pi);
       if(com.kcommon) {
@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
          fprintf(ft,"%-*s ", wname,com.spname[is]);
          FOR (js,is) {
             if(noisy>3) printf(" vs. %3d", js+1);
-            fprintf (fout, " %3d  %3d ", is+1,js+1);
+            fprintf(fout, " %3d  %3d ", is+1,js+1);
 
             if(!com.fcommon) GetFreqs(is,js,f3x4,com.pi);
             if(!com.kcommon) GetKappa();
@@ -163,6 +163,16 @@ int main(int argc, char *argv[])
          fflush(fds); fflush(fdn); fflush(ft);
       }       /* for (is) */
       FPN(fds); FPN(fdn); FPN(ft);
+
+      if(noisy) printf("\n\n(C) LWL85, LPB93 & LWLm methods\n\n");
+      fprintf(fout,"\n\n(C) LWL85, LPB93 & LWLm methods\n\n");
+      fprintf(fout,"Li W.-H., C.-I. Wu, Luo (1985) A new method for estimating synonymous and nonsynonymous rates of nucleotide substitutions considering the relative likelihood of nucleotide and codon changes. Mol. Biol. Evol. 2: 150-174.\n");
+      fprintf(fout,"Li W-H (1993) Unbiased estimation of the rates of synonymous and nonsynonymous substitution. J. Mol. Evol. 36:96-99\n");
+      fprintf(fout,"Pamilo P, Bianchi NO (1993) Evolution of the Zfx and Zfy genes - rates and interdependence between the genes. Mol. Biol. Evol. 10:271-281\n");
+      fprintf(fout,"Yang Z (2006) Computational Molecular Evolution. Oxford University Press, Oxford, England\n");
+
+      DistanceMatLWL85(fout);
+
       fflush(frst);
       if(noisy) printf("\nTime used: %s\n", printtime(timestr));
    }
@@ -173,8 +183,8 @@ int main(int argc, char *argv[])
 
 int GetOptions (char *ctlf)
 {
-   int i, nopt=9, lline=255;
-   char line[255], *pline, opt[20], comment='*';
+   int i, nopt=9, lline=4096;
+   char line[4096], *pline, opt[20], comment='*';
    char *optstr[]={"seqfile","outfile", "verbose", "noisy", "icode", 
         "weighting","commonkappa", "commonf3x4", "ndata"};
    double t;
@@ -282,35 +292,6 @@ int DistanceYN00(int is, int js, double*S, double*N, double*dS,double*dN,
 
 
 
-
-int EncodeSeqCodon(void)
-{
-/* encode sequences into 0, 1, ..., 63.  Checks for stop codons
-   The sequences are already transformed in ReadSeq()
-*/
-   char str[4]="   ";
-   int is,h,j, it, indel=0, c[3];
-
-   FOR (is, com.ns) {
-      for (h=0; h<com.ls; h++) {
-         for(j=0,it=0;j<3;j++) {
-            c[j]=com.z[is][h*3+j];
-            if(c[j]<0 || c[j]>3) { it=-1; indel=1; }
-         }
-         if (it)
-            printf("Strange character at codon %d seq. %d",h+1,is+1);
-         com.z[is][h]=(char)(it=c[0]*16+c[1]*4+c[2]);
-         if (GeneticCode[com.icode][it]==-1) {
-           printf("\a\nStop codon %s at %d seq %d\n",getcodon(str,it),h+1,is+1);
-           exit(-1);
-         }
-      }
-   }
-   if (indel) error2("indel?");
-   FOR(is,com.ns) com.z[is]=(char*)realloc(com.z[is], com.ls*sizeof(char));
-   return(0);
-}
-
 int Statistics(FILE *fout, double space[])
 {
 /* This calculates base frequencies, using npatt & fpatt[]
@@ -383,7 +364,7 @@ int GetFreqs(int is1, int is2, double f3x4[], double pi[])
 }
 
 
-int DistanceMatNG86 (FILE *fout, double alpha)
+int DistanceMatNG86_C64 (FILE *fout, double alpha)
 {
 /* Nei & Gojobori (1986)
    alpha used for nonsynonymous rates only.
@@ -396,7 +377,7 @@ int DistanceMatNG86 (FILE *fout, double alpha)
    double dS=-1,dN=-1,dN_dS=-1, ns, na, nst, nat, S,N, St,Nt, y;
 
    if(noisy) puts("\nEstimation by the method of Nei & Gojobori (1986):\n");
-   if (fout) fprintf(fout,"\nNei & Gojobori 1986. dN/dS (dN, dS)");
+   if(fout) fprintf(fout,"\nNei & Gojobori 1986. dN/dS (dN, dS)\n");
    FOR (i,com.ns) {
       if (fout)  fprintf (fout, "\n%-*s", wname, com.spname[i]);
       FOR (j,i) {
@@ -404,6 +385,7 @@ int DistanceMatNG86 (FILE *fout, double alpha)
             strcpy(codon1, getcodon(str,com.z[i][h]));
             strcpy(codon2, getcodon(str,com.z[j][h]));
             ndiff=difcodonNG (codon1, codon2, &S, &N, &ns, &na, 0, com.icode);
+
 
             St+=S*com.fpatt[h];
             Nt+=N*com.fpatt[h];
@@ -426,20 +408,88 @@ int DistanceMatNG86 (FILE *fout, double alpha)
 
          dN_dS=(dS>0?dN/dS:-1);
          if(dS<=0||dN<=0||dN_dS<0) status=-1;
-         if(fout) fprintf(fout, "%7.3f(%6.4f %6.4f)", dN_dS, dN, dS);
+         if(fout) fprintf(fout, "%7.4f(%6.4f %6.4f)", dN_dS, dN, dS);
 
-fprintf (frub, " NG %7.3f %6.4f %6.4f\n", dN_dS, dN, dS);
-omega_NG=dN_dS;  dN_NG=dN; dS_NG=dS;
-/* for infinite data */
-fprintf (frst, " NG %7.3f %6.4f %6.4f ", dN_dS, dN, dS);
+		 fprintf (frst, " NG %7.3f %6.4f %6.4f ", dN_dS, dN, dS);
 
+      }   /* for(j) */
+      if(noisy)  printf(" %3d",i+1);
+   }   /* for(i) */
+   if(noisy) FPN(F0);
+   if(fout)  {
+      FPN(fout);
+      if(status) fputs("NOTE: -1 means the method is inapplicable.\n",fout); 
+   }
+
+   return (status);
+}
+
+
+
+int DistanceMatLWL85 (FILE *fout)
+{
+/* This implements 3 methods: LWL85 (Li, Wu & Luo 1985), LPB (Li 1993, 
+   Pamilo & Bianchi 1993), and LWL85m (equation 12 in book; check other refs).
+   alpha is not used.
+   com.z[][] goes from 0, 1, ..., 63.
+*/
+   int i,j,k, h, wname=15;
+   char codon1[4], codon2[4], str[4]="   ";
+   double L[3], sdiff[3], vdiff[3], Lt[3], sdifft[3], vdifft[3], A[3],B[3];
+   double P[3],Q[3], a,b, dS,dN, pS2, S,N, Sd,Nd;
+
+   for(i=0;i<com.ns;i++) {
+      for(j=0; j<i; j++) {  /* pair i and j */
+         for(k=0; k<3; k++) L[k]=sdiff[k]=vdiff[k]=0;
+
+         for (h=0; h<com.npatt; h++)  {
+            strcpy(codon1, getcodon(str,com.z[i][h]));
+            strcpy(codon2, getcodon(str,com.z[j][h]));
+            difcodonLWL85(codon1, codon2, Lt, sdifft, vdifft, 0, com.icode);
+/*
+printf("\n%s %s: sites: %4.1f %4.1f %4.1f  sdif  %4.1f %4.1f %4.1f  vdif  %4.1f %4.1f %4.1f", codon1, codon2, Lt[0],Lt[1],Lt[2], 
+       sdifft[0],sdifft[1],sdifft[2],vdifft[0],vdifft[1],vdifft[2]);
+*/
+            for(k=0; k<3; k++) {
+               L[k]     += Lt[k]*com.fpatt[h];
+               sdiff[k] += sdifft[k]*com.fpatt[h];
+               vdiff[k] += vdifft[k]*com.fpatt[h];
+            }
+         }
+
+         for(k=0; k<3; k++) { 
+            P[k]=sdiff[k]/L[k]; Q[k]=vdiff[k]/L[k]; 
+            a=1-2*P[k]-Q[k];   b=1-2*Q[k];
+            A[k] = -log(a)/2+log(b)/4;
+            B[k] = -log(b)/2;
+         }
+/*
+printf("\n\n");
+*/
+         if(fout) {
+            fprintf(fout, "\n%d (%s) vs. %d (%s)\n\n", i+1, com.spname[i], j+1, com.spname[j]);
+            fprintf(fout,"L(i):  %9.1f %9.1f %9.1f  sum=%9.1f\n", L[0],L[1],L[2],L[0]+L[1]+L[2]);
+            fprintf(fout,"Ns(i): %9.4f %9.4f %9.4f  sum=%9.4f\n", sdiff[0],sdiff[1],sdiff[2], sdiff[0]+sdiff[1]+sdiff[2]);
+            fprintf(fout,"Nv(i): %9.4f %9.4f %9.4f  sum=%9.4f\n", vdiff[0],vdiff[1],vdiff[2], vdiff[0]+vdiff[1]+vdiff[2]);
+            fprintf(fout,"A(i):  %9.4f %9.4f %9.4f\n", A[0],A[1],A[2]);
+            fprintf(fout,"B(i):  %9.4f %9.4f %9.4f\n", B[0],B[1],B[2]);
+
+            Sd=L[1]*A[1]+L[2]*(A[2]+B[2]);  Nd=L[1]*B[1]+L[0]*(A[0]+B[0]);
+            pS2=1/3.;  S=L[1]*pS2+L[2];  N=L[1]*(1-pS2)+L[0];  dS=Sd/S; dN=Nd/N;
+            fprintf(fout,"LWL85:  dS = %7.4f dN = %7.4f w =%7.4f S =%7.1f N =%7.1f\n", dS,dN, dN/dS, S, N);
+            pS2=A[2]/(A[2]+B[2]);   S=L[1]*pS2+L[2];  N=L[1]*(1-pS2)+L[0];   dS=Sd/S; dN=Nd/N;
+            fprintf(fout,"LWL85m: dS = %7.4f dN = %7.4f w =%7.4f S =%7.1f N =%7.1f (rho = %.3f)\n", dS,dN, dN/dS, S, N, pS2);
+
+            dS = (L[1]*A[1]+L[2]*A[2])/(L[1]+L[2]) + B[2];
+            dN = (L[0]*B[0]+L[1]*B[1])/(L[0]+L[1]) + A[0];
+            fprintf(fout,"LPB93:  dS = %7.4f dN = %7.4f w =%7.4f\n", dS, dN, dN/dS);
+         }
       }
       if(noisy)  printf(" %3d",i+1);
    }
    if(noisy)  FPN(F0);
-   if (fout) { FPN(fout);
-   if (status) fputs("NOTE: -1 means the method is inapplicable.\n",fout); }
-   return (status);
+   if(fout) FPN(fout);
+   return (0);
 }
 
 
@@ -748,7 +798,7 @@ int DistanceF84(double n, double P, double Q, double pi[],
    checked against simulated data sets.
 */
    int failF84=0,failK80=0,failJC69=0;
-   double tc,ag, Y,R, a=0,b=0, A,B,C, k_F84;
+   double tc,ag, Y,R, a=0,b=0, A=-1,B=-1,C=-1, k_F84;
    double Qsmall=min2(1e-10,0.1/n), maxkappa=999,maxt=99;
 
    *k_HKY=-1;
@@ -921,10 +971,9 @@ int InfiniteData(double t,double kappa,double omega,double f3x4_0[],double space
    com.ns=2;
    com.ls=1; com.npatt=n*(n+1)/2;
    FOR(j,com.ns) sprintf(com.spname[j],"seq.%d",j+1);
-   FOR(j,com.ns) if(com.z[j]) free(com.z[j]);
-   FOR(j,com.ns) com.z[j]=(char*) malloc(com.npatt*sizeof(char));
+   FOR(j,com.ns) com.z[j]=(char*) realloc(com.z[j],com.npatt*sizeof(char));
    if (com.z[com.ns-1]==NULL) error2 ("oom");
-   if (com.fpatt) free(com.fpatt);
+   if (com.fpatt) gfree(com.fpatt);
    if ((com.fpatt=(double*)malloc(com.npatt*sizeof(double)))==NULL)  
       error2("oom fpatt");
 
@@ -1075,7 +1124,7 @@ void SimulateData2s64(FILE* fout, double f3x4_0[], double space[])
                com.fpatt[com.npatt++]=nobs[h-1];
             }
             if(h!=npatt0) error2("h!=npatt0");
-            j=DistanceMatNG86 (NULL, 0);
+            j=DistanceMatNG86_C64 (NULL, 0);
             if(j==-1 || omega_NG<1e-6 || dS_NG<1e-6 || dN_NG<1e-6) 
                { ir--; nfail++; continue; }
             x[0]=omega_NG; x[1]=dN_NG; x[2]=dS_NG; 

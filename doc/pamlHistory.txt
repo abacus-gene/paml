@@ -1,8 +1,161 @@
 History and bug fixes of PAML (Phylogenetic Analysis by Maximum Likelihood)
+
 Ziheng Yang
 
-Please report bugs to Ziheng Yang at z.yang@ucl.ac.uk.
+Please report bugs at the PAML discussion group
+(http://www.rannala.org/phpBB2/) or to Ziheng Yang at z.yang @ ucl.ac.uk.
 
+
+
+Version 3.15, March 2006
+
+evolverNSbranches (simulation program to generate data under the
+branch models of codon substitution).  A bug was introduced after
+version 3.14a so that versions 3.14b (?), 3.14c, and 3.15 have a bug
+that makes the program abort prematurely.  This is now corrected.
+Thanks to N. Clark for reporting the bug.
+
+
+Version 3.15, January 2006
+
+evolver.  The simulation option of the evolver program in version
+3.14b (?), 3.14c, and 3.15 has a serious bug that makes the program
+generate nonsensible sequences when the user tree has 0 internal
+branch lengths.  The bug was introduced between versions 3.14a (which
+is correct) and 3.14c (which is wrong).  I don't seem to have kept
+3.14b to check whether it is in error.  In this case, the smart idea
+that led to the bug was the thought that no evolution occurs if the
+branch length is 0 (or less than 1e-20, to be more precise).  If the
+branch length is 0, there is no need to evolve the sequence along the
+branch, so I decided to copy the sequence at the start of the branch
+to the node at the end of the branch.  This would be fine, except that
+I introduced a bug at the same time that caused the program to skip
+generating sequences at all nodes that are descendents of the
+zero-length branch.  As a result, sequences at tips that are
+descendents of the zero-length branch have no data.  On some systems
+the uninitialized space is initialized as 0, and then the sequences
+will be printed out as consisting of all Ts (T is the first or 0th
+nucleotide).
+
+
+At the same time, I also turned on the option of simulating data on
+random trees in evolver.  You change fixtree=1 into 0, and recompile.
+Then use MCbaseRandomTree.dat to simulate data instead of MCbase.dat:
+
+    evolver 5 MCbaseRandomTree.dat
+
+
+
+Version 3.15,  November 2005
+
+mcmctree: This implements the MCMC algorithm of Yang and Rannala (2005
+MBE) for estimating species divergence times using soft bounds.  The
+example file is in examples/SoftBound/.  Look at the readme file and
+see whether you can duplicate our results in the paper.  Note that
+this program works with DNA sequence data only, and assumes the
+molecular clock (clock = 1).  Note that assumption of the clock can
+lead to seriously biased results if the clock is violated.  Work is
+under way to relax the clock assumption.  
+
+yn00: Added three methods for estimating dS and dN: LWL85 (Li, Wu &
+Luo 1985), LPB93 (Li 1993; Pamilo and Bianchi 1993), and LWL85m (??).
+
+codonml.  Added example files for clade model C, in folder
+examples/CladeModelC.  Thanks for Joe Bielawski for preparing these.
+
+Added a sequence data format, in which the numbers or frequencies of
+site patterns are inputed instead of the sequences.  The format is
+indicated by the option variable P on the first line of the data file,
+used in the same way as option variables I (for interleaved format)
+and S (for sequential format, which is the default).  See the section
+on sequence data format in the paml documentation for details.  The
+old control variable readpattf for baseml and codeml is now deleted.
+You can also use evolver to simulate data using this format.  Look at
+the control files MCbase.dat, MCcodon.dat, and MCaa.dat.  This format
+is useful for very large data sets with >1M sites, when collapsing
+sites into patterns can take a long time.  
+
+
+
+Version 3.14b, May 2005
+
+pamp crashes when there are more than 127 or 255 (depending on the
+system) species in the data.  The bug is due to my declaration of the
+variable visit[] in the routine PathwayMP1 in pamp.c as char rather
+than int.  Another problem is that the formula used to calculate
+distances under REV (GTR) is sometimes inapplicable and the program
+prints out messages like "err: DistanceREV".  I introduced some ad hoc
+way of dealing with the problem.
+
+
+
+Version 3.14b, April 2005
+
+aaml (codeml with seqtype = 2): 
+
+Under the REV model (model = 9), codeml failed to print out the
+estimated amino acid substitution rate matrix.  This is fixed.
+
+
+aaml (codeml with seqtype = 2 or 3):
+
+If you have multiple data sets (ndata > 1) and analysing protein data
+sets under the empirical models such as wag, jtt, dayhoff.  The
+results for the first data set are correct, but all later data sets
+are analyzed incorrectly under the corresponding +F models, that is,
+wag+F, jtt+F, dayhoff+F.  A bug in the program means that for the
+second and later data sets, the equilibrium amino acid frequencies are
+from the real data and not correctly set to those specified by the
+empirical models.  Thanks to Ben Evans.
+
+
+Version 3.14b, February 2005
+
+codonml and aaml:
+
+There is a bug that affects the joint reconstruction of ancestral
+sequences when some branch lengths are equal to each other and when
+those branches are visited one after the other in the program.  For
+example, if some branch lengths are estimated to be 0, such a problem
+might occur.  I think this bug is in the program for a long time,
+although I note that joint ancestral reconstruction is turned off in
+some versions for other reasons.  The marginal reconstruction is not
+affected by this bug.  The update fixes this bug.
+
+
+baseml and codeml:
+
+The program crashes on some systems for the local clock models (clock
+= 5 and 6) after the calculation is finished.  If you manage to run
+the model, the results should be fine.  There are bugs in the program
+when freeing memory at the end of the calculation.  They are fixed in
+this update.  See the discussion site at
+
+http://www.rannala.org/phpBB2/viewtopic.php?t=228
+
+Thanks to fjvera.
+
+
+
+Version 3.14a, December 2004
+
+codonml (codeml for codons):
+
+The mechanisctic amino acid substitution models (table 3 in Yang et
+al. 1998 MBBE 15: 1600-1611) appear to be broken in paml/codeml
+versions 3.13 and 3.14.  They were correct in version 3.12.  This is
+now fixed.  If you use those models, please run the examples in the
+folder examples/mtCDNA/ and compare results with those published in
+the paper to confirm the program.  The results in the paper are
+correct, but the program implementation may be broken due to lack of
+maintenance.
+
+codonml (codeml for codons)
+
+When you fit the branch models with three or more branch types (omega
+ratios), the program aborts with an error message saying that only two
+omega ratios are allowed.  This is due to a bug in the program and is
+now fixed.
 
 
 Version 3.14, September 2004
@@ -16,7 +169,7 @@ published (Wong and Nielsen 2004; Yang, Wong, and Nielsen 2005).  The
 details are as in the following table.
 
 The old models M1 and M2 are noted to be rather unrealistic as they do
-not account for sites with 0 < < 1.  Thus in the new models 0 < 0 < 1
+not account for sites with 0 < w0 < 1.  Thus in the new models 0 < w0 < 1
 is estimated from the data.  Also insisting on a class of sites with 0
 = 1 appears to help avoid false positives as sites under weak
 selection will be absorbed in this neutral class rather than being
@@ -921,7 +1074,7 @@ March 1994
 Version 0.10, no name for package: (NHM, England)
 
   Programs tripml and comptree are renamed codonml and rell.  The readme
-  file is expanded and the numerical optimmization routine, ming1, used
+  file is expanded and the numerical optimization routine, ming1, used
   by dnaml and codonml, is improved.  The discrete-gamma model of Yang
   (1994 JME) is implemented in both baseml and codonml.
 

@@ -1,18 +1,19 @@
 /* PositiveSites.c
    Ziheng Yang, June 2004 
 
-   cc -DOLD -o PositiveSitesOLD -O2 PositiveSites.c -lm
-   cc -DNEB -o PositiveSitesNEB -O2 PositiveSites.c -lm
-   cc -DBEB -o PositiveSitesBEB -O2 PositiveSites.c -lm
+   cc -O2 -DNEB        -o PositiveSitesNEB PositiveSites.c -lm
+   cc -O2 -DBEB        -o PositiveSitesBEB PositiveSites.c -lm
+   cc -O2 -DBranchSite -o PositiveSitesBS  PositiveSites.c -lm
 
-   cl -O2 -DOLD -FePositiveSitesOLD.exe PositiveSites.c
-   cl -O2 -DNEB -FePositiveSitesNEB.exe PositiveSites.c
-   cl -O2 -DBEB -FePositiveSitesBEB.exe PositiveSites.c
+   cl -O2 -DNEB        -FePositiveSitesNEB.exe PositiveSites.c
+   cl -O2 -DBEB        -FePositiveSitesBEB.exe PositiveSites.c
+   cl -O2 -DBranchSite -FePositiveSitesBS.exe  PositiveSites.c
 
-   PositiveSites <#sites> <#repl>
-   PositiveSites <#sites> <#repl> <Evolverf> <Codemlf>
+   PositiveSitesBEB <#sites> <#repl>
+   PositiveSitesBEB <#sites> <#repl> <Evolverf> <Codemlf>
+   PositiveSitesBR  <#sites> <#repl> <Evolverf> <Codemlf> <positive site classes>
 
-   This compares siterates from evolverNSsites and mlc from codeml to calculate 
+   This compares siteID from evolverNSsites and mlc from codeml to calculate 
    the accuracy, power, and false positive rate of codeml inference of sites 
    under positive selection.  The measures are defined as follows (Anisimova et 
    al. 2002; Wong et al. 2004).
@@ -40,16 +41,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 /*
 #define BEB
+#define BranchSite
 */
 
-#if(defined OLD)
-char *Codemlf="mlc", startCodeml[]="Positively", startEvolver[]="replicate ";
-#elif(defined BEB)
-char *Codemlf="mlc", startCodeml[]="Bayes Empirical", startEvolver[]="replicate ";
+#if  (defined BEB)
+int model=0, NSsites=3; char *Codemlf="mlc", startCodeml[]="Bayes Empirical", startEvolver[]="replicate ";
 #elif(defined NEB)
-char *Codemlf="mlc", startCodeml[]="Naive Empirical", startEvolver[]="replicate ";
+int model=0, NSsites=3; char *Codemlf="mlc", startCodeml[]="Naive Empirical", startEvolver[]="replicate ";
+#elif(defined BranchSite)
+int model=1, NSsites=3; char *Codemlf="mlc", startCodeml[]="Bayes Empirical", startEvolver[]="replicate ";
+int nPositiveClass, PositiveClass[1000];
 #endif
 
 
@@ -60,18 +64,24 @@ int main (int argc, char* argv[])
 /*
    int nbin=11, noisy=0, nr=1, ls=100;
    double  PCut[]={0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 0.99, 1}, PCut0=0.5;
-   int nbin=7, noisy=0, nr=1, ls=100000;
-   double  PCut[]={0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1}, PCut0=0.5;
 */
-   int ir, ib, i,j, ch, nmatch0;
+   int ir, ib, i,j,k, ch, nmatch0;
    double NmatchB[50], NCodemlB[50], NEvolver=0;
    double NmatchC[50], NCodemlC[50];
    int *siteEvolver, *siteCodeml, *ibin, nsiteEvolver, nsiteCodeml, lline=1000;
-   char *Evolverf="siterates", line[1001];
+   int nPositiveClass, PositiveClass[100];
+   char *Evolverf="siterates.txt", line[1001];
    double p, AccuracyB, AccuracyC, Power, FalsePositive;
    FILE *fEvolver, *fCodeml;
 
-   puts("CodemlEvolver <#sites>  <#repl>");
+   if(model)
+      puts("Usage:\n\tPositiveSitesBR  <#sites> <#repl> <Evolverf> <Codemlf> <positive site classes>");
+   else {
+      puts("Usage:\n\tPositiveSitesBEB <#sites> <#repl>");
+      puts("Usage:\n\tPositiveSitesBEB <#sites> <#repl> <Evolverf> <Codemlf>");
+   }
+
+   if(argc<3) exit(-1);
    if(argc>1) sscanf(argv[1],"%d", &ls);
    if(argc>2) sscanf(argv[2],"%d", &nr);
    if(argc>3) Evolverf=argv[3];
@@ -92,18 +102,41 @@ int main (int argc, char* argv[])
       NmatchB[i]=NCodemlB[i]=0;
       NmatchC[i]=NCodemlC[i]=0;
    }
+
+   if(model && NSsites) { /* branch-site model */
+      nPositiveClass = argc-5;
+      for(i=0; i<nPositiveClass; i++)
+         sscanf(argv[5+i], "%d", &PositiveClass[i]);
+      printf("%d site classes are under positive selection: ", nPositiveClass);
+      for(i=0; i<nPositiveClass; i++) printf(" %2d", PositiveClass[i]);
+      printf("\n");
+   }
    for(ir=0; ir<nr; ir++) {
-      /* Read true sites from evovler siterates */
+      /* Read true sites from evovler siteID */
       for( ; ; ) {
          if(fgets(line, lline, fEvolver)==NULL) break;
          if(strstr(line, startEvolver)) break;
       }
-      if(!strchr(line,':')) { puts("did not find ':' in line."); exit(-1); }
-      sscanf(strchr(line,':')+1, "%d", &nsiteEvolver);
-      if(nsiteEvolver>ls) { puts("Too many sites. ls wrong?"); exit(-1); }
+
+      if(NSsites && !model) { /* site models */
+         if(!strchr(line,':')) { puts("did not find ':' in line."); exit(-1); }
+         sscanf(strchr(line,':')+1, "%d", &nsiteEvolver);
+         if(nsiteEvolver>ls) { puts("Too many sites. ls wrong?"); exit(-1); }
+         for(i=0; i<nsiteEvolver; i++)
+            fscanf(fEvolver, "%d", &siteEvolver[i]);
+      }
+      else { /* branch-site models */
+         for(i=0,nsiteEvolver=0; i<ls; i++) {
+            fscanf(fEvolver, "%d", &k);
+            for(j=0; j<nPositiveClass; j++)
+               if(k==PositiveClass[j]) {
+                  siteEvolver[nsiteEvolver++]=i+1;
+                  break;
+               }
+         }
+      }
+
       NEvolver+=nsiteEvolver;
-      for(i=0; i<nsiteEvolver; i++)
-         fscanf(fEvolver, "%d", &siteEvolver[i]);
       if(noisy) {
          printf("\n\n%d sites from Evolver:\n", nsiteEvolver);
          for(i=0;i<nsiteEvolver; i++) printf(" %3d", siteEvolver[i]);
@@ -126,7 +159,7 @@ int main (int argc, char* argv[])
          for(i=0; i<nsiteCodeml; i++)  printf("%4d", siteCodeml[i]);
       }
 
-      /* count matches by looping over codeml sites */
+      /* count matches by going through codeml sites */
       for(i=0,nmatch0=0; i<nsiteCodeml; i++) {
          ib=ibin[i];
          NCodemlB[ib]++;
@@ -158,6 +191,6 @@ int main (int argc, char* argv[])
       printf("%5.3f - %5.3f: %7.3f (%5.0f) ",   p, PCut[j], AccuracyB, NCodemlB[j]);
       printf( "   >%4.3f: %7.3f (%5.0f) %7.3f %7.3f\n", p,  AccuracyC, NCodemlC[j], Power, FalsePositive);
    }
-   printf( "\nTrue positive sites from evolver: %5.0f out of %5d\n", NEvolver,ls*nr);
+   printf( "\nTrue positive sites from evolver: %5.0f out of %5d total sites\n", NEvolver,ls*nr);
    fclose(fEvolver); fclose(fCodeml);
 }

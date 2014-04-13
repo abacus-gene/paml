@@ -1,8 +1,8 @@
-0            * 0:paml format (mc.paml); 1:paup format (mc.paup)
+0          * 0,1:seqs or patterns in paml format (mc.paml); 2:paup format (mc.nex)
 113147       * random number seed (odd number)
 6  5000  1  * <# seqs>  <# nucleotide sites>  <# replicates>
 
--1           * <tree length, use -1 if tree has absolute branch lengths>
+-1           * <tree length; see note below; use -1 if tree has absolute branch lengths>
 
 (((A :0.1 #1.0, B :0.2 #1.0) :0.12 #1.0, C :0.3 #1.0) :0.123 #1.0, D :0.4 #1.0, (E :0.5 #1.0, F:0.6 #1.0):0.56 #5) ;
 
@@ -41,6 +41,10 @@ empty lines, but do not break one line into several lines.
 
 Use : to indicate the branch length in the tree topology.  Use # to
 indicate the omega ratio for the branch.
+
+Note that tree length and branch lengths under the codon model are
+measured by the expected number of nucleotide substitutions per codon
+(see Goldman & Yang 1994).
 
 64 codon freqs are in fixed order TTT, TTC, TTA, TTG, TCT, TCC, ..., GGG, 
 from the F3x4 table from sperm lysin of 25 abalone species

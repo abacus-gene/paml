@@ -10,14 +10,15 @@
 
 #include "paml.h"
 
-#define NS       9
-#define NTREE    20    
-#define NBRANCH  (NS*2-2)      
-#define NNODE    (NS*2-1) 
-#define NGENE    4
-#define LSPNAME  30
-#define NCODE    4
-#define NP       (NBRANCH+NGENE+5)
+#define NS          10
+#define NTREE       20    
+#define NBRANCH     (NS*2-2)      
+#define NNODE       (NS*2-1) 
+#define MAXNSONS    10
+#define NGENE       4
+#define LSPNAME     30
+#define NCODE       4
+#define NP          (NBRANCH+NGENE+5)
 
 extern char BASEs[];
 extern int noisy, NFunCall, *ancestor;
@@ -27,7 +28,7 @@ int Forestry (FILE *fout, double space[]);
 int GetOptions (char *ctlf);
 int SetxBound (int np, double xb[][2]);
 int testx (double x[], int np);
-int GetInitials (double x[]);
+int GetInitials (double x[], int *fromfile);
 void TestFunction (FILE *fout, double x[], double space[]);
 int GetMem (int nbranch, int nR, int nitem);
 void GetSave (int nitem, int *nm, int M[], double alpha, double c);
@@ -40,21 +41,23 @@ int lfunG_dd (double x[], double *lnL, double dl[], double ddl[], int np);
 
 struct CommonInfo {
    char *z[NS], *spname[NS], seqf[32],outf[32],treef[32];
-   int  seqtype, ns, ls, ngene, posG[NGENE+1],lgene[NGENE],*pose,npatt;
+   int  seqtype, ns, ls, ngene, posG[NGENE+1],lgene[NGENE],*pose,npatt, readpattern;
    int  clock,fix_alpha,fix_kappa,fix_rgene,Malpha,print,verbose;
    int  model, runmode, cleandata, ndata;
-   int np, ntime, nrate, ncode, nrgene, icode, coding;
+   int np, ntime, nrate, ncode, nrgene, icode, coding, fix_blength;
    double *fpatt, pi[4], lmax, alpha,kappa, rgene[NGENE],piG[NGENE][4],*conP;
    double *SSave, *ErSave, *EaSave;
-   int  nhomo, nparK, ncatG, fix_rho, getSE, npi0, readpattf;  /* unused */
+   int  nhomo, nparK, ncatG, fix_rho, getSE, npi0;   /* unused */
    double pi_sqrt[4], rho;                           /* unused */
 }  com;
+
 struct TREEB {
    int  nbranch, nnode, root, branches[NBRANCH][2];
    double lnL;
-}  tree;                
+}  tree;
+
 struct TREEN {
-   int father, nson, sons[NS], ibranch;
+   int father, nson, sons[MAXNSONS], ibranch;
    double branch, age, label, *conP;
    char fossil;
 }  nodes[2*NS-1];
@@ -62,7 +65,7 @@ struct TREEN {
 static int nR=4, CijkIs0[64];
 static double Cijk[64], Root[4];
 
-FILE *frub, *flfh, *frate;
+FILE *frub, *flfh, *frate, *finitials=NULL;
 char *ratef="rates";
 char *models[]={"JC69","K80","F81","F84","HKY85","T92","TN93","REV","UNREST", "REVu","UNRESTu"};
 enum {JC69, K80, F81, F84, HKY85, T92, TN93, REV, UNREST, REVu, UNRESTu} MODELS;
@@ -83,7 +86,7 @@ int main (int argc, char *argv[])
    char ctlf[32]="baseml.ctl";
    double  space[50000];
 
-   noisy=2;  com.cleandata=1;
+   noisy=2;  com.cleandata=1;  /* works with clean data only */
    com.runmode=0;
    com.clock=0;    com.fix_rgene=0;
 
@@ -92,15 +95,19 @@ int main (int argc, char *argv[])
    com.fix_alpha=0;   com.alpha=0.2;
    com.ncode=4;
 
+   starttime();
+   SetSeed(4*(int)time(NULL)+1);
+
    printf("BASEMLG in %s\n",  VerStr);
-   frate=fopen(ratef,"w");  frub=fopen("rub","w");  flfh=fopen("lfh","w");
+   frate=fopen(ratef,"w");  frub=fopen("rub","w");  flfh=fopen("lnf","w");
 
    if (argc>1) { strcpy(ctlf, argv[1]); printf ("\nctlfile is %s.\n", ctlf); }
    GetOptions (ctlf);
+   finitials=fopen("in.basemlg","r");
 
    if ((fout=fopen (com.outf, "w"))==NULL) error2("outfile creation err.");
    if((fseq=fopen (com.seqf,"r"))==NULL)  error2("No sequence file!");
-   ReadSeq (NULL, fseq);
+   ReadSeq (NULL, fseq, com.cleandata);
    if((fpair[0]=(FILE*)fopen(pairfs[0],"w"))==NULL) error2("2base.t file open error");
 
    fprintf (fout,"BASEMLG %15s %8s + Gamma", com.seqf, models[com.model]);
@@ -121,7 +128,7 @@ int main (int argc, char *argv[])
       EigenTN93 (com.model, com.kappa, com.kappa, com.pi, &nR, Root, Cijk);
    Forestry (fout, space);
    fclose(fseq);  fclose(fpair[0]);
-   putchar ('\a');
+   if(finitials) { fclose(finitials);  finitials=NULL; }
    return (0);
 }
 
@@ -130,17 +137,15 @@ int main (int argc, char *argv[])
 int Forestry (FILE *fout, double space[])
 {
    int  status=0, i,j, itree, ntree, np;
-   int pauptree=0, btree=0, haslength;
-   double x[NP], xb[NP][2], lnL[NTREE], e=1e-5, *var=space+NP;
-   FILE *ftree, *finbasemlg=NULL;
+   int pauptree=0, btree=0, haslength, iteration=1;
+   double x[NP], xb[NP][2], lnL[NTREE]={0}, e=1e-6, *var=space+NP;
+   FILE *ftree;
 
    if ((ftree=fopen(com.treef,"r"))==NULL)   error2("treefile err.");
    GetTreeFileType(ftree,&ntree,&pauptree,0);
 
    fprintf (flfh,"%6d%6d%6d\n", ntree, com.ls, com.npatt);
    fprintf(frate,"Rates for sites, from BASEMLG, %d tree(s)\n\n", ntree);
-
-   finbasemlg=fopen("in.basemlg","r");
 
    for (itree=0; itree<ntree; itree++) {
       printf("\nTREE # %2d\n", itree+1 );
@@ -149,8 +154,7 @@ int Forestry (FILE *fout, double space[])
       fprintf(frub,"\n\nTREE # %2d", itree+1);
       fprintf(frate,"\nTREE # %2d\n", itree+1);
 
-      if((pauptree && PaupTreeRubbish(ftree)) || 
-         ReadaTreeN(ftree,&haslength,&i,0,1))
+      if(ReadaTreeN(ftree,&haslength,&i,0,1))
            { puts("err or end of tree file."); break; }
 
       com.ntime = com.clock ? tree.nnode-com.ns: tree.nbranch;
@@ -161,38 +165,37 @@ int Forestry (FILE *fout, double space[])
 
       i=(com.clock||com.model>HKY85 ? 2 : 2+!com.fix_alpha);
       GetMem(tree.nbranch, nR, i);
-
-      GetInitials (x);
+      GetInitials(x, &i);
+      if(i==-1) iteration=0;
       np = com.np;
-      printf ("\nnp =%6d", np);
+      printf("\nnp =%6d\n", np);
       NFunCall=0;
 /*
       TestFunction (fout, x, space);
 */
-      if (finbasemlg) {
-         printf ("\n\nReading initial values from in.basemlg.. Stop if wrong.");
-         FOR (j, np)
-            if (fscanf(finbasemlg,"%lf",&x[j])!=1) error2 ("err in.basemlg");
-      }
-      else {
-         if (itree==0) printf("\a");
+      if (itree==0 && i==0) {
+         printf("\a");
          printf ("\n\nSuggest using BASEML to get initial values..");
-         FOR (j, com.ntime) fprintf (fout,"%9.5f", x[j]);
+         for(j=0; j<com.ntime; j++) fprintf (fout,"%9.5f", x[j]);
       }
 
-      matout (F0, x, 1, np);
-      printf ("\nlnL0 = %12.6f", -lfunG(x, np));
+      for(i=0; i<np; i++) printf("%9.5f", x[i]);   FPN(F0);
+      if(!iteration) puts("parameters are fixed, calculating lnL . . .");
+      lnL[itree]=lfunG(x, np);
+      if(noisy) printf("\nlnL0 = %12.6f", -lnL[itree]);
 
-      if (com.clock||com.model==REV) {
-         SetxBound (np, xb);
-         i=ming2(frub,&lnL[itree],lfunG,
-            ((com.clock||com.model>HKY85)?NULL:lfunG_d),x,xb, space,e,np);
-         Hessian (np,x,lnL[itree],space,var,lfunG,var+np*np);
-         matinv (var, np, np, var+np*np);
+      if(iteration) {
+         if (com.clock||com.model==REV) {
+            SetxBound (np, xb);
+            i=ming2(frub,&lnL[itree],lfunG,
+               ((com.clock||com.model>HKY85)?NULL:lfunG_d),x,xb, space,e,np);
+            Hessian (np,x,lnL[itree],space,var,lfunG,var+np*np);
+            matinv (var, np, np, var+np*np);
+         }
+         else 
+            i=Newton(frub, &lnL[itree], lfunG, lfunG_dd,testx,x,var,e,np);
       }
-      else 
-         i=Newton(frub, &lnL[itree], lfunG, lfunG_dd,testx,x,var,e,np);
-      if (noisy) printf ("\nOut...\nlnL:%14.6f\n", -lnL[itree]);
+      if(noisy) printf("\nOut...\nlnL:%14.6f\n", -lnL[itree]);
 
 
       if (i || j<np) { status=-1; fprintf (fout, "\n\ncheck convergence.."); }
@@ -200,13 +203,14 @@ int Forestry (FILE *fout, double space[])
          -lnL[itree], -lnL[itree]+lnL[0]);
       OutaTreeB (fout);  FPN (fout);
 
-      FOR(i,np) fprintf (fout,"%9.5f", x[i]);   FPN (fout);
-      FOR(i,np)
-         fprintf (fout,"%9.5f", var[i*np+i]>0.?sqrt(var[i*np+i]):0.);
+      for(i=0; i<np; i++) fprintf (fout,"%9.5f", x[i]);   FPN (fout);
+      if(iteration) 
+         for(i=0; i<np; i++)
+            fprintf (fout,"%9.5f", var[i*np+i]>0.?sqrt(var[i*np+i]):0.);
 
       fprintf (fout, "\n\n# fun calls:%10d\n", NFunCall);
       OutaTreeN(fout,1,1);  fputs(";\n", fout);
-      if(com.print) lfunG_print (x, np);
+      lfunG_print (x, np);
 /*
       RhoRate (x);
 */
@@ -278,7 +282,7 @@ int SetxBound (int np, double xb[][2])
    return(0);
 }
 
-int GetInitials (double x[])
+int GetInitials (double x[], int *fromfile)
 {
    int i,j;
    double t;
@@ -303,7 +307,11 @@ int GetInitials (double x[])
    else           FOR (j,com.ntime) x[j]=0.1;
 
    LSDistance (&t, x, testx);
-   FOR(j, com.ntime) if (x[j]<1e-5) x[j]=1e-4;
+   for(j=0; j<com.ntime; j++) 
+      if (x[j]<1e-5) x[j]=1e-4;
+
+   if(finitials) readx(x,fromfile);
+   else    *fromfile=0;
 
    return (0);
 }
@@ -735,7 +743,7 @@ int GetOptions (char *ctlf)
         "cleandata", "ndata", "verbose","runmode",
         "clock","fix_rgene","Mgene","nhomo","getSE","RateAncestor",
         "model","fix_kappa","kappa","fix_alpha","alpha","Malpha","ncatG", 
-        "fix_rho","rho","nparK", "Small_Diff", "method", "readpattf"};
+        "fix_rho","rho","nparK", "Small_Diff", "method", "fix_blength"};
    double t;
    FILE  *fctl=fopen (ctlf, "r");
 
@@ -781,7 +789,7 @@ int GetOptions (char *ctlf)
                   case (23): com.nparK=(int)t;       break;
                   case (24):                         break;   /* smallDiff */
                   case (25):                         break;   /* method */
-                  case (26): com.readpattf=(int)t;   break;
+                  case (26):                         break;   /* fix_blength */
                }
                break;
             }

@@ -3,10 +3,14 @@ May 2002
 
 Files included in the folder:
 
-      mtCDNApri.nuc:  codon sequences from 7 apes
+      mtCDNApri.nuc:  codon sequences from 7 apes (small data set in Yang et al. 1998)
       mtCDNApri.trees: tree file for the data
       OmegaAA.dat: file specifying different types of amino acid substitutions
       codeml.ctl: control file 
+
+Also the following two files are incldued (large data set in Yang et al. 1998)
+      mtCDNApri.nuc
+      mtCDNApri.trees
 
 This directory contains example files for estimating
 nonsynonymous/synonymous substitution rate ratios for different types

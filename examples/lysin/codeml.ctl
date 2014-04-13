@@ -9,6 +9,7 @@
 
       seqtype = 1   * 1:codons; 2:AAs; 3:codons-->AAs
     CodonFreq = 2   * 0:1/61 each, 1:F1X4, 2:F3X4, 3:codon table
+        clock = 0   * 0: no clock, unrooted tree, 1: clock, rooted tree
         model = 0
                     * models for codons:
                         * 0:one, 1:b, 2:2 or more dN/dS ratios for branches
@@ -25,7 +26,6 @@
 
         ncatG = 10   * # of categories in dG of NSsites models
 
-        clock = 0   * 0: no clock, unrooted tree, 1: clock, rooted tree
         getSE = 0   * 0: don't want them, 1: want S.E.s of estimates
  RateAncestor = 0   * (0,1,2): rates (alpha>0) or ancestral states (1 or 2)
 

@@ -1,6 +1,10 @@
 README.txt
 Ziheng Yang, 27 January 2003
 
+
+This folder contains files for the local-clock likelihood analysis of Yoder 
+and Yang (2003).
+
 (A) 
 The clock models are re-written.  Note that the fossil calibration
 points are specified using the symbol '@' in the tree file; the symbol

@@ -9,10 +9,11 @@
 
       seqtype = 1   * 1:codons; 2:AAs; 3:codons-->AAs
     CodonFreq = 2   * 0:1/61 each, 1:F1X4, 2:F3X4, 3:codon table
+        clock = 0   * 0: no clock, unrooted tree, 1: clock, rooted tree
        aaDist = 0   * 0:equal, +:geometric; -:linear, {1-5:G1974,Miyata,c,p,v}
         model = 0
 
-      NSsites = 0 1 2 3 7 8
+      NSsites = 0 1 2 
                     * 0:one w; 1:NearlyNeutral; 2:PositiveSelection; 3:discrete;
                     * 4:freqs; 5:gamma;6:2gamma;7:beta;8:beta&w;9:beta&gamma;10:3normal
         icode = 0   * 0:standard genetic code; 1:mammalian mt; 2-10:see below
@@ -24,7 +25,6 @@
         omega = 1.3  * initial or fixed omega, for codons or codon-based AAs
         ncatG = 10   * # of categories in the dG or AdG models of rates
 
-        clock = 0   * 0: no clock, unrooted tree, 1: clock, rooted tree
         getSE = 0   * 0: don't want them, 1: want S.E.s of estimates
  RateAncestor = 0   * (0,1,2): rates (alpha>0) or ancestral states (1 or 2)
 

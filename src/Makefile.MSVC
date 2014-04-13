@@ -1,8 +1,6 @@
-PRGS =  baseml basemlg codeml evolver  pamp yn00 chi2
+PRGS =  baseml codeml basemlg mcmctree pamp evolver yn00 chi2 
 CC = cl # cc, gcc, cl
 CFLAGS =  -O2 -Ot 
-
-
 
 DEFINE = #
 LIBS = #-lm -lM

@@ -13,8 +13,9 @@
 #define NS            1000
 #define NBRANCH       (NS*2-2)
 #define NNODE         (NS*2-1)
+#define MAXNSONS      100
 #define NGENE         500
-#define LSPNAME       60
+#define LSPNAME       30
 #define NCODE         4
 #define NCATG         40
 
@@ -51,20 +52,20 @@ int GroupDistances();
 
 
 struct CommonInfo {
-   char *z[NS], *spname[NS], seqf[96],outf[96],treef[96], cleandata;
+   char *z[NS], *spname[NS], seqf[256],outf[256],treef[256], cleandata;
    char oldconP[NNODE];  /* update conP for nodes to save computation (0 yes; 1 no) */
-   int seqtype, ns,ls,ngene,posG[NGENE+1],lgene[NGENE], *pose,npatt;
+   int seqtype, ns,ls,ngene,posG[NGENE+1],lgene[NGENE], *pose,npatt, readpattern;
    int np,ntime,nrgene,nrate,nalpha,npi,nhomo,ncatG,ncode,Mgene,sspace,sconP;
    int fix_kappa, fix_rgene, fix_alpha, fix_rho, nparK, fix_blength;
    int clock, model, getSE, runmode, print,verbose, ndata, bootstrap;
-   int icode,coding, method, readpattf;
+   int icode,coding, method;
    int nbtype;
    double *fpatt, kappa, alpha, rho, rgene[NGENE], pi[4],piG[NGENE][4];
    double freqK[NCATG], rK[NCATG], MK[NCATG*NCATG];
    double (*plfun)(double x[],int np), *conP, *conP0, *fhK, *space;
    int conPSiteClass;        /* is conP memory allocated for each class? */
    int NnodeScale;
-   char *nodeScale;    /* nScale[ns-1] for interior nodes */
+   char *nodeScale;          /* nScale[ns-1] for interior nodes */
    double *nodeScaleF;       /* nScaleF[npatt] for scale factors */
    int fix_omega;
    double omega;
@@ -74,14 +75,14 @@ struct TREEB {
    double lnL;
 }  tree;
 struct TREEN {
-   int father, nson, sons[NS], ibranch, ipop;
+   int father, nson, sons[MAXNSONS], ibranch, ipop;
    double branch, age, kappa, pi[4], *conP, label;
    char fossil;
 }  *nodes, **gnodes, nodes_t[2*NS-1];
 
 
 /* for sptree.nodes[].fossil: lower, upper, bounds, gamma, inverse-gamma */
-enum {FREE_F=0, LOWER_F, UPPER_F, BOUND_F, GAMMA_F, IGAMMA_F} FOSSIL_FLAGS;
+enum {LOWER_F=1, UPPER_F, BOUND_F, GAMMA_F, IGAMMA_F} FOSSIL_FLAGS;
 char *fossils[]={" ", "L", "U", "B", "G", "IG"}; 
 enum {GAMMA, IGAMMA} DISTRIBUTIONS;
 
@@ -121,6 +122,9 @@ enum {GlobalClock=1, LocalClock, ClockCombined} ClockModels;
 double _rateSite=1; /* rate for a site */
 int N_PMatUVRoot=0;
 
+#define DGammaMean 1
+
+
 #define BASEML 1
 #include "treesub.c"
 #include "treespace.c"
@@ -129,14 +133,13 @@ int main (int argc, char *argv[])
 {
    FILE *fout, *fseq=NULL, *fpair[6];
    char pairfs[1][32]={"2base.t"};
-   int i, sconP0=0,s2=0, idata, seed;
    char rstf[96]="rst", ctlf[96]="baseml.ctl", timestr[64];
    char *Mgenestr[]={"diff. rate", "separate data", "diff. rate & pi", 
                      "diff. rate & kappa", "diff. rate & pi & kappa"};
+   int getdistance=1, i, sconP0=0,s2=0, idata, seed;
 
    starttime();
    seed = 4*(int)time(NULL)+1;
-   seed = 30455833;
    SetSeed(seed);
 
    com.ndata=1;
@@ -159,7 +162,7 @@ int main (int argc, char *argv[])
    frub=gfopen("rub","w");  frst=gfopen(rstf,"w"); frst1=gfopen("rst1","w");
 
    if (argc>1)  strcpy(ctlf, argv[1]); 
-   GetOptions (ctlf);
+   GetOptions(ctlf);
    if(com.runmode!=-2) finitials=fopen("in.baseml","r");
 
    fprintf(frst, "Supplemental results for BASEML\n\nseqf:  %s\ntreef: %s\n",
@@ -169,28 +172,13 @@ int main (int argc, char *argv[])
    fprintf(fout, "\nseed used = %d\n", seed);
 #endif
 
-/*
-   fprintf(fout,"3\n");
-   for(i=0; i<39; i++) {
-      fprintf(fout,"123");
-   }
-   FPN(fout); FPN(fout);
-   for(i=0; i<251; i++) {
-      fprintf(fout,"123");
-      if((i+1)%20==0) FPN(fout);
-   }
-   fprintf(fout," 12\n\n");
-   for(i=0; i<116; i++) {
-      fprintf(fout,"4");
-   }
-   FPN(fout);
-exit(0);
-*/
-
    fpair[0]=(FILE*)gfopen(pairfs[0],"w");
-   com.sspace=100000*sizeof(double);
+
+   /* for stepwise addition, com.sspace should be calculated using com.ns. */
+   com.sspace=1000000*sizeof(double);
    if((com.space=(double*)malloc(com.sspace))==NULL) 
       error2("oom space");
+
    if(com.clock==5 || com.clock==6)
       DatingHeteroData(fout);
 
@@ -203,15 +191,12 @@ exit(0);
       if (com.ndata>1) {
          printf("\nData set %4d\n", idata+1);
          fprintf(fout, "\n\nData set %4d\n", idata+1);
+
          fprintf(frst1, "%4d", idata+1);
       }
-      if (idata)  GetOptions (ctlf);
-      if (com.readpattf) {
-         if (com.rho || com.Mgene) error2("rho or Mgene for readpattf.");
-         ReadPatternFreq (fout, com.seqf);
-      }
-      else
-         ReadSeq ((com.verbose?fout:NULL), fseq);
+      if(idata)  GetOptions(ctlf); /* com.cleandata is read from here again. */
+      ReadSeq ((com.verbose?fout:NULL), fseq, com.cleandata);
+      if (com.rho && com.readpattern) error2("rho doesn't work with readpattern.");
       if(com.ndata==1) fclose(fseq);
       i=(com.ns*2-1)*sizeof(struct TREEN);
       if((nodes=(struct TREEN*)malloc(i))==NULL) error2("oom");
@@ -239,7 +224,7 @@ exit(0);
         || (com.Mgene>1 && com.nhomo>1) 
         || (com.Mgene>=2 && (com.model==UNREST||com.model==UNRESTu)))
          error2 ("model || Mgene");
-      fprintf(fout,"BASEML (in %s)  %s  %s ", VerStr,com.seqf,models[com.model]);
+      fprintf(fout,"\nBASEML (in %s)  %s  %s ", VerStr,com.seqf,models[com.model]);
       if(com.clock) fprintf(fout," %s ",clockstr[com.clock]);
       if (!com.nparK && com.alpha && com.rho) fprintf (fout, "  Auto-");
       if (com.alpha) fprintf (fout,"dGamma (ncatG=%d)", com.ncatG);
@@ -249,18 +234,19 @@ exit(0);
       if (com.nhomo>1)
          fprintf(fout,"\nNonhomo:%2d  fix_kappa%2d\n",com.nhomo,com.fix_kappa);
       if (com.nparK && com.ncatG>3)
-         printf("\a\n%d rate categories for nonparametric model?", com.ncatG);
+         printf("\a\n%d rate categories for nonparametric model?\n", com.ncatG);
       if (com.nparK) fprintf(fout,"\nnparK:%4d  K:%4d\n",com.nparK,com.ncatG);
 
-      i=com.ns*(com.ns-1)/2;
-      SeqDistance=(double*)realloc(SeqDistance,i*sizeof(double));
-      ancestor=(int*)realloc(ancestor, i*sizeof(int));
-      if(SeqDistance==NULL||ancestor==NULL) error2("oom distance&ancestor");
-
+      if(getdistance) {
+         i=com.ns*(com.ns-1)/2;
+         SeqDistance=(double*)realloc(SeqDistance,i*sizeof(double));
+         ancestor=(int*)realloc(ancestor, i*sizeof(int));
+         if(SeqDistance==NULL||ancestor==NULL) error2("oom distance&ancestor");
+      }
       Initialize (fout);
       if (com.Mgene==3) FOR (i,com.ngene) xtoy(com.pi,com.piG[i],4);
 
-      if (com.model==JC69 && !com.print) 
+      if (com.model==JC69 && !com.readpattern && !com.print) 
          PatternJC69like(fout);
 
       if(!com.cleandata) {
@@ -281,7 +267,7 @@ exit(0);
 
       /* FOR(i,com.ns*2-1) xtoy(com.pi,nodes[i].pi, 4);  check this? */
 
-      DistanceMatNuc(fout,fpair[0],com.model,com.alpha);
+      if(getdistance) DistanceMatNuc(fout,fpair[0],com.model,com.alpha);
 
       if (com.Mgene==1)        MultipleGenes (fout, fpair, com.space);
       else if (com.runmode==0) Forestry (fout);
@@ -315,9 +301,9 @@ FILE *ftree;
 int Forestry (FILE *fout)
 {
    static int times=0;
-   int status=0, inbasemlg=0, i,j=0, itree,ntree, np,np0,iteration=1;
+   int status=0, inbasemlg=0, i,j=0, itree=0,ntree, np,np0,iteration=1;
    int pauptree=0, btree=0, haslength;
-   double x[NP], xcom[NP-NBRANCH], lnL,lnL0=0,lnLbest=0,e=1e-7, nchange=-1;
+   double x[NP], xcom[NP-NBRANCH], lnL,lnL0=0,lnLbest=0,e=1e-8, nchange=-1;
    double xb[NP][2], tl=0, *var=NULL;
    FILE *finbasemlg=NULL, *frate=NULL;
 
@@ -330,33 +316,19 @@ int Forestry (FILE *fout)
    flnf=gfopen("lnf","w+");
    fprintf(flnf,"%6d %6d %6d\n", ntree, com.ls, com.npatt);
 
-   if(!com.cleandata) InitConditionalPNode ();
+   if(!com.cleandata) InitConditionalPNode();
 
    for(itree=0; ntree==-1||itree<ntree; itree++,iteration=1) {
-      if((pauptree && PaupTreeRubbish(ftree)) || 
-         ReadaTreeN(ftree,&haslength,&i,0,1)) { puts("\nend of tree file."); break; }
+      if(ReadaTreeN(ftree,&haslength,&i,0,1)) 
+         { puts("\nend of tree file."); break; }
 
       if(noisy) printf("\nTREE # %2d: ", itree+1);
 
-    /* to retrive results for the angiosperm data set */
-/*
-{
-int keep[600]={0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-      GetSubTreeN(keep, (int*)com.space);
-      OutaTreeN(fout,1,1); FPN(fout);
-      FOR(i,tree.nnode) {
-         FOR(j,tree.nnode) 
-            if(com.space[j]==i) break;
-      }
-      printf("printed subtree %2d\n", itree+1);
-      continue;
-}
-*/
       fprintf (fout,"\nTREE # %2d:  ", itree+1);
       fprintf (frub,"\n\nTREE # %2d\n", itree+1);
       if(com.print) fprintf (frst,"\n\nTREE # %2d\n", itree+1);
       fprintf (flnf,"\n\n%2d\n", itree+1);
+
 
       LASTROUND=0;
       if (com.fix_blength==2 && !haslength) error2("no branch lengths in tree");
@@ -451,6 +423,7 @@ fflush(frst1);
       FOR(i,np) fprintf(fout," %8.5f",x[i]);  FPN(fout); fflush(fout);
       if(inbasemlg) matout(finbasemlg,x,1,np);
 
+
       if (com.getSE) {
          if(np>100) puts("Calculating SE's");
          if(com.sspace<np*(np+1)*(int)sizeof(double)) {
@@ -466,10 +439,10 @@ fflush(frst1);
          FPN(fout);
          if (com.getSE==2) matout2(fout, var, np, np, 15, 10);
 
-
+/*
 for(i=0; i<com.ntime; i++) fprintf(frst1," %9.5f", x[i]);
 for(i=0; i<com.ntime; i++) fprintf(frst1," %9.5f", sqrt(var[i*np+i]));
-
+*/
 /*
          gradient (np, x, lnL, com.space, com.plfun, com.space+np, 1);
          FOR(i,np) FOR(j,np) var[i*np+j]=com.space[i]*com.space[j];
@@ -486,18 +459,24 @@ for(i=0; i<com.ntime; i++) fprintf(frst1," %9.5f", sqrt(var[i*np+i]));
       /* GroupDistances(); */
 
       if(com.nbtype>1)
-         fputs("\nWarning: branch rates are not yet applied in tree length and branch lengths",fout);
-      if(AbsoluteRate)
-         fputs("\nNote: mutation rate is not applied to tree length.  Tree has times, for TreeView",fout);
-
-      for(i=0,tl=0;i<tree.nnode;i++) 
-         if(i!=tree.root) tl+=nodes[i].branch;
-      fprintf(fout,"\ntree length = %9.5f%s\n",tl,com.ngene>1?" (1st gene)":"");
-      if(com.readpattf)  { FPN(fout); OutaTreeN(fout,0,1); FPN(fout); }
-      else {
-         FPN(fout); OutaTreeN(fout,1,0); FPN(fout);
-         FPN(fout); OutaTreeN(fout,1,1); FPN(fout);
+         fprintf(fout,"\nWarning: branch rates are not yet applied in tree length and branch lengths");
+      if(AbsoluteRate) {
+         fprintf(fout,"\nNote: mutation rate is not applied to tree length.  Tree has times, for TreeView\n");
+         for(i=0;i<tree.nnode;i++)  nodes[i].branch*=ScaleTimes_TipDate;
       }
+
+      if(!AbsoluteRate) {
+         for(i=0,tl=0;i<tree.nnode;i++) 
+            if(i!=tree.root) tl+=nodes[i].branch;
+         fprintf(fout,"\ntree length = %9.5f%s\n",tl,com.ngene>1?" (1st gene)":"");
+      }
+      FPN(fout); OutaTreeN(fout,1,0); FPN(fout);
+      FPN(fout); OutaTreeN(fout,1,1); FPN(fout);
+
+      if(TipDate) {  /* scale back the times in nodes[].branch */
+         for(i=0;i<tree.nnode;i++)  nodes[i].branch/=ScaleTimes_TipDate;
+      }
+
       if(com.np-com.ntime||com.clock)  DetailOutput(fout,x,var);
       if (status) {
          printf ("convergence?\n");  fprintf (fout,"check convergence..\n");
@@ -513,14 +492,15 @@ for(i=0; i<com.ntime; i++) fprintf(frst1," %9.5f", sqrt(var[i*np+i]));
 
       com.print-=9;  com.plfun(x, np);  com.print+=9;
       if (com.print) {
-         if (com.plfun!=lfun)  lfunRates (frate, x, np);
+         if (com.plfun!=lfun)  lfunRates(frate, x, np);
+
          /** think about more-general models **/
          if (com.nhomo==0 && com.nparK==0 && com.model<=REV && com.rho==0
             /* && com.clock<=1 */)  /* clock to be fixed */
             AncestralSeqs(frst, x);
       }
 
-      if(com.coding && !AbsoluteRate) { 
+      if(com.coding && com.Mgene>1 && !AbsoluteRate) {
          fputs("\nTree with branch lengths for codon models:\n",fout);
          FOR(i,tree.nnode) nodes[i].branch*=(1+com.rgene[1]+com.rgene[2]);
          FPN(fout); OutaTreeN(fout,1,1); FPN(fout);
@@ -596,8 +576,9 @@ void DetailOutput (FILE *fout, double x[], double var[])
       for(i=0;i<tree.nnode;i++,FPN(fout)) {
          fprintf (fout, "Node #%d  (", i+1);
          FOR (j,4) fprintf (fout, " %7.5f ", nodes[i].pi[j]);
+         fprintf(fout,")");
          if(com.alpha==0) {
-            fprintf(fout,")  [");
+            fprintf(fout,"  [");
             FOR(j,4) fprintf(fout," %7.5f",oldfreq[i*4+j]);
             fprintf(fout," ]");
          }
@@ -656,9 +637,9 @@ void DetailOutput (FILE *fout, double x[], double var[])
       if (!com.fix_alpha)  
          fprintf(fout,"\nalpha (gamma, K=%d) = %8.5f", com.ncatG,(com.alpha=x[k++]));
       if(com.nalpha>1) 
-         DiscreteGamma(com.freqK,com.rK,com.alpha,com.alpha,com.ncatG,0);
-      fprintf(fout, "\nr: "); FOR(i,com.ncatG) fprintf(fout," %8.5f",com.rK[i]);
-      fprintf(fout, "\nf: "); FOR(i,com.ncatG) fprintf(fout," %8.5f",com.freqK[i]);
+         DiscreteGamma(com.freqK,com.rK,com.alpha,com.alpha,com.ncatG,DGammaMean);
+      fprintf(fout, "\nrate: "); FOR(i,com.ncatG) fprintf(fout," %8.5f",com.rK[i]);
+      fprintf(fout, "\nfreq: "); FOR(i,com.ncatG) fprintf(fout," %8.5f",com.freqK[i]);
       FPN(fout);
    }
    if (!com.fix_rho) {
@@ -666,13 +647,11 @@ void DetailOutput (FILE *fout, double x[], double var[])
       FPN (fout);
    }
    if (com.nparK>=1 && com.nalpha<=1) {
-      fprintf (fout, "rates for categories:");
-      FOR(i,com.ncatG) fprintf(fout," %8.5f",com.rK[i]);
-      fprintf (fout, "\nfreqs for categories:");
-      FOR(i,com.ncatG) fprintf(fout," %8.5f",com.freqK[i]);
+      fprintf(fout, "\nrate:");  FOR(i,com.ncatG) fprintf(fout," %8.5f",com.rK[i]);
+      fprintf(fout, "\nfreq:");  FOR(i,com.ncatG) fprintf(fout," %8.5f",com.freqK[i]);
       FPN(fout);
    }
-   if (com.rho || com.nparK>=3 && com.nalpha<=1) {
+   if (com.rho || (com.nparK>=3 && com.nalpha<=1)) {
       fprintf (fout, "transition probabilities between rate categories:\n");
       for(i=0;i<com.ncatG;i++,FPN(fout))  FOR(j,com.ncatG) 
          fprintf (fout, " %8.5f", com.MK[i*com.ncatG+j]);
@@ -719,14 +698,13 @@ int GetStepMatrix(char*line)
 
 int GetOptions (char *ctlf)
 {
-   int i, j, nopt=30, lline=2048; 
-   char line[2048], *pline, opt[20], *comment="*#";
-   char *optstr[]={"seqfile","outfile","treefile","noisy",
-        "cleandata", "verbose","runmode", "method",
-        "clock","fix_rgene","Mgene","nhomo","getSE","RateAncestor",
-        "model","fix_kappa","kappa","fix_alpha","alpha","Malpha","ncatG", 
-        "fix_rho","rho","nparK", "ndata", "bootstrap", "Small_Diff","icode", 
-        "readpattf", "fix_blength"};
+   int i, j, nopt=29, lline=4096; 
+   char line[4096], *pline, opt[20], *comment="*#";
+   char *optstr[]={"seqfile","outfile","treefile","noisy", "cleandata", 
+        "verbose","runmode", "method", "clock","fix_rgene","Mgene","nhomo",
+        "getSE","RateAncestor", "model","fix_kappa","kappa",
+        "fix_alpha","alpha","Malpha","ncatG", "fix_rho","rho",
+        "nparK", "ndata", "bootstrap", "Small_Diff","icode", "fix_blength"};
    double t;
    FILE *fctl;
    int ng=-1, markgenes[NGENE];
@@ -797,8 +775,7 @@ matout(F0, data.alpha, 1, min2(ng,com.ndata));
                case (25): com.bootstrap=(int)t;   break;
                case (26): Small_Diff=t;           break;
                case (27): com.icode=(int)t; com.coding=1; break;
-               case (28): com.readpattf=(int)t; break;
-               case (29): com.fix_blength=(int)t; break;
+               case (28): com.fix_blength=(int)t; break;
             }
             break;
          }
@@ -851,7 +828,9 @@ matout(F0, data.alpha, 1, min2(ng,com.ndata));
    if(com.clock>=5 && com.model>=TN93) error2("model & clock imcompatible");
 
    if (com.nhomo>1 && com.runmode>0)  error2("nhomo incompatible with runmode");
+   if (com.runmode==-2) error2("runmode = -2 not implemented in baseml.");
    if (com.clock && com.runmode>2)  error2("runmode & clock?");
+   if (com.runmode)  com.fix_blength=0;
    if (com.runmode==3 && (com.npi || com.nparK))
       error2("runmode incompatible with nparK or nhomo.");
 
@@ -965,13 +944,13 @@ int GetInitials (double x[], int *fromfile)
       if (com.rho)
          AutodGamma(com.MK, com.freqK, com.rK, &t, com.alpha,com.rho,K);
       else
-         DiscreteGamma (com.freqK, com.rK, com.alpha, com.alpha, K, 0);
+         DiscreteGamma (com.freqK, com.rK, com.alpha, com.alpha, K, DGammaMean);
 
 
       if (com.nparK) { xtoy(com.rK, x+k, K-1);  k+=K-1; }
       switch (com.nparK) {
       case (2):                            /* rK & fK */
-         zero(x+k, K-1);       k+=K-1;             break;
+         zero(x+k, K-1);          k+=K-1;          break;
       case (3):                            /* rK & MK (double stochastic) */
          zero(x+k, (K-1)*(K-1));  k+=(K-1)*(K-1);  break;
       case (4):                            /* rK & MK */
@@ -1073,7 +1052,7 @@ getchar();
    if (!com.fix_alpha) {
       com.alpha=x[k++];
       if (com.fix_rho)
-         DiscreteGamma (com.freqK,com.rK,com.alpha,com.alpha,K,0);
+         DiscreteGamma (com.freqK,com.rK,com.alpha,com.alpha,K,DGammaMean);
    }
    if (!com.fix_rho) {
       com.rho=x[k++];
@@ -1139,7 +1118,7 @@ int SetPGene(int igene, int _pi, int _UVRoot, int _alpha, double x[])
    }
    if (_alpha) {
       com.alpha=xcom[com.nrgene+com.nrate+com.npi+igene]; /* check?? */
-      DiscreteGamma(com.freqK,com.rK,com.alpha,com.alpha,com.ncatG,0);
+      DiscreteGamma(com.freqK,com.rK,com.alpha,com.alpha,com.ncatG,DGammaMean);
    }
    return(0);
 }
@@ -1220,6 +1199,7 @@ int ConditionalPNode (int inode, int igene, double x[])
          else           t *= com.rgene[igene];
       }
       GetPMatBranch(PMat, x, t, ison);
+
       if (com.cleandata && nodes[ison].nson<1)  /* tip */
          for(h=pos0; h<pos1; h++)
             FOR(j,n)
@@ -1446,4 +1426,3 @@ Local clock models
       x[ns-1 .. ntime-1]: rates for branches
 
 */
-

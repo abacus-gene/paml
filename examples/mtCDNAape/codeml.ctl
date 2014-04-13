@@ -9,6 +9,7 @@
       seqtype = 1  * 1:codons; 2:AAs; 3:codons-->AAs
     CodonFreq = 2  * 0:1/61 each, 1:F1X4, 2:F3X4, 3:codon table
                    * 4:F1x4MG, 5:F3x4MG, 6:FMutSel3x4, 7:FMutSelCodon
+        clock = 0 * 0:no clock, 1:global clock; 2:local clock
        aaDist = 7  * 0:equal, +:geometric; -:linear, 1-6:G1974,Miyata,c,p,v,a
    aaRatefile = wag.dat * only used for aa seqs with model=empirical(_F)
                    * dayhoff.dat, jones.dat, wag.dat, mtmam.dat, or your own
@@ -25,8 +26,6 @@
         icode = 1  * 0:universal code; 1:mammalian mt; 2-10:see below
         Mgene = 0
                    * codonml: 0:rates, 1:separate; 2:diff pi, 3:diff kapa, 4:all diff
-
-        clock = 0 * 0:no clock, 1:global clock; 2:local clock
 
     fix_kappa = 0  * 1: kappa fixed, 0: kappa to be estimated
         kappa = 1.234567    * initial or fixed kappa

@@ -1,9 +1,8 @@
-0          * 0:paml format (mc.paml); 1:paup format (mc.paup)
+0          * 0,1:seqs or patters in paml format (mc.paml); 2:paup format (mc.nex)
 21234567   * random number seed (odd number)
 
 4 10000 1  * <# seqs>  <# nucleotide sites>  <# replicates>
--1         * <tree length, use -1 if tree has absolute branch lengths>
-
+-1         * <tree length, use -1 if tree below has absolute branch lengths>
 ((human :0.1, chimpanzee :0.1) :0.12, gorilla :0.22, orangutan :0.4);
 
 7          * model: 0:JC69, 1:K80, 2:F81, 3:F84, 4:HKY85, 5:T92, 6:TN93, 7:REV

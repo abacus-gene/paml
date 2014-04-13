@@ -8,6 +8,7 @@
 
       seqtype = 1  * 1:codons; 2:AAs; 3:codons-->AAs
     CodonFreq = 2  * 0:1/61 each, 1:F1X4, 2:F3X4, 3:codon table
+        clock = 0   * 0:no clock, 1:global clock; 2:local clock; 3:TipDate
        aaDist = 0  * 0:equal, +:geometric; -:linear, 1-6:G1974,Miyata,c,p,v,a
    aaRatefile = /../wag.dat
         model = 2
@@ -30,7 +31,6 @@
        Malpha = 0  * different alphas for genes
         ncatG = 10  * # of categories in dG of NSsites models
 
-        clock = 0   * 0:no clock, 1:global clock; 2:local clock; 3:TipDate
         getSE = 0  * 0: don't want them, 1: want S.E.s of estimates
  RateAncestor = 0  * (0,1,2): rates (alpha>0) or ancestral states (1 or 2)
 

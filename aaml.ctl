@@ -8,7 +8,7 @@
                    * 3: StepwiseAddition; (4,5):PerturbationNNI; -2: pairwise
 
       seqtype = 2  * 1:codons; 2:AAs; 3:codons-->AAs
-   aaRatefile = wag.dat * only used for aa seqs with model=empirical(_F)
+   aaRatefile = dat/wag.dat * only used for aa seqs with model=empirical(_F)
                    * dayhoff.dat, jones.dat, wag.dat, mtmam.dat, or your own
 
         model = 3  * 0:poisson, 1:proportional, 2:Empirical, 3:Empirical+F

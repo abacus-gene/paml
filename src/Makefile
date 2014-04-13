@@ -1,11 +1,13 @@
-PRGS =  baseml codeml basemlg pamp evolver yn00 chi2 
+PRGS =  baseml codeml basemlg mcmctree pamp evolver yn00 chi2 
 CC = cc # cc, gcc, cl
 
 CFLAGS = -O4 -funroll-loops -fomit-frame-pointer -finline-functions
+
+#CFLAGS = -mcpu=G5 -O4 -funroll-loops -fomit-frame-pointer -finline-functions
+
 #CFLAGS = -O4
 #CFLAGS = -fast
 
-# for linux running gcc 3 on pentium and athlon
 #CFLAGS = -march=athlon -mcpu=athlon -O4 -funroll-loops -fomit-frame-pointer -finline-functions
 #CFLAGS = -march=pentiumpro -mcpu=pentiumpro -O4 -funroll-loops -fomit-frame-pointer -finline-functions 
 

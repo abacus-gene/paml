@@ -24,7 +24,6 @@
 
         ncatG = 3   * # of categories in dG of NSsites models
 
-        clock = 0   * 0: no clock, unrooted tree, 1: clock, rooted tree
         getSE = 0   * 0: don't want them, 1: want S.E.s of estimates
 
    Small_Diff = 3e-7

@@ -1,9 +1,10 @@
-0           * 0:paml format (mc.paml); 1:paup format (mc.paup)
+0          * 0,1:seqs or patters in paml format (mc.paml); 2:paup format (mc.nex)
 13147       * random number seed (odd number)
 
 5 10000 5   * <# seqs>  <# sites>  <# replicates>
 
--1
+-1         * <tree length, use -1 if tree below has absolute branch lengths>
+
 (((Human:0.06135, Chimpanzee:0.07636):0.03287, Gorilla:0.08197):0.11219, Orangutan:0.28339, Gibbon:0.42389);
 
 .5 8        * <alpha; see notes below>  <#categories for discrete gamma>
