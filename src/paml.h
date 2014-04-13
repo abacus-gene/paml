@@ -27,7 +27,7 @@
 #define beep putchar('\a')
 #define spaceming2(n) ((n)*((n)*2+9+2)*sizeof(double))
 
-int ReadSeq (FILE *fout, FILE *fseq, int cleandata);
+int ReadSeq (FILE *fout, FILE *fseq, int cleandata, int locus);
 int ScanFastaFile(FILE *f, int *ns, int *ls, int *aligned);
 void EncodeSeqs (void);
 void SetMapAmbiguity(void);
@@ -39,6 +39,7 @@ int PatternWeightJC69like (FILE *fout);
 int PatternWeightSimple (int CollapsJC);
 int Site2Pattern (FILE *fout);
 
+double getRoot(double (*f)(double), double (*df)(double), double initVal);
 int f_and_x(double x[], double f[], int n, int fromx, int LastItem);
 void bigexp(double lnx, double *a, double *b);
 void SetSeed (int seed, int PrintSeed);
@@ -50,6 +51,9 @@ double reflect(double x, double a, double b);
 #define rndexp(mean) (-(mean)*log(rndu()))
 double rnduM0V1 (void);
 double rndNormal(void);
+double rndBox(void);
+double rndAirplane(void);
+double rndParabola(void);
 double rndBactrian(void);
 double rndBactrianTriangle(void);
 double rndBactrianLaplace(void);
@@ -85,18 +89,20 @@ double CDFBeta(double x, double p, double q, double lnbeta);
 double QuantileBeta(double prob, double p, double q, double lnbeta);
 double Quantile(double(*cdf)(double x,double par[]), double p, double x, double par[], double xb[2]);
 double QuantileNormal (double prob);
-double PDFNormal (double x, double mu, double sigma2);
-double CDFNormal (double x);
-double logCDFNormal (double x);
-double PDFCauchy (double x, double m, double sigma);
-double PDFloglogistic (double x, double loc, double s);
-double PDFlogt2 (double x, double loc, double s);
-double PDFt2 (double x, double m, double s);
-double PDFt4 (double x, double m, double s);
-double PDFt (double x, double loc, double scale, double df, double lnConst);
-double CDFt (double x, double loc, double scale, double df, double lnbeta);
-double PDFSkewT (double x, double loc, double scale, double shape, double df);
-double PDFSkewN (double x, double loc, double scale, double shape);
+double PDFNormal(double x, double mu, double sigma2);
+double logPDFNormal(double x, double mu, double sigma2);
+double CDFNormal(double x);
+double logCDFNormal(double x);
+double PDFCauchy(double x, double m, double sigma);
+double PDFloglogistic(double x, double loc, double s);
+double PDFlogt2(double x, double loc, double s);
+double PDFt2(double x, double m, double s);
+double PDFt4(double x, double m, double s);
+double PDFt(double x, double loc, double scale, double df, double lnConst);
+double CDFt(double x, double loc, double scale, double df, double lnbeta);
+double PDFSkewT(double x, double loc, double scale, double shape, double df);
+double PDFSkewN(double x, double loc, double scale, double shape);
+double logPDFSkewN(double x, double loc, double scale, double shape);
 
 int StirlingS2(int n, int k);
 double lnStirlingS2(int n, int k);
@@ -229,10 +235,10 @@ int correl (double x[], double y[], int n, double *mx, double *my,
             double *vxx, double *vxy, double *vyy, double *r);
 int comparefloat  (const void *a, const void *b);
 int comparedouble (const void *a, const void *b);
-double Eff_IntegratedCorrelationTime (double x[], int n);
+double Eff_IntegratedCorrelationTime(double x[], int n, double *mx, double *varx);
 int HPDinterval(double x[], int n, double HPD[2], double alpha);
 int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int propternary);
-int DescriptiveStatisticsSimple (FILE *fout, char infile[], int nbin, int SkipColumn);
+int DescriptiveStatisticsSimple (FILE *fout, char infile[], int SkipColumn1);
 int splitline (char line[], int fields[]);
 int scanfile (FILE*fin, int *nrecords, int *nx, int *ReadHeader, char line[], int ifields[]);
 
@@ -309,9 +315,8 @@ void BranchLengthBD(int rooted, double birth, double death, double sample,
 int RandomLHistory (int rooted, double space[]);
 
 void DescentGroup (int inode);
-void BranchPartition (char partition[], int parti2B[]);
-int NSameBranch (char partition1[],char partition2[], int nib1,int nib2,
-    int IBsame[]);
+void BranchPartition (char partition[]);
+int NSameBranch (char partition1[],char partition2[], int nib1,int nib2, int IBsame[]);
 
 int RootTN93 (int ischeme, double kapa1, double kapa2, double pi[], 
     double *scalefactor, double Root[]);
@@ -323,7 +328,7 @@ int DownStates (int inode);
 int PathwayMP (FILE *fout, double space[]);
 double MPScore (double space[]);
 double RemoveMPNinfSites (double *nsiteNinf);
-void MarkStopCodons(void);
+int MarkStopCodons(void);
 
 int MPInformSites (void);
 int CollapsNode (int inode, double x[]);
@@ -373,13 +378,18 @@ enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrAge=8, PrOmega=16} OutTreeOptions;
 
 #define mBactrian  0.95
 #define sBactrian  sqrt(1-mBactrian*mBactrian)
+#define aBox 0.5
+#define bBox (sqrt(12 - 3*aBox*aBox) - aBox) / 2
+#define aAirplane 1.0
+#define aParab 1.0
 
-#define MAXNFIELDS 10000
+
+#define MAXNFIELDS 100000
 
 #define PAML_RELEASE      0
 
-#define FullSeqNames      1   /* 1: numbers at the beginning of sequence name are part of name */
+#define FullSeqNames      0   /* 1: numbers at the beginning of sequence name are part of name */
 
-#define pamlVerStr "paml version 4.7b, October 2013"
+#define pamlVerStr "paml version 4.8, March 2014"
 
 #endif

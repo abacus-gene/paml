@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
          fprintf(frst, "\t%d", idata+1);
       }
 
-      ReadSeq((com.verbose?fout:NULL), fseq, com.cleandata);
+      ReadSeq((com.verbose?fout:NULL), fseq, com.cleandata, 0);
       SetMapAmbiguity();
 
       sspace = max2(200000,64*com.ns*sizeof(double));

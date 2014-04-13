@@ -34,6 +34,7 @@
 extern char BASEs[],AAs[];
 extern int noisy, NFunCall, NEigenQ, NPMatUVRoot, *ancestor, GeneticCode[][64];
 extern double *SeqDistance;
+extern double SS,NN,Sd,Nd; /* kostas, SS=# of syn. sites, NN=# of non-syn. sites, Sd=# of syn. subs., Nd=# of non-syn. subs. as defined in DistanceMatNG86 in treesub.c */
 
 int  Forestry (FILE *fout);
 int  GetMemPUVR(int nc, int nUVR);
@@ -93,6 +94,17 @@ void SimulateData2s61(void);
 void Ina(void);
 void d4dSdN(FILE*fout);
 
+//kostas functions
+double logprior(double t, double w, double par[]);
+double logistic_transformation(double point, double logmean, double stdlogpar);
+double loglikelihood(double Ptmatrix[]);
+int EstVariances(double *var);
+int BayesPairwise(int is, int js, double x[], double var[], double maxlogl,
+                    int npoints, double xb[][2], double space[]);
+double logP(double x[], int np);
+double CDFLogis( double x, double m, double s );
+//end of kostas functions
+
 struct common_info {
    unsigned char *z[NS];
    char *spname[NS], seqf[512],outf[512],treef[512],daafile[512], cleandata;
@@ -109,6 +121,7 @@ struct common_info {
    double f3x4[NGENE][12], *pf3x4, piAA[20];
    double freqK[NCATG], rK[NCATG], MK[NCATG*NCATG],daa[20*20], *conP, *fhK;
    double (*plfun)(double x[],int np);
+   double hyperpar[4]; /* kostas, the hyperparameters for the prior distribution of distance & omega */
    double omega_fix;  /* fix the last w in the NSbranchB, NSbranch2 models 
           for lineages.  Useful for testing whether w>1 for some lineages. */
    int     conPSiteClass; /* conPSiteClass=0 if (method==0) and =1 if (method==1)?? */
@@ -148,6 +161,7 @@ struct SPECIESTREE {
 struct DATA { /* locus-specific data and tree information */
    int ns[NGENE], ls[NGENE], npatt[NGENE], ngene, lgene[NGENE];
    int root[NGENE+1], BlengthMethod, fix_nu, nbrate[NGENE], icode[NGENE];
+   int datatype[1];
    char   *z[NGENE][NS], cleandata[NGENE];
    char   idaafile[NGENE], daafile[NGENE][40];
    double *fpatt[NGENE], lnpT, lnpR, lnpDi[NGENE];
@@ -170,6 +184,7 @@ int LASTROUND;
 int IClass=-1;
 
 int OmegaAA[190], AA1STEP[190];
+enum {DNA, AA, CODON, MORPHC} DATATYPE;
 
 double _rateSite=1;
 double Qfactor_NS, Qfactor_NS_branch[NBTYPE];
@@ -275,8 +290,10 @@ scanf("%d", &KGaussLegendreRule);
 
    GetOptions(ctlf);
    cleandata0 = com.cleandata;
-   if(com.runmode!=-2) finitials=fopen("in.codeml","r");
-   else                getdistance = 1;
+   if(com.runmode!=-2 && com.runmode!=-3) 
+      finitials=fopen("in.codeml","r");
+   else
+      getdistance = 1;
 
    fprintf(frst, "Supplemental results for CODEML (seqf: %s  treef: %s)\n", 
       com.seqf, com.treef);
@@ -319,7 +336,7 @@ scanf("%d", &KGaussLegendreRule);
    if(com.seqtype==1) {
       for(i=0; i<3; i++) 
          fpair[i]=(FILE*)gfopen(pairfs[i],"w");
-      if(com.runmode==-2)
+      if(com.runmode==-2 || com.runmode==-3)
          for(; i<6;i++) fpair[i]=(FILE*)gfopen(pairfs[i],"w");
    }
    else if(com.runmode==-2)
@@ -356,7 +373,7 @@ scanf("%d", &KGaussLegendreRule);
       com.cleandata = cleandata0;
 
       /* ReadSeq may change seqtype*/
-      ReadSeq((com.verbose?fout:NULL), fseq, com.cleandata);
+      ReadSeq((com.verbose?fout:NULL), fseq, com.cleandata, 0);
       SetMapAmbiguity();
       
       /* AllPatterns(fout); */
@@ -369,6 +386,7 @@ scanf("%d", &KGaussLegendreRule);
          if(com.seqtype==1 && com.npi)
             error2("codon models (estFreq) not implemented for ngene > 1");
          if(com.runmode==-2 && com.Mgene!=1) error2("use Mgene=1 for runmode=-2?");
+         if(com.runmode==-3 && com.Mgene!=1) error2("use Mgene=1 for runmode=-3?");
          if(com.model) error2("NSbranchsites with ngene.");
          if(com.NSsites) error2("NSsites with ngene.");
          if(com.aaDist>=FIT1)  /* because of pcodon0[] */
@@ -490,7 +508,7 @@ FPN(frst1); fflush(frst1);
 continue;
 */
 
-      if(com.runmode==-2 && com.Mgene!=1) {
+      if((com.runmode==-2 || com.runmode==-3) && com.Mgene!=1) {
          if(com.seqtype==CODONseq) 
             PairwiseCodon(fout,fpair[3],fpair[4],fpair[5],com.space);  
          else
@@ -576,8 +594,10 @@ fprintf(frst1, " false positive: %6d\n", npositive);
 
    fclose(frst);
    k=0;
-   if(com.seqtype==1) k=(com.runmode==-2?6:3);
-   else if (com.runmode==-2) k=1;
+   if(com.seqtype==1) 
+      k = ((com.runmode==-2 || com.runmode==-3) ? 6 : 3);
+   else if (com.runmode==-2)
+      k=1;
    FOR(i,k) fclose(fpair[i]);
    if(com.ndata>1 && fseq) fclose(fseq);  
    fclose(fout);  fclose(frub);  
@@ -1126,9 +1146,9 @@ void DetailOutput (FILE *fout, double x[], double var[])
                  fprintf(fout," %11.8f", com.piAA[j]);
                  if((j+1)%10==0) FPN(fout);
                }
-               fprintf(fout, "\nfitness for %d codons (amino acid %c has fitness 0)\n", com.ncode, AAs[19]);
                i = GeneticCode[com.icode][FROM61[com.ncode-1]];
                y = (i == 19 ? 0 : com.ppi[3+i]);
+               fprintf(fout, "\nfitness for %d codons (amino acid %c has fitness 0)\n", com.ncode, AAs[i]);
                for(j=0; j<com.ncode; j++) {
                   i = GeneticCode[com.icode][FROM61[j]];
                  fprintf(fout," %9.6f", (i == 19 ? 0 : com.ppi[3+i])-y);
@@ -1481,6 +1501,9 @@ int GetOptions (char *ctlf)
    char *daafiles[]={"", "grantham.dat", "miyata.dat", 
                      "g1974c.dat","g1974p.dat","g1974v.dat","g1974a.dat"};
 
+   /* kostas, default prior for t & w */
+   com.hyperpar[0]=1.1; com.hyperpar[1]=1.1; com.hyperpar[2]=1.1; com.hyperpar[3]=2.2;
+
    fctl=gfopen(ctlf,"r");
    if (noisy) printf ("\n\nReading options from %s..\n", ctlf);
    for (;;) {
@@ -1503,7 +1526,9 @@ int GetOptions (char *ctlf)
                case ( 3): com.seqtype=(int)t;     break;
                case ( 4): noisy=(int)t;           break;
                case ( 5): com.cleandata=(char)t;  break;
-               case ( 6): com.runmode=(int)t;     break;
+               case ( 6): 
+                  sscanf(pline+1, "%d%lf%lf%lf%lf", &com.runmode, com.hyperpar, com.hyperpar+1, com.hyperpar+2, com.hyperpar+3);            
+                  break;
                case ( 7): com.method=(int)t;      break;
                case ( 8): com.clock=(int)t;       break;
                case ( 9): 
@@ -1638,6 +1663,8 @@ int GetOptions (char *ctlf)
          error2("model FMutSel + Mgene not implemented");
       if(com.runmode==-2 && com.seqtype==1 && com.npi)
          error2("runmode = -2 not implemented for codon models with frequencies");
+      if(com.runmode==-3 && com.seqtype==1 && com.npi)
+         error2("runmode = -3 not implemented for codon models with frequencies");
       if(com.hkyREV && (com.aaDist || com.Mgene>1))
          error2("hkyREV with aaDist or Mgene: check options?\a");
       if(com.NSsites<0 || com.NSsites>maxNSsitesModels || (com.NSsites>13 && com.NSsites<22))
@@ -1691,7 +1718,7 @@ int GetOptions (char *ctlf)
             { com.ncatG=3; puts("ncatG=3 reset."); }
          if(com.kappa<0)  error2("kappa..");
          if (com.runmode)  com.fix_blength=0;
-         if(com.runmode==-2 && (com.NSsites||com.alpha||com.aaDist))
+         if((com.runmode==-2 || com.runmode==-3) && (com.NSsites||com.alpha||com.aaDist))
             error2("wrong model for pairwise comparison.\ncheck NSsites, alpha, aaDist, model etc.");
          if(com.runmode>0 && com.model==2) error2("tree search & model");
          if(com.aaDist && com.NSsites!=0 && com.NSsites!=NSdiscrete)
@@ -1777,7 +1804,7 @@ int GetOptions (char *ctlf)
    else
       error2 ("seqtype..");
 
-   if(com.runmode==-2 && com.cleandata==0) {
+   if((com.runmode==-2 || com.runmode==-3) && com.cleandata==0) {
       com.cleandata=1; 
       if(noisy) puts("gaps are removed for pairwise comparison.");
    }
@@ -2033,7 +2060,7 @@ int GetInitialsCodon (double x[])
          else if (!com.fix_kappa) 
             x[k++] = com.kappa;
          if(com.codonf==FMutSel0 || com.codonf==FMutSel) {
-            for(i=0;i<3;i++)   /* pi_TCA */
+            for(i=0; i<3; i++)   /* pi_TCA */
                x[k++] = com.pf3x4[i]/(com.pf3x4[3]+.02*rndu());
 
             if(com.npi>3 && com.codonf==FMutSel0) {
@@ -2735,11 +2762,12 @@ int GetCodonFreqs (void)
       }
       for(i=0,zero(com.piAA,20); i<n; i++)
          com.piAA[GeneticCode[com.icode][FROM61[i]]] += com.pi[i];
-      abyx (1./sum(com.piAA,20), com.piAA, 20);
+      abyx(1./sum(com.piAA,20), com.piAA, 20);
    }
    else if (com.codonf==FMutSel0 && com.npi==3) {
       for (i=0,zero(mutbias,20); i<n; i++) {
-         ic=FROM61[i];  iaa = GeneticCode[com.icode][ic];
+         ic = FROM61[i];
+         iaa = GeneticCode[com.icode][ic];
          b[0]=ic/16; b[1]=(ic/4)%4; b[2]=ic%4;
          mutbias[iaa] += com.pf3x4[b[0]]*com.pf3x4[b[1]]*com.pf3x4[b[2]];
       }
@@ -3069,7 +3097,6 @@ double GetMutationMultiplier (int i, int j, int pos, int from[3], int to[3])
    if(com.npi && (com.codonf==FMutSel || com.codonf==FMutSel0)) {
       eFit1 = max2(com.pi[i], small);
       eFit2 = max2(com.pi[j], small);
-
       eFit1 /= com.pf3x4[from[0]] * com.pf3x4[from[1]] * com.pf3x4[from[2]];
       eFit2 /= com.pf3x4[  to[0]] * com.pf3x4[  to[1]] * com.pf3x4[to[2]];
 
@@ -4462,8 +4489,15 @@ int PairwiseCodon (FILE *fout, FILE*fds, FILE*fdn, FILE*ft, double space[])
          if(com.fix_kappa && com.fix_omega)  
             eigenQcodon(1,-1,NULL,NULL,NULL,Root,U,V, &mr, com.pkappa,com.omega,PMat);
 
+
+         if( com.runmode == -3 ){ //kostas, save values 
+            x[4] = x[0];  
+            x[5] = x[2];  
+         }
+
+
          if(np)
-            ming2(noisy>3?frub:NULL,&lnL,lfun2dSdN,NULL,x,xb, space,e,np);
+            ming2(noisy>3?frub:NULL, &lnL, lfun2dSdN, NULL, x, xb, space, e, np);
          else {  x[1]=x[2]=com.kappa=com.omega=0; lnL=0; }
          
          lnLmodel = lnL;
@@ -4548,6 +4582,10 @@ int PairwiseCodon (FILE *fout, FILE*fds, FILE*fdn, FILE*ft, double space[])
             fprintf(fout," (by method 2)\n");
 
          }
+
+
+         if(com.runmode == -3)  BayesPairwise( is, js, x, var, lnL, 32, xb, space ); //kostas
+
          fflush(frst);  fflush(fout);
       }  /* for (js) */
       FPN(fds); FPN(fdn); FPN(ft);
@@ -4558,6 +4596,280 @@ int PairwiseCodon (FILE *fout, FILE*fds, FILE*fdn, FILE*ft, double space[])
    com.npatt = npatt0;  FOR(h,npatt0) com.fpatt[h] = fpatt0[h];  free(fpatt0);
    return (0);
 }
+
+
+
+
+
+
+//kostas
+int BayesPairwise(int is, int js, double x[], double var[], double maxlogl,
+                    int npoints, double xb[][2], double space[])
+{
+/*This function returns estimates of E[ t | x ], E[ w | x ], Var[ t | x ], Var[ w | x ],
+Cov[ w,t | x ], Corr[ w,t | x], P[ w>1 | x ]
+*/
+   double *nodes = NULL, *weights = NULL;  //contain the points and weights
+   double interm_results[7] = {0,0,0,0,0,0,0}; //contain the normalizing_constant, E[w|x], E[t|x], E[w^2|x], E[t^2|x], E[w*t|x], P[w>1|x]  
+   register int i = 0, j = 0;
+   int w_index = 0, t_index = 0, way = 0, setp = 0;
+   double w_value, t_value, w_weight, t_weight, sign, scalefactor = 0, Qmatrix[64*64],
+          z1, z2, logl, logposterior, hvalue, m1, m2, s1, s2, rvalue,
+		  bayes_est[7], maxlogP, e = 1e-7, xp[2], kappa[1], pS, pN, sdiff[3] = {1e-7, 1e-8, 1e-9}; 
+   double FL, alpha, u, w_p, Rp[64*64], Up[64*64], Vp[64*64], PMatp[64*64], logl_p, logposterior_p,
+	      hvalue_p, qvalue;  //For calculation of P(w>1|x)
+   char ch1[] = "E[t]", ch2[] = "E[w]", ch3[] = "SE[t]", ch4[] = "SE[w]",
+	    ch5[] = "Cov[t,w]", ch6[] = "Corr[t,w]", ch7[] = "P[w > 1]";   
+   
+
+   if( com.fix_kappa == 1 && com.fix_omega == 0 ){
+        x[2] = x[1];
+        x[1] = com.kappa;             
+   }
+   if( com.fix_omega == 1 )  
+        return (1);
+    
+   pS = Sd/SS; pN = Nd/NN;
+   if( pS == 0 && pN == 0 ){ x[1] = 2;  }      //fix value of k at 2 when sequences are identical
+   
+   if( com.codonf == 3 ){                                    
+      for( i = 0; i < 61; i++ ){                                           
+          if( com.pi[i] < 1e-15 ) com.pi[i] = 1e-15;       
+      }                                                  
+   }
+    
+  if( ( pS>0 && pS<0.74 ) && ( pN>0 && pN<0.74 ) && x[0] > 0.001 && x[0] < 10 && x[2] > 0.005 && x[2] < 5 ){      
+	  // Choice of 0.001, 0.005, 5 and 10 is arbitrary. We just need to exclude extreme 
+	  // values because extreme values are shrinked and if we use the MLES to define
+	  // the location parameters of logistic distributions the transformation won't be proper  
+	  way = 0;
+	  EstVariances( var );										  
+   }															  
+   else{
+      way = 1;
+	  
+	  if( x[0] < 10 ) xp[0] = x[0]; else xp[0] = x[4]; //initial t value for ming2. MAP is usually far from an extreme ML value for a prior mean   ~1.
+	  if( x[2] < 10 ) xp[1] = x[2]; else xp[1] = x[5]; //initial w value for ming2. MAP is usually far from an extreme ML value for a prior mean ~0.5.
+	  
+	  if( pS == 0 && pN == 0 )    xp[1] = com.hyperpar[2] / com.hyperpar[3];  //in case of identical sequences posterior mean would be close to the prior mean
+	  //Set the boundaries for minimization 
+      xb[0][0] = 1e-5;   xb[0][1] = 100;
+      xb[1][0] = 1e-5;   xb[1][1] = 200;
+       	 	   
+      if( com.fix_kappa == 0 ){
+         com.fix_kappa = 1;  com.kappa = x[1]; com.nkappa = 0, com.np = 2;
+	  }	
+
+      x[5] = Small_Diff;   //Store the value of Small_Diff. I return the initial value back below.   
+	  Small_Diff = 1e-9;
+  
+	  ming2( NULL, &maxlogP, logP, NULL, xp, xb, space, e, 2 );
+	  printf( "\nMAPs:  %.5f  %.5f\n", xp[0], xp[1] );
+
+	  Small_Diff = 1e-6;
+      
+      Hessian( 2, xp, maxlogP, space, var, logP, var+2*2 );
+	  //Explores whether different values 1e-9 <= Small_Diff <= 1e-7 give appropriate Hessian matrix (No negative or zero variance after Hessian inversion)
+	  if( ( var[0] * var[3] - var[1] * var[2] ) < 0 || var[0] < 0 ){  //check condition for local minimum
+	        for( i=0; i<3; i++){
+			     Small_Diff = sdiff[i];
+				 Hessian( 2, xp, maxlogP, space, var, logP, var+2*2 );
+				 if( ( var[0] * var[3] - var[1] * var[2] ) > 0 && var[0] > 0 ) break;
+				 if( i == 2 ){
+					fprintf( fout, "MAPs:\n  %.5f  %.5f\n", xp[0], xp[1] );
+					printf( "Can't estimate Hessian" );
+					return (1);
+				}
+			}
+	  }//end of if
+
+      Small_Diff = x[5];   //Restore the initial value of Small_Diff    
+	  matinv( var, 2, 2, var+2*2 );
+      x[0] = xp[0]; x[2] = xp[1]; var[1] = var[3];     
+   }  // end of else
+
+   m1 = log( x[0] );  //location parameter of logistic distribution for transformation of t
+   m2 = log( x[2] );  //location parameter of logistic distribution for transformation of w
+   s1  = ( 1 / x[0] ) * sqrt( var[0] );  //scale parameter of logistic distribution for transformation of t
+   s2  = ( 1 / x[2] ) * sqrt( var[1] );  //scale parameter of logistic distribution for transformation of w    
+   kappa[0] = x[1];  
+   GaussLegendreRule( &nodes, &weights, npoints );
+
+   //For P(w>1|x) calculation
+   FL = CDFLogis( 0, m2, s2 );
+   if( FL > 1 - 1e-5 ){ bayes_est[6] = 0, setp = 1; }  //If all the mass of posterior density is below 1, set P(w>1|x)=0
+   if( FL <     1e-5 ){ bayes_est[6] = 1, setp = 1; }  //If all the mass of posterior density is above 1, set P(w>1|x)=1
+   if( setp == 0 )   alpha = 2 * FL - 1;
+   
+   for(i = 0; i < npoints; i++) {  //count for omega
+       if( i < npoints / 2 ) { w_index = npoints/2 - 1 - i; sign = -1; }
+       else                  { w_index = i - npoints/2;     sign = 1;  }
+       z2 = sign*nodes[ w_index ];
+       w_weight = weights[ w_index ];  //weight for omega value                            
+       w_value  = logistic_transformation( z2, m2, s2 ); //value of omega after logistic transformation
+       
+       eigenQcodon( 1, -1, NULL, NULL, NULL, Root, U, V, &scalefactor, kappa, w_value, Qmatrix );  //estimate Root,U,V for the scaled Qmatrix
+	   
+	   //For P(w>1|x) calculation
+	   if(setp == 0) {
+	      u = ( (1 - alpha) * z2 + 1 + alpha ) / 2;
+	      w_p = logistic_transformation( u, m2, s2 );
+   	   eigenQcodon(1, -1, NULL, NULL, NULL, Rp, Up, Vp, &scalefactor, kappa, w_p, Qmatrix );  //estimate Rp,Up,Vp for the scaled Qmatrix for the calculation of P(w>1|x)
+      }
+
+       for( j=0; j<npoints; j++ ){  //count for distance
+           if( j < npoints/2 ) { t_index = npoints/2 - 1 - j; sign = -1; }
+           else                { t_index = j - npoints/2;     sign =  1;  }
+           z1 = sign * nodes[ t_index ];
+           t_weight = weights[ t_index ];
+           t_value  = logistic_transformation( z1, m1, s1 ); //value of distance after logistic transformation
+           
+		   PMatUVRoot( PMat, t_value, com.ncode, U, V, Root );  //calculate Ptmatrix
+           
+		   logl = loglikelihood( PMat );  
+           logposterior = logl + logprior( t_value, w_value, com.hyperpar );
+
+		   if( way == 0 ) hvalue   = exp( logposterior + maxlogl );  //way is 0 or 1
+		   else			  hvalue   = exp( logposterior + maxlogP );
+
+		   rvalue = ( hvalue * 2 * t_value * s1 * 2 * w_value * s2 ) / ( (1 - square(z1)) * (1 - square(z2) ) );
+           
+                    
+		   // For P(w>1|x) calculation
+		   if( setp == 0 ){
+			   PMatUVRoot( PMatp, t_value, com.ncode, Up, Vp, Rp );
+			   logl_p = loglikelihood( PMatp );
+			   logposterior_p = logl_p + logprior( t_value, w_p, com.hyperpar );
+
+			   if( way == 0) hvalue_p = exp( logposterior_p + maxlogl );  //way is 0 or 1
+			   else          hvalue_p = exp( logposterior_p + maxlogP );
+
+			   qvalue = ( hvalue_p * 2 * t_value * s1 * 2 * w_p  * s2 * ( 1 - alpha ) ) / ( (1 - square(z1)) * (1 - square(u) ) * 2 );
+		   }
+
+           interm_results[0] += w_weight * t_weight *                     rvalue; //normalizing constant
+           interm_results[1] += w_weight * t_weight * w_value *           rvalue; //unscaled post. mean omega
+           interm_results[2] += w_weight * t_weight *           t_value * rvalue; //unscaled post. mean time
+           interm_results[3] += w_weight * t_weight * w_value * w_value * rvalue; //unscaled post. mean omega^2
+           interm_results[4] += w_weight * t_weight * t_value * t_value * rvalue; //unscaled post. mean time^2
+           interm_results[5] += w_weight * t_weight * w_value * t_value * rvalue; //unscaled post. mean omega*time
+           if( setp == 0 ) interm_results[6] += w_weight * t_weight *     qvalue; //for P[w>1|x] calculation
+
+          }  //2nd for closes     
+      }  //1st for closes 
+   
+      for( i=1; i<=6; i++ )
+          interm_results[i] /= interm_results[0];  //divide everything by the normalizing constant
+      
+      bayes_est[0] = interm_results[2]; //posterior mean distance
+      bayes_est[1] = interm_results[1]; //posterior mean omega
+      bayes_est[2] = interm_results[4] - square( interm_results[2] ); //posterior Var distance
+      if( bayes_est[2] < 0 )  bayes_est[2] = 0;    
+	  
+	  bayes_est[3] = interm_results[3] - square( interm_results[1] ); //posterior Var omega
+	  if( bayes_est[3] < 0 )  bayes_est[3] = 0;  
+      
+	  bayes_est[4] = interm_results[5] - interm_results[1] * interm_results[2]; //posterior Cov[t,w]
+      
+	  if( bayes_est[2] != 0 && bayes_est[3] != 0 ){
+    	 bayes_est[5] = bayes_est[4] / sqrt( bayes_est[2] * bayes_est[3] );  //posterior Corr[t,w]
+      }
+	  if( setp == 0 )   bayes_est[6] = interm_results[6];   // P[w>1|x]
+
+	  //print results
+      fprintf( fout, "\n\nBayesian estimates of distance and omega\n" );
+      fprintf( fout, "%14s%14s%14s%14s%15s", ch1, ch2, ch3, ch4, ch5 );
+
+	  if( bayes_est[2] != 0 && bayes_est[3] != 0){
+           fprintf( fout, "%15s%15s", ch6, ch7 );
+      }
+      else{
+           fprintf( fout, "%15s", ch7 );
+      }
+      
+	  fprintf( fout, "\n%14.6g%14.6g%14.6g%14.6g%15.6g", bayes_est[0],
+              bayes_est[1], sqrt( bayes_est[2] ), sqrt( bayes_est[3] ), bayes_est[4] );
+
+	  if( bayes_est[2] != 0 && bayes_est[3] != 0){
+          fprintf( fout, "%15.6g%15.3g", bayes_est[5], bayes_est[6] );
+      }
+      else{
+          fprintf( fout, "%15.3g", bayes_est[6] );
+      }
+   
+      return (0);  
+} //end of function
+
+
+
+double loglikelihood( double Ptmatrix[] )
+{  /*This function returns the logl for 2 sequences given the number of different site patterns (com.npatt),
+the number of possible different codons (com.ncode), the positions of codons of the site patterns
+into the genetic code (*com.z[]), the frequences of site patterns (com.fpatt[]), the probabilities 
+of codons in equilibrium (com.pi[]) and the Pt matrix(Ptmatrix[])*/
+   int i;
+   double logl = 0;
+   for( i=0; i<com.npatt; i++ )
+       logl += com.fpatt[i] * log( com.pi[ (int)com.z[0][i] ] * Ptmatrix[ com.ncode * (int)com.z[0][i] + (int)com.z[1][i] ] );
+   return logl; 
+}
+
+
+double logistic_transformation( double point, double logmean, double stdlogpar )
+{
+   double result;
+   result = exp( logmean + stdlogpar * log( ( 1 + point ) / ( 1 - point ) ) );
+   return result;           
+}
+
+double logprior( double t, double w, double par[] )
+{  /*This function returns the log prior function of time and omega(dN/dS) 
+   par vector contains the shape & scale parameters for time for omega.*/
+   double logtprior = - par[1] * t + ( par[0] - 1 ) * log(t) + par[0] * log( par[1] ) - LnGamma( par[0] );
+   double logwprior = - par[3] * w + ( par[2] - 1 ) * log(w) + par[2] * log( par[3] ) - LnGamma( par[2] );
+   return logtprior + logwprior;       
+}
+
+double logP( double x[], int np )
+{   /*This function returns the log-posterior. It is used to find the
+    mode of the log-posterior. x[0] is for distance and x[1] for w.*/
+      return lfun2dSdN( x, np ) - logprior( x[0], x[1], com.hyperpar );           
+}
+
+int EstVariances( double *var ){ 
+/*This function estimates Var(t) & Var(w) using the 
+Nei-Gojobori counting method and stores them in the 1st 
+and 2nd place of *var vector respectively*/
+    double pS, pN, VarpS, VarpN, hN, hS, VardS, VardN, dS, dN;
+
+    pS = Sd / SS;
+    pN = Nd / NN;
+
+    hN    = 1 - ( (double)4 / 3 ) * pN;
+    hS    = 1 - ( (double)4 / 3 ) * pS;
+    
+    dS    = - 0.75 * log( hS );
+    dN    = - 0.75 * log( hN ); 
+    
+    VarpS = ( pS * (1-pS) ) / SS;
+    VarpN = ( pN * (1-pN) ) / NN;
+    
+    VardS = square( 1 / hS ) * VarpS;
+    VardN = square( 1 / hN ) * VarpN;
+    
+    var[0] = square( ( 3 * SS ) / ( SS + NN ) ) * VardS + square( ( 3 * NN ) / ( SS + NN) ) * VardN;
+    var[1] = VardN / square( dS ) + ( square( dN ) * VardS ) / square( square( dS ) );
+
+    return (0);
+}
+
+double CDFLogis( double x, double m, double s ){
+	return 1 / ( 1 + exp( -( x - m ) / s ) );
+}
+//End of kostas code
+
+
+
 
 
 double lfun2AA (double t)

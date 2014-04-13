@@ -6,6 +6,7 @@
 */
 #include "paml.h"
 
+int DescriptiveStatisticsSimpleMCMCTREE (FILE *fout, char infile[], int nbin);
 
 void main(int argc, char *argv[])
 {
@@ -18,5 +19,5 @@ void main(int argc, char *argv[])
    fp = (FILE*)gfopen(outfile,"w");
    puts("results go into out.txt");
    starttimer();
-   DescriptiveStatistics(fp, infile, 50, 100, propternary);
+   DescriptiveStatisticsSimple(fp, infile, 100, 1);
 }

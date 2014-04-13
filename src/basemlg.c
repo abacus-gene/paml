@@ -106,7 +106,7 @@ int main (int argc, char *argv[])
 
    if ((fout=fopen (com.outf, "w"))==NULL) error2("outfile creation err.");
    if((fseq=fopen (com.seqf,"r"))==NULL)  error2("No sequence file!");
-   ReadSeq (NULL, fseq, com.cleandata);
+   ReadSeq (NULL, fseq, com.cleandata, 0);
    if((fpair[0]=(FILE*)fopen(pairfs[0],"w"))==NULL) error2("2base.t file open error");
 
    fprintf (fout,"BASEMLG %15s %8s + Gamma", com.seqf, models[com.model]);

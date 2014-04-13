@@ -43,6 +43,11 @@ extern int noisy;
 #define LFUNCTIONS
 #endif
 
+#if(defined CODEML || defined YN00)
+double SS, NN, Sd, Nd;  /* kostas, # of syn. sites,# of non syn. sites,# of syn. subst.,# of non syn. subst. */
+#endif
+
+
 #define EqPartition(p1,p2,ns) (p1==p2||p1+p2+1==(1<<ns))
 
 #ifdef REALSEQUENCE
@@ -63,8 +68,10 @@ void RemoveEmptySequences(void);
 
 int GetSeqFileType(FILE *fseq, int *format)
 {
-/* paupstart="begin data" and paupend="matrix" identify paup seq files.
+/* paupstart="begin data" and paupend="matrix" identify nexus file format.
    Modify if necessary.
+   format: 0: alignment; 1: fasta; 2: nexus.
+
 */
    int  lline=1000, ch, aligned;
    char fastastarter='>';
@@ -127,7 +134,58 @@ int PopupComment(FILE *fseq)
 }
 
 
-int ReadSeq (FILE *fout, FILE *fseq, int cleandata)
+#if(MCMCTREE)
+
+int ReadMorphology (FILE *fout, FILE *fin)
+{
+   int i,j, locus=data.nmorphloci;
+   char line[1024], str[64];
+
+   if((data.zmorph[locus][0] = (double*)malloc((com.ns*2-1)*com.ls*sizeof(double))) == NULL)
+      error2("oom zmorph");
+   if((data.Rmorph[locus] = (double*)malloc(com.ls*com.ls*sizeof(double))) == NULL)
+      error2("oom Rmorph");
+
+   if((data.nmorphloci = locus+1) > NMORPHLOCI) error2("raise NMORPHLOCI and recompile.");
+   for(i=1; i<com.ns*2-1; i++) {
+      data.zmorph[locus][i] = data.zmorph[locus][0] + i*com.ls;
+   }
+   for(i=0; i<com.ns; i++) {
+      fscanf(fin, "%s", com.spname[i]);
+      printf ("Reading data for species #%2d: %s     \r", i+1, com.spname[i]);
+      for(j=0; j<com.ls; j++) 
+         fscanf(fin, "%lf", &data.zmorph[locus][i][j]);
+   }
+
+   for(i=0; i<com.ns; i++) {
+      fprintf(fout, com.spname[i]);
+      for(j=0; j<com.ls; j++)
+         fprintf(fout, " %8.5f", data.zmorph[locus][i][j]);
+      FPN(fout);
+   }
+
+   fscanf(fin, "%s", str);
+   fgets(line, 1024, fin);
+   i = j = -1;
+   if(strstr("Correlation", str)) {
+      for(i=0; i<com.ls; i++) {
+         for(j=0; j<com.ls; j++) 
+            if(fscanf(fin, "%lf", &data.Rmorph[locus][i*com.ls+j]) != 1) break;
+         if(j<com.ls) break;
+      }
+   }
+   if(i!=com.ls || j!=com.ls) {
+      printf("\ndid not find a good R matrix.  Setting it to I.\n");
+      for(i=0; i<com.ls; i++) 
+         for(j=0; j<com.ls; j++) 
+            data.Rmorph[locus][i*com.ls+j] = (i==j);
+   }
+   return(0);
+}
+
+#endif
+
+int ReadSeq (FILE *fout, FILE *fseq, int cleandata, int locus)
 {
 /* read in sequence, translate into protein (CODON2AAseq), and 
    This counts ngene but does not initialize lgene[].
@@ -135,9 +193,8 @@ int ReadSeq (FILE *fout, FILE *fseq, int cleandata)
    com.seqtype: 0=nucleotides; 1=codons; 2:AAs; 3:CODON2AAs; 4:BINs
    com.pose[] is used to store gene or site-partition labels.
    ls/3 gene marks for codon sequences.
-   char opt_c[]="AKGI";
-      A:alpha given. K:kappa given
-      G:many genes,  I:interlaved format
+   char opt_c[]="GIPM";
+      G:many genes;  I:interlaved format;  P:patterns;  M:morphological characters
 
    Use cleandata=1 to clean up ambiguities.  In return, com.cleandata=1 if the 
    data are clean or are cleaned, and com.cleandata=0 is the data are unclean. 
@@ -145,14 +202,16 @@ int ReadSeq (FILE *fout, FILE *fseq, int cleandata)
    char *p,*p1, eq='.', comment0='[', *line;
    int format=0;  /* 0: paml/phylip, 1: fasta; 2: paup/nexus */
    int i,j,k, ch, noptline=0, lspname=LSPNAME, miss=0, nb;
-   int lline=10000,lt[NS], igroup, Sequential=1,basecoding=0;
+   int lline=10000,lt[NS], igroup, Sequential=1, basecoding=0;
    int n31=(com.seqtype==CODONseq||com.seqtype==CODON2AAseq?3:1);
    int gap=(n31==3?3:10), nchar=(com.seqtype==AAseq?20:4);
    int h,b[3]={0};
    char *pch=((com.seqtype<=1||com.seqtype==CODON2AAseq) ? BASEs : (com.seqtype==2 ? AAs: (com.seqtype==5 ? BASEs5 : BINs)));
    char str[4]="   ";
    double lst;
-
+#if(MCMCTREE)
+   data.datatype[locus] = com.seqtype;
+#endif
    str[0]=0; h=-1; b[0]=-1; /* avoid warning */
    com.readpattern = 0;
    if (com.seqtype==4) error2("seqtype==BINs, check with author");
@@ -187,17 +246,27 @@ int ReadSeq (FILE *fout, FILE *fseq, int cleandata)
    /* first line */
    if (format == 0) {
       if(!fgets(line,lline,fseq)) error2("ReadSeq: first line");
-      com.readpattern = (strchr(line,'P') || strchr(line,'p'));
+      com.readpattern = (strchr(line, 'P') || strchr(line, 'p'));
+#if(MCMCTREE)
+      if(strchr(line, 'M') || strchr(line, 'm'))  data.datatype[locus] = MORPHC;
+#endif
    }
-   if(!com.readpattern) {
-      if((com.pose=(int*)realloc(com.pose, com.ls/n31*sizeof(int)))==NULL)
-         error2("oom pose");
-      for(j=0; j<com.ls/n31; j++) com.pose[j]=0;      /* gene #1, default */
+#if(MCMCTREE)
+   if(data.datatype[locus] == MORPHC) { /* morhpological data */
+      ReadMorphology(fout, fseq);
+      return(0);
    }
-   else {
-      if(com.pose) free(com.pose);  
-      com.pose = NULL;
-   }
+   else
+#endif
+      if(!com.readpattern) {
+         if((com.pose=(int*)realloc(com.pose, com.ls/n31*sizeof(int)))==NULL)
+            error2("oom pose");
+         for(j=0; j<com.ls/n31; j++) com.pose[j]=0;      /* gene #1, default */
+      }
+      else {
+         if(com.pose) free(com.pose);  
+         com.pose = NULL;
+      }
    if(format) goto readseq;
 
    for (j=0; j<lline && line[j] && line[j]!='\n'; j++) {
@@ -432,7 +501,9 @@ int ReadSeq (FILE *fout, FILE *fseq, int cleandata)
    free(line);
 
 #ifdef CODEML
-   if(com.seqtype==1) MarkStopCodons();
+   /* mask stop codons as ???.  */
+   if(com.seqtype==1 && MarkStopCodons())
+      miss=1;
 #endif
 
    if(!miss)
@@ -481,8 +552,30 @@ int ReadSeq (FILE *fout, FILE *fseq, int cleandata)
    if(com.ngene>1 && com.Mgene==1 && com.verbose)  printSeqsMgenes ();
 
    if(com.bootstrap) { BootstrapSeq("boot.txt");  exit(0); }
-   /* mask stop codons as ???.  */
 #endif
+
+
+#if (defined CODEML)
+   /* list sites with 2 types of serine codons: TC? and TCY.  19 March 2014, Ziheng. */
+   {
+      char codon[4]="";
+      int nbox0, nbox1;
+      for(h=0; h<com.ls; h++) {
+         for(i=0,nbox0=nbox1=0; i<com.ns; i++) {
+            codon[0]=com.z[i][h*3+0]; codon[1]=com.z[i][h*3+1]; codon[2]=com.z[i][h*3+2];
+            if(codon[0]=='T' && codon[1]=='C') nbox0++;
+            else if(codon[0]=='A' && codon[1]=='G' && (codon[2]=='T' || codon[2]=='C')) nbox1++;
+         }
+         if(nbox0 && nbox1 && nbox0+nbox1==com.ns) {
+            printf("\ncodon %7d: ", h+1);
+            for(i=0; i<com.ns; i++)
+               printf("%c%c%c ", com.z[i][h*3+0], com.z[i][h*3+1], com.z[i][h*3+2]);
+         }
+      }
+   }
+#endif
+
+
 
    if(noisy>=2) printf ("\nSequences read..\n");
    if(com.ls==0) {
@@ -542,15 +635,15 @@ int ReadSeq (FILE *fout, FILE *fseq, int cleandata)
 }
 
 
-#if (defined CODEML)
+#if(defined CODEML)
 
-void MarkStopCodons(void)
+int MarkStopCodons(void)
 {
 /* this converts the whole column into ??? if there is a stop codon in one sequence.
    Data in com.z[] are just read in and not encoded yet.
 */
-   int i,j,h,k, fixed=0;
-   char codon[4]="", stops[10][4]={"","",""}, nstops=0;
+   int i,j,h,k, NColumnEdited=0;
+   char codon[4]="", stops[6][4]={"","",""}, nstops=0;
 
    if(com.seqtype!=1) error2("should not be here");
 
@@ -573,13 +666,14 @@ void MarkStopCodons(void)
       if(i<com.ns) {
          for(i=0; i<com.ns; i++) 
             com.z[i][h*3+0] = com.z[i][h*3+1] = com.z[i][h*3+2] = '?';
-         fixed++;
+         NColumnEdited++;
       }
    }
-   if(fixed) {
-      printf("\n%2d columns are converted into ??? because of stop codons\nPress Enter to continue", fixed);
+   if(NColumnEdited) {
+      printf("\n%2d columns are converted into ??? because of stop codons\nPress Enter to continue", NColumnEdited);
       getchar();
    }
+   return(NColumnEdited);
 }
 
 #endif
@@ -2017,6 +2111,9 @@ int DistanceMatNG86 (FILE *fout, FILE*fds, FILE*fdn, FILE*ft, double alpha)
    FPN(F0); 
    if(fout) FPN(fout);
    if(status) fprintf (fout, "NOTE: -1 means that NG86 is inapplicable.\n");
+
+   SS=S, NN=N, Sd=nst, Nd=nat;  /* kostas */
+
    return (0);
 }
 
@@ -2489,28 +2586,17 @@ void DownTreeCladeLabel (int inode, int cLabel)
 
 int IsNameNumber(char line[])
 {
-/* returns 0 if line has species number; 1 if name; 2 if both number and name
+/* returns 0 if line has species number; 1 if it has name.
+   It uses com.ns.
 */
-   int isname=0, j,k, ns=com.ns;
-   int SeparatorFixed=(int)'_';
+   int isname=1, alldigits=1, n;
+   char *p=line;
 
-   if(ns<1) error2("ns=0 in IsNameNumber");
-   /* both name and number? */
-   k = strchr(line, SeparatorFixed) - line;
-   for(j=0; j<k; j++)
-      if(!isdigit(line[j])) break;
-   if(j==k) 
-      isname=2;
-   else {
-      for(j=0; line[j]; j++)  /* name or number? */
-         if(!isdigit(line[j])) { isname=1; break; }  
-   }
-   if(isname==0 || isname==2) {
-      sscanf(line, "%d", &k);
-      if(k<1||k>ns) {
-         printf("species number %d outside range.", k);
-         exit(-1);
-      }
+   while(*p)
+      if(!isdigit(*p++)) { alldigits=0; break; }
+   if(alldigits) {
+      n = atoi(line);
+      if(n>=1 && n<=com.ns) isname = 0;
    }
    return(isname);
 }
@@ -2539,7 +2625,7 @@ int ReadTreeN (FILE *ftree, int *haslength, int *haslabel, int copyname, int pop
                  one has to consider the space for nodes[], CladeLabel, starting 
                  node number etc.
 
-   isname = 0:   species number; 1: species name; 2:both number and name
+   isname = 0:   species number; 1: species name;
 
    Ziheng note (18/12/2011): I have changed the code so that sequence number is not used 
    anymore.  isname = 1 always.
@@ -2678,11 +2764,7 @@ int ReadTreeN (FILE *ftree, int *haslength, int *haslabel, int copyname, int pop
          else
             isname = IsNameNumber(line);
 
-         if (isname==2) {       /* both number and name */
-            sscanf(line, "%d", &cnode);   cnode--;
-            strcpy(com.spname[cnode], line);
-         }
-         else if (isname==0) {  /* number */
+         if (isname==0) {  /* number */
             if(copyname==2) error2("Use names in tree.");
             sscanf(line, "%d", &cnode);
             cnode--;
@@ -2801,8 +2883,8 @@ int OutSubTreeN (FILE *fout, int inode, int spnames, int printopt, char *labelfm
 
    if(nodes[inode].nson==0) { /* inode is tip */
       if(spnames) {
-         if(printopt&PrNodeNum) fprintf(fout, "%d_",inode+1);
-         fprintf(fout, "%s",com.spname[inode]);
+         if(printopt & PrNodeNum) fprintf(fout, "%d_", inode+1);
+         fprintf(fout, "%s", com.spname[inode]);
       }
       else 
          fprintf(fout, "%d", inode+1);
@@ -2842,7 +2924,7 @@ int OutTreeN (FILE *fout, int spnames, int printopt)
    Can the block of print statements be moved inside the recursive function?
 */
    int i, intlabel=1;
-   char* labelfmt[2]={"'#%.6f'", "'#%.0f'"};
+   char* labelfmt[2]={"#%.6f", "#%.0f"};
 
    if(printopt & PrLabel) {
       for(i=0; i<tree.nnode; i++) 
@@ -3601,45 +3683,44 @@ int CollapsNode (int inode, double x[])
 
 
 void DescentGroup (int inode);
-void BranchPartition (char partition[], int parti2B[]);
+void BranchPartition (char partition[]);
 
 static char *PARTITION;
 
 void DescentGroup (int inode)
 {
-   int i;
-   for (i=0; i<nodes[inode].nson; i++) 
-      if (nodes[inode].sons[i]<com.ns) 
-         PARTITION[nodes[inode].sons[i]]=1;
+   int i, ison;
+   for(i=0; i<nodes[inode].nson; i++) {
+      ison = nodes[inode].sons[i];
+      if(ison<com.ns) 
+         PARTITION[ison] = (char)1;
       else 
-         DescentGroup (nodes[inode].sons[i]);
+         DescentGroup(ison);
+   }
 }
 
-void BranchPartition (char partition[], int parti2B[])
+void BranchPartition (char partition[])
 {
-/* calculates branch partitions.
-   partition[0,...,ns-1] marks the species bi-partition by the first interior
-   branch.  It uses 0 and 1 to indicate which side of the branch each species
-   is.
-   partition[ns,...,2*ns-1] marks the second interior branch.
-   parti2B[0] maps the partition (internal branch) to the branch in tree.
-   Use NULL for parti2B if this information is not needed.
-   partition[nib*com.ns].  nib: # of interior branches.
+/* This calculates branch partitions: partition[nib*com.ns].  
+   partition[0,...,ns-1] is the first partition (split), partition[ns,...,2*ns-1] 
+   is the second, and so on.
+   For large trees, the algorithm used is inefficient.
+   The root node has 2 sons if the tree is rooted and >=3 sons if the tree 
+   is unrooted.  For unrooted tree, the mark for the first species is set to 0.
+   For rooted trees, the mark for the first species can be either 0 or 1.
 */
-   int i,j, nib;  /* number of internal branches */
+   int clock = (nodes[tree.root].nson>=3), i, j;
 
-   for (i=0,nib=0; i<tree.nbranch; i++) {
-      if (tree.branches[i][1]>=com.ns){
-         PARTITION=partition+nib*com.ns;
-         FOR (j,com.ns) PARTITION[j]=0;
-         DescentGroup (tree.branches[i][1]);
-         if (parti2B) parti2B[nib]=i;
-         nib++;
-         /* set first species to 0 */
-         if(PARTITION[0]) FOR(j,com.ns) PARTITION[j]=(char)!PARTITION[j];
+   for (i=com.ns; i<tree.nnode; i++) {
+      if (i != tree.root){
+         PARTITION = partition+(i-com.ns)*com.ns;
+         for(j=0; j<com.ns; j++) PARTITION[j] = (char)0;
+         DescentGroup(i);
+         /* set first species to 0 if tree is unrooted */
+         if(clock && PARTITION[0]) /* unrooted tree */
+            for(j=0; j<com.ns; j++) PARTITION[j] = (char) !PARTITION[j];
       }
    }
-   if (nib!=tree.nbranch-com.ns) error2("err BranchPartition"); 
 }
 
 
@@ -3654,15 +3735,16 @@ int NSameBranch (char partition1[],char partition2[], int nib1,int nib2,
 */
    int i,j,k, nsamebranch,nsamespecies;
 
-   for (i=0,nsamebranch=0; i<nib1; i++)  for(j=0,IBsame[i]=0; j<nib2; j++) {
-      for (k=0,nsamespecies=0;k<com.ns;k++)
-         if(partition1[i*com.ns+k]!=partition2[j*com.ns+k]) break;
-      if (k==com.ns)
-         { nsamebranch++;  IBsame[i]=1;  break; } 
+   for (i=0,nsamebranch=0; i<nib1; i++)
+      for(j=0,IBsame[i]=0; j<nib2; j++) {
+         for (k=0,nsamespecies=0;k<com.ns;k++)
+            if(partition1[i*com.ns+k] != partition2[j*com.ns+k]) break;
+         if (k==com.ns) {
+            nsamebranch++;  IBsame[i]=1;  break; 
+         }
    }
    return (nsamebranch);
 }
-
 
 
 int AddSpecies (int is, int ib)
@@ -7830,7 +7912,7 @@ int ReadTreeSeqs (FILE*fout)
    /* read sequences at each locus, construct gene tree by pruning sptree */
    data.ngene = com.ndata;
    com.ndata=1;
-   fseq = gfopen(com.seqf,"r");
+   fseq = gfopen(com.seqf, "r");
    if((gnodes=(struct TREEN**)malloc(sizeof(struct TREEN*)*data.ngene)) == NULL) 
       error2("oom");
 
@@ -7848,7 +7930,7 @@ int ReadTreeSeqs (FILE*fout)
          setmark_61_64();
       }
 #endif
-      ReadSeq (fout, fseq, clean0);               /* allocates com.spname[] */
+      ReadSeq(fout, fseq, clean0, locus);               /* allocates com.spname[] */
 #if (defined CODEML)
       if(com.seqtype == 1) {
          if(com.sspace < max2(com.ngene+1,com.ns)*(64+12+4)*sizeof(double)) {
@@ -7860,25 +7942,30 @@ int ReadTreeSeqs (FILE*fout)
       }
 #endif
 
-      if(com.seqtype==0 || com.seqtype==2)
-         InitializeBaseAA(fout);
-      fflush(fout);
-      if((com.seqtype==0 || com.seqtype==2) && com.model==0)
-         PatternWeightJC69like(fout);
-      xtoy(com.pi, data.pi[locus], com.ncode);
-
-      data.cleandata[locus] = (char)com.cleandata;
-
       data.ns[locus] = com.ns;
       data.ls[locus] = com.ls;
-      data.npatt[locus] = com.npatt;
-      data.fpatt[locus] = com.fpatt; com.fpatt=NULL;
-      for(i=0; i<com.ns; i++) { 
-         data.z[locus][i] = com.z[i];
-         com.z[i] = NULL; 
+#if(MCMCTREE)
+      if(data.datatype[locus] == MORPHC) 
+         ;
+      else 
+#endif
+      {
+         if(com.seqtype==0 || com.seqtype==2)
+            InitializeBaseAA(fout);
+         fflush(fout);
+         if((com.seqtype==0 || com.seqtype==2) && com.model==0)
+            PatternWeightJC69like(fout);
+         xtoy(com.pi, data.pi[locus], com.ncode);
+         data.cleandata[locus] = (char)com.cleandata;
+         data.npatt[locus] = com.npatt;
+         data.fpatt[locus] = com.fpatt; com.fpatt=NULL;
+         for(i=0; i<com.ns; i++) { 
+            data.z[locus][i] = com.z[i];
+            com.z[i] = NULL; 
+         }
+         printf("%3d patterns, %s\n", com.npatt, (com.cleandata? "clean": "messy"));
       }
 
-      printf("%3d patterns, %s\n", com.npatt, (com.cleandata? "clean": "messy"));
       GenerateGtree(locus);      /* free com.spname[] */
    }
    for(i=0,com.cleandata=1; i<data.ngene; i++) 
@@ -8117,7 +8204,7 @@ int UseLocus (int locus, int copycondP, int setmodel, int setSeqName)
    com.cleandata=data.cleandata[locus];
    com.npatt=com.posG[1]=data.npatt[locus];  com.posG[0]=0;
    com.fpatt=data.fpatt[locus];
-   for(i=0; i<com.ns; i++) com.z[i]=data.z[locus][i];
+   for(i=0; i<com.ns; i++) com.z[i] = data.z[locus][i];
 
    /* The following is model-dependent */
    if(setmodel) {

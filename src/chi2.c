@@ -61,7 +61,7 @@ int main(int argc, char*argv[])
       df = atoi(argv[1]);
       chi2 = atof(argv[2]);
       if(df<1 || chi2<0) {
-         printf("df = %d  ch2 = %.4f invalid");
+         printf("df = %d  ch2 = %.4f invalid", df, chi2);
          exit(-1);
       }
       prob[0] = 1 - CDFChi2(chi2, df);

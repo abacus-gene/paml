@@ -15,7 +15,7 @@
      evolver 5 MCbase.dat
      evolver 6 MCcodon.dat
      evolver 7 MCaa.dat
-     evolver 9 <MasterTreeFile> <TreesFile>
+     evolver 9 <MasterTreeFile> <TreesFile> [pick1tree]
 */
 
 /*
@@ -26,7 +26,7 @@
 
 #include "paml.h"
 
-#define NS            7000
+#define NS            5000
 #define NBRANCH       (NS*2-2)
 #define MAXNSONS      200
 #define LSPNAME       50
@@ -72,7 +72,7 @@ int EigenQcodon (int getstats, double kappa,double omega,double pi[],
     double Root[], double U[], double V[], double Q[]);
 int EigenQaa(double pi[],double Root[], double U[], double V[],double Q[]);
 void CladeMrBayesProbabilities (char treefile[]);
-void CladeSupport (char tree1f[], char treesf[], int burnin);
+void CladeSupport (char tree1f[], char treesf[], int pick1tree);
 int between_f_and_x(void);
 void LabelClades(FILE *fout);
 
@@ -95,8 +95,8 @@ static double Qfactor=-1, Qrates[5];  /* Qrates[] hold kappa's for nucleotides *
 
 int main (int argc, char*argv[])
 {
-   char *MCctlf=NULL, outf[512]="evolver.out", file1[512]="truetree", file2[512]="rst1";
-   int i, option=6, ntree=1,rooted, BD=0, burnin=0, gotoption=0;
+   char *MCctlf=NULL, outf[512]="evolver.out", file1[512]="truetree", file2[512]="sptree.txt";
+   int i, option=9, ntree=1,rooted, BD=0, pick1tree=0, gotoption=0;
    double bfactor=1, birth=-1,death=-1,sample=-1,mut=-1, *space;
    FILE *fout=gfopen(outf,"w");
 
@@ -120,7 +120,7 @@ int main (int argc, char*argv[])
       if(option!=9) error2("option not good?");
       strcpy(file1, argv[2]);
       strcpy(file2, argv[3]);
-      if(argc>4) sscanf(argv[4],"%d",&burnin);
+      if(argc>4) sscanf(argv[4], "%d", &pick1tree);
       gotoption = 1;
    }
 
@@ -149,7 +149,7 @@ int main (int argc, char*argv[])
          printf("\t(6) Simulate codon data sets      (use %s)?\n",MCctlf0[1]);
          printf("\t(7) Simulate amino acid data sets (use %s)?\n",MCctlf0[2]);
          printf("\t(8) Calculate identical bi-partitions between trees?\n");
-         printf("\t(9) Calculate clade support values (read 2 treefiles)?\n");
+         printf("\t(9) Calculate clade support values (evolver 9 file1 file2 pick1tree)?\n");
          printf("\t(11) Label clades?\n");
          printf("\t(0) Quit?\n");
 
@@ -205,11 +205,6 @@ int main (int argc, char*argv[])
             ListTrees(fout, com.ns, rooted);
             break;
          case(8):  TreeDistances(fout);  break;
-
-         case(9):  CladeSupport(file1, file2, burnin);  break;
-         /*
-         case(9):  CladeMrBayesProbabilities("/papers/BPPJC3sB/Karol.trees");    break;
-         */
          case(10): between_f_and_x();    break;
          case(11): LabelClades(fout);    break;
          default:  exit(0);
@@ -217,8 +212,14 @@ int main (int argc, char*argv[])
       }
    }
 
-   com.seqtype = option-5;  /* 0, 1, 2 for bases, codons, & amino acids */
-   Simulate(MCctlf ? MCctlf : MCctlf0[option-5]);
+   if(option>=5 && option<=7) {
+      com.seqtype = option-5;  /* 0, 1, 2 for bases, codons, & amino acids */
+      Simulate(MCctlf ? MCctlf : MCctlf0[option-5]);
+   }
+   else if(option==9) {
+      CladeSupport(file1, file2, pick1tree);
+      /* CladeMrBayesProbabilities("/papers/BPPJC3sB/Karol.trees"); */
+   }
    return(0);
 }
 
@@ -373,7 +374,7 @@ void TreeDistanceDistribution (FILE* fout)
    This reads the file of all trees (such as 7s.all.trees), and calculates the 
    distribution of partition distance in all pairwise comparisons.
 */
-   int i,j,ntree, k,*nib, parti2B[NS], nsame, IBsame[NS], lenpart=0;
+   int i,j,ntree, k,*nib, nsame, IBsame[NS], lenpart=0;
    char treef[64]="5s.all.trees", *partition;
    FILE *ftree;
    double mPD[NS], PD1[NS];  /* distribution of partition distances */
@@ -399,7 +400,7 @@ void TreeDistanceDistribution (FILE* fout)
    for (i=0; i<ntree; i++) {
       ReadTreeN (ftree, &j, &k, 0, 1); 
       nib[i]=tree.nbranch-com.ns;
-      BranchPartition(partition+i*lenpart, parti2B);
+      BranchPartition(partition+i*lenpart);
    }
    for(k=0; k<com.ns-3; k++) mPD[k]=0;
    for (i=0; i<ntree; i++,FPN(fout)) {
@@ -423,6 +424,8 @@ void TreeDistanceDistribution (FILE* fout)
 
 void TreeDistances (FILE* fout)
 {
+/* I think this is broken after i changed the routine BranchPartition().
+*/
    int i,j,ntree, k,*nib, parti2B[NS], nsame, IBsame[NS],nIBsame[NS], lenpart=0;
    char treef[64]="5s.all.trees", *partition;
    FILE *ftree;
@@ -459,7 +462,7 @@ void TreeDistances (FILE* fout)
       for (i=0; i<ntree; i++) {
          ReadTreeN (ftree, &j, &k, 0, 1); 
          nib[i]=tree.nbranch-com.ns;
-         BranchPartition(partition+i*lenpart, parti2B);
+         BranchPartition(partition+i*lenpart);
       }
       for (i=0; i<ntree; i++,FPN(F0),FPN(fout)) {
          printf("%2d (%2d):", i+1,nib[i]);
@@ -475,7 +478,7 @@ void TreeDistances (FILE* fout)
       ReadTreeN (ftree, &j, &k, 0, 1);
       nib[0]=tree.nbranch-com.ns;
       if (nib[0]==0) error2("1st tree is a star tree..");
-      BranchPartition (partition, parti2B);
+      BranchPartition (partition);
       fputs ("Comparing the first tree with the others\nFirst tree:\n",fout);
       OutTreeN(fout,0,0);  FPN(fout);  OutTreeB(fout);  FPN(fout); 
       fputs ("\nInternal branches in the first tree:\n",fout);
@@ -493,7 +496,7 @@ void TreeDistances (FILE* fout)
       for (i=1,mp=vp=0; i<ntree; i++,FPN(fout)) {
          ReadTreeN (ftree, &j, &k, 0, 1); 
          nib[1]=tree.nbranch-com.ns;
-         BranchPartition (partition+lenpart, parti2B);
+         BranchPartition(partition+lenpart);
          nsame=NSameBranch (partition,partition+lenpart, nib[0],nib[1],IBsame);
 
          psame=nsame/(double)nib[0];
@@ -1259,7 +1262,7 @@ void Simulate (char*ctlf)
 
       printf ("\rdid data set %d %s", ir+1, (com.ls>100000||nr<100? "\n" : ""));
    }   /* for (ir) */
-   if(format==2) appendfile(fseq,paupend);
+   if(format==2) appendfile(fseq, paupend);
 
    fclose(fseq);  if(!fixtree) fclose(fanc);  
    if(com.alpha || com.NSsites) fclose(fsiteID);
@@ -1340,6 +1343,8 @@ void CladeMrBayesProbabilities (char treefile[])
    6 -- ...........................*************   8001 1.000 0.005 (0.000)
    7 -- ....................********************   8001 1.000 0.006 (0.000)
 
+   Note 4 Jan 2014: This uses parti2B[], and is broken after i rewrote 
+   BranchPartition().  
 */
    int lline=100000, i,j,k, nib, inode, parti2B[NS];
    char line[100000], *partition, *p;
@@ -1383,7 +1388,7 @@ void CladeMrBayesProbabilities (char treefile[])
       error2("oom");
    for(i=0;i<nib*nmbfiles; i++) Pclade[i]=0;
 
-   BranchPartition(partition, parti2B);
+   BranchPartition(partition);
 
    for(i=0; i<nib; i++) {
       inode=tree.branches[parti2B[i]][1];
@@ -1415,74 +1420,96 @@ void CladeMrBayesProbabilities (char treefile[])
    exit(0);
 }
 
+void PrintPartition (int ns, int nnode, int root, char partition[])
+{
+/* print all partitions (splits) on a tree, stored in partition[].
+*/
+   int i, j;
+   for (i=ns; i<nnode; i++) {
+      if(i!=root)
+         for(j=0,printf(" "); j<ns; j++) printf("%d", (int)partition[(i-ns)*ns+j]);
+   }
+   printf("\n");
+}
 
-void CladeSupport(char tree1f[], char tree2f[], int burnin)
+void CladeSupport (char tree1f[], char tree2f[], int pick1tree)
 {
 /* This reads one tree from tree1f and then scans many trees in tree2f to 
    calculate (bootstrap and Bayesian) support values.
 */
-   int i,j,k, ntree, nib1,nib2, intree;
-   char *partition1, *partition2;
-   double Pclade[NS]={0};
-   FILE *f1, *f2;
+   int i,j,k, ntree0,ntree1, itree0, intree, nsameb, sizetree, nnode0, root0, lline=1024;
+   char pick1treef[32]="pickedtree.tre", *partition0=NULL, *partition1=NULL, line[1024];
+   double Pclade[NS-1], Psame=0;
+   struct TREEN *nodes_t;
+   FILE *f0, *f1, *fpick;
+   int debug=0;
 
    printf("Calculate support values for clades on the master tree\n");
-   if(!isgraph(tree1f[0])) {
-      printf("input two tree file names\n");
-      scanf("%s%s", tree1f, tree2f);
-   }
-   f1=gfopen(tree1f,"r");
-   f2=gfopen(tree2f,"r");
+   f0=gfopen(tree1f,"r");
+   f1=gfopen(tree2f,"r");
+   fpick=gfopen(pick1treef,"w");
 
-   fscanf(f1, "%d%d", &com.ns, &k);
-   if(k>1) puts("only the first tree in the master tree file is used.");
-   i=(com.ns*2-1)*sizeof(struct TREEN);
-   if((nodes=(struct TREEN*)malloc(i))==NULL) error2("oom");
+   fscanf(f0, "%d%d", &com.ns, &ntree0);
+   if(com.ns<3) error2("master tree file should have <#species> <#tree> on 1st line.");
+   sizetree=(com.ns*2-1)*sizeof(struct TREEN);
+   if((nodes=(struct TREEN*)malloc(sizetree*2))==NULL) error2("oom");
    for(i=0; i<com.ns*2-1; i++) nodes[i].nodeStr=NULL;
+   nodes_t = nodes + com.ns*2-1;
 
-   ReadTreeN (f1, &i, &j, 1, 1);
-   printf("master tree\n"); OutTreeN(F0,0,0);  FPN(F0);  FPN(F0);
+   for(itree0=0; itree0<ntree0; itree0++) {
+      ReadTreeN (f0, &i, &j, 1, 1);
+      if(debug) { printf("master tree: "); OutTreeN(F0,1,0); }
+      memmove(nodes_t, nodes, sizetree);
+      nnode0=tree.nnode; root0=tree.root;
+      partition0 = (char*)realloc(partition0, 2*(com.ns-1)*com.ns*sizeof(char));
+      if(partition0==NULL) error2("oom");
+      partition1 = partition0+(com.ns-1)*com.ns;
+      BranchPartition(partition0);
+      if(debug) PrintPartition(com.ns, nnode0, root0, partition0);
 
-   nib1=tree.nbranch-com.ns;
-   partition1=(char*)malloc(2*(com.ns-1)*com.ns*sizeof(char));
-   if(partition1==NULL) error2("oom");
-   partition2=partition1+(com.ns-1)*com.ns;
-
-   BranchPartition(partition1, NULL);
-
-   for(ntree=-burnin;  ; ntree++) {
-      fscanf(f2, "%d%d", &i, &j);
-      if(ReadTreeN (f2, &i, &j, 0, 1)) break;
-      printf("\nreading tree %5d  ", ntree+1);
-      if(com.ns<15) OutTreeN(F0, 0, 0);
-      if(ntree<0) continue;
-      nib2=tree.nbranch-com.ns;
-      BranchPartition(partition2, NULL);
-      for(i=0; i<nib1; i++) {
-         for(j=0,intree=0; j<nib2; j++) {
-            for(k=0; k<com.ns; k++)
-               if(partition1[i*com.ns+k]!=partition2[j*com.ns+k]) break;
-            if(k==com.ns)  { intree=1; break; }
+      for(j=0; j<com.ns; j++) Pclade[j]=0;
+      Psame=0;
+      rewind(f1);
+      fscanf(f1, "%d%d", &i, &j);
+      for(ntree1=0;  ; ntree1++) {
+         if(ReadTreeN (f1, &i, &j, 0, 0)) break;
+         fgets(line, lline, f1);
+         if(debug && (ntree1+1)%1000==0) {
+            printf("\rreading tree %5d  ", ntree1+1);
+            if(com.ns<15) OutTreeN(F0, 1, 0);
          }
-         if(intree) Pclade[i]++;
+         if(ntree1<0) continue;
+         BranchPartition(partition1);
+         if(debug) PrintPartition(com.ns, tree.nnode, tree.root, partition1);
+         for(i=com.ns,nsameb=0; i<nnode0; i++) {
+            if(i==root0) continue;
+            for(j=com.ns,intree=0; j<tree.nnode; j++) {
+               if(j==tree.root) continue;
+               for(k=0; k<com.ns; k++)
+                  if(partition0[(i-com.ns)*com.ns+k] != partition1[(j-com.ns)*com.ns+k])
+                     break;
+               if(k==com.ns)  { intree=1; nsameb++; break; }
+            }
+            if(intree) Pclade[i-com.ns]++;
+         }
+         if(nsameb==nnode0-com.ns-1) {
+            Psame++;
+            if(itree0+1 == pick1tree) {
+               OutTreeN(fpick,1,1);  fprintf(fpick, " %s", line);
+            }
+         }
       }
+
+      memmove(nodes, nodes_t, sizetree);
+      for(i=com.ns; i<nnode0; i++)
+         if(i!=root0)
+            nodes[i].label = Pclade[i-com.ns];
+
+      printf(" %6d ", ntree1);
+      OutTreeN(F0, 1, PrLabel);
+      printf(" Psame = %7.0f/%6d = %8.6f\n", Psame, ntree1, Psame/ntree1);
    }
-
-   /* for(i=0; i<nib1; i++) Pclade[i]/=ntree; */
-   rewind(f1);
-   fscanf(f1, "%d%d", &com.ns, &k);
-   ReadTreeN (f1, &i, &j, 1, 1);
-   for(i=0,nib1=0; i<tree.nbranch; i++)
-      if(tree.branches[i][1] >= com.ns) 
-         nodes[tree.branches[i][1]].label = Pclade[nib1++];
-
-   if(burnin) printf("\n\n%d burn in, %d trees used\n", burnin, ntree);
-   else       printf("\n\n%d trees used\n", ntree);
-   matout2(F0, Pclade, 1, nib1, 6, 2);
-   FPN(F0);  OutTreeN(F0,0,PrLabel);  FPN(F0);
-   OutTreeN(F0,1,PrLabel);  FPN(F0);
-
-   free(nodes);  free(partition1);  fclose(f1);  fclose(f2);
+   free(nodes);  free(partition0);  fclose(f0);  fclose(f1);  fclose(fpick);
    exit(0);
 }
 

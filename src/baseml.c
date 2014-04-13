@@ -192,7 +192,7 @@ int main (int argc, char *argv[])
          fprintf(frst1, "%4d", idata+1);
       }
       if(idata)  GetOptions(ctlf); /* com.cleandata is read from here again. */
-      ReadSeq ((com.verbose?fout:NULL), fseq, com.cleandata);
+      ReadSeq ((com.verbose?fout:NULL), fseq, com.cleandata, 0);
       SetMapAmbiguity();
 
       /* AllPatterns(fout); */

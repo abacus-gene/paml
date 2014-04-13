@@ -27,10 +27,9 @@
    kappa_gamma = 6 2      * gamma prior for kappa
    alpha_gamma = 1 1      * gamma prior for alpha
 
-   rgene_gamma = 2 10   * gamma prior G(a, b) for rate for genes
-  sigma2_gamma = 1 1   * gamma prior for sigma^2  (for clock=2)
-
-      finetune = 1: 0.5 0.2 .1 .05 .05 .05  * auto (0 or 1) : times, rates, mixing, paras, RateParas, FossilErr
+   rgene_gamma = 2 10 2   * gammaDir prior for rate for genes
+  sigma2_gamma = 2 2 1   * gammaDir prior for sigma^2     (for clock=2 or 3)
+      finetune = 1: 0.5 0.2 .1 .05 .05 .05 * auto (0 or 1): times, musigma2, rates, mixing, paras, FossilErr
 
          print = 1
         burnin = 20000

@@ -1509,7 +1509,8 @@ double rndBactrian (void)
 }
 
 
-double rndBactrianTriangle (void){
+double rndBactrianTriangle (void)
+{
 /* This returns a variate from the 1:1 mixture of two Triangle Tri(-m, 1-m^2) and Tri(m, 1-m^2),
    which has mean 0 and variance 1. 
 */
@@ -1518,13 +1519,78 @@ double rndBactrianTriangle (void){
    return (z);
 }
 
-double rndBactrianLaplace (void){
+double rndBactrianLaplace (void)
+{
 /* This returns a variate from the 1:1 mixture of two Laplace Lap(-m, 1-m^2) and Lap(m, 1-m^2),
    which has mean 0 and variance 1. 
 */
    double z = mBactrian + rndLaplace()*sBactrian;
    if(rndu() < 0.5) z = -z;
    return (z);
+}
+
+double rndBox(void)
+{
+    double z = rndu() * (bBox - aBox) + aBox;
+    if(rndu() < 0.5) z = -z;
+    return z;
+}
+
+double getRoot(double (*f)(double), double (*df)(double), double initVal) {
+    double x, newx = initVal;
+    int nIter = 0;
+    do {
+        x = newx;
+        newx = x - (*f)(x) / (*df)(x);
+        nIter++;
+    } while((fabs(x-newx) > 1e-10) && nIter < 100);
+    
+    if(fabs(x-newx) > 1e-10) {
+        error2("root finder didn't converge");
+    }
+    return(newx);
+}
+
+double BAirplane(double b) {
+    return 4*b*b*b - 12*b + 6*aAirplane - aAirplane * aAirplane * aAirplane;
+}
+
+double dBAirplane(double b) {
+    return 12*b*b - 12;
+}
+
+double rndAirplane() {
+    double z, bAirplane = getRoot(&BAirplane, &dBAirplane, 2.5);
+
+    if(rndu() < aAirplane/(2*bAirplane -aAirplane)) {
+        //sample from linear part
+        z = sqrt(aAirplane*aAirplane*rndu());
+    } else {
+        // sample from box part
+        z = rndu() * (bAirplane - aAirplane) + aAirplane;
+    }
+    return (rndu() < 0.5 ? -z : z);
+}
+
+double BParabola(double b) {
+    return 5*b*b*b - 15*b + 10*aParab - 2*aParab*aParab*aParab;
+}
+
+double dBParabola(double b) {
+    return 15*b*b - 15;
+}
+
+double rndParabola() {
+    double z, bParab = getRoot(&BParabola, &dBParabola, 2.0);
+
+    if(rndu() < aParab/((3*bParab-2*aParab))) {
+        // sample from parabola part
+        z = aParab * pow(rndu(), 1.0/3.0);
+    } else {
+        // sample from the box part
+        z = rndu() * (bParab - aParab) + aParab;
+    }
+    return (rndu() < 0.5 ? -z : z);
 }
 
 
@@ -1560,7 +1626,8 @@ double rndCauchy (void)
 }
 
 
-double rndTriangle(void){
+double rndTriangle(void)
+{
 	double u, z;
 /* Standard Triangle variate, generated using inverse CDF  */
 	u = rndu();
@@ -1571,13 +1638,24 @@ double rndTriangle(void){
 	return z;
 }
 
+#if(1)
+double rndLaplace (void)
+{
+/* Standard Laplace variate, generated using inverse CDF  */
+   double u, r;
+   u = rndu() - 0.5;
+   r = log(1 - 2*fabs(u)) * 0.70710678118654752440;
+   return (u>=0 ? -r : r);
+}
+
+#else
 double rndLaplace (void){
 	double u;
 /* Standard Laplace variate, generated using inverse CDF  */
 	u = -0.5 + rndu();
    return (u>=0 ? log(1 - 2*fabs(u)) : -log(1 - 2*fabs(u)));
 }
-
+#endif
 
 double rndt2 (void)
 {
@@ -1846,6 +1924,11 @@ double PDFNormal (double x, double mu, double sigma2)
    return 1/sqrt(2*Pi*sigma2)*exp(-.5/sigma2*(x-mu)*(x-mu));
 }
 
+double logPDFNormal (double x, double mu, double sigma2)
+{
+   return -0.5*log(2*Pi*sigma2) - 0.5/sigma2*(x-mu)*(x-mu);
+}
+
 double CDFNormal (double x)
 {
 /* Hill ID  (1973)  The normal integral.  Applied Statistics, 22:424-427.
@@ -2013,6 +2096,14 @@ double PDFSkewN (double x, double loc, double scale, double shape)
 
    pdf *= PDFNormal(z,0,1) * CDFNormal(shape*z);
    return pdf;
+}
+
+double logPDFSkewN (double x, double loc, double scale, double shape)
+{
+   double z = (x-loc)/scale, lnpdf = 2/scale;
+
+   lnpdf = 0.5*log(2/(Pi*scale*scale)) - z*z/2 + logCDFNormal(shape*z);
+   return lnpdf;
 }
 
 
@@ -4971,7 +5062,7 @@ int splitline (char line[], int fields[])
    positions of the fields.
    Fields are separated by spaces, and texts are allowed as well.
 */
-   int lline=640000, i, nfields=0, InSpace=1;
+   int lline=1000000, i, nfields=0, InSpace=1;
    char *p=line;
 
    for(i=0; i<lline && *p && *p!='\n'; i++,p++) {
@@ -4992,7 +5083,7 @@ int splitline (char line[], int fields[])
 
 int scanfile (FILE*fin, int *nrecords, int *nx, int *ReadHeader, char line[], int ifields[])
 {
-   int  i, lline=640000, nxline, eof=0;
+   int  i, lline=1000000, nxline, eof=0;
 
    *ReadHeader = 0;
    for (*nrecords=0; ; ) {
@@ -5134,7 +5225,7 @@ int density2d (FILE* fout, double y1[], double y2[], int n, int nbin,
    alpha goes from 0 to 1, with 0 being equivalent to fixed width smoothing.
    var[] has the 2x2 variance matrix, which is copied into S[4] and inverted.
 
-   space[nbin*nbin+n] for observed histogram f[nbin*nbin] and for lambda[n].
+   space[nbin*nbin*3+n] for observed histogram f[nbin*nbin] and for lambda[n].
 */
    char timestr[32];
    int i,j,k;
@@ -5232,33 +5323,54 @@ int HPDinterval(double x[], int n, double HPD[2], double alpha)
    double w0 = x[jU0]-x[jL0], w=w0;
    int debug=0;
 
-   HPD[0]=x[jL0];   HPD[1]=x[jU0]; 
+   HPD[0] = x[jL0];
+   HPD[1] = x[jU0]; 
    if(n<3) return(-1);
    for(jL=0,jU=jL+(jU0-jL0); jU<n; jL++,jU++) {
-      if(x[jU]-x[jL] < w) {
+      if(x[jU] - x[jL] < w) {
          jLb = jL;
-         w = x[jU]-x[jL];
+         w = x[jU] - x[jL];
       }
    }
    HPD[0] = x[jLb];  
-   HPD[1] = x[jLb+jU0-jL0]; 
+   HPD[1] = x[jLb + jU0 - jL0]; 
    return(0);
 }
 
-
-double Eff_IntegratedCorrelationTime (double x[], int n)
+double Eff_IntegratedCorrelationTime (double x[], int n, double *mx, double *varx)
 {
-   double Tint, rho0, rho, a,b,c,d, e;
-   int  i, nrho=200;
+/* This calculates Efficiency or Tint using Geyer's (1992) initial positive 
+   sequence method.
+   Note that this destroys x[].
+*/
+   double Tint=1, rho0=0, rho, m=0, s=0;
+   int  i, irho;
 
-   for(i=0,Tint=1,rho0=0; i<min2(nrho,n-1); i++) {
-      correl(x, x+1+i, n-1-i, &a, &b, &c, &d, &e, &rho);
-      if(i>10 && rho+rho0<0) break;
-      Tint += rho*2;
-      rho0 = rho;
+   if(n<1000) puts("chain too short for calculating Eff? ");
+   for (i=0; i<n; i++) m += x[i];
+   m /= n;
+   for (i=0; i<n; i++) x[i] -= m;
+   for (i=0; i<n; i++) s += x[i]*x[i];
+   s = sqrt(s/(n-1.0));
+   for (i=0; i<n; i++) x[i] /= s;
+
+   if(mx) { *mx=m; *varx=s*s; } 
+   if(s<1E-200) {
+      Tint = -1;
+   }
+   else {
+      for(irho=1; irho<n-10; irho++) {
+         for (i=0,rho=0; i<n-irho; i++)
+            rho += x[i]*x[i+irho];
+         rho /= (n-1.0);
+         if(irho>10 && rho+rho0<0) break;
+         Tint += rho*2;
+         rho0 = rho;
+      }
    }
    return (1/Tint);
 }
+
 
 double Eff_IntegratedCorrelationTime2 (double x[], int n, int nbatch, double mx)
 {
@@ -5269,7 +5381,7 @@ double Eff_IntegratedCorrelationTime2 (double x[], int n, int nbatch, double mx)
    int lb, i, j;
    double mxb, vx=0, E=0;
    
-   if(n<1000) printf("chain too short for calculating Eff? ");
+   if(n<1000) puts("chain too short for calculating Eff? ");
    lb = n/nbatch;
    for(i=0; i<nbatch; i++) {
       for(j=0,mxb=0; j<lb; j++) {
@@ -5284,75 +5396,54 @@ double Eff_IntegratedCorrelationTime2 (double x[], int n, int nbatch, double mx)
 }
 
 
-
 int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int propternary)
 {
 /* This routine reads n records (observations) each of p continuous variables,
-   to calculate summary statistics such as the mean, SD, median, min, max
-   of each variable, as well as the variance and correlation matrices.
-   It also uses kernel density estimation to smooth the histogram for each
-   variable, as well as calculating 2-D densities for selected variable pairs.
-   The smoothing used the kerney estimator, with both fixed window size and 
-   adaptive kernel smoothing using variable bandwiths.  The kernel function 
-   is Epanechnikov.  For 2-D smoothing, Fukunaga's transform is used 
+   to calculate summary statistics.  It also uses kernel density estimation to 
+   smooth the histogram for each variable, as well as calculating 2-D densities 
+   for selected variable pairs.  The smoothing used the kerney estimator, with 
+   both fixed window size and adaptive kernel smoothing using variable bandwiths.  
+   The kernel function is Epanechnikov.  For 2-D smoothing, Fukunaga's transform is used 
    (p.77 in B.W. Silverman 1986).
-
-   The routine reads infile (p*2+3+nf2d) times:
-      1:     to scan the file
-      1:     to calculate min, max, mean
-      1:     to calculate variance matrix
-      p:     to sort each variable for median and percentiles
-      p:     to do 1-D density smooth (this uses qsort a second time)
-      nf2d:  to do 2-D density smooth
-
-   Space requirement:
-      x[p];    mean[p]; median[p]; minx[p]; maxx[p]; x005[p]; x995[p];
-      x025[p]; x975[p]; xHPD025[p];  xHPD975[p];  var[p*p];  gap[p];  
-
-   Each line in the data file has p variables, read into x[p], and the variable 
-   to be sorted or processed is moved into y[].  The vector y[] contains the 
-   data, f[] for histogram, and lambda[n] for adaptive kernel smoothing.   
-   For 1-D, y[n*2+nbin*nbin] contains the data, f[nbin] for histogram, and 
-   lambda[n] for adaptive smoothing.  
-   For 2-D, y[n*3+nbin*nbin] contains the data (y[n*2], f[nbin*nbin] for 
-   histogram, and lambda[n] for adaptive smoothing.  *space is pointed to y 
-   after the data at the start of f[].
-
-   Future work: Sorting data to avoid useless computation.
 */
    FILE *fin=gfopen(infile,"r");
    int  n, p, i,j,k, jj,kk, nrho=200;
    char *fmt=" %9.6f", *fmt1=" %9.1f", timestr[32];
-   double *x, *mean, *median, *minx, *maxx, *x005,*x995,*x025,*x975,*xHPD025,*xHPD975,*var;
+   double *data, *x, *mean, *median, *minx, *maxx, *x005,*x995,*x025,*x975,*xHPD025,*xHPD975,*var;
    double *Tint, tmp[2], d;
    double h, *y, *gap, *space, v2d[4];
    int nf2d=0, ivar_f2d[MAXNF2D][2]={{5,6},{0,2}}, k2d;
 
-   int  lline=320000, ifields[MAXNFIELDS], SkipColumn=1, ReadHeader=1;
+   static int  lline=1000000, ifields[MAXNFIELDS], SkipC1=1, ReadHeader=1;
    char *line;
-   char varstr[MAXNFIELDS][32]={""};
+   static char varstr[MAXNFIELDS][32]={""};
 
    if((line=(char*)malloc(lline*sizeof(char)))==NULL) error2("oom ds");
    scanfile(fin, &n, &p, &ReadHeader, line, ifields);
    printf("\n%d records, %d variables\n", n, p);
+   data = (double*)malloc(p*n*sizeof(double));
+   mean = (double*)malloc((p*13+p*p+n)*sizeof(double));
+   if (data==NULL||mean==NULL) error2("oom DescriptiveStatistics.");
+   memset(data, 0, p*n*sizeof(double));
+   memset(mean, 0, (p*13+p*p+n)*sizeof(double));
+   median=mean+p; minx=median+p; maxx=minx+p; 
+   x005=maxx+p; x995=x005+p; x025=x995+p; x975=x025+p; xHPD025=x975+p; xHPD975=xHPD025+p;
+   var=xHPD975+p;  gap=var+p*p, Tint=gap+p;  y=Tint+p;
+
+   space=(double*)malloc((n+nbin*nbin*3)*sizeof(double));
+   if(space==NULL) { printf("not enough mem for %d variables\n",n); exit(-1); }
 
    if(ReadHeader)
       for(i=0; i<p; i++) sscanf(line+ifields[i], "%s", varstr[i]);
+   for(i=0; i<n; i++)
+      for(j=0; j<p; j++) 
+         fscanf(fin, "%lf", &data[j*n+i]);
+   fclose(fin); 
 
-   x = (double*)malloc((p*13+p*p)*sizeof(double));
-   if (x==NULL) error2("oom DescriptiveStatistics.");
-   for(j=0;j<p*13+p*p; j++) x[j]=0;
-   mean=x+p; median=mean+p; minx=median+p; maxx=minx+p; 
-   x005=maxx+p; x995=x005+p; x025=x995+p; x975=x025+p; xHPD025=x975+p; xHPD975=xHPD025+p;
-   var=xHPD975+p;   gap=var+p*p;  Tint=gap+p;
-
-   /*
    if(p>1) {
       printf("\nGreat offer!  I can smooth a few 2-D densities for free.  How many do you want? ");
       scanf("%d", &nf2d);
    }
-   */
-
    if(nf2d>MAXNF2D) error2("I don't want to do that many!");
    for(i=0; i<nf2d; i++) {
       printf("pair #%d (e.g., type  1 3  to use variables #1 and #3)? ",i+1);
@@ -5361,233 +5452,156 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int propternary)
       ivar_f2d[i][1]--;
    }
 
-   /* min, max, and mean */
-   printf("\n(1) collecting min, max, and mean");
-   for(i=0; i<n; i++) {
-      for(j=0; j<p; j++) 
-         fscanf(fin, "%lf", &x[j]);
-      if(i==0)
-         for(j=SkipColumn; j<p; j++)
-            minx[j] = maxx[j] = x[j];
-      else {
-         for(j=SkipColumn;j<p;j++) 
-            if      (minx[j]>x[j]) minx[j] = x[j];
-            else if (maxx[j]<x[j]) maxx[j] = x[j];
-      }
-      for(j=SkipColumn; j<p; j++)
-         mean[j] += x[j]/n;
+   printf("Collecting mean, median, min, max, percentiles, etc.\n");
+   for(j=SkipC1,x=data+j*n; j<p; j++,x+=n) {
+      memmove(y, x, n*sizeof(double));
+      Tint[j] = 1/Eff_IntegratedCorrelationTime(y, n, &mean[j], &var[j]);
+      memmove(y, x, n*sizeof(double));
+      qsort(y, (size_t)n, sizeof(double), comparedouble);
+      minx[j] = y[0];  maxx[j] = y[n-1];
+      median[j] = (n%2==0 ? (y[n/2]+y[n/2+1])/2 : y[(n+1)/2]);
+      x005[j] = y[(int)(n*.005)];    x995[j] = y[(int)(n*.995)];
+      x025[j] = y[(int)(n*.025)];    x975[j] = y[(int)(n*.975)];
+
+      HPDinterval(y, n, tmp, 0.05);
+      xHPD025[j] = tmp[0];
+      xHPD975[j] = tmp[1];
+      if((j+1)%100==0 || j==p-1)
+         printf("\r\t\t%6d/%6d done  %s", j+1, p, printtime(timestr));
    }
 
    /* variance-covariance matrix */
-   printf(" %10s\n(2) variance-covariance matrix", printtime(timestr));
-   rewind(fin);
-   if(ReadHeader) fgets(line, lline, fin);
-   for (i=0; i<n; i++) {
-      for(j=0; j<p; j++) 
-         fscanf(fin, "%lf", &x[j]);
-      for(j=SkipColumn; j<p; j++)
-         for(k=SkipColumn; k<=j; k++)
-            var[j*p+k] += (x[j] - mean[j]) * (x[k] - mean[k])/n;
-   }
-   for(j=SkipColumn; j<p; j++)
-      for(k=SkipColumn; k<j; k++)
-         var[k*p+j] = var[j*p+k];
-
-   /* sorting to get median and percentiles */
-   printf("%10s\n(3) median, percentiles and ESS", printtime(timestr));
-   y=(double*)malloc((n*(2+(nf2d>0))+nbin*nbin*3)*sizeof(double));
-   if(y==NULL) { printf("not enough mem for %d variables\n",n); exit(-1); }
-   space=y+(1+(nf2d>0))*n;  /* space[] points to y after the data */
-   for(jj=SkipColumn; jj<p; jj++) {
-      rewind(fin);
-      if(ReadHeader) fgets(line, lline, fin);
-
-      for(i=0;i<n;i++) {
-         for(j=0; j<p; j++) fscanf(fin,"%lf", &x[j]);
-         y[i] = x[jj];
-      }
-
-      Tint[jj] = 1/Eff_IntegratedCorrelationTime(y, n);
-      qsort(y, (size_t)n, sizeof(double), comparedouble);
-      if(n%2==0)  median[jj]=(y[n/2]+y[n/2+1])/2;
-      else        median[jj]=y[(n+1)/2];
-      x005[jj] = y[(int)(n*.005)];       x995[jj] = y[(int)(n*.995)];
-      x025[jj] = y[(int)(n*.025)];       x975[jj] = y[(int)(n*.975)];
-
-      HPDinterval(y, n, tmp, 0.05);
-      xHPD025[jj] = tmp[0];
-      xHPD975[jj] = tmp[1];
-   }
+   zero(var, p*p);
+   for(j=SkipC1; j<p; j++)
+      for(k=SkipC1; k<=j; k++)
+         for(i=0; i<n; i++)
+            var[j*p+k] += (data[j*n+i] - mean[j]) * (data[k*n+i] - mean[k]);
+   for(j=SkipC1; j<p; j++)
+      for(k=SkipC1, var[j*p+j]/=(n-1.0); k<j; k++)
+         var[k*p+j] = var[j*p+k] /= (n-1.0);
 
    fprintf(fout,"\n(A) Descriptive statistics\n\n       ");
-   for (j=SkipColumn; j<p; j++) fprintf(fout,"   %s", varstr[j]);
-   fprintf(fout,"\nmean    ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,mean[j]);
-   fprintf(fout,"\nmedian  ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,median[j]);
-   fprintf(fout,"\nS.D.    ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,sqrt(var[j*p+j]));
-   fprintf(fout,"\nmin     ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,minx[j]);
-   fprintf(fout,"\nmax     ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,maxx[j]);
-   fprintf(fout,"\n2.5%%    "); for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,x025[j]);
-   fprintf(fout,"\n97.5%%   "); for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,x975[j]);
-   fprintf(fout,"\n2.5%%HPD "); for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,xHPD025[j]);
-   fprintf(fout,"\n97.5%%HPD"); for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,xHPD975[j]);
-   fprintf(fout,"\nESS     ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt1,n/Tint[j]);
+   for (j=SkipC1; j<p; j++) fprintf(fout,"   %s", varstr[j]);
+   fprintf(fout,"\nmean    ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt,mean[j]);
+   fprintf(fout,"\nmedian  ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt,median[j]);
+   fprintf(fout,"\nS.D.    ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt,sqrt(var[j*p+j]));
+   fprintf(fout,"\nmin     ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt,minx[j]);
+   fprintf(fout,"\nmax     ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt,maxx[j]);
+   fprintf(fout,"\n2.5%%    "); for(j=SkipC1;j<p;j++) fprintf(fout,fmt,x025[j]);
+   fprintf(fout,"\n97.5%%   "); for(j=SkipC1;j<p;j++) fprintf(fout,fmt,x975[j]);
+   fprintf(fout,"\n2.5%%HPD "); for(j=SkipC1;j<p;j++) fprintf(fout,fmt,xHPD025[j]);
+   fprintf(fout,"\n97.5%%HPD"); for(j=SkipC1;j<p;j++) fprintf(fout,fmt,xHPD975[j]);
+   fprintf(fout,"\nESS     ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt1,n/Tint[j]);
    FPN(F0);  FPN(fout); 
    fflush(fout);
 
-   /*
-   FPN(F0); FPN(F0);
-   for(j=SkipColumn; j<p; j++) printf("%.3f(%.3f,%.3f)\n",mean[j], x025[j],x975[j]);
-   free(x); free(y); return(0);
-   */
+   fprintf(fout, "\nCorrelation matrix");
+   for(j=SkipC1; j<p; j++) {
+      fprintf(fout, "\n%-8s ", varstr[j]);
+      for(k=SkipC1; k<=j; k++)
+         fprintf(fout, " %8.5f", var[k*p+j]/sqrt(var[j*p+j]*var[k*p+k]));
+   }
+   fprintf(fout, "\n         ");
+   for(j=SkipC1; j<p; j++) fprintf(fout,"%9s", varstr[j]);
 
-   printf(" %10s\n(4) Histograms and 1-D densities\n", printtime(timestr));
-   fprintf(fout, "\n(B) Histograms and 1-D densities\n");
-   for(jj=SkipColumn; jj<p; jj++) {
-      rewind(fin);
-      if(ReadHeader) fgets(line, lline, fin);
-
-      for(i=0;i<n;i++) {
-         for(j=0;j<p;j++) 
-            fscanf(fin,"%lf", &x[j]);
-         y[i]=x[jj];
-      }
-
+   fprintf(fout, "\n\nHistograms and 1-D densities\n");
+   for(jj=SkipC1; jj<p; jj++) {
+      memmove(y, data+jj*n, n*sizeof(double));
+      qsort(y, (size_t)n, sizeof(double), comparedouble);
       fprintf(fout, "\n%s\nmidvalue  freq    f(x)\n\n", varstr[jj]);
       /* steplength for 1-d kernel density estimation, from Eq 3.24, 3.30, 3.31 */
-
-      if(propternary) {
-         minx[jj]=0;  maxx[jj]=1;
-      }
+      if(propternary) { minx[jj]=0;  maxx[jj]=1; }
       gap[jj] = (maxx[jj]-minx[jj])/nbin;
-
       d = sqrt(var[jj*p+jj]);
-      h = d;   /* the quartiles are not calculated now, so this may not be very good */
-      /*
-      h = min2(d,(x75[jj]-x25[jj])/1.34) * 0.9*pow((double)n,-0.2);
-      */
-      qsort(y, (size_t)n, sizeof(double), comparedouble);
+      h = ((y[(int)(n*.75)] - y[(int)(n*.25)])/1.34) * 0.9*pow((double)n,-0.2);
+      h = min2(h,d);
       density1d(fout, y, n, nbin, minx[jj], gap[jj], h, space, propternary);
-
       printf("    variable %2d/%d (%s): %s%30s\r", jj+1,p,varstr[jj], printtime(timestr),"");
    }
 
    /* 2-D histogram and density */
    if(nf2d<=0) return(0);
    h = 2.4*pow((double)n, -1/6.0);
-   printf("(5) 2-d histogram and density (h = %.6g)\n",h);
-   fprintf(fout, "\n(C) 2-D histogram and density\n");
-
+   fprintf(fout, "\n2-D histogram and density\n");
    for(k2d=0; k2d<nf2d; k2d++) {
-      jj=min2(ivar_f2d[k2d][0],ivar_f2d[k2d][1]);
-      kk=max2(ivar_f2d[k2d][0],ivar_f2d[k2d][1]);
-
-      printf("    2-D smoothing for variables %s & %s\n", varstr[jj], varstr[kk]);
+      jj = min2(ivar_f2d[k2d][0], ivar_f2d[k2d][1]);
+      kk = max2(ivar_f2d[k2d][0], ivar_f2d[k2d][1]);
+      printf("2-D smoothing for variables %s & %s\n", varstr[jj], varstr[kk]);
       fprintf(fout, "\n%s\t%s\tfreq\tdensity\n\n",  varstr[jj], varstr[kk]);
-      rewind(fin);
-      if(ReadHeader) fgets(line, lline, fin);
-
-      for (i=0; i<n; i++) {
-         for(j=0;j<p;j++)
-            fscanf(fin,"%lf", &x[j]);
-         y[i] = x[jj]; y[n+i] = x[kk];
-      }
-
-      v2d[0]=var[jj*p+jj];  
-      v2d[1]=v2d[2]=var[jj*p+kk];  
-      v2d[3]=var[kk*p+kk];
-      density2d (fout, y, y+n, n, nbin, minx[jj], minx[kk], gap[jj], gap[kk], v2d, 
-         h, space, propternary);
+      v2d[0] = var[jj*p+jj];  
+      v2d[1] = v2d[2] = var[jj*p+kk];  
+      v2d[3] = var[kk*p+kk];
+      density2d(fout, data+jj*n, data+kk*n, n, nbin, minx[jj], minx[kk], gap[jj], gap[kk], v2d, h, space, propternary);
    }
-   fclose(fin); free(x); free(y); free(line);
+   free(data); free(mean); free(space); free(line);
    printf("\n%10s used\n", printtime(timestr));
    return(0);
 }
 
-int DescriptiveStatisticsSimple (FILE *fout, char infile[], int nbin, int SkipColumn)
+int DescriptiveStatisticsSimple (FILE *fout, char infile[], int SkipC1)
 {
    FILE *fin=gfopen(infile,"r");
-   int  n, p, i,j, jj, nrho=200;
+   int  n, p, i, j;
    char *fmt=" %9.6f", *fmt1=" %9.1f", timestr[32];
-   double *x, *mean, *median, *minx, *maxx, *x005,*x995,*x025,*x975,*xHPD025,*xHPD975,*var;
+   double *data, *x, *mean, *median, *minx, *maxx, *x005,*x995,*x025,*x975,*xHPD025,*xHPD975,*var;
    double *Tint, tmp[2], *y;
-   int  lline=320000, ifields[MAXNFIELDS], ReadHeader=1;
    char *line;
-   char varstr[MAXNFIELDS][96]={""};
+   static int lline=1000000, ifields[MAXNFIELDS], ReadHeader=1;
+   static char varstr[MAXNFIELDS][96]={""};
 
    if((line=(char*)malloc(lline*sizeof(char)))==NULL) error2("oom ds");
    scanfile(fin, &n, &p, &ReadHeader, line, ifields);
    printf("\n%d records, %d variables\n", n, p);
+
+   data = (double*)malloc(p*n*sizeof(double));
+   mean = (double*)malloc((p*13+n)*sizeof(double));
+   if (data==NULL||mean==NULL) error2("oom DescriptiveStatistics.");
+   memset(data, 0, p*n*sizeof(double));
+   memset(mean, 0, (p*12+n)*sizeof(double));
+   median=mean+p; minx=median+p; maxx=minx+p; 
+   x005=maxx+p; x995=x005+p; x025=x995+p; x975=x025+p; xHPD025=x975+p; xHPD975=xHPD025+p;
+   var=xHPD975+p;   Tint=var+p;  y=Tint+p;
+
    if(ReadHeader)
       for(i=0; i<p; i++) sscanf(line+ifields[i], "%s", varstr[i]);
-
-   x = (double*)malloc((p*13+p*p)*sizeof(double));
-   if (x==NULL) error2("oom DescriptiveStatistics.");
-   for(j=0;j<p*13+p*p; j++) x[j]=0;
-   mean=x+p; median=mean+p; minx=median+p; maxx=minx+p; 
-   x005=maxx+p; x995=x005+p; x025=x995+p; x975=x025+p; xHPD025=x975+p; xHPD975=xHPD025+p;
-   var=xHPD975+p;   Tint=var+p;
-
-   /* min, max, mean, var */
-   printf("   Collecting min, max, and mean");
-   for(i=0; i<n; i++) {
+   for(i=0; i<n; i++)
       for(j=0; j<p; j++) 
-         fscanf(fin, "%lf", &x[j]);
-      if(i==0)
-         for(j=SkipColumn; j<p; j++)
-            minx[j] = maxx[j] = x[j];
-      else {
-         for(j=SkipColumn;j<p;j++) 
-            if      (minx[j]>x[j]) minx[j] = x[j];
-            else if (maxx[j]<x[j]) maxx[j] = x[j];
-      }
-      for(j=SkipColumn; j<p; j++) {
-         var[j] += square(x[j] - mean[j]) * i/(i+1.0);
-         mean[j] = (mean[j]*i + x[j])/(i+1);
-      }   
-   }
-   for(j=SkipColumn; j<p; j++)
-      var[j] /= n-1.0;
+         fscanf(fin, "%lf", &data[j*n+i]);
+   fclose(fin); 
 
-   /* sorting to get median and percentiles */
-   printf("%10s\n   Collecting median, percentiles",printtime(timestr));
-   y=(double*)malloc(n*sizeof(double));
-   if(y==NULL) error2("oom for y");
-   for(jj=SkipColumn; jj<p; jj++) {
-      rewind(fin);
-      if(ReadHeader) fgets(line, lline, fin);
+   printf("Collecting mean, median, min, max, percentiles, etc.\n");
+   for(j=SkipC1,x=data+j*n; j<p; j++,x+=n) {
+      memmove(y, x, n*sizeof(double));
+      Tint[j] = 1/Eff_IntegratedCorrelationTime(y, n, &mean[j], &var[j]);
+      qsort(x, (size_t)n, sizeof(double), comparedouble);
+      minx[j] = x[0];  maxx[j] = x[n-1];
+      median[j] = (n%2==0 ? (x[n/2]+x[n/2+1])/2 : x[(n+1)/2]);
+      x005[j] = x[(int)(n*.005)];    x995[j] = x[(int)(n*.995)];
+      x025[j] = x[(int)(n*.025)];    x975[j] = x[(int)(n*.975)];
 
-      for(i=0;i<n;i++) {
-         for(j=0; j<p; j++) fscanf(fin,"%lf", &x[j]);
-         y[i] = x[jj];
-      }
-
-      Tint[jj] = 1/Eff_IntegratedCorrelationTime(y, n);
-      qsort(y, (size_t)n, sizeof(double), comparedouble);
-      if(n%2==0)  median[jj] = (y[n/2]+y[n/2+1])/2;
-      else        median[jj] = y[(n+1)/2];
-      x005[jj] = y[(int)(n*.005)];      x995[jj] = y[(int)(n*.995)];
-      x025[jj] = y[(int)(n*.025)];      x975[jj] = y[(int)(n*.975)];
-
-      HPDinterval(y, n, tmp, 0.05);
-      xHPD025[jj] = tmp[0];    xHPD975[jj] = tmp[1];
+      HPDinterval(x, n, tmp, 0.05);
+      xHPD025[j] = tmp[0];
+      xHPD975[j] = tmp[1];
+      if((j+1)%100==0 || j==p-1)
+         printf("\r\t\t\t%6d/%6d done  %s", j+1, p, printtime(timestr));
    }
 
    fprintf(fout,"\n\n       ");
-   for (j=SkipColumn; j<p; j++) fprintf(fout,"   %s", varstr[j]);
-   fprintf(fout,"\nmean    ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,mean[j]);
-   fprintf(fout,"\nmedian  ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,median[j]);
-   fprintf(fout,"\nS.D.    ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,sqrt(var[j]));
-   fprintf(fout,"\nmin     ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,minx[j]);
-   fprintf(fout,"\nmax     ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,maxx[j]);
-   fprintf(fout,"\n2.5%%    "); for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,x025[j]);
-   fprintf(fout,"\n97.5%%   "); for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,x975[j]);
-   fprintf(fout,"\n2.5%%HPD "); for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,xHPD025[j]);
-   fprintf(fout,"\n97.5%%HPD"); for(j=SkipColumn;j<p;j++) fprintf(fout,fmt,xHPD975[j]);
-   fprintf(fout,"\nESS*    ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt1,n/Tint[j]);
-   fprintf(fout,"\nEff*    ");  for(j=SkipColumn;j<p;j++) fprintf(fout,fmt1,1/Tint[j]);
+   for (j=SkipC1; j<p; j++) fprintf(fout,"   %s", varstr[j]);
+   fprintf(fout,"\nmean    ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt,mean[j]);
+   fprintf(fout,"\nmedian  ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt,median[j]);
+   fprintf(fout,"\nS.D.    ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt,sqrt(var[j]));
+   fprintf(fout,"\nmin     ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt,minx[j]);
+   fprintf(fout,"\nmax     ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt,maxx[j]);
+   fprintf(fout,"\n2.5%%    "); for(j=SkipC1;j<p;j++) fprintf(fout,fmt,x025[j]);
+   fprintf(fout,"\n97.5%%   "); for(j=SkipC1;j<p;j++) fprintf(fout,fmt,x975[j]);
+   fprintf(fout,"\n2.5%%HPD "); for(j=SkipC1;j<p;j++) fprintf(fout,fmt,xHPD025[j]);
+   fprintf(fout,"\n97.5%%HPD"); for(j=SkipC1;j<p;j++) fprintf(fout,fmt,xHPD975[j]);
+   fprintf(fout,"\nESS*    ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt1,n/Tint[j]);
+   fprintf(fout,"\nEff*    ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt1,1/Tint[j]);
    fflush(fout);
 
-   fclose(fin); free(x); free(y); free(line);
+   free(data); free(mean); free(line);
    return(0);
 }
 

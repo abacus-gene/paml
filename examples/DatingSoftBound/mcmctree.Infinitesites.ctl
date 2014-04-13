@@ -24,9 +24,9 @@
 
       finetune = 1: .1 .1 .1 .1 .1 .1 * auto (0 or 1): times, rates, mixing, paras, RateParas, FossilErr
 
-         print = 1
-        burnin = 2000
-      sampfreq = 2
+         print = 2
+        burnin = 8000
+      sampfreq = 10
        nsample = 20000
 
 *** Note: Make your window wider (100 columns) before running the program.

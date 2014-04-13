@@ -83,7 +83,7 @@ int main (int argc, char *argv[])
    if ((fseq=fopen(com.seqf, "r"))==NULL) error2 ("seqfile err.");
    if ((fout=fopen (com.outf, "w"))==NULL) error2("outfile creation err.");
    if((fseq=fopen (com.seqf,"r"))==NULL)  error2("No sequence file!");
-   ReadSeq (NULL, fseq, com.cleandata);
+   ReadSeq (NULL, fseq, com.cleandata, 0);
    SetMapAmbiguity();
    i=(com.ns*2-1)*sizeof(struct TREEN);
    if((nodes=(struct TREEN*)malloc(i))==NULL) error2("oom");

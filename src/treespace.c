@@ -92,7 +92,7 @@ int CountLHistories (void)
    for(i=com.ns; i<tree.nnode; i++) 
       nLR[i-com.ns][0] = nLR[i-com.ns][1] = -1;
    for(k=0; k<com.ns; k++) {
-      for(i=com.ns,change=0; i<tree.nnode; i++) {
+      for(i=tree.nnode-1,change=0; i>=com.ns; i--) {
          sons = nodes[i].sons;
          for(j=0; j<2; j++) {
             if(nLR[i-com.ns][j] != -1) continue;

@@ -10,7 +10,48 @@ https://groups.google.com/forum/#!forum/pamlsoftware.
 
 
 
+Version 4.8, March 2014
 
+(*) mcmctree.  The prior for rates for loci (with ndata = 2 or more)
+has changed in this version, and the gamma-Dirichlet prior is used.
+The old i.i.d. prior is replaced and unavailable anymore.  The new
+gamma-Dirichlet prior is decribed in a paper 
+dos Reis M, Zhu T, Yang Z. 2014. The impact of the rate prior on
+Bayesian estimation of divergence times with multiple loci. Syst
+Biol. in press.
+
+(*) baseml (nhomo = 3 or 4).  Added code to print out the expected
+number of changes from nucleotides i to j over time interval (0, t)
+under the nonhomogeneous models (RateAncestor = 1, verbose = 1, nhomo
+= 3 or 4).
+
+(*) codeml.  Added a Bayesian method for estimating distance t and dN/dS
+ratio w in pairwise comparisons.  The option is 
+      runmode = -3  * -3: pairwise Bayesian
+      runmode = -3 1.1 1.1 1.1 2.2   * -3: pairwise Bayesian
+The four numbers are the parameters in the gamma priors for t and w (a_t b_t a_w b_w).
+The method is described in a manuscript
+Angelis K, dos Reis M, Yang Z. 2014. Bayesian estimation of nonsynonymous/synonymous rate 
+ratios for pairwise sequence comparisons. Mol Biol Evol.
+
+(*) baseml, codeml, mcmctree).  In version 4.7, I disabled the option
+of reading species indexes in the tree file (for example, the number
+19, instead of the sequence name, may be used in the tree file to mean
+the 19th sequence in the sequence alignment).  I have added this back.
+
+(*) codeml in paml 4.6 and 4.7 has a bug if your sequences have stop
+codons.  Stop codons have always been disallowed in the codon models
+implemented in codeml.  In versions 4.6-4.7, if there is a stop codon
+in any sequence, the codons in all sequences at that site (column in
+alignment) are changed into ??? and then the sequences are processed
+in the usual way.  The likelihood should then be the same as the
+likelihood if that column is removed from the alignment.  However, the
+implementation of the idea was incorrect and gives wrong results if
+the sequences do not contain any ambiguity characters and if you
+choose cleandata = 0.  I have now fixed this.  The idea is not really
+useful, so the good advice is that you delete the column of stop
+codons before the data are analyzed using codeml.
+ 
 
 Version 4.7a, October 2013
 
