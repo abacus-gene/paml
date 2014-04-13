@@ -17,31 +17,32 @@
 #define NP       (NBRANCH+NGENE+5)
 
 #include "tools.h"
-extern char NUCs[];
+extern char BASEs[];
 extern int noisy, NFunCall, *ancestor;
 extern double *SeqDistance;
 
 int Forestry (FILE *fout, double space[]);
 int GetOptions (char *ctlf);
+int SetxBound (int np, double xb[][2]);
 int testx (double x[], int np);
 int GetInitials (double x[], double space[]);
 void TestFunction (FILE *fout, double x[], double space[]);
 int GetMem (int nbranch, int nR, int nitem);
 void GetSave (int nitem, int *nm, int M[], double alpha, double c);
 double GetBmx (int ninter, int nsum, int im, int M[], int nodeb[]);
-double RhoRate (double x[]);
-double lfunG_print (double x[], int np);
+int RhoRate (double x[]);
+int lfunG_print (double x[], int np);
 double lfunG (double x[], int np);
 int lfunG_d (double x[], double *lnL, double dl[], int np);
 int lfunG_dd (double x[], double *lnL, double dl[], double ddl[], int np);
 
 struct CommonInfo {
-   char *z[NS], spname[NS][LSPNAME+1], seqf[32],outf[32],treef[32];
+   char *z[NS], *spname[NS], seqf[32],outf[32],treef[32];
    int  seqtype, ns, ls, ngene, posG[NGENE+1],lgene[NGENE],*pose,npatt;
-   int  clock,fix_alpha,fix_kappa,fix_rgene,Malpha,method,print,verbose;
-   int  model, runmode, escape, np, ntime, nrate, nrgene, ncode;
-   float *fpatt;
-   double pi[6], lmax, alpha, kappa, rgene[NGENE], piG[NGENE][6], *chunk;
+   int  clock,fix_alpha,fix_kappa,fix_rgene,Malpha,print,verbose;
+   int  model, runmode, cleandata, ndata;
+   int np, ntime, nrate, nrgene, ncode;
+   double *fpatt, pi[4], lmax, alpha,kappa, rgene[NGENE],piG[NGENE][6], *chunk;
    double *SSave, *ErSave, *EaSave;
    int  nhomo, nparK, ncatG, fix_rho, getSE;  /* unused */
    double rho;                           /* unused */
@@ -58,7 +59,8 @@ struct TREEN {
 static int nR=4, CijkIs0[64];
 static double Cijk[64], Root[4];
 
-FILE *frst, *frub, *flfh;
+FILE *frub, *flfh, *frate;
+char *ratef="rates";
 char *models[]={"JC69", "K80", "F81", "F84", "HKY85", "TN93", "REV", "UNREST"};
 enum {JC69, K80, F81, F84, HKY85, TN93, REV, UNREST} MODELS;
 
@@ -72,26 +74,23 @@ int main(int argc, char *argv[])
 {
    char ctlf[32]="baseml.ctl";
    double  *space, kappat=0;
-   FILE   *fout, *fseq;
+   FILE *fout, *fseq;
 
-   noisy=2;
-   com.runmode=0;  com.escape=0;
+   noisy=2;  com.cleandata=1;
+   com.runmode=0;
    com.clock=0;    com.fix_rgene=0;
-   com.method=1;          /* 1: newton, 0: ming1 */
 
    com.model=F84;
    com.fix_kappa=0;      com.kappa=5;
    com.fix_alpha=0;      com.alpha=0.2;
-   com.print=1;      /* 0: nothing, 1: log(f) & r,  2: r for all sites */
    com.ncode=4;
 
-   frst=fopen("rst","w");  frub=fopen("rub","w");  flfh=fopen("lfh","w");
+   frate=fopen(ratef,"w");  frub=fopen("rub","w");  flfh=fopen("lfh","w");
 
    if ((space=(double*)malloc(50000*sizeof(double)))==NULL) error ("oom");
 
    if (argc>1) { strcpy(ctlf, argv[1]); printf ("\nctlfile is %s.\n", ctlf); }
    GetOptions (ctlf);
-   if (com.clock||com.model==REV)  com.method=0;
 
    if ((fout=fopen (com.outf, "w"))==NULL) error("outfile creation err.");
    if((fseq=fopen (com.seqf,"r"))==NULL)  error("No sequence file!");
@@ -113,11 +112,7 @@ int main(int argc, char *argv[])
    DistanceMatNuc (fout, com.model, com.alpha);
    if (com.model<=HKY85)
       EigenTN93 (com.model, com.kappa, com.kappa, com.pi, &nR, Root, Cijk);
-
-   if (com.runmode==0)
-      Forestry (fout, space);
-   else 
-      error ("tree search not available with basemlg.");
+   Forestry (fout, space);
    fclose(fseq);
    putchar ('\a');
    return (0);
@@ -128,8 +123,7 @@ int main(int argc, char *argv[])
 int Forestry (FILE *fout, double space[])
 {
    int  status=0, i,j, itree, ntree, np;
-   double x[NBRANCH+1], lnL[NTREE], e=1e-5;
-   double *var=space+NP;
+   double x[NP], xb[NP][2], lnL[NTREE], e=1e-5, *var=space+NP;
    FILE *ftree, *finbasemlg=NULL;
 
    if ((ftree=fopen(com.treef,"r"))==NULL)   error("treefile err.");
@@ -137,22 +131,24 @@ int Forestry (FILE *fout, double space[])
    if (i!=com.ns || ntree>NTREE) error ("err:ns || ntree..");              
    fprintf (flfh,"%6d%6d%6d\n", ntree, com.ls, com.npatt);
 
+   fprintf(frate,"Rates for sites, from BASEMLG, %d tree(s)\n\n", ntree);
+
    finbasemlg=fopen("in.basemlg","r");
 
    for (itree=0; itree<ntree; itree++) {
-      printf ("\nTREE # %2d\n", itree+1 );
-      fprintf (fout,"\nTREE # %2d:  ", itree+1);
-      fprintf (flfh,"\n\n%2d\n", itree+1);
-      fprintf (frub,"\n\nTREE # %2d", itree+1);
-      com.print*=-1;
+      printf("\nTREE # %2d\n", itree+1 );
+      fprintf(fout,"\nTREE # %2d:  ", itree+1);
+      fprintf(flfh,"\n\n%2d\n", itree+1);
+      fprintf(frub,"\n\nTREE # %2d", itree+1);
+      fprintf(frate,"\nTREE # %2d\n", itree+1);
 
       if (ReadaTreeN(ftree, &i, 1)) error ("err tree..");
       OutaTreeN (F0, 0, 0);   
       OutaTreeN (fout, 0, 0);  
       fflush (fout);  fflush (flfh);
 
-      i=(com.clock||com.model>HKY85?1+(com.print!=0):2+!com.fix_alpha);
-      GetMem (tree.nbranch, nR, i);
+      i=(com.clock||com.model>HKY85 ? 2 : 2+!com.fix_alpha);
+      GetMem(tree.nbranch, nR, i);
 
       GetInitials (x, space);
       np = com.np;
@@ -173,48 +169,46 @@ int Forestry (FILE *fout, double space[])
       }
 
       matout (F0, x, 1, np);
-      printf ("\nlnL0=%12.6f", -lfunG(x, np));
+      printf ("\nlnL0 = %12.6f", -lfunG(x, np));
 
-      if (com.method==1)
-         i = Newton(frub, &lnL[itree], lfunG, lfunG_dd,testx,x,var,e,np);
-      else {
-         i = ming1 (frub, &lnL[itree], lfunG,
-         ((com.clock||com.model>HKY85)?NULL:lfunG_d),testx,x,space,e,np);
+      if (com.clock||com.model==REV) {
+         SetxBound (np, xb);
+         i=ming2(frub,&lnL[itree],lfunG,
+            ((com.clock||com.model>HKY85)?NULL:lfunG_d),x,xb, space,e,np);
          Hessian (np,x,lnL[itree],space,var,lfunG,var+np*np);
+         matinv (var, np, np, var+np*np);
       }
+      else 
+         i=Newton(frub, &lnL[itree], lfunG, lfunG_dd,testx,x,var,e,np);
       if (noisy) printf ("\nOut...\nlnL:%14.6f\n", -lnL[itree]);
 
-      if (com.method==0) matinv (var, np, np, var+np*np);
 
       if (i || j<np) { status=-1; fprintf (fout, "\n\ncheck convergence.."); }
       fprintf(fout,"\nlnL(np:%3d):%14.6f%+12.6f\n", com.np,
          -lnL[itree], -lnL[itree]+lnL[0]);
       OutaTreeB (fout);  FPN (fout);
 
-      FOR (i, np) fprintf (fout,"%9.5f", x[i]);   FPN (fout);
-      FOR (i, np)
+      FOR(i,np) fprintf (fout,"%9.5f", x[i]);   FPN (fout);
+      FOR(i,np)
          fprintf (fout,"%9.5f", var[i*np+i]>0.?sqrt(var[i*np+i]):0.);
 
       fprintf (fout, "\n\n# fun calls:%10d\n", NFunCall);
-
-      com.print*=-1;
-      if (com.print)  lfunG_print (x, np);
+      OutaTreeN(fout,1,1);  fputs(";\n", fout);
+      lfunG_print (x, np);
 /*
       RhoRate (x);
 */
    }        /* for (itree) */
    fclose (ftree);
-
-   exit (status);
    return (0);
 }
 
 int testx (double x[], int np)
 {
    int i,k;
-   double tb[]={1e-5,4}, rgeneb[]={0.01,20}, kappab[]={0,80}, alphab[]={0.01,9};
+   double tb[]={1e-5,4}, rgeneb[]={.01,20}, kappab[]={0,80}, alphab[]={.01,99};
 
-   if (com.clock && SetBranch (x, 0)) return (-1);
+   if (SetBranch(x)) return (-1);
    FOR (i,com.ntime)   if (x[i]<tb[0] || x[i]>tb[1])   return (-1);
    if (np==com.ntime)  return (0); 
    for (i=0,k=com.ntime; i<com.nrgene; i++,k++) 
@@ -223,6 +217,31 @@ int testx (double x[], int np)
       if (x[k]<kappab[0] || x[k]>kappab[1])    return(-1);
    if (!com.fix_alpha && (x[np-1]<alphab[0] || x[np-1]>alphab[1]))  return(-1);
    return (0);
+}
+
+int SetxBound (int np, double xb[][2])
+{
+/* sets lower and upper bounds for variables during iteration
+*/
+   int i,j, k=com.ntime+com.nrgene+com.nrate;
+   double tb[]={.4e-5, 20}, rgeneb[]={1e-4,99}, rateb[]={1e-5,999};
+   double alphab[]={0.005, 99}, pb[2]={1e-5,1-1e-5};
+
+   if(com.clock) {
+      xb[0][0]=tb[0];  xb[0][1]=tb[1];
+      for(i=1;i<com.ntime;i++) FOR(j,2) { xb[i][0]=pb[0]; xb[i][1]=pb[1]; }
+   }
+   else 
+      FOR (i,com.ntime)  FOR (j,2) xb[i][j]=tb[j];
+   FOR (i,com.nrgene) FOR (j,2) xb[com.ntime+i][j]=rgeneb[j]; 
+   FOR (i,com.nrate)  FOR (j,2) xb[com.ntime+com.nrgene+i][j]=rateb[j];
+   if(!com.fix_alpha) FOR (j,2) xb[k][j]=alphab[j];
+   if(noisy) {
+      puts("\nBounds:\n");
+      FOR(i,np) printf(" %10.6f", xb[i][0]);  FPN(F0);
+      FOR(i,np) printf(" %10.6f", xb[i][1]);  FPN(F0);
+   }
+   return(0);
 }
 
 int GetInitials (double x[], double space[])
@@ -242,14 +261,16 @@ int GetInitials (double x[], double space[])
    if (com.model<=HKY85)
       EigenTN93 (com.model, com.kappa, com.kappa, com.pi, &nR, Root, Cijk);
 
-   com.np = com.ntime+com.nrgene+com.nrate+(!com.fix_alpha);
-   FOR (j,com.ntime) x[j]=0.05+0.01*(double) (com.ntime-j);
    FOR (j,com.nrgene) x[com.ntime+j]=1;
-
    if (!com.fix_alpha)  x[com.np-1]=com.alpha;
-   LSDistance (&t, x, testx);
+   com.np = com.ntime+com.nrgene+com.nrate+(!com.fix_alpha);
 
-   FOR (j, com.ntime) if (x[j]<1e-5) x[j]=1e-4;
+   if (com.clock) for(j=1,x[0]=0.1; j<com.ntime; j++) x[j]=0.5;
+   else           FOR (j,com.ntime) x[j]=0.1;
+
+   LSDistance (&t, x, testx);
+   FOR(j, com.ntime) if (x[j]<1e-5) x[j]=1e-4;
+
    return (0);
 }
 
@@ -302,7 +323,7 @@ int GetMem (int nbranch, int nR, int nitem)
    if (nm*nitem>size && size) free (com.chunk);
    if (nm*nitem>size) {
       size=nm*nitem;
-      printf ("\n\nSave %12d bytes\n", size*sizeof(double));
+      printf ("\n\nSave %12ld bytes\n", size*sizeof(double));
       com.chunk = (double*)malloc(size*sizeof(double));
       if (com.chunk==NULL) error("oom");
    }
@@ -352,7 +373,7 @@ double GetBmx (int ninter, int nsum, int im, int M[], int nodeb[])
    return (Bmx);
 }
 
-double RhoRate (double x[])
+int RhoRate (double x[])
 {
 /* rate factors for all possible site patterns, and the correlation 
    coefficient (Yang and Wang, in press).
@@ -360,7 +381,7 @@ double RhoRate (double x[])
    int  i,j, h, nodeb[NNODE], M[NBRANCH], accurate=(com.ns<8);
    int  im, nm, nsum=1<<(2*(tree.nnode-com.ns)), *fobs;
    int  ninter=tree.nbranch-com.ns+1;
-   double lnL, lexp, fh, sumfh=0, rh, Bmx, alpha, kappa;
+   double lnL, fh, sumfh=0, rh, Bmx, alpha, kappa;
    double mrh=0, mrh0=0, vrh=0, vrh0=0;
 
    if (com.ngene>1) error ("ngene>1");
@@ -376,16 +397,16 @@ double RhoRate (double x[])
    if (com.model==REV)
        EigenREV (NULL, x+com.ntime+com.nrgene, com.pi, &nR, Root, Cijk);
 #endif
-   if (SetBranch (x, 0)) puts ("\nx[] err..");
+   if (SetBranch (x)) puts ("\nx[] err..");
    GetSave (2, &nm, M, alpha, 1);
    fobs = (int*) malloc ((1<<(2*com.ns)) * sizeof (int));
 
    FOR (h,(1<<2*com.ns)) fobs[h]=0;
    for (h=0; h<com.npatt; h++) {
-      for (j=0,im=0; j<com.ns; j++) im = im*4+(com.z[j][h]-1);
-      fobs[im]=com.fpatt[h];
+      for (j=0,im=0; j<com.ns; j++) im = im*4+com.z[j][h];
+      fobs[im]=(int)com.fpatt[h];
    }
-   for (h=0,lnL=0,lexp=0; h<(1<<2*com.ns); h++) {
+   for (h=0,lnL=0; h<(1<<2*com.ns); h++) {
       if (accurate==0 && fobs[h]==0) continue;
       for (j=0,im=h; j<com.ns; nodeb[com.ns-1-j]=im%4,im/=4,j++);
       for (im=0,fh=0,rh=0; im<nm; im++) {
@@ -396,15 +417,12 @@ double RhoRate (double x[])
       if (fh<=0)  printf ("\a\nRhoRate: h=%4d  fh=%9.4f \n", h, fh);
       rh /= fh;      vrh += fh*rh*rh;
       sumfh += fh;   mrh += fh*rh;   mrh0+=rh*(double)fobs[h]/(double)com.ls;
-      lexp  -= log(fh)*fh;
       if (fobs[h]) {
-         vrh0 += rh*rh*(double)fobs[h]/(double)com.ls;
-         lnL  -= log(fh)*(double)fobs[h];
+         vrh0+= rh*rh*(double)fobs[h]/(double)com.ls;
+         lnL -= log(fh)*(double)fobs[h];
       }
-      if (com.print>3)  {
-         fprintf (flfh,"\n%6d%9.2f%8.4f  ", fobs[h], fh*com.ls, rh);
-         FOR (i,com.ns) fprintf (flfh, "%c", NUCs[nodeb[i]]);
-      }
+      fprintf (flfh,"\n%6d%9.2f%8.4f  ", fobs[h], fh*com.ls, rh);
+      FOR (i,com.ns) fprintf (flfh, "%c", BASEs[nodeb[i]]);
    }    /* for (h) */
    vrh-=1;     vrh0-=mrh0*mrh0;
    fprintf (flfh, "\n%s Vrh", accurate?"accurate":"approximate");
@@ -412,37 +430,40 @@ double RhoRate (double x[])
    fprintf (flfh, "\nVr :%12.6f  Vr0:%12.6f   mrh0:%12.6f", vrh, vrh0, mrh0);
    fprintf (flfh, "\nPEV:%12.6f      %12.6f", 1/alpha-vrh, 1/alpha-vrh0);
    fprintf (flfh, "\nRHO:%12.6f      %12.6f", sqrt(vrh*alpha), sqrt(vrh0*alpha));
-   fprintf (flfh,"\nLn(L)=%12.6f\nlentropy=%12.6f\n", -lnL, -lexp);
+   fprintf (flfh,"\nLn(L)=%12.6f\n", -lnL);
    free (fobs);
-   return (accurate ? sqrt(vrh*alpha) : sqrt(vrh0*alpha));
+   return (0);
 }
 
-double lfunG_print (double x[], int np)
+int lfunG_print (double x[], int np)
 {
-   int  i,j, h, igene, lt, nodeb[NNODE], M[NBRANCH], allsites=1;
+/* This prints log(f) into lfh, and rates into rates
+*/
+   int  i,j, h,hp, igene, lt, nodeb[NNODE], M[NBRANCH];
    int  im, nm, nsum=1<<(2*(tree.nnode-com.ns));
    int  ninter=tree.nbranch-com.ns+1;
-   double lnL, fh, rh, mrh0=0,vrh0=0, Bmx, y, alpha,kappa, *rates=NULL;
- 
-   if (com.print<2) allsites=0;
-   if (allsites && (rates=(double*)malloc(com.npatt*sizeof(double)))==NULL)
-           error ("oom");
+   double lnL, fh, rh, mrh0=0,vrh0=0, Bmx, y, alpha,kappa, *fhs,*rates=NULL;
 
+   fputs("\nEstimation of rates for sites by BASEMLG.\n",frate);
+ 
+   if ((rates=(double*)malloc(com.npatt*2*sizeof(double)))==NULL) error("oom");
+   fhs=rates+com.npatt;
+   
    FOR (i, com.nrgene) com.rgene[i+1]=x[com.ntime+i];
    kappa=(com.fix_kappa ? com.kappa : x[com.ntime+com.nrgene]);
    alpha=(com.fix_alpha ? com.alpha : x[com.np-1]);
 
    if (com.model<=HKY85 && !com.fix_kappa)  
-       RootTN93 (com.model, kappa, kappa, com.pi, &y, Root);
+       RootTN93(com.model,kappa,kappa,com.pi,&y,Root);
 #ifdef REV_UNREST
    if (com.model==REV)
-       EigenREV (NULL, x+com.ntime+com.nrgene, com.pi, &nR, Root, Cijk);
+       EigenREV(NULL,x+com.ntime+com.nrgene,com.pi,&nR,Root,Cijk);
 #endif
-   if (SetBranch (x, 0)) puts ("\nx[] err..");
-   for(j=0,nm=1; j<tree.nbranch; j++)   nm*=nR;
+   if (SetBranch(x)) puts("\nx[] err..");
+   for(j=0,nm=1; j<tree.nbranch; j++)  nm*=nR;
 
-   for (h=0,lnL=0,igene=-1,lt=0; h<com.npatt; lt+=com.fpatt[h++]) {
-      FOR(j,com.ns) nodeb[j] = com.z[j][h]-1;
+   for (h=0,lnL=0,igene=-1,lt=0; h<com.npatt; lt+=(int)com.fpatt[h++]) {
+      FOR(j,com.ns) nodeb[j] = com.z[j][h];
       if (h==0 || lt==com.lgene[igene])
          GetSave (2, &nm, M, alpha, com.rgene[++igene]);
       for (im=0,fh=0,rh=0; im<nm; im++) {
@@ -452,29 +473,36 @@ double lfunG_print (double x[], int np)
       }  /* for (im) */
       if (fh<=0)  printf ("\a\nlfunG_print: h=%4d  fh=%9.4f \n", h, fh);
       rh/=fh;
-      vrh0+=rh*rh*com.fpatt[h]/(double)com.ls;
-      mrh0+=rh*com.fpatt[h]/(double)com.ls;
-      if (allsites) rates[h]=rh;
+      vrh0+=rh*rh*com.fpatt[h]/com.ls;
+      mrh0+=rh*com.fpatt[h]/com.ls;
+      rates[h]=rh;
 
-      fh=log (fh);
+      fhs[h]=fh;  fh=log(fh);
       lnL -= fh*com.fpatt[h];
-      if (com.print>=1) {
-         fprintf (flfh,"\n%4d%6.0f%14.8f%9.2f%9.4f  ",
-            h+1, com.fpatt[h], fh, com.ls*exp(fh), rh);
-         FOR (i,com.ns) fprintf (flfh, "%c", NUCs[com.z[i][h]-1]);
-      }
+      fprintf (flfh,"\n%4d%6.0f%14.8f%9.2f%9.4f  ",
+         h+1, com.fpatt[h], fh, com.ls*fhs[h], rh);
+      FOR (i,com.ns) fprintf (flfh, "%c", BASEs[com.z[i][h]]);
+
    }    /* for (h) */
    if (com.print>=2) 
        fprintf (flfh,"\n\nVrh0:%12.6f\nmrh0:%12.6f\nRHO0:%12.6f\n", 
                 (vrh0-=mrh0*mrh0), mrh0, sqrt(vrh0*alpha));
-   if (allsites) {
-      fprintf (flfh, "\n\nrate factors along sequence.. \n");
-      FOR (h, com.ls) {
-         FOR (j, com.ns) fprintf (flfh, "%c", NUCs[com.z[j][com.pose[h]]-1]);
-         fprintf (flfh,"%8d%6d%9.4f\n",h+1,com.pose[h]+1,rates[com.pose[h]]);
-      }
+
+   fputs("\n Site Freq  Data     Nexp.    Rates\n\n",frate);
+ 
+   FOR(h, com.ls) {
+      hp=com.pose[h];
+      fprintf(frate,"%4d %5.0f  ",h+1,com.fpatt[hp]);  
+      FOR(j,com.ns) fprintf (frate,"%c", BASEs[com.z[j][hp]]);
+      fprintf(frate,"%9.2f%9.4f\n", com.ls*fhs[hp],rates[hp]);
    }
-   return (lnL);
+   fprintf(frate, "\nlnL = %12.6f", -lnL);
+   if(com.ngene==1) {
+      vrh0-=mrh0*mrh0;
+      fprintf(frate, "\nVr0:%12.6f   mrh0:%12.6f", vrh0, mrh0);
+      fprintf(frate, "\nApproximate corr(r,r^) =%12.6f\n",sqrt(vrh0*alpha));
+   }
+   return (0);
 }
 
 double lfunG (double x[], int np)
@@ -496,10 +524,10 @@ double lfunG (double x[], int np)
    if (com.model==REV)
        EigenREV (NULL, x+com.ntime+com.nrgene, com.pi, &nR, Root, Cijk);
 #endif
-   if (SetBranch (x, 0)) puts ("\nx[] err..");
+   if (SetBranch (x)) puts ("\nx[] err..");
 
-   for (h=0,lnL=0,igene=-1,lt=0; h<com.npatt; lt+=com.fpatt[h++]) {
-      FOR(j,com.ns) nodeb[j] = com.z[j][h]-1;
+   for (h=0,lnL=0,igene=-1,lt=0; h<com.npatt; lt+=(int)com.fpatt[h++]) {
+      FOR(j,com.ns) nodeb[j] = com.z[j][h];
       if (h==0 || lt==com.lgene[igene])
          GetSave (1, &nm, M, alpha, com.rgene[++igene]);
       for (im=0,fh=0,rh=0; im<nm; im++) {
@@ -518,29 +546,30 @@ int lfunG_d (double x[], double *lnL, double dl[], int np)
    int  i,j, nodeb[NNODE], M[NBRANCH], h, igene,lt;
    int  im, nm, nsum=1<<(2*(tree.nnode-com.ns));
    double fh, y, Bmx, S, alpha, kappa, Er, dfh[NP];
-   double *p=com.pi, drk1[4], c=1;
+   double drk1[4], c=1;
+   double *p=com.pi, T=p[0],C=p[1],A=p[2],G=p[3],Y=T+C,R=A+G;
 
    if (com.clock||com.model>HKY85) error ("err lfunG_d");
    NFunCall++;
    FOR (i, com.nrgene) com.rgene[i+1]=x[com.ntime+i];
    kappa=(com.fix_kappa ? com.kappa : x[com.ntime+com.nrgene]);
    alpha=(com.fix_alpha ? com.alpha : x[np-1]);
-   if (SetBranch (x, 0)) puts ("\nx[] err..");
+   if (SetBranch (x)) puts ("\nx[] err..");
    if (!com.fix_kappa) {
       RootTN93 (com.model, kappa, kappa, p, &S, Root);
-      y=p[0]*p[1]+p[2]*p[3];
+      y=T*C+A*G;
       drk1[1]=2*y*S*S;
-      drk1[2]=2*(y-p[5]*p[5])*p[4]*S*S;
-      drk1[3]=2*(y-p[4]*p[4])*p[5]*S*S;
+      drk1[2]=2*(y-R*R)*Y*S*S;
+      drk1[3]=2*(y-Y*Y)*R*S*S;
       if (com.model==F84) {
-         y=2*p[0]*p[1]/p[4]+2*p[2]*p[3]/p[5];
+         y=2*T*C/Y+2*A*G/R;
          drk1[1]=y*S*S;
          drk1[2]=-S+(1+kappa)*y*S*S;
       }
    }
    *lnL=0; zero(dl,np);
-   for (h=0,igene=-1,lt=0; h<com.npatt; lt+=com.fpatt[h++]) {
-      FOR(j,com.ns) nodeb[j] = com.z[j][h]-1;
+   for (h=0,igene=-1,lt=0; h<com.npatt; lt+=(int)com.fpatt[h++]) {
+      FOR(j,com.ns) nodeb[j] = com.z[j][h];
       if (h==0 || lt==com.lgene[igene])
          GetSave (2+!com.fix_alpha, &nm, M, alpha, (c=com.rgene[++igene]));
       for (im=0,fh=0,zero(dfh,np); im<nm; im++) {
@@ -571,29 +600,31 @@ int lfunG_dd (double x[], double *lnL, double dl[], double ddl[], int np)
    int  i,j,k, nodeb[NNODE], M[NBRANCH], h, igene,lt;
    int  im, nm, nsum=1<<(2*(tree.nnode-com.ns));
    double fh, y, Bmx,S,alpha,kappa, Er,Ea, y1,y2;
-   double dfh[NP], ddfh[NP*NP], *p=com.pi, drk1[4], drk2[4], c=1, s1=0,s2=0;
+   double dfh[NP], ddfh[NP*NP], drk1[4], drk2[4], c=1, s1=0,s2=0;
+   double T=com.pi[0],C=com.pi[1],A=com.pi[2],G=com.pi[3],Y=T+C,R=A+G;
+
 
    if (com.clock||com.model>HKY85) error ("err lfunG_dd");
    NFunCall++;
    FOR (i, com.nrgene) com.rgene[i+1]=x[com.ntime+i];
    kappa=(com.fix_kappa ? com.kappa : x[com.ntime+com.nrgene]);
    alpha=(com.fix_alpha ? com.alpha : x[np-1]);
-   if (SetBranch (x, 0)) puts ("\nx[] err..");
+   if (SetBranch (x)) puts ("\nx[] err..");
 
    if (!com.fix_kappa) {
-      RootTN93 (com.model, kappa, kappa, p, &S, Root);
+      RootTN93 (com.model, kappa, kappa, com.pi, &S, Root);
 
-      y=p[0]*p[1]+p[2]*p[3];
+      y=T*C+A*G;
       drk1[1]=2*y*S*S;
-      drk1[2]=2*(y-p[5]*p[5])*p[4]*S*S;
-      drk1[3]=2*(y-p[4]*p[4])*p[5]*S*S;
+      drk1[2]=2*(y-R*R)*Y*S*S;
+      drk1[3]=2*(y-Y*Y)*R*S*S;
 
       drk2[1]=-8*y*y*S*S*S;
-      drk2[2]=-8*y*p[4]*(y-p[5]*p[5])*S*S*S;
-      drk2[3]=-8*y*p[5]*(y-p[4]*p[4])*S*S*S;
+      drk2[2]=-8*y*Y*(y-R*R)*S*S*S;
+      drk2[3]=-8*y*R*(y-Y*Y)*S*S*S;
 
       if (com.model==F84) {
-         y=2*p[0]*p[1]/p[4]+2*p[2]*p[3]/p[5];
+         y=2*T*C/Y+2*A*G/R;
          drk1[1]=y*S*S;
          drk1[2]=-S+(1+kappa)*y*S*S;
 
@@ -602,8 +633,8 @@ int lfunG_dd (double x[], double *lnL, double dl[], double ddl[], int np)
       }
    }
    *lnL=0, zero(dl,np), zero(ddl,np*np);
-   for (h=0,igene=-1,lt=0; h<com.npatt; lt+=com.fpatt[h++]) {
-      FOR(j,com.ns) nodeb[j] = com.z[j][h]-1;
+   for (h=0,igene=-1,lt=0; h<com.npatt; lt+=(int)com.fpatt[h++]) {
+      FOR(j,com.ns) nodeb[j] = com.z[j][h];
       if (h==0 || lt==com.lgene[igene])
          GetSave (2+!com.fix_alpha, &nm, M, alpha, (c=com.rgene[++igene]));
       for (im=0,fh=0,zero(dfh,np),zero(ddfh,np*np); im<nm; im++) {
@@ -664,12 +695,13 @@ int lfunG_dd (double x[], double *lnL, double dl[], double ddl[], int np)
 
 int GetOptions (char *ctlf)
 {
-   int i, nopt=23, lline=255;
+   int i, nopt=25, lline=255;
    char line[255], *pline, opt[20], comment='*';
-   char *optstr[]={"seqfile","outfile","treefile", "noisy","verbose","runmode",
-        "escape","clock","fix_rgene","Mgene","nhomo","getSE","RateAncestor",
+   char *optstr[]={"seqfile","outfile","treefile", "noisy",
+        "cleandata", "ndata", "verbose","runmode",
+        "clock","fix_rgene","Mgene","nhomo","getSE","RateAncestor",
         "model","fix_kappa","kappa","fix_alpha","alpha","Malpha","ncatG", 
-        "fix_rho","rho","nparK"};
+        "fix_rho","rho","nparK", "Small_Diff"};
    double t;
    FILE  *fctl=fopen (ctlf, "r");
 
@@ -693,25 +725,27 @@ int GetOptions (char *ctlf)
                   case ( 1): sscanf(pline+2, "%s", com.outf);    break;
                   case ( 2): sscanf(pline+2, "%s", com.treef);   break;
                   case ( 3): noisy=(int)t;           break;
-                  case ( 4): com.verbose=(int)t;     break;
-                  case ( 5): com.runmode=(int)t;     break;
-                  case ( 6): com.escape=(int)t;      break;
-                  case ( 7): com.clock=(int)t;       break;
-                  case ( 8):                         break;  /* fix_rgene */
-                  case ( 9): com.fix_rgene=(int)t; break;
-                  case (10): com.nhomo=(int)t;       break;
-                  case (11): com.getSE=(int)t;       break;
-                  case (12): com.print=(int)t;       break;
-                  case (13): com.model=(int)t;       break;
-                  case (14): com.fix_kappa=(int)t;  break;
-                  case (15): com.kappa=t;             break;
-                  case (16): com.fix_alpha=(int)t;  break;
-                  case (17): com.alpha=t;             break;
-                  case (18):                         break;  /* Malpha */
-                  case (19): com.ncatG=(int)t;       break;
-                  case (20): com.fix_rho=(int)t;   break;
-                  case (21): com.rho=t;              break;
-                  case (22): com.nparK=(int)t;       break;
+                  case ( 4): com.cleandata=(int)t;   break;
+                  case ( 5):                         break;   /* ndata */
+                  case ( 6): com.verbose=(int)t;     break;
+                  case ( 7): com.runmode=(int)t;     break;
+                  case ( 8): com.clock=(int)t;       break;
+                  case ( 9):                         break;  /* fix_rgene */
+                  case (10): com.fix_rgene=(int)t;   break;
+                  case (11): com.nhomo=(int)t;       break;
+                  case (12): com.getSE=(int)t;       break;
+                  case (13): com.print=(int)t;       break;
+                  case (14): com.model=(int)t;       break;
+                  case (15): com.fix_kappa=(int)t;   break;
+                  case (16): com.kappa=t;            break;
+                  case (17): com.fix_alpha=(int)t;   break;
+                  case (18): com.alpha=t;            break;
+                  case (19):                         break;  /* Malpha */
+                  case (20): com.ncatG=(int)t;       break;
+                  case (21): com.fix_rho=(int)t;     break;
+                  case (22): com.rho=t;              break;
+                  case (23): com.nparK=(int)t;       break;
+                  case (24):                         break;   /* smallDiff */
                }
                break;
             }
@@ -731,6 +765,10 @@ int GetOptions (char *ctlf)
       || com.model>HKY85)
        error ("\noptions in file baseml.ctl inappropriate.. giving up..");
    if (com.model==JC69 || com.model==F81) { com.fix_kappa=1; com.kappa=1; }
-
+   if (com.runmode) error("tree search not available with basemlg.");
+   if(com.cleandata==0) { 
+      puts("cleandata set to 1, with ambiguity data removed. ");
+      com.cleandata=1;
+   }
    return (0);
 }

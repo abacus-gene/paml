@@ -7,7 +7,7 @@
 */
 
 #include "tools.h"
-#define NS            100
+#define NS            1000
 #define NBRANCH       (NS*2-2)
 #define NNODE         (NS*2-1)
 #define NGENE         2
@@ -26,14 +26,15 @@ int AlphaMP (FILE* fout);
 int PatternMP (FILE *fout, double Ft[]);
 int PathwayMP1 (FILE *fout, int *maxchange, int NSiteChange[], 
     double Ft[], double space[], int job);
+double lfunAlpha_Sullivan (double x);
+double lfunAlpha_YK96 (double x);
 
 struct CommonInfo {
-   char *z[NS], spname[NS][LSPNAME+1], seqf[32],outf[32],treef[32];
+   char *z[NS], *spname[NS], seqf[32],outf[32],treef[32];
    int seqtype, ns, ls, ngene, posG[NGENE+1],lgene[NGENE],*pose,npatt,nhomo;
-   int np, ntime, ncode,fix_kappa,fix_rgene,fix_alpha, clock, model, ncatG;
-   float *fpatt;
-   double lmax, pi[NCODE], kappa, alpha, rou, rgene[NGENE], piG[NGENE][NCODE];
-   double *chunk;
+   int np, ntime, ncode,fix_kappa,fix_rgene,fix_alpha, clock, model, ncatG, cleandata;
+   double *fpatt, *chunk;
+   double lmax,pi[NCODE], kappa,alpha,rou, rgene[NGENE],piG[NGENE][NCODE];
 }  com;
 struct TREEB {
    int nbranch, nnode, origin, branches[NBRANCH][2];
@@ -67,7 +68,7 @@ int main (int argc, char *argv[])
    double *space, *Ft;
 
    com.nhomo=1;
-   noisy=2;  com.ncatG=8;   com.clock=0; 
+   noisy=2;  com.ncatG=8;   com.clock=0; com.cleandata=1;
    GetOptions (ctlf);
    if(argc>1) { strcpy(ctlf, argv[1]); printf("\nctlfile set to %s.\n",ctlf);}
 
@@ -178,15 +179,14 @@ int GetOptions (char *ctlf)
    return (0);
 }
 
-int testxAlphaMP (double x[], int nx);
-double lfunAlpha_Sullivan (double x[], int nx);
-double lfunAlpha_YK (double x[], int nx);
 
 int AlphaMP (FILE* fout)
 {
    int k, ntotal;
-   double x[2], space[100], lnL, var;
+   double x, xb[2], lnL, var;
 
+   xb[0]=1e-3; xb[1]=99; /* alpha */
+ 
    fprintf (fout, "\n# changes .. # sites");
    for (k=0,ntotal=0,MuChange=var=0; k<maxchange+1; k++) {
       fprintf (fout, "\n%6d%10d", k, NSiteChange[k]);
@@ -195,26 +195,25 @@ int AlphaMP (FILE* fout)
    }
    MuChange/=ntotal;   
    var=(var-MuChange*MuChange*ntotal)/(ntotal-1.);
-   x[0]=MuChange*MuChange/(var-MuChange);
+   x=MuChange*MuChange/(var-MuChange);
    fprintf (fout, "\n\n# sites%6d,  total changes%6d\nmean-var%9.4f%9.4f",
             ntotal, (int)(ntotal*MuChange+.5), MuChange, var);
-   fprintf (fout, "\nalpha (method of moments)%9.4f", x[0]);
-   if (x[0]<=0) x[0]=9;
-   ming1 (NULL, &lnL, lfunAlpha_Sullivan, NULL, testxAlphaMP, x, space, 1e-6, 1);
-   fprintf (fout, "\nalpha (Sullivan et al. 1995)%9.4f\n", x[0]);
+   fprintf (fout, "\nalpha (method of moments)%9.4f", x);
+   if (x<=0) x=9;
+
+   LineSearch(lfunAlpha_Sullivan, &lnL, &x, xb, 0.02);
+   fprintf (fout, "\nalpha (Sullivan et al. 1995)%9.4f\n", x);
 
    MuChange/=tree.nbranch; 
-
-   ming1 (NULL, &lnL, lfunAlpha_YK, NULL, testxAlphaMP, x, space, 1e-6, 1);
-   fprintf (fout, "alpha (Yang & Kumar 1995, ncatG= %d)%9.4f\n", 
-       com.ncatG, x[0]);
+   LineSearch(lfunAlpha_YK96, &lnL, &x, xb, 0.02);
+   fprintf (fout, "alpha (Yang & Kumar 1995, ncatG= %d)%9.4f\n", com.ncatG,x);
    return (0);
 }
 
-double lfunAlpha_Sullivan (double x[], int nx)
+double lfunAlpha_Sullivan (double x)
 {
    int k;
-   double lnL=0, a=x[0], t;
+   double lnL=0, a=x, t;
 
    FOR (k, maxchange+1) { 
       if (NSiteChange[k]==0) continue;
@@ -224,16 +223,16 @@ double lfunAlpha_Sullivan (double x[], int nx)
           + k*log(MuChange/a/(1+MuChange/a));
       lnL += NSiteChange[k]*t;
    }
-   return (-lnL);
+   return(-lnL);
 }
 
-double lfunAlpha_YK (double x[], int nx)
+double lfunAlpha_YK96 (double x)
 {
    int k, ir, b=tree.nbranch, n=com.ncode;
-   double lnL=0, prob, alpha=x[0], t=(nx==2?x[1]:MuChange), p;
+   double lnL=0, prob, a=x, t=MuChange, p;
    double freqK[NCATG], rK[NCATG];
 
-   DiscreteGamma (freqK, rK, alpha, alpha, com.ncatG, 0);
+   DiscreteGamma (freqK, rK, a, a, com.ncatG, 0);
    FOR (k, maxchange+1) {
       if (NSiteChange[k]==0) continue;
       for (ir=0,prob=0; ir<com.ncatG; ir++) {
@@ -245,16 +244,11 @@ double lfunAlpha_YK (double x[], int nx)
    return (-lnL);
 }
 
-int testxAlphaMP (double x[], int nx)
-{
-   if (x[0]<0.001 || x[0]>99) return (-1);
-   if (nx>1 && (x[1]<0.0001 || x[1]>99)) return (-1);
-   return (0);
-}
 
 int OutQ (FILE *fout, int n, double Q[], double pi[], double Root[],
     double U[], double V[], double space[])
 {
+   char aa3[4]="";
    int i,j;
    double *T1=space, t;
 
@@ -273,22 +267,21 @@ int OutQ (FILE *fout, int n, double Q[], double pi[], double Root[],
          FOR (j,n) fprintf (fout, "%6.0f", Q[i*n+j]*100);
 /*
       FOR (i,n) {
-         fprintf (fout, "\n%-4s", getaa(0, i+1));
+         fprintf (fout,"\n%-4s", getAAstr(aa3,i));
          FOR (j,i) fprintf (fout, "%4.0f", Q[i*n+j]/pi[j]*100);
          fprintf (fout, "%4.0f", -Q[i*n+i]*100);
       }
-      fprintf (fout, "\n    "); FOR (i,n) fprintf(fout,"%4s",getaa(0,i+1));
-      fprintf (fout, "\n    "); FOR (i,n) fprintf(fout,"%4s",getaa(1,i+1));
+      fputs("\n     ",fout);  FOR(i,naa) fprintf(fout,"%5s",getAAstr(aa3,i));
 */
       fprintf (fout, "\n\nPAM matrix, P(0.01)\n"); 
       FOR (i,n) FOR (j,n) T1[i*n+j]=U[i*n+j]*exp(0.01*Root[j]);
       matby (T1, V, Q, n, n, n);
       FOR (i,n*n) if (Q[i]<0) Q[i]=0;
       FOR (i,n) {
-         fprintf (fout, "\n%-6s", getaa(0, i+1));
-         FOR (j,n) fprintf (fout, "%6.0f", Q[i*n+j]*10000);
+         fprintf (fout,"\n%-4s", getAAstr(aa3,i));
+         FOR(j,n) fprintf(fout, "%6.0f", Q[i*n+j]*10000);
       }
-      fprintf (fout, "\n    "); FOR (i,n) fprintf(fout,"%6s",getaa(1,i+1));
+      fputs("\n     ",fout);  FOR(i,n) fprintf(fout,"%5s",getAAstr(aa3,i));
    }
    return (0);
 }
@@ -366,7 +359,7 @@ int PathwayMP1 (FILE *fout, int *maxchange, int NSiteChange[],
    job=0: 1st pass: calculates maxchange, NSiteChange[], and Ft[]
    job=1: 2nd pass: reconstructs ancestral character states (->fout)
 */
-   char *pch=(com.seqtype==0?NUCs:(com.seqtype==2?AAs:BINs));
+   char *pch=(com.seqtype==0?BASEs:(com.seqtype==2?AAs:BINs));
    char *zz[NNODE], visit[NS-1], nodeb[NNODE], bestPath[NNODE-NS], Equivoc[NS-1];
    int n=com.ncode, nid=tree.nbranch-com.ns+1, it,i1,i2, i,j,k, h, npath;
    int *Ftt=NULL, nchange, nchange0;
@@ -390,11 +383,11 @@ int PathwayMP1 (FILE *fout, int *maxchange, int NSiteChange[],
    for (h=0; h<com.npatt; h++) {
       if (job==1) {
          fprintf (fout, "\n%4d%6.0f  ", h+1, com.fpatt[h]);
-         FOR (j, com.ns) fprintf (fout, "%c", pch[com.z[j][h]-1]);
+         FOR (j, com.ns) fprintf (fout, "%c", pch[com.z[j][h]]);
          fprintf (fout, ":  ");
          FOR (j,nid*n) pnsite[j]=0;
       }
-      FOR (j,com.ns) nodeb[j]=com.z[j][h]-1;
+      FOR (j,com.ns) nodeb[j]=com.z[j][h];
       if (job==0) FOR (j,n*n*tree.nbranch) Ftt[j]=0;
 
       InteriorStatesMP (1, h, &nchange, NCharaCur, CharaCur, space); 
@@ -455,7 +448,7 @@ int PathwayMP1 (FILE *fout, int *maxchange, int NSiteChange[],
       if (job==0) 
          FOR (j,n*n*tree.nbranch) Ft[j]+=(double)Ftt[j]/npath*com.fpatt[h];
       else {
-         FOR (i,nid) zz[com.ns+i][h]=bestPath[i]+1;
+         FOR (i,nid) zz[com.ns+i][h]=bestPath[i];
          FOR (i,nid) pnode[i*com.npatt+h]=pnsite[i*n+bestPath[i]]/sumpr;
          fprintf (fout, " |%4d (%d) | ", npath, nchange);
          if (npath>1) {
@@ -474,17 +467,19 @@ int PathwayMP1 (FILE *fout, int *maxchange, int NSiteChange[],
       fprintf (fout,"\n\nApprox. relative accuracy at each node\n");
       FOR (h, com.npatt) {
          fprintf (fout,"\n%4d%6.0f  ", h+1, com.fpatt[h]);
-         FOR (j, com.ns) fprintf (fout, "%c", pch[com.z[j][h]-1]);
+         FOR (j, com.ns) fprintf (fout, "%c", pch[com.z[j][h]]);
          fprintf (fout, ":  ");
          FOR (i,nid) if (pnode[i*com.npatt+h]<.99999) break;
          if (i<nid)  FOR (j, nid) 
-            fprintf(fout,"%c (%5.3f) ", pch[zz[j][h]-1],pnode[j*com.npatt+h]);
+            fprintf(fout,"%c (%5.3f) ", pch[zz[j][h]],pnode[j*com.npatt+h]);
       }
       Site2Pattern (fout);
-      fprintf (fout,"\n\nlist of extant and reconstructed sequences");
-      FOR (j,com.ns) fprintf (fout,"\n%s", com.spname[j]);
-      FOR (j,tree.nnode-com.ns) fprintf (fout,"\nnode #%d", j+com.ns+1);
-      printsmaPose (fout,zz,tree.nnode,com.ls,60,10,1,0,com.seqtype,com.pose);
+      fprintf (fout,"\n\nlist of extant and reconstructed sequences\n\n");
+      for(j=0;j<tree.nnode;j++,FPN(fout)) {
+         if(j<com.ns) fprintf(fout,"%-20s", com.spname[j]);
+         else         fprintf(fout,"node #%-14d", j+com.ns+1);
+         print1seq (fout, zz[j], com.ls, 1, com.pose);
+      }
       free (pnode);
    }
    return (0);
@@ -555,8 +550,8 @@ int PatternLS (FILE *fout, double Ft[], double alpha, double space[], int *cond)
    for (i=0,zero(Qt,n*n),zero(Qm,n*n); i<com.ns; i++) {
       for (j=0; j<i; j++) {
          for (h=0,zero(Q,n*n); h<com.npatt; h++) {
-	    Q[(com.z[i][h]-1)*n+com.z[j][h]-1] += com.fpatt[h]/2;
-            Q[(com.z[j][h]-1)*n+com.z[i][h]-1] += com.fpatt[h]/2;
+	    Q[(com.z[i][h])*n+com.z[j][h]] += com.fpatt[h]/2;
+            Q[(com.z[j][h])*n+com.z[i][h]] += com.fpatt[h]/2;
 	 }
          FOR (k,n*n) Qt[k]+=Q[k]/(com.ns*(com.ns-1)/2);
          it=i*(i-1)/2+j;

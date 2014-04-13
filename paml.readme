@@ -1,19 +1,18 @@
 paml.readme
-1.4, July 1998
+2.0, April 1999
 
 PAML (for Phylogentic Analysis by Maximum Likelihood) contains a few
 programs for model fitting and phylogenetic tree reconstruction using
 nucleotide or amino-acid sequence data.  ANSI C source codes as well
-as Win32 and PowerMac excutables are distributed.  The UNIX commands
-for compiling the programs are listed in the files paml.gcc, paml.acc,
-paml.cc, and so on.  Type "source paml.gcc", say, to compile.  
+as Win32 and PowerMac excutables are distributed.  A Makefile is
+provided for UNIX machines; type make to compile.  
 
-Two html files provide the documentation for paml: the paml web page
-paml.html and pamlDOC.html.  They can be viewed and printed with a web
+Two html files provide the documentation for paml: paml.html (the paml
+web page) and pamlDOC.html.  They can be viewed and printed with a web
 browser (preferably Netscape 4.0 or Internet Explorer 4.0) or MS Word.
 The program can be downloaded from its web page at
 
-	http://abacus.gene.ucl.ac.uk/ziheng/paml.html
+	http://abacus.gene.ucl.ac.uk/software/paml.html
 
 or by anonymous ftp at 
 

@@ -84,11 +84,12 @@ int ListTrees (FILE* fout, int ns, int rooted)
    int NTrees, NTreeRoot=3;
    int i, Ib[NS-2], ns1=ns+rooted, nM=ns1-3,finish;
 
-   printf ("%20s%20s%20s\n", "Taxa", "Unrooted trees", "Rooted trees");
-   for (i=4,NTrees=1; i<=com.ns; i++)  
-      printf ("%20d%20d%20d\n", i, (NTrees*=2*i-5), (NTreeRoot*=2*i-3));
-   fprintf (fout, "%10d %10d\n", com.ns, (!rooted?NTrees:NTreeRoot));
-
+   if(com.ns<=12) {
+      printf ("%20s%20s%20s\n", "Taxa", "Unrooted trees", "Rooted trees");
+      for (i=4,NTrees=1; i<=com.ns; i++)  
+         printf ("%20d%20d%20d\n", i, (NTrees*=2*i-5), (NTreeRoot*=2*i-3));
+      fprintf (fout, "%10d %10d\n", com.ns, (!rooted?NTrees:NTreeRoot));
+   }
    for (i=0;i<nM;i++) Ib[i]=0;
    for (NTrees=0; ; ) {
       MakeTreeIb (ns, Ib, rooted);

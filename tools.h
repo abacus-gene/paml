@@ -8,6 +8,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 
 #define square(a) ((a)*(a))
 #define FOR(i,n) for(i=0; i<n; i++)
@@ -16,14 +17,18 @@
 #define min(a,b) ((a)<(b)?(a):(b))
 #define max(a,b) ((a)>(b)?(a):(b))
 #define PI 3.141592653
+#define beep putchar('\a')
 
 int ReadSeq (FILE *fout, FILE *fseq, int seqtype);
 int Initialize (FILE *fout, double space[], int seqtype);
 int MoveCodonSeq (int ns, int ls, char *z[]);
 int PatternWeight (FILE *fout, double space[]);
 int PatternJC69like (FILE *fout);
-int PatternWeightSimple (int CollapsJC, double space[], int* nconst);
+int PatternWeightSimple (int CollapsJC, double space[]);
 int Site2Pattern (FILE *fout);
+
+int GetSubSeqs(int nsnew);
+int GetSubTreeN (int hasbranch, char keep[], int rennodes);
 
 double rndu (void);
 void SetSeed (int seed);
@@ -44,6 +49,7 @@ double PointChi2 (double prob, double v);
 double PointNormal (double prob);
 double CDFNormal (double x);
 double LnGamma (double alpha);
+double DFGamma(double x, double alpha, double beta);
 double IncompleteGamma (double x, double alpha, double ln_gamma_alpha);
 double LBinormal(double h, double k, double r);
 double CDFBinormal (double h, double k, double r);
@@ -55,52 +61,58 @@ char CodeChara (char b, int seqtype);
 int dnamaker (char z[], int ls, double pi[]);
 int picksite (char z[], int ls, int begin, int gap, char buffer[]);
 int transform (char z[], int ls, int direction, int seqtype);
-int RemoveIndel(char *z[], int *ns,int *ls,int posit[],int n31,int concensus);
+int RemoveIndel(void);
 int f_mono_di (FILE *fout, char z[], int ls, int iring, 
     double fb1[], double fb2[], double CondP[]);
 int PickExtreme (FILE *fout, char z[], int ls,int iring,int lfrag,int ffrag[]);
 
-int getseqma( char *seqfile, char  *z[], int *ns, int *l );
-int printaSeq (FILE *fout, char z[], int ls, int lline, int gap);
-int printsma (FILE *fout, char * z[], int ns, int l, int lline, int gap, 
-    int transfed, int simple, int seqtype);
-int printsmaPose (FILE *fout, char * z[], int ns, int l, int lline, int gap, 
-    int transfed, int simple, int seqtype, int pose[]);
+int print1seq (FILE*fout, char *z, int ls, int encoded, int pose[]);
+void printSeqs(FILE *fout, int *pose, char keep[], int format);
+int printSeqsMgenes (void);
+int printsma(FILE*fout,char*spname[],char*z[],int ns, int l, int lline, 
+    int gap, int simple, int pose[]);
 int zztox ( int n31, int l, char z1[], char z2[], double *x );
 int testXMat (double x[]);
 double SeqDivergence (double x[], int model, double alpha, double *kapa);
 int symtest (double freq[], int n, int nobs, double space[], double *chisym, 
     double* chihom);
-int ng1986_1(char z1[], char z2[], int lc, int code, int transfed, 
-    double *Ks, double *Ka, double *S, double *N);
-int difcodon (char codon1[], char codon2[], double *SynSite, double *AsynSite, 
+int dSdNNG1986(char *z1, char *z2, int lc, int icode, int transfed, 
+    double *dS, double *dN, double *S, double *N);
+int difcodonNG(char codon1[], char codon2[], double *SynSite,double *AsynSite, 
     double *SynDif, double *AsynDif, int transfed, int icode);
 int testTransP (double P[], int n);
 int PMatUVRoot (double P[],double t,int n,double U[],double V[],double Root[]);
 int PMatK80 (double P[], double t, double kapa);
-int PMatTN93 (double P[], double a1t, double a2t, double bt, double pi[6]);
+int PMatTN93 (double P[], double a1t, double a2t, double bt, double pi[]);
+int PMatCijk (double PMat[], double t);
 int EvolveHKY85 (char source[], char target[], int ls, double t, 
-    double rates[], double pi[6], double kapa, int isHKY85);
+    double rates[], double pi[], double kapa, int isHKY85);
 int DistanceMatNuc (FILE *fout, int model, double alfa);
 int EigenREV (FILE* fout, double kapa[], double pi[], 
               int *nR, double Root[], double Cijk[]);
 
+int print1site (FILE*fout, int h);
 int MultipleGenes (FILE* fout, double space[]);
-int lfunAdG_rate (FILE* fout, double x[], int np);
+int PartialLikelihood (int inode, int igene);
+int lfunRates (FILE* fout, double x[], int np);
 int AncestralSeqs (FILE *fout, double x[], double space[]);
+int InitPartialLikelihood (void);
 
-int pair(int i, int j);
-char *getcode(int id);
-char *getaa (int iaa, int id);
-int getaa1 (char *dna, char *aa, int code, int iaa);
-int printcu (FILE *f1, double *fb3, int code, double *space);
-int printcums (FILE *fout, int ns, double *fb3, int code);
+int NucListall(char b, int *nb, int ib[4]);
+char *getcodon(char codon[], int icodon);
+char *getAAstr(char *AAstr, int iaa);
+int Codon2AA(char codon[3], char aa[3], int icode, int *iaa);
+int DNA2protein(char dna[], char protein[], int lc, int icode);
+int printcu (FILE *f1, double fcodon[], int icode);
+int printcums (FILE *fout, int ns, double fcodons[], int code);
 int PtoPi (double P[], double Pi[], int n, double *space);
 int PtoX(double P1[], double P2[], double Pi[], double X[]);
 
 char *strc (int n, char c);
+void strcase (char *str, int direction);
 void error(char * message);
 int indexing (double x[], int n, int index[], int descending, double space[]);
+int appendfile(FILE*fout, char*filename);
 
 int zero (double x[], int n);
 double sum (double x[], int n);
@@ -162,9 +174,11 @@ int Hessian (int nx, double x[], double f, double g[], double H[],
 
 int H_end (double x0[], double x1[], double f0, double f1,
     double e1, double e2, int n);
+double LineSearch(double(*fun)(double x),double *f,double *x0,double xb[2],double step);
 double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[], 
     double p[], double h, double limit, double e, double space[], int n);
 
+void xtoFreq(double x[], double freq[], int n);
 int SetxBound (int np, double xb[][2]);
 int ming2 (FILE *fout, double *f, double (*fun)(double x[], int n),
     int (*dfun)(double x[], double *f, double dx[], int n),
@@ -195,7 +209,7 @@ int ReadaTreeB (FILE *ftree, int popline);
 int OutaTreeN (FILE *fout, int spnames, int branchlen);
 int OutaTreeB (FILE *fout);
 void PointLklnodes (void);
-int SetBranch (double v[], int correct);
+int SetBranch (double x[]);
 int DistanceMat (FILE *fout, int ischeme, double alfa, double *kapa);
 int LSDistance (double * ss, double x[], int (*testx)(double x[],int np));
 
@@ -215,14 +229,13 @@ void BranchLengthBD(int rooted, double birth, double death, double sample,
 int RandomLHistory (int rooted, double space[]);
 
 void DescentGroup (int inode);
-void BranchPartition (int partition[], int parti2B[]);
-int NSameBranch (int partition1[],int partition2[], int nib1,int nib2);
-void BranchPartitionLarge (char partition[], int parti2B[]);
-int NSameBranchLarge (char partition1[],char partition2[], int nib1,int nib2);
+void BranchPartition (char partition[], int parti2B[]);
+int NSameBranch (char partition1[],char partition2[], int nib1,int nib2,
+    int IBsame[]);
 
 int RootTN93 (int ischeme, double kapa1, double kapa2, double pi[], 
     double *f, double Root[]);
-int EigenTN93 (int ischeme, double kapa1, double kapa2, double pi[6],
+int EigenTN93 (int ischeme, double kapa1, double kapa2, double pi[],
     int *nR, double Root[], double Cijk[]);
 
 int DownStatesOneNode (int ison, int father);
@@ -233,9 +246,6 @@ double RemoveMPNinfSites (double *nsiteNinf);
 
 int MPInformSites (void);
 int CollapsNode (int inode, double x[]);
-void OutSeqs (FILE *fseq, int seqtype, int pose[], int format);
-int OutSeqsCodon (FILE* fseqtmp, int *pose);
-int OutSeqsMgenes (void);
 
 int MakeTreeIb (int ns, int Ib[], int rooted);
 int GetTreeI (int itree, int ns, int rooted);
@@ -256,8 +266,8 @@ int Rates4Sites (double rates[],double alfa,int ncatG,int ls, int cdf,
 void Evolve (int inode);
 void EvolveJC (int inode);
 
-extern char NUCs[], AAs[];
-#define  NUCseq      0
+extern char BASEs[], AAs[];
+#define  BASEseq     0
 #define  CODONseq    1
 #define  AAseq       2
 #define  CODON2AAseq 3

@@ -13,12 +13,18 @@ PAML Manual <br>(Phylogenetic Analysis by Maximum Likelihood)
 
 </font></h1>
 
-
-Version 1.4, July 1998 <p>
+<FONT SIZE=4 color=red>Version 2.0, April 1999 </font> <p>
 
 Ziheng Yang <p>
 
-&copy; Copyright 1994, 1995, 1996, 1997, 1998 by Ziheng Yang.  The software package is provided &quot;as is&quot; without warranty of any kind.  In no event shall the author be held responsible for any damage resulting from the use of this software, including but not limited to the frustration that you may experience in using the package.  The program package, including source codes, example data sets, executables, and this documentation, is distributed free of charge for academic use only. <p><p>
+&copy; Copyright 1994, 1995, 1996, 1997, 1998, 1999 by Ziheng Yang.  The
+software package is provided &quot;as is&quot; without warranty of any
+kind.  In no event shall the author be held responsible for any damage
+resulting from the use of this software, including but not limited to
+the frustration that you may experience in using the package.  The
+program package, including source codes, example data sets,
+executables, and this documentation, is distributed free of charge for
+academic use only. <p><p>
 
 
 Suggested citation: <p>
@@ -28,7 +34,8 @@ Yang, Z.  1997.  PAML: a program package for phylogenetic analysis by maximum li
 or
 <br>
 
-Yang, Z.  1998.  Phylogenetic Analysis by Maximum Likelihood (PAML), Version 1.4.  University College London.<p>
+Yang, Z.  1999.  Phylogenetic Analysis by Maximum Likelihood (PAML),
+Version 2.0.  University College London.<p>
 
 
 The author can be reached at <br>
@@ -58,6 +65,8 @@ Fax: +44 (171) 383 2048<p>
    <LI><A HREF="#initials">Initial values </A>
    <LI><A HREF="#finetuning"> Finetuning the iteration algorithm </A>
    <LI><A HREF="#basemlg"> Running <code>basemlg</code> </A>
+   <LI><A HREF="#macmemory"> MAC memory allocation </A>
+   <LI><A HREF="#winwindow"> Windows version window auto-close </A>
    </ul>
 
 <LI><A HREF="#input">Input File Formats </A>
@@ -74,7 +83,7 @@ Fax: +44 (171) 383 2048<p>
    <ul>
    <LI><A HREF="#mlb"> Output file for <code>baseml</code></A>
    <LI><A HREF="#mlc"> Output file for <code>codeml</code> (<code>codonml</code> and <code>aaml</code>) </A>
-   <LI><A HREF="#rst"> Secondary result file <code>rst</code> </A>
+   <LI><A HREF="#rst"> Secondary result files <code>rst</code> and <code>rates</code> </A>
    </ul>
 
 <LI><A HREF="#models">Models and Methods </A>
@@ -100,55 +109,107 @@ Fax: +44 (171) 383 2048<p>
 <LI><A HREF="#references"> References </A> 
 </UL>
 
-
+<hr>
 
 
 <a name="changes">
 <h1>Recent changes</h1></a>
 
-Relative to version 1.3, the following changes are made.
-
+After version 1.4, I posted two temporary versions, which involved a
+major change to handle missing data (ambiguity characters and
+alignment gaps) in the likelihood calculation.  Some analyses were
+disabled in the temporary versions, including joint ancestral
+reconstruction, and parsimony-based analysis (<code>pamp</code>).
+These are believed to be fixed, and all programs in the package should
+now work.  The following are changes/updates relative to version 1.4.
 <OL> 
-<LI>
-Most of the changes are in the program <code>codeml</code> (<code>aaml</code> for amino
-acid sequences and <code>codonml</code> for codon
-sequences).  A few new models of codon substitution are implemented
-(see Yang and Nielsen 1998; Nielsen and Yang 1998; Yang 1998).
 
-<LI>Some problems relating to ancestral sequence reconstruction (in
-<code>baseml</code> and <code>codeml</code>) are fixed.  The earlier
-algorithm does not work properly if the data contain more than several
-sequences.  The algorithm makes a guess at the likely character states
-at the interior nodes of the tree, and then uses those to generate
-reconstructions (joint reconstructions, see eq. 2 in Yang et al. 1995)
-to be evaluated.  Sometimes this strategy misses important
-reconstructions, and as a result, the probabilities for reconstructed
-characters at specific interior nodes (marginal reconstructions; see
-eq. 4 in Yang et al. 1995) are substantially underestimated if the
-number of sequences is not very small.  I have now written separate
-codes to do the marginal reconstruction, evaluating all possible
-character states for each interior node.  This works also under the
-gamma model of substitution rates among sites, a feature that was not
-implemented before.  The joint reconstruction works with one rate for
-all sites only and has the old problem of possibly missing important
-reconstructions.  However, the posterior probabilities for those joint
-reconstructions that do get evaluated are accurate.  I have added an
-option (choose RateAncestor = 2 rather than 1) for the user to specify
-the reconstruction to be evaluated.  The two approaches are expected
-to produce very similar results, and since the marginal reconstruction
-is always reliable, perhaps it can always be used for data
-analysis. (Thanks to Belinda Chang.)
+<li> No changes: Regrettably, there has been no improvement in
+heuristic tree search, and no major improvement in the numerical
+optimization algorithms.
 
-<LI>The output file for estimated rates for sites under the
-variable-rates models is now "Rates.out" instead of "rst".
+<li> Missing data: baseml and codeml now handle missing data.  The
+idea used here is due to Joe Felsenstein; thanks to him for insisting
+on its correctness.  Choose <code>cleandata = 1</code> in the control
+file to remove sites with ambiguity characters or alignment gaps, as
+did previous versions.  The programs are slower if missing data are
+included in the analysis than if they are removed (option variable
+<code>cleandata = 1</code>) or absent.
 
-<LI>I have implemented ancestral sequence reconstructions based on
-codon-substitution models (<code>codonml</code>).  This has not been
-tested carefully, and I would appreciate your comments if you use it.
+<li>Clock: The molecular clock option (clock = 1) is now fixed by
+reparametrizing the model.  Thanks to Jeff Thorne for his idea.
 
-<LI>A number of minor changes have been made.  I have fixed several floating exception errors that seem to occur on DEC Alpha machines only.  
+<li>Nexus file formats: PAML programs now have limited support for
+sequence file format used by PAUP and MacClade.  Only the sequence
+data or tree are read, and command blocks are all ignored.
 
-<li> The documentation is now changed into the html format.
+<li>Ancestral reconstruction of nucleotide, codon, and amino acid
+sequences: "Marginal" ancestral reconstructions are now done under the
+model of gamma-rates for sites as well as the constant-rate model.
+For protein-coding genes, reconstructions can now be done at the
+nucleotide level with <code>baseml</code> (in particular, by using
+models that account for differences at the three codon positions; Yang
+1996a), at the amino acid level with <code>aaml</code>, and at the
+codon level with <code>codonml</code>.  Results for ancestral
+reconstruction are now listed by site, and not by site pattern as in
+earlier versions.  Missing data are now handled in the marginal
+recosntruction.  See instructions in this document about
+<code>baseml.ctl</code> for more options.  The user is hereby reminded
+that the reconstructed ancestral sequences may not match the real
+sequences in the extinct species; if you use reconstructed genes to
+make dinosaurs, the eggs may not hatch properly.  Thanks to Belinda
+Chang.
+
+<li>Distance matrices from codonml and aaml.  The program codonml
+outputs matrices of synonymous and nonsynonymous rates in all pairwise
+comparisons using the method of Nei and Gojobori (1986) into two files
+named <code>DistanceNG.dN</code> and <code>DistanceNG.dN</code>.  The
+matrices are lower-diagonal and can be used with programs (such as
+neighbor and fitch) in phylip (and possibly paup* too) for tree
+reconstruction or branch length estimation by distance methods.  If
+you choose runmode = -2 for ML pairwise comparison, the program will
+also output two matrices of ML estimates of dS and dN into the files
+<code>DistanceML.dS</code> and <code>DistanceML.dN</code>.  Since many
+users seem interested in looking at dN/dS rate ratios among lineages,
+examination of the tree shapes indicated by branch lengths calculated
+from the two rates may be interesting although the analysis is ad hoc.
+Obviously, you should NOT name your own data files with those names;
+otherwise they will get overwritten.  If your species name has no more
+than 10 characters, you should be able to use the output distance
+matrices as input to Phylip programs without any change.  Otherwise
+you need to edit the files to cut the names short.  For amino acid
+sequences (<code>aaml</code>), the same option (<code>runmode =
+-2</code>) forces the program to calculate pairwise distances by
+maximum likelihood.  To choose the right model, you can change the
+following variables in the control file <code>codeml.ctl</code>:
+<code> runmode, aaRatefile, model, and alpha</code>.  Thanks to David
+Posada.
+
+<LI> Codon substitution models for testing adpative evolution.  I
+fixed a minor prompt error in version 1.4 (model = 2 in codonml) for
+models of variable dN/dS ratios among lineages (Yang 1998; Yang and
+Nielsen 1998).  The example data set <code>lysozymeSmall.nuc</code> is
+included for the user to duplicate results in Yang (1998 Molecular
+Biology and Evolution 15: 568-573).  Besides this documentation, the
+control file <code>codemlLysozyme.ctl</code> explains in detail how to
+specify the options.  I would like to remind you that it is not
+exactly correct to use the option model = 1 to estimate dN/dS ratios
+for all branches to find out which ratios are greater than one, and
+then to use model = 2 to test whether that difference is significant.
+The problem with this is that the hypothesis being tested will be
+derived from the data which you use to test the hypothesis, and as a
+result, you tend to get significant results too often.  Correctly, the
+hypothesis should be formulated before the data are analyzed.  The
+example data set for models of variable dN/dS ratios among sites
+(Nielsen and Yang 1998) is <code>HIVenvY7.unc</code>.  This is the
+year 7 data, and the trees are at the end of the data file.
+
+<li> Simulating nucleotide, codon, and amino acid sequences.  The
+program <code>evolver</code> (it used to be named
+<code>listtree</code>) now has options for simulating sequence data
+sets based on nucleotide, codon, and amino acid substitution models,
+besides its old options for generating random trees.
+
 </OL>
 
 
@@ -159,34 +220,33 @@ PAML is a package of programs for phylogenetic analyses of DNA or protein sequen
 <P>
 
 The program <code>baseml</code> is for analyzing nucleotide sequences.
-The program <code>codeml</code> is formed by
-merging two old programs: <code>codonml</code>, which implements the
-codon-based models of Goldman and Yang (1994) for protein-coding DNA
-sequences, and <code>aaml</code>, which implements models for amino
-acid sequences. These two are now distinguished by a variable named
+The program <code>codeml</code> is formed by merging two old programs:
+<code>codonml</code>, which implements the codon substitution model of
+Goldman and Yang (1994) for protein-coding DNA sequences, and
+<code>aaml</code>, which implements models for amino acid
+sequences. These two are now distinguished by a variable named
 <code>seqtype</code> in <code>codeml</code>, which is 1 for codon
 sequences and 2 for amino acid sequences.  In this document I use
-<code>codonml</code> and <code>aaml</code> to mean
-<code>codeml</code> with <code>seqtype</code> = 1 and 2, respectively.
-The programs <code>baseml</code>, <code>codonml</code>, and
-<code>aaml</code> use similar algorithms to fit models, the difference
-being that the unit of evolution in the substitution model, referred
-to as a "site" in the sequence, is a nucleotide, a codon, or an amino
-acid for the three programs, respectively.  Markov process models are
-used to describe substitutions between nucleotides, codons or amino
-acids, with substitution rates assumed to be either constant or
-variable among sites.  A <I>discrete-gamma</I> model (Yang, 1994c) is
-used in <code>baseml</code>, <code>codonml</code>
-and <code>aaml</code> to accommodate rate variation
-among sites, by which rates for sites come from several (say, four or eight)
-categories used to approximate the continuous gamma distribution.
-When rates are variable at sites, a correlation of rates between
-adjacent sites can be accounted for using an <I>auto-discrete-gamma
-</I>model (Yang, 1995).  <p>
+<code>codonml</code> and <code>aaml</code> to mean <code>codeml</code>
+with <code>seqtype</code> = 1 and 2, respectively.  The programs
+<code>baseml</code>, <code>codonml</code>, and <code>aaml</code> use
+similar algorithms to fit models, the difference being that the unit
+of evolution in the substitution model, referred to as a "site" in the
+sequence, is a nucleotide, a codon, or an amino acid for the three
+programs, respectively.  Markov process models are used to describe
+substitutions between nucleotides, codons or amino acids, with
+substitution rates assumed to be either constant or variable among
+sites.  A <I>discrete-gamma</I> model (Yang, 1994c) is used in
+<code>baseml</code>, <code>codonml</code> and <code>aaml</code> to
+accommodate rate variation among sites, by which rates for sites come
+from several (say, four or eight) categories used to approximate the
+continuous gamma distribution.  When rates are variable at sites, a
+correlation of rates between adjacent sites can be accounted for using
+an <I>auto-discrete-gamma </I>model (Yang, 1995).  <p>
 
-The program <code>basemlg</code> implements the
-continuous gamma model of Yang (1993).  It is slow and feasible for
-data of 4-6 species only.  The discrete-gamma model in <code>baseml</code> is recommended.<p>
+The program <code>basemlg</code> implements the continuous gamma model
+of Yang (1993).  It is slow and feasible for data of 4-6 species only.
+The discrete-gamma model in <code>baseml</code> is recommended.<p>
 
 General assumptions of the models (programs):
 <UL>
@@ -227,61 +287,69 @@ The following files are included in the package:<p>
 
 <i>Source codes: </i><dir>
 <pre>
-baseml.c    various models for nucleotide sequences <br>
-codeml.c    models for codon (seqtype = 1) and amino acid (seqtype = 2) sequences <br>
-pamp.c      parsimony analyses of nucleotide or amino acid sequences <br>
-mcmctree.c  Markov chain Monte Carlo algorithm for Bayes estimation of phylogenies <br>
-listtree.c  Tree comparison, and simulation of nucleotide sequences <br>
-basemlg.c   Nucleotide-based model with (continuous) gamma rates among sites <br>
-rell.c      The RELL approximate bootstrap method of Kishino and Hasegawa (1989) <br|>
-treesub.c   a few functions <br>
-treespace.c a few more functions <br>
-tools.c     my toolkit <br>
-tools.h     header file <p>
+baseml.c    various models for nucleotide sequences 
+codeml.c    models for codon (seqtype = 1) and amino acid (seqtype = 2) sequences 
+pamp.c      parsimony analyses of nucleotide or amino acid sequences 
+mcmctree.c  Markov chain Monte Carlo algorithm for Bayes estimation of phylogenies 
+evolver.c  Tree comparison, and simulation of nucleotide sequences 
+basemlg.c   Nucleotide-based model with (continuous) gamma rates among sites 
+rell.c      The RELL approximate bootstrap method of Kishino and Hasegawa (1989)
+treesub.c   a few functions 
+treespace.c a few more functions 
+tools.c     my toolkit 
+tools.h     header file 
+eigen.c     routines for calculating eigen values and vectors
 </pre></dir>
 
 <i>Compiling commands: </i><dir>
 <pre>
-paml.cc     batch file for compiling PAML using the cc compiler <br>
-paml.gcc    batch file for compiling PAML using the GNU gcc compiler <br>
-paml.acc    batch file for compilation PAML using the SUN acc compiler <p>
+Makefile    make file
+paml.cc     batch file for compiling PAML using the cc compiler 
+paml.gcc    batch file for compiling PAML using the GNU gcc compiler 
+paml.acc    batch file for compilation PAML using the SUN acc compiler
 </pre></dir>
 
 <i>Control files: </i><dir>
 <pre>
-baseml.ctl    control file for running baseml and basemlg <br>
-codeml.ctl    control file for codeml (i.e., codonml and aaml) <br>
-pamp.ctl      control file for pamp <br>
-mcmctree.ctl  control file for mcmctree <p>
+baseml.ctl    control file for running baseml and basemlg 
+codeml.ctl    control file for codeml (i.e., codonml and aaml) 
+pamp.ctl      control file for pamp 
+mcmctree.ctl  control file for mcmctree
 </pre></dir>
 
 <i>Data files for <code>codeml</code> (see the files for details): </i><dir>
 <pre>
-grantham.dat   amino acid distance matrix (Grantham 1974), used by codonml <br>
-dayhoff.dat    Empirical amino acid substitution matrix of Dayhoff et al. (1978) <br>
-jones.dat      Empirical amino acid substitution matrix of Jones et al. (1992) <br>
-mtREV24.dat    Empirical amino acid substitution matrix of Adachi and Hasegawa (1996b) <br>
-mtmam.dat      Empirical amino acid substitution matrix for mitochondrial proteins of mammals <p>
+grantham.dat   amino acid distance matrix (Grantham 1974), used by codonml 
+miyata.dat     amino acid distance matrix (Miyata et al. 1980), used by codonml 
+dayhoff.dat    Empirical amino acid substitution matrix of Dayhoff et al. (1978) 
+jones.dat      Empirical amino acid substitution matrix of Jones et al. (1992) 
+mtREV24.dat    Empirical amino acid substitution matrix of Adachi and Hasegawa (1996b) 
+mtmam.dat      Empirical amino acid substitution matrix for mitochondrial proteins of mammals
+MCbase.dat     data file for simulating nucleotide sequences, for evolver
+MCcodon.dat    data file for simulating codon sequences, for evolver
+MCcodon.dat    data file for simulating amino acid sequences, for evolver
 </pre></dir>
 
 <i>Example tree structure files: </i><dir>
 <pre>
-trees.4s      tree structure file for 4-sequence data <br>
-trees.5s      tree structure file for 5-sequence data <p>
+trees.4s      tree structure file for 4-sequence data 
+trees.5s      tree structure file for 5-sequence data
 </pre></dir>
 
 <i>Documentations: </i><dir>
 <pre>
-paml.readme    readme file <br>
-paml.html      paml web page, serving also as part of the manual (html file) <br>
-pamlDOC.html   this document (html file) <p>
+paml.readme    readme file 
+paml.html      paml web page, serving also as part of the manual (html file) 
+pamlDOC.html   this document (html file)
 </pre></dir>
 
-<b>Example data sets: </b> <br> Several example data sets are
-included.  They were used in my papers to test new methods, and
-are included here for error-checking.  <br><dir>
+<i>Example data sets: </i>
 
-<code>brown.nuc</code>:  the 895-bp mtDNA data of Brown et al. (1982),
+Several example data sets are included.  They were used in my papers
+to test new methods, and are included here for error-checking.  
+
+<dir>
+<code>brown.nuc</code>: the 895-bp mtDNA data of Brown et al. (1982),
 used in Yang et al. (1994) and Yang (1994c) to test models of variable
 rates among sites. <p>
 
@@ -290,33 +358,41 @@ sites from 9 primate species (Hayasaka et al. 1988), used by Yang
 (1994c) to test the discrete-gamma model and Yang (1995) to test the
 auto-discrete-gamma models. <p>
 
-<code>abglobin.nuc</code>: the concatenated alpha and  beta globin genes, example data for condonml <p>
+<code>abglobin.nuc</code>: the concatenated alpha and beta globin
+genes, example data for condonml <p>
 
 <code>HIVenvY7.nuc</code>: HIV envelope genes, year 7 data, used by
 Nielsen and Yang (1998) in developing models of variable seletive
 constraints among sites. <p>
 
-<code>lysozymeSmall.nuc</code>: primate lysozyme genes (Messier and Stewart 1997), analyzed by Yang (1998) in developing tests of positive selection along lineages.  This is the "small data set" analyzed in that paper. <p>
+<code>lysozymeSmall.nuc</code>: primate lysozyme genes (Messier and
+Stewart 1997), analyzed by Yang (1998) in developing tests of positive
+selection along lineages.  This is the "small data set" analyzed in
+that paper.  See the control file <code>codemlLysozyme.ctl</code> for
+details for specifying the different models.<p>
 
-<code>stewart.aa</code>: lysozyme sequences of mammals (Stewart et al. 1987), used by Yang et al. (1995) to test methods for reconstructing ancestral amino acid sequences. <p>
+<code>stewart.aa</code>: lysozyme sequences of mammals (Stewart et
+al. 1987), used by Yang et al. (1995) to test methods for
+reconstructing ancestral amino acid sequences. <p>
 
-<code>abglobin.aa</code>: the concatenated alpha- and beta-globins, translated from <code>abglobin.nuc</code> </dir>
-<p>
+<code>abglobin.aa</code>: the concatenated alpha- and beta-globins,
+translated from <code>abglobin.nuc</code> 
+</dir> <p>
 
 
-<b>What files are needed?</b><p>
+<b>Which files are needed?</b><p>
 
-You copy the executables to to a directory containing your data files,
-please note that the program <code>codeml</code> may need some of the
-data files in the package such as <code>grantham.dat</code>,
+You may copy the executables to a directory containing your data
+files.  Please note that the program <code>codeml</code> may need some
+of the data files in the package such as <code>grantham.dat</code>,
 <code>dayhoff.dat</code>, <code>jones.dat</code>,
 <code>mtREV24.dat</code>, or <code>mtmam.dat</code>.  You should
-probably copy these files togoether.  Other programs do not need such
+probably copy these files together.  Other programs do not need such
 data files apart from the sequence and tree files you specify in the
 control file. <p>
 
 Note also that the programs produce result files.  Some other files
-with names <code>rub</code>, <code>lfh</code>, <code>rst </code>, or
+with names <code>rub</code>, <code>lfh</code>, <code>rst</code>, or
 <code>rates</code> may also be created.  You should not use these
 names for your files. <p>
 
@@ -347,7 +423,7 @@ estimates of parameters are at the preset boundaries, with values like
 The iteration algorithm uses the difference approximation to calculate
 the derivatives.  This method changes the variable (x) slightly, say
 by a small number e, and see how the function value changes.  One such
-formula is df/dx = [f(x+e)-f(x)]/e.  The small number e should be
+formula is df/dx = [f(x + e) - f(x)]/e.  The small number e should be
 small to allow accurate approximation but should not be too small to
 avoid rounding errors.  You can change this value by adding a line in
 the control files <code>baseml.ctl</code> or <code>codeml.ctl</code>
@@ -373,23 +449,24 @@ variables</a>. <p>
 <h2>Initial values</h2></a>
 
 You may change values of parameters in the control file such as kappa,
-alpha, omega, etc. to start the maximum likelihood iteration from
-different initial values.  However, initial values for the second and
-later trees are determined by the program, and so you do not have
-much control. <p>
+alpha, omega, etc. to start the iteration from different initial
+values.  Initial values for the second and later trees are determined
+by the program, and so you do not have much control in this way.<p>
 
-If you have wasted enough time and gained some experience with PAML,
-you may be interested in trying this.  You can collect initial values
-for the maximum likelihoood iteration into a file called
+You can collect initial values into a file called
 <code>in.baseml</code> if you are running <code>baseml</code> or
 <code>in.codeml</code> if you are running <code>codeml</code>.  When
 the program senses this file, it will ask you to confirm and then read
 it for initial values.  This may be useful if the iteration is somehow
 aborted, and then you can collect current values of parameters from
 the file <code>rub</code> into this file of initial values, so that
-the new iteration can have a better start and converge faster.  This
-file may also be useful if you experience convergence problems as it
-allows you to start from different initial values in different runs.
+the new iteration can have a better start and may converge faster.
+This file may also be useful if you experience convergence problems as
+it allows you to start from different initial values in different
+runs.  If you have already obtained parameter estimates before and do
+not want the program to re-estimate them and only want to do some
+analysis base on those estimates such as reconstructing ancestral
+sequences, insert -1 before the initial values. <p>
 
 The <code>rub</code> file records the iteration process and has one
 line for each round of iteration.  Each line lists the current
@@ -409,7 +486,33 @@ allows <code>baseml</code> to collect initial values into a file named
 <code>in.basemlg</code>, for use by <code>basemlg</code>.  You can
 also check the file <code>rub</code> to see the iteration converges
 healthily.  Note that <code>basemlg</code> implements only a subset of
-models in <code>baseml</code> (see <b>this link</b> for details). <p>
+models in <code>baseml</code>. <p>
+
+
+
+<a name = "macmemory">
+<h2>MAC memory allocation</h2></a>
+
+When your data set is large, you may see a message like "oom ", which
+stands for "out of memory".  If you think your data set should be
+manageable by the program/computer, you can change the memory that is
+allowed by the operating system for the program to use.  If you select
+the file name and choose "File-Get information", you should see a pop
+up window.  You can increase numbers in this window.
+
+
+
+
+<a name = "winwindow">
+<h2>Windows version window auto-close</h2></a>
+
+Run the Windows version from a DOS/Windows command box by typing the
+program names such as <code>baseml</code>.  Do not run the programs by
+double clicking on the file names from Windows 95/NT Explorer.
+Otherwise, the window will close automatically when the programs
+finish or abort and you won't have the chance to see any error
+messages.  I would consider this as a bug of the Microsoft OS, but
+perhaps it is considered a feature.
 
 
 
@@ -419,20 +522,19 @@ models in <code>baseml</code> (see <b>this link</b> for details). <p>
 <a name = "sequences">
 <h2>Sequence data format</h2></a>
 
-The sequence data format is that used in PHYLIP (Felsenstein, 1993),
-but with some restrictions removed.  The first line contains the
-number of species and the sequence length (possibly followed by option
-characters).  With <code>codonml</code> (<code>codeml</code> with
-<code>seqtype</code> = 1), the sequence length in the sequence file
-refers to the number of nucleotides rather than the number of codons.
-The only options allowed in the sequence file are I, S or G.  The
-sequences may be in either <I>interleaved </I>format (option I,
-example data file <code>abglobin.nuc</code>), or <I>sequential
-</I>format (option S, example data file <code>brown.nuc</code>).  The
-default option is S.  (Option G is used for combined analysis of
-multiple gene data and is explained below.)  The following is an
-example data set in the sequential format.  It has 4 sequences each of
-60 nucleotides. <p>
+The sequence data format is that used in PHYLIP (Felsenstein, 1993).
+The first line contains the number of species and the sequence length
+(possibly followed by option characters).  With <code>codonml</code>
+(<code>codeml</code> with <code>seqtype</code> = 1), the sequence
+length in the sequence file refers to the number of nucleotides rather
+than the number of codons.  The only options allowed in the sequence
+file are I, S or G.  The sequences may be in either <I>interleaved
+</I>format (option I, example data file <code>abglobin.nuc</code>), or
+<I>sequential </I>format (option S, example data file
+<code>brown.nuc</code>).  The default option is S.  (Option G is used
+for combined analysis of multiple gene data and is explained below.)
+The following is an example data set in the sequential format.  It has
+4 sequences each of 60 nucleotides. <p>
 
 <dir>
 <pre>
@@ -560,6 +662,7 @@ which of the two formats is being used.) The sum of the lengths for
 the genes should be equal to the number of nucleotides, amino acids,
 or codons in the combined sequence for <code>baseml</code> (or <code>basemlg</code>), <code>aaml</code>, and <code>codonml</code>, respectively.<p>
 
+
 <DIR>
 <pre>
 5   1000   G 
@@ -569,6 +672,16 @@ TCGATAGATAGGTTTTAGGGGGGGGGGTAAAAAAAAA.......
 </pre>
 </DIR>
 
+For analysis of protein-coding DNA sequences using
+<code>baseml</code>, a third format is as follows.  You use option
+characters GC on the first line instead of G alone.  It is assumed that the sequence length is an exact multiple of three.
+
+<DIR>
+<pre>
+     5    855 GC
+human    GTG CTG TCT CCT ...
+</pre>
+</DIR>
 
 
 <a name="trees">
@@ -608,7 +721,7 @@ outputting the estimated branch lengths.  For example, the tree
 
 <DIR>
 <pre>
-      5 .. 6,  6 .. 1,  6 .. 2,  5 .. 3,  5 .. 4
+      5 6,  6 1,  6 2,  5 3,  5 4
 </pre>
 </DIR>
 
@@ -716,7 +829,8 @@ as you can. <p>
 
 <code>model</code> specifies the model of nucleotide substitution.<p>
 
-<code>Mgene</code> is used with the option G in the data file.  Choose 0 if option G is not used in the data file. <p>
+<code>Mgene</code> is used with the option G in the data file.  Choose
+0 if option G is not used in the data file. <p>
 
 <code>fix_kappa</code> specifies whether </code><FONT
 FACE="Symbol">k</font> in K80, F84, or HKY85 is given at a fixed value
@@ -731,7 +845,7 @@ of them are estimated from the data.<p>
 
 <code>fix_alpha</code> and <code>alpha</code> work in a similar way,
 where <code>alpha</code> refers to the shape parameter <FONT
-FACE="Symbol">a</code> of the gamma distribution for variable
+FACE="Symbol">a</font> of the gamma distribution for variable
 substitution rates across sites (Yang 1994c).  The model of a single
 rate for all sites is specified as <code>fix_alpha</code> = 1 and
 <code>alpha</code> = 0 (0 means infinity), while the (discrete-) gamma
@@ -741,7 +855,7 @@ discrete-gamma model (<code>baseml</code>). <p>
 
 <code>fix_rho</code> and <code>rho</code> work in a similar way and
 concern independence or correlation of rates at adjacent sites, where
-<FONT FACE="Symbol">&#114;</code> (rho) is the correlation parameter
+<FONT FACE="Symbol">&#114;</font> (rho) is the correlation parameter
 of the auto-discrete-gamma model (Yang 1995).  The model of
 independent rates for sites is specified as <code>fix_rho</code> = 1
 and <code>rho</code> = 0; choosing <code>alpha</code> = 0 further
@@ -749,10 +863,10 @@ means a constant rate for all sites.  The auto-discrete-gamma model is
 specified by positive values for both <code>alpha</code> and
 <code>rho</code>.  The model of a constant rate for sites is a special
 case of the (discrete) gamma model with <FONT
-FACE="Symbol">&#97;</code> = <FONT FACE="Symbol" SIZE = 2>¥</code>
+FACE="Symbol">&#97;</font> = <FONT FACE="Symbol" SIZE = 2>¥</font>
 (<code>alpha</code> = 0), and the model of independent rates for sites
 is a special case of the auto-discrete-gamma model with <FONT
-FACE="Symbol">&#114;</code> = 0 (<code>rho</code> = 0).<p>
+FACE="Symbol">&#114;</font> = 0 (<code>rho</code> = 0).<p>
 
 <code>nparK</code> specifies nonparametric models for variable and
 Markov-dependent rates across sites: <code>nparK</code> = 1 or 2 means
@@ -761,21 +875,35 @@ sites, while <code>nparK</code> = 3 or 4 means the rates are
 Markov-dependent at adjacent sites; <code>nparK</code> = 1 and 3 have
 the restriction that each rate category has equal probability while
 <code>nparK</code> = 2 and 4 do not have this restriction (Yang,
-1995). <p>
+1995).  The variable <code>nparK</code> takes precedence over
+<code>alpha</code> or <code>rho</code>. <p>
+
 
 <code>clock</code> specifies whether we assume rate constancy along
 different branches in the tree (<code>clock</code> = 1) or variable
-rates among lineages (<code>clock</code> = 0).  <p>
+rates among lineages (<code>clock</code> = 0).  The estimated branch
+lengths are in the output tree.
+<p>
+
 
 <code>nhomo</code> relates to the non-homogeneous process models
 (<code>nhomo</code> = 3 or 4) (Yang and Roberts 1995).  Choosing
 <code>nhomo</code> = 1 will produce the proper maximum likelihood
-estimates of the frequency parameters (<FONT FACE="Symbol">p</font><SUB>T</SUB>, <FONT FACE="Symbol">p</font><SUB>C</SUB> and <FONT FACE="Symbol">p</font><SUB>A</SUB>; <FONT FACE="Symbol">p</font><SUB>G</SUB> is not a free parameter as the frequencies
-sum to 1) in the F81, F84, HKY85, TN93, or REV models, while normally
-(<code>nhomo</code> = 0) these are estimated by the averages of the
-observed frequencies.  <code>nhomo</code> = 2 uses one
-transition/transversion rate ratio (<FONT FACE="Symbol">k</font>) for each branch in the tree for the K80, F84, and
-HKY85 models (Yang 1994b).  <p>
+estimates of the frequency parameters (<FONT
+FACE="Symbol">p</font><SUB>T</SUB>, <FONT
+FACE="Symbol">p</font><SUB>C</SUB> and <FONT
+FACE="Symbol">p</font><SUB>A</SUB>; <FONT
+FACE="Symbol">p</font><SUB>G</SUB> is not a free parameter as the
+frequencies sum to 1) in the F81, F84, HKY85, TN93, or REV models,
+while normally (<code>nhomo</code> = 0) these are estimated by the
+averages of the observed frequencies.  <code>nhomo</code> = 2 uses one
+transition/transversion rate ratio (<FONT FACE="Symbol">k</font>) for
+each branch in the tree for the K80, F84, and HKY85 models (Yang
+1994b).  <code>nhomo</code> = 3 and 4 implements the nonhomogeneous
+models discussed by Yang and Roberts (1995).  When <code>nhomo</code>
+= 3 or 4, the option <code>fix_kappa = 1</code> means one kappa for
+all branches, and <code>fix_kappa = 0</code> means one kappa for each
+branch. <p>
 
 <code>getSE</code> tells whether we want estimates of the standard
 errors of estimated parameters.  These are crude estimates, calculated
@@ -793,15 +921,29 @@ performed (<code>runmode</code> = 1 or 2).  <p>
 only, and if given the value 1, will lead to calculation of rates for
 sites along the sequence for models of gamma rates across sites or
 reconstruction of ancestral sequences for models of a constant rate at
-sites.  <p>
+sites.  Since the ancestral reconstruction generates large output
+files, you should check and delete before directing the file to a
+printer.  You can also use the variable <code>verbose</code> to
+control the amount of output.  If you choose <code>verbose</code> = 0,
+the output will be limited to variable sites.  If <code>verbose</code>
+= 1, all sites will be listed.  If <code>verbose</code> = 2, the
+program also lists probabilities for each site at each ancestral node
+(for marginal reconstruction). 
+Sine the joint reconstruction may miss important reconstructions, I
+have added an option for the user to specify the reconstruction to be
+evaluated.  Specify RateAncestor = 2 rather than 1, and you will be
+prompted to specify the site and the reconstruction to be evaluated.<p>
+
 
 With <code>basemlg</code>, tree-search or the assumption of a
-molecular clock are not allowed and so choose <code>runmode = 0</code> and <code>clock = 0</code>.  Substitution models available for basemlg are JC69, F81, K80, F84
-and HKY85, and a continuous gamma is always assumed for rates at
-sites.  The variables <code>ncatG</code>, <code>given_rho</code>,
-<code>rho</code>, <code>nhomo </code>have no effect.  The S.E.'s of
-parameter estimates are always printed out because they are calculated
-during the iteration, and so getSE has no effect. <p>
+molecular clock are not allowed and so choose <code>runmode = 0</code>
+and <code>clock = 0</code>.  Substitution models available for basemlg
+are JC69, F81, K80, F84 and HKY85, and a continuous gamma is always
+assumed for rates at sites.  The variables <code>ncatG</code>,
+<code>given_rho</code>, <code>rho</code>, <code>nhomo </code>have no
+effect.  The S.E.'s of parameter estimates are always printed out
+because they are calculated during the iteration, and so getSE has no
+effect. <p>
 
 
 <a name = "codeml.ctl">
@@ -873,53 +1015,84 @@ sequences in the data; <code>seqtype</code> = 1 means codon sequences
 sequences (the program is then <code>aaml</code>); and 3 means codon
 sequences which are to be translated into proteins for analysis. <p>
 
-<b>codon sequences (<code>seqtype</code> = 1):</b> <code>CodonFreq</code>
-specifies the equilibrium codon frequencies in the model of Goldman
-and Yang (1994).  These frequencies can be assumed to be equal (1/61
-each for the standard genetic code, <code>CodonFreq</code> = 0),
-calculated from the average nucleotide frequencies
-(<code>CodonFreq</code> = 1), from the average nucleotide frequencies
-at the three codon positions (<code>CodonFreq</code> = 2), or used as
-free parameters (<code>CodonFreq</code>&nbsp; = &nbsp;3).  The variable
+<b>codon sequences (<code>seqtype</code> = 1):</b>
+<code>CodonFreq</code> specifies the equilibrium codon frequencies in
+the model of Goldman and Yang (1994).  These frequencies can be
+assumed to be equal (1/61 each for the standard genetic code,
+<code>CodonFreq</code> = 0), calculated from the average nucleotide
+frequencies (<code>CodonFreq</code> = 1), from the average nucleotide
+frequencies at the three codon positions (<code>CodonFreq</code> = 2),
+or used as free parameters (<code>CodonFreq</code> = 3).  The variable
 <code>aaDist</code> determines whether equal amino acid distances are
-assumed (= 0) or Grantham's matrix is used (= 1).  Grantham's matrix,
-or Goldman and Yang's (1994) use of it, does not seem to fit data
-well, and the equal distance model (<code>aaDist</code> = 0) is recommended. <p>
+assumed (= 0) or Grantham's matrix is used (= 1) (Yang et al. 1998).
+<p>
 
-The variable <code>model</code> concerns assumptions about the <I>d</I><SUB>N</SUB>/<I>d</I><SUB>S</SUB> rate ratios (or the
-<code>omega</code> parameters) among branches (Yang 1998;
-Yang and Nielsen 1998).   The value 0 means one <I>d</I><SUB>N</SUB>/<I>d</I><SUB>S</SUB> ratio for all lineages (branches), 1
-means one ratio for each branch (the free-ratio model), and 2 means an
-arbitrary number of ratios (such as the 2-ratios or 3-ratios models).
-Under the last model (<code>model = 2</code>), the program asks the user to input a branch mark for the <I>d</I><SUB>N</SUB>/<I>d</I><SUB>S</SUB> ratio assumed for each branch.
-This should be a integral number between 0 to <i>k</i> - 1 if <i>k</i> different <I>d</I><SUB>N</SUB>/<I>d</I><SUB>S</SUB> ratios (<FONT
-FACE="Symbol">w</font><sub>0</sub> - <FONT
-FACE="Symbol">w</font><sub><i>k</i> - 1</sub>) are assumed for the branches of the tree.   This process should be frustrating if the tree is not very small.
-I run the program first to let it output the tree topology using the branch representation on the screen.  I then prepare the branch marks in a file, say, <code>in</code>.   Finally I run the program using redirection so that it will read the input from the prepared file <pre>
+The variable <code>model</code> concerns assumptions about the
+<I>d</I><SUB>N</SUB>/<I>d</I><SUB>S</SUB> rate ratios (or the
+<code>omega</code> parameters) among branches (Yang 1998; Yang and
+Nielsen 1998).  The value 0 means one
+<I>d</I><SUB>N</SUB>/<I>d</I><SUB>S</SUB> ratio for all lineages
+(branches), 1 means one ratio for each branch (the free-ratio model),
+and 2 means an arbitrary number of ratios (such as the 2-ratios or
+3-ratios models).  When <code>model = 2</code>, the
+program asks the user to input a branch mark for the
+<I>d</I><SUB>N</SUB>/<I>d</I><SUB>S</SUB> ratio assumed for each
+branch.  This should be a integral number between 0 to <i>k</i> - 1 if
+<i>k</i> different <I>d</I><SUB>N</SUB>/<I>d</I><SUB>S</SUB> ratios
+(<FONT FACE="Symbol">w</font><sub>0</sub> - <FONT
+FACE="Symbol">w</font><sub><i>k</i> - 1</sub>) are assumed for the
+branches of the tree.  This process should be frustrating if the tree
+is not very small.  I run the program first to let it output the tree
+topology using the branch representation on the screen.  I then
+prepare the branch marks in a file, say, <code>in</code>.  Finally I
+run the program using redirection so that it will read the input from
+the prepared file <pre>
     codeml < in
 </pre>
-Redirection is not permitted on a MAC, but I suppose you can prepare the branch marks in a file and then copy and past them into the session running the program.  Furthermore, under this model, the variable <code>fix_omega </code>fixes the last<code>
-</code><I>d</I><SUB>N</SUB>/<I>d</I><SUB>S</SUB> ratio (<FONT
+Redirection is not permitted on a MAC, but I suppose you can prepare
+the branch marks in a file and then copy and paste them into the
+session running the program.  Furthermore, under this model, the
+variable <code>fix_omega </code>fixes the
+last<I>d</I><SUB>N</SUB>/<I>d</I><SUB>S</SUB> ratio (<FONT
 FACE="Symbol">w</font><sub><i>k</i> - 1</sub>) at the value of
-<code>omega</code> specified in the file.  This option can be used to test, for example, whether the ratio for a specific lineage is significantly different from one. <p>
+<code>omega</code> specified in the file.  This option can be used to
+test, for example, whether the ratio for a specific lineage is
+significantly different from one.  Check the example data file
+<code>lysozymeSmall.nuc</code> and the control file <code>
+codemlLysozyme.ctl</code> and try to reproduce results published in
+Yang (1998).
+<p>
 
 <code>Nssites</code> specifies a few models that allow the
 <I>d</I><SUB>N</SUB>/<I>d</I><SUB>S</SUB> ratio to vary among sites
 (Nielsen and Yang 1998).  <code>NSsites</code> = 0, which means one
-ratio for all sites, should normally be used.
-<code>NSsites</code> = 1 specifies a neutral model which has
-two categories of sites at which the
-<I>d</I><SUB>N</SUB>/<I>d</I><SUB>S</SUB> rate ratio is either 1
-(neutral sites) or 0 (conserved sites).  Parameters in this model
-include the proportion of the neutral sites. <code>NSsites</code> = 2
-specifies a selection model with an additional category of sites at
-which the <I>d</I><SUB>N</SUB>/<I>d</I><SUB>S</SUB> rate ratio is &gt;
-1.  Parameters under this model include the proportions of neutral and
+ratio for all sites, should normally be used.  <code>NSsites</code> =
+1 specifies a neutral model which has two categories of sites at which
+the <I>d</I><SUB>N</SUB>/<I>d</I><SUB>S</SUB> rate ratio is either 1
+(neutral sites) or 0 (conserved sites).  The parameter in this model
+is the proportion of neutral sites. <code>NSsites</code> = 2 specifies
+a selection model with an additional category of sites at which the
+<I>d</I><SUB>N</SUB>/<I>d</I><SUB>S</SUB> rate ratio is &gt; 1.
+Parameters under this model include the proportions of neutral and
 conserved sites (<I>p</I><SUB>1</SUB> and <I>p</I><SUB>2</SUB>) and
 the <I>d</I><SUB>N</SUB>/<I>d</I><SUB>S</SUB> rate ratio at the
 selected sites.  Equal amino acid distances are used, and the
 <I>d</I><SUB>N</SUB>/<I>d</I><SUB>S</SUB> ratio is equal to parameter
-<FONT FACE="Symbol">w</font> in equation 9.  The continuous neutral and selection models of Nielsen and Yang (1998) are not implemented in the program. but may be put in if there is a demand. <p>
+<FONT FACE="Symbol">w</font> in equation 9 (see the Models and Methods
+section below).  This model is noted to be prone to the problem of
+multiple local optima, and I have come across cases where there are
+two local optima, one with 0 < w3 < 1 and another with w3 > 1.  You
+are advised to run the program at least twice twice, once with an
+<code>omega</code> value < 1 and a second time with an
+<code>omega</code> value > 1, and use the results corresponding to the
+highest likelihood.  At least you
+
+The continuous neutral and selection models of
+Nielsen and Yang (1998) are not implemented in the program, but
+hopefully some equivalent models will be implemented soon. The most
+likely <I>d</I><SUB>N</SUB>/<I>d</I><SUB>S</SUB> ratio classes for
+sites when <code>NSsites</code> = 1 or 2 are in the file
+<code>rst</code>.<p>
 
 The genetic code table is selected using <code>icode</code>.  About a
 dozen genetic code tables are implemented, with 0 standing for the
@@ -943,7 +1116,13 @@ set of 20 mammals.  The mtREV24 model of the MOLPHY package is also
 provided (the file <code>mtREV24.dat</code>).  They two models are
 similar, and the difference is that the former is derived from
 proteins from mammals only while the latter came from more-diverse
-species including chicken, fish, from, and lamprey.  <p>
+species including chicken, fish, frog, and lamprey.  Due to
+differences in the implementation, you may see small differences in
+log-likelihood values and branch lengths between <code>codeml</code>
+and <code>protml</code> in the MOLPHY package.  Such differences are
+normal and you should use the same program to compare different trees.
+Under the mtREV24 model, the two programs should give almost identical
+results.  <p>
 
 If you hope to specify your own substitution rate matrix, have a look
 at one of those files, which has notes about the file structure.
@@ -965,8 +1144,11 @@ nonsynonymous (<I>N</I>) sites in each pairwise comparison are also
 calculated, scaled so that they sum to the total number of nucleotides
 in the sequence.  The method of Goldman and Yang (1994) is used.  You
 can choose different values for <code>CodonFreq</code> for this
-calculation.<p>
-
+calculation.<p> For amino acid sequences, the option
+<code>runmode</code> = -2 is for calculating ML distances in pairwise
+comparisons.  You can change the following variables in the control
+file <code>codeml.ctl</code>: <code> runmode, aaRatefile, model, and
+alpha</code>.
 
 
 <a name = "mcmctree.ctl">
@@ -992,11 +1174,11 @@ The default control file name is <code>mcmctree.ctl</code>, and a sample copy is
      alpha     = 0    * given alpha, 0:infinity
      ncatG     = 8    * # of categories in the dG or AdG models of rates
 
-     hierarch     = 0    * 1:hierarchical; 0:empirical Bayes analysis
+     hierarch  = 0    * 1:hierarchical; 0:empirical Bayes analysis
      birth     = 6.7    * lineage birth rate
      death     = 2.5    * lineage death rate
-     sample     = .06    * sampling proportion
-     mutate     = .24    * mutation rate (# of mutations from root to present)
+     sample    = .06    * sampling proportion
+     mutate    = .24    * mutation rate (# of mutations from root to present)
 </pre>
 </DIR>
 
@@ -1081,10 +1263,10 @@ lnL(ntime: 7 np: 11): -2542.948041   +44.558804
 Pairwise distances are calculated based on the same model specified
 for the likelihood analysis, with either a single rate for all sites
 or (continuous) gamma rates for sites assumed; in the latter case the
-initial value for the <FONT FACE="Symbol" SIZE = 2>a</code> parameter is
+initial value for the <FONT FACE="Symbol" SIZE = 2>a</font> parameter is
 used in the calculation.  If the specified model is HKY85 or REV, the
 distances are calculated using the model of Tamura and Nei (1993).
-The transition/transversion rate ratio (<FONT FACE="Symbol">k</code>)
+The transition/transversion rate ratio (<FONT FACE="Symbol">k</font>)
 for the K80, F84 models are also estimated for each pairwise
 comparison, and with the model of Tamura and Nei (1993) which has two
 such ratios, the average is calculated. <p>
@@ -1133,18 +1315,21 @@ Parameters in the programs are arranged in a fixed order in the output
 [2] <I>c<SUB>j</I></SUB>: rate parameters for genes (<I>g</I> - 1
 parameters for <I>g</I> genes; <I>c</I><SUB>1</SUB> = 1); <br>
 
-[3] rate ratio parameters: <FONT FACE="Symbol" SIZE = 2>k</code> in K80,
-F84, HKY85, <FONT FACE="Symbol" SIZE = 2>k</code><SUB>1</SUB> and <FONT
-FACE="Symbol" SIZE = 2>k</code><SUB>2</SUB> in TN93, or <I>a</I>,
+[3] rate ratio parameters: <FONT FACE="Symbol" SIZE = 2>k</font> in K80,
+F84, HKY85, <FONT FACE="Symbol" SIZE = 2>k</font><SUB>1</SUB> and <FONT
+FACE="Symbol" SIZE = 2>k</font><SUB>2</SUB> in TN93, or <I>a</I>,
 <I>b</I>, <I>c</I>, <I>d</I>, <I>e </I>in REV (TN93 and REV for
 <code>baseml</code> only); <br>
 
-[4] frequency parameters <FONT FACE="Symbol">p</code><SUB>T</SUB>, <FONT FACE="Symbol">p</code><SUB>C</SUB>, <FONT FACE="Symbol">p</code><SUB>A></SUB> (for <code>nhomo</code> &gt; 0 in <code>baseml</code> only); <br>
+[4] frequency parameters <FONT FACE="Symbol">p</font><SUB>T</SUB>,
+<FONT FACE="Symbol">p</font><SUB>C</SUB>, <FONT
+FACE="Symbol">p</font><SUB>A</SUB> (for <code>nhomo</code> &gt; 0 in
+<code>baseml</code> only); <br>
 
-[5] <I><FONT FACE="Symbol" SIZE = 2>a</I></code> of the (discrete-)
+[5] <I><FONT FACE="Symbol" SIZE = 2>a</I></font> of the (discrete-)
 gamma distribution; <br>
 
-[6] <FONT FACE="Symbol" SIZE = 2>r</code> of the auto-discrete-gamma
+[6] <FONT FACE="Symbol" SIZE = 2>r</font> of the auto-discrete-gamma
 model (unavailable for <code>basemlg</code>); <p>
 </DIR>
 
@@ -1162,7 +1347,7 @@ the order of the parameters will be <FONT FACE="Symbol"
 >k</font><SUB>1</SUB> and <FONT FACE="Symbol">k</font><SUB>2</SUB> for
 the first gene, <FONT FACE="Symbol">k</font><SUB>1</SUB> and <FONT
 FACE="Symbol">k</font><SUB>2</SUB> for the second gene, and so on, and
-<FONT FACE="Symbol">a</code> for the first gene, followed by <FONT
+<FONT FACE="Symbol">a</font> for the first gene, followed by <FONT
 FACE="Symbol">a</font> for the second gene, and so forth. <p>
 
 Without the assumption of a molecular clock, the model will involve as
@@ -1188,16 +1373,16 @@ Brown <I>et al</I>. (1982).  The sites are grouped into four classes
 chimpanzee), gorilla), orangutan, gibbon), and estimates of the common
 parameters from this tree are <I>c</I><SUB>2</SUB> = 0.37752,
 <I>c</I><SUB>3</SUB> = 3.83740, <I>c</I><SUB>4</SUB> = 0.61889, and
-</code><FONT FACE="Symbol" SIZE = 2>k</code> = 12.05461. <p>
+<FONT FACE="Symbol" SIZE = 2>k</font> = 12.05461. <p>
 
 With <code>getSE</code> = 1, the S.E.s are calculated as the
 square roots of the large sample variances and listed exactly below
 the parameter estimates.  Zeros on this line mean errors, either
 caused by divergence of the algorithm or zero branch lengths.  The
 S.E.&iacute;s of the common parameters measure the reliability of the
-estimates.  For example, (</code><I><FONT FACE="Symbol" SIZE = 2>k
--</I></code> 1)/SE(</code><I><FONT FACE="Symbol" SIZE = 2>k</I></code>),
-when </code><I><FONT FACE="Symbol" SIZE = 2>k</I></code> is estimated
+estimates.  For example, (<I><FONT FACE="Symbol" SIZE = 2>k
+-</I></font> 1)/SE(<FONT FACE="Symbol" SIZE = 2>k</font>),
+when <FONT FACE="Symbol" SIZE = 2>k</font> is estimated
 under K80, can be compared with a normal distribution to see whether
 there is real difference between K80 and JC69.  The test can be more
 reliably performed by comparing the log-likelihood values under the
@@ -1229,8 +1414,8 @@ substitutions per nonsynonymous site (<I>d</I><SUB>N)</SUB> and their
 ratio (<I>d</I><SUB>N</SUB>/<I>d</I><SUB>S</SUB>).  These are used to
 construct initial estimates of branch lengths for the likelihood
 analysis.  Note that the estimates of these quantities for the
-</code><FONT FACE="Symbol" SIZE = 2>a</code>- and </code><FONT
-FACE="Symbol" SIZE = 2>b</code>-globin genes shown in Table 2 of Goldman
+<FONT FACE="Symbol" SIZE = 2>a</font>- and <FONT
+FACE="Symbol" SIZE = 2>b</font>-globin genes shown in Table 2 of Goldman
 and Yang (1994), calculated using the MEGA package (Kumar <I>et
 al.</I>, 1993), are not accurate. <p>
 
@@ -1262,7 +1447,7 @@ below parameter estimates. <p>
 
 
 <b>For <code>aaml</code> (<code>codeml</code> with
-<code>seqtype</code> = 2</I>). </b>  The file </code><code>mlc</code> produced for </code><code>aaml</code>
+<code>seqtype</code> = 2</I>). </b>  The file <code>mlc</code> produced for <code>aaml</code>
 is self-explanatory and very similar to the result files for the
 nucleotide- and codon-based models.  The models for amino acid
 substitution based on the PAM matrices of Dayhoff <I>et al. </I>(1978)
@@ -1271,18 +1456,22 @@ substitution rate matrix (nrate = 0). <p>
 
 
 <a name="rst">
-<h2>Secondary result file <code>rst</code></h2><p></a>
+<h2>Secondary result files <code>rst</code> and
+<code>rates</code></h2><p></a>
 
 When <code>RateAncestor </code> = 1, the programs <code>baseml</code>
-and <code>aaml </code>also generate results in the file
-<code>rst</code>.  If the model assumes a single rate for all sites,
-the program reconstructs ancestral sequences, while if the
-discrete-gamma model is assumed for rates at sites, the substitution
-rates at sites are calculated from the model.  Note that for both
-problems, the models produce identical results for sites with the same
-data, so that some of the analyses are listed once for the site
-pattern.  The file can be very large, so that you should be cautious
-when directing it to the printer. <p>
+and <code>aaml </code>generate results for ancestral
+reconstruction in the file <code>rst</code>.  Calculated substitution
+rates for sites under models of variable rates for sites are now in
+the file <code>rates</code> and not in <code>rst</code> as in previous
+versions.  Under codon-based models that allow for variable dN/dS ratios among
+sites (<code>NSsites</code> = 1 or 2), the most likely dN/dS
+categories for sites are in <code>rst</code>. <p>
+
+Some of those analysis necessarily produces identical results for
+sites with the same data.  Thus sometimes the results may be listed
+once for each "site pattern" and not for each site, to save space.  Then
+a table is included in the files to map sites to patterns.
 
 
 
@@ -1343,7 +1532,7 @@ FACE="Symbol">b</font> in the notation of Kimura (1980) and Hasegawa
 <I>et al.</I> (1985), who used <FONT FACE="Symbol">a</font>
 and <FONT FACE="Symbol">b</font> to refer to
 rates of transitional and transversional substitutions, repectively.
-Tamura and Nei (1993) used <FONT FACE="Symbol">k</code><SUB>2</SUB>, <FONT FACE="Symbol">a</font><SUB>1</SUB>, and <I><FONT FACE="Symbol">b</I></font> instead of <FONT FACE="Symbol">k</font><SUB>1</SUB> and <FONT FACE="Symbol">k</font><SUB>2</SUB>.  The present notation is more
+Tamura and Nei (1993) used <FONT FACE="Symbol">k</font><SUB>2</SUB>, <FONT FACE="Symbol">a</font><SUB>1</SUB>, and <I><FONT FACE="Symbol">b</I></font> instead of <FONT FACE="Symbol">k</font><SUB>1</SUB> and <FONT FACE="Symbol">k</font><SUB>2</SUB>.  The present notation is more
 convenient in a maximum likelihood analysis as the ratio is assumed to
 be constant for different branches of the tree.  F84 is the model
 implemented in J. Felsenstein's DNAML program.  The rate matrix
@@ -1366,8 +1555,7 @@ comparable among models, one can calculate the transition/transversion
 rate ratio averaged by base frequencies: <p>
 
 <DIR>
- (8)   <I>R</I> = (<FONT FACE="Symbol">p</font>
-<I><SUB>T</SUB>q<SUB>TC</I></SUB>+ <FONT FACE="Symbol">p</font><I><SUB>C</SUB>q<SUB>CT</I></SUB>+<FONT FACE="Symbol">p</font><I><SUB>A</SUB>q<SUB>AG</I></SUB>+<FONT FACE="Symbol">p</font><I><SUB>G</SUB>q<SUB>GA</I></SUB>)
+ (8)   <I>R</I> = (<FONT FACE="Symbol">p</font><I><SUB>T</SUB>q<SUB>TC</I></SUB>+ <FONT FACE="Symbol">p</font><I><SUB>C</SUB>q<SUB>CT</I></SUB>+<FONT FACE="Symbol">p</font><I><SUB>A</SUB>q<SUB>AG</I></SUB>+<FONT FACE="Symbol">p</font><I><SUB>G</SUB>q<SUB>GA</I></SUB>)
 / (<FONT FACE="Symbol">p</font><I><SUB>T</SUB>q<SUB>TA </I></SUB>+ <FONT FACE="Symbol">p</font><I><SUB>T</SUB>q<SUB>TG</I></SUB> + <FONT FACE="Symbol">p</font><I><SUB>C</SUB>q<SUB>CA</I></SUB> + <FONT FACE="Symbol">p</font><I><SUB>C</SUB>q<SUB>CG</I></SUB> + <FONT FACE="Symbol">p</font><I><SUB>A</SUB>q<SUB>AT</I></SUB> + <FONT FACE="Symbol">p</font><I><SUB>A</SUB>q<SUB>AC</I></SUB> + <FONT FACE="Symbol">p</font><I><SUB>G</SUB>q<SUB>GT</I></SUB> + <FONT FACE="Symbol">p</font><I><SUB>G</SUB>q<SUB>GC</I></SUB>).
 </DIR>
 
@@ -1434,7 +1622,16 @@ for any <I>i</I> and <I>j</I>, so that my implementations may be
 slightly different from that of Kishino <I>et al.</I> (1990).  These
 models assume a fixed pattern of amino acid substitution, and cannot
 identify possible differences in the evolutionary dynamics of
-different proteins. The package also include two similar empirical models for mitochondrial proteins.  The first is given by the file <code>mtREV24.dat</code> and is the mtREV24 model of Adachi and Hasegawa (1996a, b) estimated from a diverse range of species including mammals, chicken, frog, fish, and lamprey.  The matrix was estimated by maximum likelihood from real data.  The second is given by the file mtmam.dat and is estimated from 20 mammalian species using maximum likelihood under the REV model with variable rates among sites (Yang et al. 1998).  You can check those files for more details, or if you want to supply your own empirical matrix. <p>
+different proteins. The package also include two similar empirical
+models for mitochondrial proteins.  The first is given by the file
+<code>mtREV24.dat</code> and is the mtREV24 model of Adachi and
+Hasegawa (1996a, b) estimated from a diverse range of species
+including mammals, chicken, frog, fish, and lamprey.  The matrix was
+estimated by maximum likelihood from real data.  The second is given
+by the file mtmam.dat and is estimated from 20 mammalian species using
+maximum likelihood under the REV model with variable rates among sites
+(Yang et al. 1998).  You can check those files for more details, or if
+you want to supply your own empirical matrix. <p>
 
 "Mechanistic" models of amino acid substitution would require
 consideration of both the mutational distance between the amino acids
@@ -1443,8 +1640,8 @@ code table, and the effects that the potential change may have on the
 structure and function of the protein, which may be related to the
 physical, chemical and structural differences between amino acids.  It
 seems natural that such a model should be formulated at the level of
-codons.  The program </code><code>aaml</code> implements a few such
-models, which will be described later. <p>
+codons.  The program <code>aaml</code> implements a few such models,
+specified by the variable <code>aaDist</code>. <p>
 
 
 <a name="rates">
@@ -1480,7 +1677,7 @@ such categories (<code>ncatG</code> = 4) seems to be enough for a
 good approximation (Yang, 1994c).  However, if the <FONT
 FACE="Symbol">a</font> estimate is very small (say,
 &lt; 0.2) or if the purpose of the analysis is to estimate the <FONT
-FACE="Symbol">a</code> parameter of the (continuous) gamma for use
+FACE="Symbol">a</font> parameter of the (continuous) gamma for use
 in estimating pairwise distances, it may be better to use more
 categories (say 8).  The auto-discrete-gamma model was initiated by
 the observation of the existence of <I>variable </I>and <I>conserved
@@ -1502,12 +1699,12 @@ the sequence to help identify variable and conserved regions. <p>
 or codon positions)</h2></a>
 
 Several models are described by Yang (1996a) and implemented in
-programs </code><code>baseml</code> and </code><code>codeml</code>
-(</code><code>codonml</code> and </code><code>aaml</code>) for
+programs <code>baseml</code> and <code>codeml</code>
+(<code>codonml</code> and <code>aaml</code>) for
 analyzing heterogeneous data sets (such as those of multiple genes or
 different codon positions).  The implementation and description below
 refer to the case of multiple genes, but in the case of
-nucleotide-based models (</code><code>baseml</code>), the method can
+nucleotide-based models (<code>baseml</code>), the method can
 be used to analyze data of different codon positions.  These models
 account for different aspects of heterogeneity among the different
 data sets and are useful for testing hypotheses concerning the
@@ -1516,31 +1713,31 @@ data sets. <p>
 
 The simplest model which assumes complete homogeneity among genes can
 be fitted by concatenating different genes into one sequence without
-using the option G (and by specifying </code><code>Mgene</code> = 0 in
+using the option G (and by specifying <code>Mgene</code> = 0 in
 the control file).  The most general model is equavilent to a separate
 analysis.  This can be done by fitting the same model to each data set
 (each gene), but can also be done by specifying
-</code><code>Mgene</code> = 1 with the option G in the combined data
+<code>Mgene</code> = 1 with the option G in the combined data
 file.  The sum of the log-likelihood values over different genes is
 then the log likelihood of the most general model considered here.
 Models accounting for some aspects of the heterogeneity of multiple
-genes are fitted by specifying </code><code>Mgene</code> in
+genes are fitted by specifying <code>Mgene</code> in
 combination with the option G in the sequence data file.
-</code><code>Mgene</code> = 0 means a model that asumes different
+<code>Mgene</code> = 0 means a model that asumes different
 substitution rates but the same pattern of nucleotide substitution for
-different genes.  </code><code>Mgene</code> = 2 means different
+different genes.  <code>Mgene</code> = 2 means different
 frequency parameters for different genes but the same rate ratio
-parameters (<FONT FACE="Symbol">&#107;</code> in the K80, F84, HKY85
+parameters (<FONT FACE="Symbol">&#107;</font> in the K80, F84, HKY85
 models or the rate parameters in the TN93 and REV models).
-</code><code>Mgene</code> = 3 means different rate ratio parameters
-and the same frequency parameters.  </code><code>Mgene</code> = 4
+<code>Mgene</code> = 3 means different rate ratio parameters
+and the same frequency parameters.  <code>Mgene</code> = 4
 means both different rate ratio parameters and different frequency
 parameters for different genes.  Parameters and assumptions made in
 these models are summarized in the following table, with the HKY85
 model used as an example.  When substitution rates are assumed to vary
 from site to site, the control variable Malpha specifies whether one
 gamma distribution will be applied across all sites
-(</code><code>Malpha</code> = 0) or a different gamma distribution is
+(<code>Malpha</code> = 0) or a different gamma distribution is
 used for each gene (or codon position).</code> <p>
 
 <TABLE BORDER CELLSPACING = 2 CELLPADDING = 7 WIDTH = 619>
@@ -1608,9 +1805,9 @@ s, and different (unproportional) branch lengths</font></TD>
 
 The different <I>c</I>s for different genes mean that branch lengths
 estimated for different genes are proportional.  Parameters <FONT
-FACE="Symbol">&#112;</code> represent the equilibrium nucleotide
+FACE="Symbol">&#112;</font> represent the equilibrium nucleotide
 frequencies, which are estimated using the observed frequencies
-(</code><code>nhomo</code> = 0).  The transition/transversion rate ratio
+(<code>nhomo</code> = 0).  The transition/transversion rate ratio
 <FONT FACE="Symbol">&#107;</font> in HKY85 can be replaced by the two
 or five rate ratio parameters under the TN93 or REV models,
 respectively.  The likelihood ratio test can be used to compare these
@@ -1622,16 +1819,14 @@ very similar to the more familiar analysis of variance. <p>
 <h2>The molecular clock</h2></a>
 
 The assumption of a molecular clock means that substitution rates are
-constant among lineages.  It is specified as </code><code>clock</code>
+constant among lineages.  It is specified as <code>clock</code>
  = 1 for <code>baseml</code>, <code>codonml</code>, and
 <code>aaml</code>, and is not available for <code>basemlg</code>.
 With this assumption, the trees are rooted and there are as many time
 parameters as the number of interior nodes in the tree (<I>n</I> - 2
 for a tree of <I>n</I> species).  Without the clock assumption
 (<code>clock</code> = 0), the number of time parameters is equal to
-the number of branches (2<I>n</I> -3 for a tree of <I>n</I> species).
-Currently my implementation of the clock model is not
-satisfactory. <p>
+the number of branches (2<I>n</I> -3 for a tree of <I>n</I> species). <p>
 
 
 <a name="nhomo">
@@ -1639,28 +1834,28 @@ satisfactory. <p>
 
 The option <code>nhomo</code> for <code>baseml</code> concerns the
 frequency parameters in the F81, F84, HKY85, TN93, or REV models.  The
-option </code><code>nhomo</code> = 1 fits a homogeneous model, but
-solves for the frequency parameters.  Normally (<code>nhomo</code> = 
-0) they are estimated by the averages of the observed frequencies.
-The options <code>nhomo</code> = 3 or 4, in combination with F84 or
-HKY85, fit nonhomogeneous models of Yang and Roberts (1995).
-Substitutions are assumed to follow the pattern of F84 or HKY85, but
-with different frequency parameters assigned for different branches in
-the tree, to allow for unequal base frequencies in different
-sequences.  The position of the root then makes a difference to the
-likelihood, and rooted trees are used.  Because of the parameter
-richness, the model may only be used with data of 4 species when base
-frequencies are drastically different in different sequences.
-Convergence is hard to achieve, especially if the sequences are short,
-and different initial values need to be tried. Choose
-<code>fix_kappa</code> = 1, which means one common <FONT
-FACE="Symbol">&#107;</code> is assumed for all branches.  The option
-</code><code>nhomo</code> = 4 assigns one set of frequency parameters
-for each node, which are the parameters for the rate matrix along the
-branch leading to the node or are the initial distribution if the node
-is the root of the tree.  In the output, estimates of the frequency
-parameters are shown in the order of nodes <I>n</I> + 1, <I>n</I> + 2,
-...., where <I>n</I> is the number of sequences. <p>
+option <code>nhomo</code> = 1 fits a homogeneous model, but estimates
+the frequency parameters by maximum likelihood iteration.  Normally
+(<code>nhomo</code> = 0) these are estimated by the averages of the
+observed frequencies.  In both cases, you should count 3 free
+parameters for the base frequencies.  The options <code>nhomo</code> =
+3 or 4, in combination with F84 or HKY85, fit nonhomogeneous models of
+Yang and Roberts (1995).  Substitutions are assumed to follow the
+pattern of F84 or HKY85, but with different frequency parameters
+assigned for different branches in the tree, to allow for unequal base
+frequencies in different sequences.  The position of the root then
+makes a difference to the likelihood, and rooted trees are used.
+Because of the parameter richness, the model may only be used with
+small data sets when base frequencies are drastically different in
+different sequences.  Choose <code>fix_kappa</code> = 1, which means
+one common <FONT FACE="Symbol">&#107;</font> is assumed for all
+branches.  The option <code>nhomo</code> = 4 assigns one set of
+frequency parameters for each node, which are the parameters for the
+rate matrix along the branch leading to the node or are the initial
+distribution if the node is the root of the tree.  In the output,
+estimates of the frequency parameters are shown in the order of nodes
+<I>n</I> + 1, <I>n</I> + 2, ...., where <I>n</I> is the number of
+sequences. <p>
 
 
 <a name="ancestral">
@@ -1713,10 +1908,9 @@ species; an indicator of the occurrence of this problem is that the
 sum of probabilities for the listed reconstructions at a site is not
 close to one.  Note that the problem is possible failure to evaluate
 some reconstructions with high probabilities, but the probabilities
-for the evaluated reconstructions are correct.  An option (Specify
-RateAncestor = 2) is implemented so that the user can specify the site
-and reconstruction to be evaluated.  It is better to remove all sites
-with alignment gaps before using this option. <p>
+for the evaluated reconstructions are correct.  An option
+(RateAncestor = 2) allows the user to specify the site and
+reconstruction to be evaluated.   <p>
 
 The marginal and joint approaches are expected to produce very similar
 results. Since the marginal reconstruction is always reliable and
@@ -1736,7 +1930,7 @@ associated speciaiton times), and the posterior probabilities of the
 labeled histories are compared to select the maximum posterior
 probability tree.  The program implementing the method of Rannala and
 Yang (1996) is not distributed as the algorithm involves extensive
-computation.  Instead, </code><code>mcmctree</code> implements a
+computation.  Instead, <code>mcmctree</code> implements a
 refined method (Yang and Rannala 1997), which uses Markov chain Monte
 Carlo to select candidate labeled histories, and Monte Carlo
 integration to integrate over the distribution of the ancestral
@@ -1746,17 +1940,22 @@ speciation times. <p>
 <a name="simulate">
 <h2>Simulating sequence data sets</h2></a>
 
-The program <code>listtree</code> has an option for simulating data
-sets under a number of nucleotide substitution models.  The tree and
-branch lengths can either be specified in the tree file or generated
-from a model of cladogenesis, the birth-death process with species
-sampling (Yang and Rannala, 1997).  Multiple simulated data sets are
-put in one file in either <code>PAML</code> or
-<code>PAUP*</code> format.  In the latter case, command blocks
-for <code>PAUP</code>* can be included in a file called
-<code>paupblock</code>, which is inserted at the end of each
-simulated data set.  The program is &quot;user-friendly&quot;, and so
-no more details need to be given here. <p>
+The program <code>evolver</code> has options for simulating data sets
+under nucleotide, codon, or amino acid substitution models.  The tree
+and branch lengths can either be specified or generated from a model
+of cladogenesis, the birth-death process with species sampling (Yang
+and Rannala, 1997).  Multiple simulated data sets are put in one file
+in either <code>PAML</code> or <code>PAUP*</code> format.  If you
+choose the PAUP* format, the program will look for files with the
+following names: <code>paupstart</code> (which the program copies to
+the start of the data file), <code>paupblock</code> (which the program
+copies to the end of each simulated data set), and
+<code>paupend</code> (which the program incoporate at the end of the
+file.  Parameters for simulation are specied in three files:
+<code>MCbase.dat</code>, <code>MCcodon.dat</code>, and
+<code>MCaa.dat</code> for simulating nucleotide, codon, and amino acid
+sequences, respectively.  Run the default options first and also look
+at those files as well as the screen output. <p>
 
 
 <a name="treesearch"> 
@@ -1845,29 +2044,6 @@ file, and then compare those trees using programs in the paml package
 for a more-detailed comparison with models implemented in paml. <p>
 
 
-<b>Molecular clock. </b>  Under the molecular clock model
-(<code>clock</code> = 1), the divergence times for the interior
-nodes of the tree are specified as parameters.  They should satisfy
-the requirement that the time for an ancestral node is no smaller than
-that for a descendent node.  When the optimum values of such two time
-parameters are equal, that is, when the tree converges to a
-multifurcating tree with the length of the branch separating the two
-nodes approaching zero, my program may not converge to the optimum
-values.  What happens in the algorithm is that the time parameter that
-is supposed to be smaller wants to increase and the parameter that is
-supposed to be larger wants to decrease when they are already equal.
-In such a case the algorithm will give up, and fail to find the
-optimum values that could be obtained if the two time parameters were
-hold equal and changed together. <p>
-
-If estimates of two time parameters are equal under the clock model, this
-problem probably has occurred.  To get around this problem, you can
-fit the same model to the multifurcating tree that that tree seems to
-be converging to.  The programs <code>baseml</code> and
-<code>codeml</code> output the multifurcating tree after
-collapsing the zero-length internal branch, so that you can include it
-in the tree file.
-
 
 
 <A NAME = "thanks">
@@ -1879,8 +2055,8 @@ Wang for the eigen routine used in the package.  I also thank a number
 of users for reporting bugs and/or suggesting changes, especially Liz
 Bailes, Thomas Buckley, Belinda Chang, Adrian Friday, Nicolas Galtier,
 Nick Goldman, John Heulsenbeck, Sudhir Kumar, Robert D. Reed,
-Fransisco Rodriguez-Trelles, John Heulsenbeck, John, Mercer,
-dubreuil@moulon.inra.fr, Xuhua Xia.
+Fransisco Rodriguez-Trelles, John Heulsenbeck, John Mercer,
+dubreuil@moulon.inra.fr, and Xuhua Xia.
 
 
 
@@ -1939,7 +2115,7 @@ Rannala, B. and Z. Yang.  1996.  Probability distributions of molecular evolutio
 
 Rodriguez, F., J. F. Oliver, A. Marin, and J. R. Medina.  1990.  The general stochastic model of nucleotide substituions.  <I>Journal of Theoretical Biology</I> <B>142</B>:485-501.<p>
 
-Stewart, C.-B., J. W. Schilling, and A. C. Wilson.  1987.  Adaptive evolution in the stomach lysozymes of foregut fermenters.  <i>Nature</i> <b>330</b>:401-404.
+Stewart, C.-B., J. W. Schilling, and A. C. Wilson.  1987.  Adaptive evolution in the stomach lysozymes of foregut fermenters.  <i>Nature</i> <b>330</b>:401-404.<p>
 
 Swofford, D. L.  1993.  <I>Phylogenetic Analysis Using Parsimony (PAUP), Version 3.2</I>.  University of Illinois, Champaign.<p>
 
@@ -1989,7 +2165,10 @@ Yang, Z., N. Goldman, and A. E. Friday.  1995.  Maximum likelihood trees from DN
 
 Yang, Z., S. Kumar, and M. Nei.  1995.  A new method of inference of ancestral nucleotide and amino acid sequences.  <I>Genetics</I> <B>141</B>:1641-1650.<p>
 
-Yang, Z., N. Nielsen, and M. Hasegawa.  1998.  Models of amino acid substitution and applications to mitochondrial protein evolution.  <I>Molecular Biology and Evolution</I> in press.<p>
+Yang, Z., N. Nielsen, and M. Hasegawa.  1998.  Models of amino acid
+substitution and applications to mitochondrial protein evolution.
+<I>Molecular Biology and Evolution</I> <B>15</B>:1600-1611.<p>
+
 
 Zharkikh, A.  1994.  Estimation of evolutionary distances between nucleotide sequences.  <I>Journal of Molecular Evolution </I><B>39</B>:315-329. <p>
 

@@ -1,0 +1,21 @@
+1
+1234567
+6 100000 2
+(((1:0.1, 2:0.1):0.1, 3:0.2):0.1, 4:0.2, (5:0.1, 6:0.1):0.1)
+
+5
+.5 8
+
+0.25 0.25 0.25 0.25
+ T    C    A    G
+
+
+Notes for using the option in listtree to simulate codon sequences. 
+
+<format,0=paml,1=paup>
+<random number seed>
+<# seqs>  <# amino acid sites>  <# replicates>
+<tree topology & branch lengths>
+<kappa>
+<alpha>  <#categories for discrete gamma>
+<base frequencies>

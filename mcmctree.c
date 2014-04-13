@@ -5,8 +5,8 @@
 
                          Ziheng YANG, September 1995 onwards
 
-                gcc -c -O2 tools.c 
-                gcc -o mcmctree -O2 mcmctree.c tools.o 
+                cc -c -fast tools.c 
+                cc -o mcmctree -fast mcmctree.c tools.o -lm
                      mcmctree <ControlFileName>
 
      x[birth, death, mut, kappa etc.]  
@@ -22,12 +22,7 @@
 
 #include "tools.h"
 extern int noisy, NFunCall;
-extern char NUCs[];
-
-int PMatCijk (double P[], double t);
-int PartialLikelihood (int inode, int igene);
-double lfundG (void);
-double lfun (void);
+extern char BASEs[];
 
 int GetOptions (char *ctlf);
 int GetLHistoryI (int iLH);
@@ -39,14 +34,20 @@ void MCMCtrees (FILE* fout, double space[]);
 void MCMCunrootedtree (double space[]);
 void EvaluateLHs(FILE*fout, FILE*fLH, int IofLHs[], double lnPLHs[],
     int ntreekept, double delta);
+int InitPartialLikelihood (void);
+int PartialLikelihood (int inode, int igene);
+int PMatCijk (double P[], double t);
+double lfun (void);
+double lfundG (void);
 
 struct CommonInfo {
-   char *z[NS], spname[NS][LSPNAME+1], seqf[32],outf[32],treef[32],LHf[32];
-   int  seqtype, ns, ls, ngene, posG[NGENE+1],lgene[NGENE],*pose,npatt;
-   int  np, ncode, ntime, nrate, nrgene, nalpha, npi, ncatG, print, MCMC, seed;
-   int  priTt,hier, model, clock, fix_alpha, fix_kappa, fix_rgene, Mgene;
-   float *fpatt;
-   double pi[6], lmax, birth,death,sample, mut, kappa, alpha, beta,delta0,delta1;
+   char *z[NS], *spname[NS], seqf[96],outf[96],treef[96],LHf[96];
+   int seqtype, ns, ls, ngene, posG[NGENE+1],lgene[NGENE],*pose,npatt;
+   int np, ncode, ntime, nrate, nrgene, nalpha, npi, ncatG, print, MCMC, seed;
+   int cleandata;
+   int priTt,hier, model, clock, fix_alpha, fix_kappa, fix_rgene, Mgene;
+   double *fpatt;
+   double pi[6],lmax, birth,death,sample, mut, kappa,alpha, beta,delta0,delta1;
    double rgene[NGENE],piG[NGENE][6], freqK[NCATG], rK[NCATG], *chunk, *fhK;
 }  com;
 struct TREEB {
@@ -74,7 +75,7 @@ static double lnpBestTree, PMat[16], Cijk[64], Root[4];
 
 int main(int argc, char *argv[])
 {
-   char ctlf[]="mcmctree.ctl", rstf[32]="rst";
+   char ctlf[]="mcmctree.ctl", rstf[96]="rst";
    char *priorTt[]={"Coalescent", "Yule", "Birth-death"};
    int idata, ndata=1;
    double *space;
@@ -99,7 +100,10 @@ int main(int argc, char *argv[])
       { strcpy(ctlf, argv[1]); printf ("\nctlfile reset to %s.\n", ctlf); }
    GetOptions (ctlf);
    if ((fout=fopen(com.outf,"w"))==NULL) error("outfile creation err.");
-   if ((fseq=fopen(com.seqf,"r"))==NULL) error("No sequence file!");
+   if((fseq=fopen (com.seqf,"r"))==NULL)  {
+      printf ("\n\nSequence file %s not found!\n", com.seqf);
+      exit (-1);
+   }
 
    if ((space=(double*)malloc(50000*sizeof(double)))==NULL) error("oom");
 
@@ -126,23 +130,23 @@ int main(int argc, char *argv[])
           com.birth, com.death, com.sample, com.mut);
       
       Initialize (fout, space, 0);
-            if (com.model==JC69) PatternJC69like (fout);
+      if (com.model==JC69) PatternJC69like (fout);
       if (com.chunk) free(com.chunk);
-      com.chunk=(double*)malloc((com.ns-1)*4*com.npatt*sizeof(double));
+      com.chunk=(double*)malloc((com.ns-1)*com.ncode*com.npatt*sizeof(double));
       if(com.alpha){
          if (com.fhK) free(com.fhK);
          com.fhK=(double*)malloc(com.npatt*com.ncatG*sizeof(double));
+         DiscreteGamma (com.freqK, com.rK, com.alpha, com.alpha, com.ncatG, 0);
       }
       if (com.chunk==NULL || (com.alpha && com.fhK==NULL)) error ("oom");
       
       if (com.model>1)
          EigenTN93(com.model,com.kappa,com.kappa,com.pi,&nR,Root,Cijk);
-      if (com.alpha) 
-         DiscreteGamma (com.freqK, com.rK, com.alpha, com.alpha, com.ncatG, 0);
       
-      printf ("\n%sclock\n", (com.clock?"":"no "));
+      printf ("\n%smolecular clock assumed.\n", (com.clock?"":"no "));
       fflush (fout);
       SetSeed (com.seed);
+      if(!com.cleandata) InitPartialLikelihood ();
       MCMCtrees(fout, space);
    }
    fclose (fseq);
@@ -156,7 +160,7 @@ int PMatCijk (double P[], double t)
    int i,j,k, n=4, nr=nR;
    double expt[4];
 
-   if (t<1e-7) { identity (P, n); return(0); }
+   if (t<1e-7) { identity(P,n); return(0); }
    for (k=1; k<nr; k++) expt[k]=exp(t*Root[k]);
    FOR (i,n) FOR (j,n) {
       for (k=1,t=Cijk[i*n*nr+j*nr+0]; k<nr; k++)
@@ -166,35 +170,67 @@ int PMatCijk (double P[], double t)
    return (0);
 }
 
+int InitPartialLikelihood (void)
+{
+/* set partial likelihood at tips of the tree, considering missing data.
+   This need to be modified when more proper algorithm for dealing with
+   missing data is worked out.
+   Need testing if sequences in the data are ancestors.
+*/
+   int n=com.ncode, is,j,k,h, b;
+   char *pch=BASEs;
+
+   FOR(is,com.ns) nodes[is].lkl=com.chunk+n*com.npatt*is;
+   for (is=0;is<com.ns;is++) {
+      zero(nodes[is].lkl, com.npatt*n);
+      for (h=0;h<com.npatt;h++) {
+            k=strchr(pch,com.z[is][h])-pch; 
+            if(k<0) { printf("Character %d\n",com.z[is][h]); exit(-1); }
+            if(k<n)
+               nodes[is].lkl[h*n+k]=1;
+            else
+               FOR(j,nBASEs[k]) {
+                  b=strchr(BASEs,EquateNUC[k][j])-BASEs;
+                  nodes[is].lkl[h*n+b]=1.;  /* Joe's idea */
+               }
+      }  /* for (h) */
+   }     /* for (is) */
+   return(0);
+}
+
 int PartialLikelihood (int inode, int igene)
 {
    int n=com.ncode, i,j,k,h, ison, pos0=com.posG[igene],pos1=com.posG[igene+1];
    double t;
 
+
    FOR (i,nodes[inode].nson)
       if (nodes[nodes[inode].sons[i]].nson>0)
          PartialLikelihood (nodes[inode].sons[i], igene);
    fillxc (nodes[inode].lkl+pos0*n, (double)(inode>=com.ns), (pos1-pos0)*n);
-   if (inode<com.ns) 
-      for (h=pos0; h<pos1; h++) nodes[inode].lkl[h*n+com.z[inode][h]-1]=1;
+   if (com.cleandata && inode<com.ns) 
+      for(h=pos0;h<pos1;h++) nodes[inode].lkl[h*n+com.z[inode][h]]=1;
+
    FOR (i, nodes[inode].nson) {
       ison=nodes[inode].sons[i];
-      t=nodes[ison].branch*com.rgene[igene];      
+      t=nodes[ison].branch*com.rgene[igene];
       if (com.model<=K80)       PMatK80 (PMat, t, com.kappa);
       else if (com.model<=REV)  PMatCijk (PMat, t);
-      if (nodes[ison].nson<1)
-         for (h=pos0; h<pos1; h++) 
-            FOR (j,n) nodes[inode].lkl[h*n+j]*=PMat[j*n+com.z[ison][h]-1];
+
+      if (com.cleandata && nodes[ison].nson<1)       /* end node */
+         for(h=pos0; h<pos1; h++) 
+            FOR(j,n) nodes[inode].lkl[h*n+j]*=PMat[j*n+com.z[ison][h]];
       else
-         for (h=pos0; h<pos1; h++) 
-            FOR (j,n) {
-               for (k=0,t=0; k<n; k++)
-                  t += PMat[j*n+k] * nodes[ison].lkl[h*n+k];
-                  nodes[inode].lkl[h*n+j] *= t;
+         for(h=pos0; h<pos1; h++) 
+            FOR(j,n) {
+               for(k=0,t=0; k<n; k++)    /* t is used as temp */
+                  t+=PMat[j*n+k]*nodes[ison].lkl[h*n+k];
+               nodes[inode].lkl[h*n+j]*=t;
             }
-   }
-   return (0);
+   }        /*  for (ison)  */
+    return (0);
 }
+
 
 double lfundG (void)
 {
@@ -233,11 +269,13 @@ double lfun (void)
    for (ig=0; ig<com.ngene; ig++) {
       PartialLikelihood (tree.origin, ig);
       for (h=com.posG[ig]; h<com.posG[ig+1]; h++) {
-         for (i=0,fh=0; i<com.ncode; i++) 
+         for (i=0,fh=0; i<com.ncode; i++)
             fh += com.pi[i]*nodes[tree.origin].lkl[h*com.ncode+i];
-         if (fh<0)
+         if (fh<=0) {
             printf ("  lfun: h=%4d fh=%9.4f: %8.4f%8.4f%8.4f\n",
                     h, fh, com.birth, com.death, com.mut);
+            OutaTreeN(F0,0,1); FPN(F0);
+	 }
          lnL-=log(fh)*com.fpatt[h];
       }
    }
@@ -246,11 +284,11 @@ double lfun (void)
 
 int GetOptions (char *ctlf)
 {
-   int i, nopt=18, lline=255;
+   int i, nopt=19, lline=255;
    char line[255],*pline, opt[20], comment='*';
    char *optstr[] = {"seqfile","outfile","treefile","LHfile", "MCMC", "beta",
         "seed", "delta0", "delta1", "model", "kappa", "alpha", "ncatG", 
-        "hierarch", "birth", "death", "sample", "mutate"};
+        "hierarch", "birth", "death", "sample", "mutate", "cleandata"};
    double t=1;
    FILE  *fctl=fopen (ctlf, "r");
 
@@ -276,18 +314,19 @@ int GetOptions (char *ctlf)
                   case ( 3): sscanf(pline+2, "%s", com.LHf);     break;
                   case ( 4): com.MCMC=(int)t;       break;
                   case ( 5): com.beta=t;            break;
-                  case ( 6): com.seed=t;            break;
+                  case ( 6): com.seed=(int)t;       break;
                   case ( 7): com.delta0=t;          break;
                   case ( 8): com.delta1=t;          break;
                   case ( 9): com.model=(int)t;      break;
-                  case (10): com.kappa=(int)t;       break;
-                  case (11): com.alpha=(int)t;       break;
+                  case (10): com.kappa=(int)t;      break;
+                  case (11): com.alpha=(int)t;      break;
                   case (12): com.ncatG=(int)t;      break;
                   case (13): com.hier=(int)t;       break;
                   case (14): com.birth=t;           break;
                   case (15): com.death=t;           break;
                   case (16): com.sample=t;          break;
                   case (17): com.mut=t;             break;
+                  case (18): com.cleandata=(int)t;  break;
                }
                break;
             }
@@ -319,16 +358,19 @@ double OneTree (double delta)
    Stopping rule: slnp=s.e.(log(P))<delta
 */
    int i, ir, maxnr=1000000, minnr=1000, nrgap=100;
-   double  lnp, ScaleF,scalegap=20, t, p,mp,sp, mlnp,slnp, d=1;
+   double lnp, ScaleF,scalegap=20, t, p,mp,sp, mlnp,slnp, d=1;
    double birth=com.birth, death=com.death;
 
    PointLklnodes ();
    for (ir=0,ScaleF=mp=mlnp=sp=slnp=0; ir<maxnr; ir++) {
       if (com.hier)  { birth=2*com.birth*rndu();  death=2*com.death*rndu(); }
-      if (com.clock)
-         BranchLengthBD (0, birth, death, com.sample, com.mut);
+      if (com.clock) {
+         /* check whether rooted or unrooted tree should be used here */
+         BranchLengthBD (1, birth, death, com.sample, com.mut);
+         FOR(i,com.ns) nodes[i].branch=max(1e-7,nodes[i].branch);
+      }
       else
-         FOR (i, tree.nnode) if(i!=tree.origin) nodes[i].branch=rndu()*com.mut;
+         FOR(i,tree.nnode) if(i!=tree.origin) nodes[i].branch=rndu()*com.mut;
       lnp=(com.alpha ? -lfundG() : -lfun());
       if (ir==0) ScaleF=lnp+scalegap;
       else if (lnp-ScaleF>scalegap) {
@@ -358,60 +400,8 @@ double OneTree (double delta)
 }
 
 
-#define MAXTREEKEPT 5000
+#define MAXTREEKEPT 500
 
-
-#if 0
-
-void MCMCunrootedtree (double space[])
-{
-   int irun,nrun=10, i, ntreeNNI=2*(com.ns-2-!com.clock), itree,jtree;
-   double lnPcur, lnP=0, alpha, nchange;
-   struct TREE {struct TREEB tree; struct TREEN nodes[2*NS-1]; } tree0;
-   int IofLHs[MAXTREEKEPT], ntreekept=0;
-   double lnPLHs[MAXTREEKEPT];
-
-   itree=0;
-   GetTreeI (itree, com.ns, 0);
-   lnPcur=OneTree(com.delta0);
-   nchange=MPScore (space);
-   OutaTreeN (F0, 0, 0);
-   printf ("\ni = %3d:  %.4f%8.0f\n", itree, lnPcur, nchange);
-
-   tree0.tree=tree;  memcpy (tree0.nodes, nodes, sizeof(nodes));
-   IofLHs[0]=itree;
-   lnPLHs[0]=lnPcur;  ntreekept=1;
-   for (irun=0; irun<nrun; irun++)  {
-      tree=tree0.tree;  memcpy (nodes, tree0.nodes, sizeof(nodes));
-      NeighborNNI ((int)(ntreeNNI*rndu()));
-      jtree=GetIofTree (com.clock, 1, space);
-      nchange=MPScore (space);
-      for (i=0; i<ntreekept; i++) 
-         if (IofLHs[i]==jtree) { lnP=lnPLHs[i]; break; }
-      if (i==ntreekept) {
-         lnP=OneTree(com.delta0);
-         if (ntreekept<MAXTREEKEPT)
-          { IofLHs[ntreekept]=jtree; lnPLHs[ntreekept++]=lnP; }
-      }
-
-      alpha=min(1,exp(lnP-lnPcur));
-      printf ("%3d try%3d ", itree, jtree);
-      OutaTreeN (F0, 0, 0);    
-      printf ("%8.0f %.4f  %9.3f", nchange, lnP, alpha);
-
-      if (rndu()<alpha) {  /* take tree j */
-         tree0.tree=tree;  memcpy (tree0.nodes, nodes, sizeof(nodes));
-         itree=jtree;  lnPcur=lnP;
-         printf (" Y ");
-      } 
-      else {  /* stay with tree i */
-         printf (" N ");
-      }
-      printf ("-->%3d%8d\n",itree, ntreekept);
-   }
-   exit (0);
-}
-#endif
 
 void MCMCtrees (FILE* fout, double space[])
 {
@@ -420,13 +410,14 @@ void MCMCtrees (FILE* fout, double space[])
    of another direct neighbor by NNI.
 */
    struct TREE {struct TREEB tree; struct TREEN nodes[2*NS-1]; } tree0;
-   int irun,nrunignore=200,nrun=100000+nrunignore, i,j;
+   int irun,burnin=200,nrun=100000, i,j;
    int ntreeNNI=2*(com.ns-2-!com.clock), iLH=-1,jLH=0, norder=500;
    int *IofLHs, *counts, ntreekept=0, nLHi=-1,nLHj;
    double *lnPLHs,lnPcur=0,lnP=0,alpha, nchange;
    char LH_NNI[(NS-1)*500], TL='T', wantL;
    FILE *ftree, *fLH=NULL;
 
+   if(MAXTREEKEPT<burnin) puts("\nMAXTREEKEPT is too small??");
    lnPLHs=(double*)malloc(MAXTREEKEPT*3*sizeof(double));
    if(lnPLHs==NULL) error("oom MCMCtrees");
    IofLHs=(int*)(lnPLHs+MAXTREEKEPT);
@@ -435,7 +426,7 @@ void MCMCtrees (FILE* fout, double space[])
    for (i=com.ns,j=1; i>2; i--)  j*=i*(i-1)/2;
    printf ("\n%d labeled histories.\n", j);
    lnpBestTree=-1e40;
-   if (com.MCMC) 
+   if (com.MCMC)
       printf ("\nRun MCMC to generate candidate labeled histories.\n");
    else {
       printf("\nLabeled histories read from the file %s.\n", com.LHf);
@@ -444,8 +435,8 @@ void MCMCtrees (FILE* fout, double space[])
       free(lnPLHs);
       return ;
    }
-   if ((ftree=fopen (com.treef,"r"))==NULL) error ("no treefile");
-   fscanf (ftree, "%d%d", &i, &irun);
+   if ((ftree=fopen(com.treef,"r"))==NULL) error ("no treefile");
+   fscanf(ftree, "%d%d", &i, &irun);  /* irun (ntree) ignored */
    if (i!=com.ns) error ("ns in the tree file");
    if (ReadaTreeN (ftree, &i, 1)) error ("err tree..");  fclose(ftree);
    OutaTreeN (F0, 0, 0);  FPN(F0);   OutaTreeB (F0);  FPN(F0);
@@ -464,16 +455,16 @@ void MCMCtrees (FILE* fout, double space[])
    if (jLH<0 || jLH>nLHj-1) error ("not in range."); 
 
    FOR (i,MAXTREEKEPT) counts[i]=0;
-   for (irun=0,ntreekept=0,wantL=0; irun<nrun; irun++) {
-      /* find next potential labeled history (jLH), given if irun=0 */
-      if (irun) {
-         tree=tree0.tree;  memcpy (nodes, tree0.nodes, sizeof(nodes));
+   for (irun=-burnin,ntreekept=0,wantL=0; irun<nrun; irun++) {
+      /* find next potential LH (jLH), given at the start of the chain */
+      if (irun>-burnin) {
+         tree=tree0.tree;  memcpy(nodes,tree0.nodes,sizeof(nodes));
          if ((nLHi==1 || rndu()>com.beta) && !wantL) { /* change topology*/
             TL='T';
             NeighborNNI((int)(ntreeNNI*rndu()));
 	 }
          else  TL='L';                                 /* change LH */
-         nLHj=CountLHistory(LH_NNI, space);  jLH=nLHj*rndu();
+         nLHj=CountLHistory(LH_NNI, space);  jLH=(int)(nLHj*rndu());
          if (nLHj>norder) { printf("%9d>%9d",nLHj,norder); error("norder"); }
       }
       ReorderNodes (LH_NNI+jLH*(com.ns-1));
@@ -482,7 +473,7 @@ void MCMCtrees (FILE* fout, double space[])
       else            wantL=0;
       nchange=MPScore (space);
 
-      printf ("%7d: %9d >%9d ", irun+1-nrunignore,iLH,jLH);
+      printf ("%7d: %9d >%9d ", irun+1,iLH,jLH);
       OutaTreeN (F0, 0, 0);
       printf("%2c %3d %5.0f %9.3f > ", TL,nLHj,nchange,lnPcur);  fflush(F0);
 
@@ -491,40 +482,43 @@ void MCMCtrees (FILE* fout, double space[])
          if (IofLHs[i]==jLH) { lnP=lnPLHs[i]; break; }
       if (i==ntreekept) {
          lnP=OneTree(com.delta0);
-         if (ntreekept>MAXTREEKEPT)  error ("ntreekept");
          IofLHs[ntreekept]=jLH; lnPLHs[ntreekept++]=lnP;
+         if(ntreekept>=MAXTREEKEPT)  
+           { puts("\n\nReached max number of trees kept.");  break; }
       }
-      alpha=(irun==0?1:exp(lnP-lnPcur)*nLHj/(double)nLHi);
+      alpha=(irun==-burnin ? 1 : exp(lnP-lnPcur)*nLHj/(double)nLHi);
       if (alpha>1) alpha=1;
 
       printf("%9.3f %8.4f", lnP,alpha);
 
       /* accept or reject jLH? */
       if (rndu()<alpha) {  /* go to tree j */
-         tree0.tree=tree;  memcpy (tree0.nodes, nodes, sizeof(nodes));
+         tree0.tree=tree;  memcpy (tree0.nodes,nodes,sizeof(nodes));
          iLH=jLH;  lnPcur=lnP;  nLHi=nLHj;
          printf (" Y");
       } 
       else   printf (" N");
 
-      if (irun>=nrunignore) {
+      if (irun>=0) {
          for (i=0;i<ntreekept;i++) if (iLH==IofLHs[i]) break;
          counts[i]++;
       }
- printf ("%8d%5d\n", nreplicateMC, ntreekept);
-   }
+      printf ("%8d%5d\n", nreplicateMC, ntreekept);
+   }  /* for (irun) */
 
-   printf ("\n\n%d LHs are collected from the MCMC run into LHs\n", ntreekept);
-   printf ("\n\nNo. of counts out of %d\n", nrun-nrunignore);
+   printf ("\n\n%d LHs collected into the file %s\n", ntreekept,com.LHf);
+   printf ("\n\nNo. of counts out of %d\n", irun);
    fprintf (fout, "\n%d LHs are collected from the MCMC run\n", ntreekept);
-   fprintf (fout, "\n\nNo. of counts out of %d\n", nrun-nrunignore);
+   fprintf (fout, "\n\nNo. of counts out of %d\n", irun);
    for (i=0,j=0; i<ntreekept; i++) {
       if (counts[i]==0) continue;
       IofLHs[j]=IofLHs[i];  lnPLHs[j]=lnPLHs[i];
       counts[j]=counts[i];  GetLHistoryI (IofLHs[j]);
-      printf("\n#%4d%10d%12.4f%12d  ",j+1,IofLHs[j],lnPLHs[j],counts[j]);
+      printf("\n%3d %9d %12.4f%9d %6.1f%% ",
+           j+1,IofLHs[j],lnPLHs[j],counts[j],(double)counts[j]/irun);
       OutaTreeN(F0,0,0);
-      fprintf(fout,"\n#%4d%10d%12.4f%12d  ",j+1,IofLHs[j],lnPLHs[j],counts[j]);
+      fprintf(fout,"\n%3d %9d %12.4f%9d %6.1f%% ",
+           j+1,IofLHs[j],lnPLHs[j],counts[j],(double)counts[j]/irun);
       OutaTreeN(fout,0,0);
       j++;
    }
@@ -536,7 +530,7 @@ void MCMCtrees (FILE* fout, double space[])
       GetLHistoryI (IofLHs[j]);
       fprintf(fLH,"%10d  ",IofLHs[j]);  OutaTreeN(fLH,0,0);  FPN(fLH);
    }
-   fclose (fLH);
+   fclose (fLH);  fflush(fout);
    lnpBestTree=-1e40;
    EvaluateLHs(fout, NULL, IofLHs, lnPLHs, ntreekept, com.delta1);
    free(lnPLHs);
@@ -554,7 +548,7 @@ void EvaluateLHs(FILE*fout, FILE*fLH, int IofLHs[], double lnPLHs[],
    int j;
    double maxlnP=-1e99;
    
-   printf("\nEvaluate LHs (delta=%.3f):\n\n", delta);
+   printf("\n\nEvaluate LHs (delta=%.3f):\n\n", delta);
    fprintf(fout, "\n\nEvaluate LHs (delta=%.3f):\n\n", delta);
    if (fLH) {
       fscanf(fLH, "%d%d", &j, &ntreekept);
@@ -565,6 +559,7 @@ void EvaluateLHs(FILE*fout, FILE*fLH, int IofLHs[], double lnPLHs[],
       GetLHistoryI (IofLHs[j]);
       nreplicateMC=0;
       lnPLHs[j]=OneTree(delta);
+
       printf ("#%3d/%3d %10d%12.4f  ", j+1,ntreekept,IofLHs[j],lnPLHs[j]);
       OutaTreeN(F0,0,0);  printf ("%14d\n", nreplicateMC);
       fprintf (fout, "#%3d%10d%12.4f  ", j+1,IofLHs[j],lnPLHs[j]);
@@ -574,8 +569,8 @@ void EvaluateLHs(FILE*fout, FILE*fLH, int IofLHs[], double lnPLHs[],
    FOR (j,ntreekept) lnPLHs[j]=exp(lnPLHs[j]-maxlnP);
    abyx (1/sum(lnPLHs,ntreekept), lnPLHs, ntreekept);
 
-   printf ("\nprobabilities of LHs\n");
-   fprintf (fout, "\nprobabilities of LHs\n");
+   puts ("\nprobabilities of LHs\n");
+   fputs ("\nprobabilities of LHs\n",fout);
    for (j=0; j<ntreekept; j++) {
       GetLHistoryI (IofLHs[j]);  
       printf ("#%3d%10d%12.5f  ", j+1,IofLHs[j],lnPLHs[j]);

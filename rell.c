@@ -22,7 +22,7 @@
 int main(int argc, char *argv[])
 {
    char infile[32]="lfh", outfile[32]="r", line[250];
-   int nboot=5000, h,i,j,k, it, ntree, ls;
+   int nboot=10000, h,i,j,k, it, ntree, ls;
    int npatt, weight, mltree;
    double P[NTREE], lfx[NTREE], *lfh, ml[NTREE], *varl, max, y;
    FILE *flfh, *fout;
