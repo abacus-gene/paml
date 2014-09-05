@@ -10,6 +10,38 @@ https://groups.google.com/forum/#!forum/pamlsoftware.
 
 
 
+Version 4.8a, August 2014
+
+(*) baseml (nhomo = 3 or 4).  I have added the nonhomogeneous GTR
+(REV) model with a set of abcde parameters for every branch.  The
+specifications are as follows.
+
+model=7 nhomo=4 fix_kappa=0: one set of rate parameters abcde in GTR for the whole tree.
+model=7 nhomo=4 fix_kappa=1: one set of rate parameters abcde in GTR for every branch.
+
+In version 4.8, only the second option (one set of abcde parameters
+for the whole tree) is implemented, no matter whether you choose 0 or
+1 for fix_kappa.  After this change, the use of fix_kappa in the nhomo
+models is consistent between HKY and GTR.  For HKY, the specifications
+have always been as follows.
+
+model=4 nhomo=4 fix_kappa=0: one kappa in HKY for the whole tree.
+model=4 nhomo=4 fix_kappa=1: one kappa in HKY for every branch.
+ 
+Note that nhomo=4 means one set of frequency parameters for every
+branch on the tree.
+
+I have also added a method for calculating the expected number of
+changes from any nucleotide i to nucleotide j along every branch under
+the nonhomogeneous models (nhomo=3 or 4).  This accounts for the fact
+that the base frequencies are changing over time, and so does the rate
+of substitution.
+
+I tested only the nhomo=4 option carefully and the options nhomo=3 and
+5 are not well tested.
+
+
+
 Version 4.8, March 2014
 
 (*) mcmctree.  The prior for rates for loci (with ndata = 2 or more)
@@ -20,11 +52,6 @@ dos Reis M, Zhu T, Yang Z. 2014. The impact of the rate prior on
 Bayesian estimation of divergence times with multiple loci. Syst
 Biol. in press.
 
-(*) baseml (nhomo = 3 or 4).  Added code to print out the expected
-number of changes from nucleotides i to j over time interval (0, t)
-under the nonhomogeneous models (RateAncestor = 1, verbose = 1, nhomo
-= 3 or 4).
-
 (*) codeml.  Added a Bayesian method for estimating distance t and dN/dS
 ratio w in pairwise comparisons.  The option is 
       runmode = -3  * -3: pairwise Bayesian
@@ -32,12 +59,13 @@ ratio w in pairwise comparisons.  The option is
 The four numbers are the parameters in the gamma priors for t and w (a_t b_t a_w b_w).
 The method is described in a manuscript
 Angelis K, dos Reis M, Yang Z. 2014. Bayesian estimation of nonsynonymous/synonymous rate 
-ratios for pairwise sequence comparisons. Mol Biol Evol.
+ratios for pairwise sequence comparisons.  Mol Biol Evol.
 
-(*) baseml, codeml, mcmctree).  In version 4.7, I disabled the option
+(*) baseml, codeml, mcmctree).  In version 4.7a, I disabled the option
 of reading species indexes in the tree file (for example, the number
 19, instead of the sequence name, may be used in the tree file to mean
 the 19th sequence in the sequence alignment).  I have added this back.
+Version 4.7 does not have this problem.
 
 (*) codeml in paml 4.6 and 4.7 has a bug if your sequences have stop
 codons.  Stop codons have always been disallowed in the codon models

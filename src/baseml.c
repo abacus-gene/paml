@@ -26,7 +26,6 @@
 extern int noisy, NFunCall, NEigenQ, NPMatUVRoot, *ancestor, GeneticCode[][64];
 extern double Small_Diff, *SeqDistance;
 
-
 int Forestry (FILE *fout);
 void DetailOutput(FILE *fout, double x[], double var[]);
 int GetOptions(char *ctlf);
@@ -46,7 +45,7 @@ int AdHocRateSmoothing (FILE*fout, double x[NS*3], double xb[NS*3][2], double sp
 void DatingHeteroData(FILE* fout);
 
 int TestModel (FILE *fout, double x[], int nsep, double space[]);
-int OldDistributions (int inode, double oldfreq[]);
+int OldDistributions (int inode, double AncientFreqs[]);
 int SubData(int argc, char *argv[]);
 int GroupDistances();
 
@@ -441,7 +440,7 @@ int Forestry (FILE *fout)
 
       PointconPnodes ();
 
-      lnL = com.plfun (x, np);
+      lnL = com.plfun(x, np);
       if(noisy) {
          printf("\nntime & nrate & np:%6d%6d%6d\n",com.ntime,com.nrate,com.np);
          if(noisy>2 && com.ns<50) { OutTreeB(F0); FPN(F0); matout(F0,x,1,np); }
@@ -633,11 +632,11 @@ int TransformxBack(double x[])
 
 void DetailOutput (FILE *fout, double x[], double var[])
 {
-   int n=com.ncode, i,j,k=com.ntime, nr[]={0, 1, 0, 1, 1, 1, 2, 5, 11};
+   int n=com.ncode, i,j,k=com.ntime, nkappa[]={0, 1, 0, 1, 1, 1, 2, 5, 11};
    int n31pi=(com.model==T92?1:3);
    double Qfactor,*p=com.pi, t=0, k1,k2, S,V, Y=p[0]+p[1],R=p[2]+p[3];
    int inode, a;
-   double *Qrate=x+com.ntime+com.nrgene, *oldfreq=NULL;
+   double *Qrate=x+com.ntime+com.nrgene, *AncientFreqs=NULL;
    double EXij[NCODE*NCODE]={0}, *Q=PMat, p0[NCODE], c[NCODE], ya;
 
    fprintf(fout,"\nDetailed output identifying parameters\n");
@@ -652,7 +651,7 @@ void DetailOutput (FILE *fout, double x[], double var[])
    }
    
    if(com.nhomo==1) {
-      if(com.nrate) fprintf (fout, "kappa under %s:", models[com.model]);
+      if(com.nrate) fprintf (fout, "rate (kappa or abcde) under %s:", models[com.model]);
       for(i=0; i<com.nrate; i++) fprintf (fout, " %8.5f", x[k++]);  FPN(fout);
       fprintf (fout, "Base frequencies:\n");
       for(j=0; j<n; j++) fprintf (fout, " %8.5f", com.pi[j]);
@@ -660,28 +659,28 @@ void DetailOutput (FILE *fout, double x[], double var[])
    }
    else if(com.nhomo>=3) {
       if(!com.fix_kappa && (com.model==F84 || com.model==HKY85))
-         fprintf (fout, "kappa under %s (in order of branches):", models[com.model]);
+         fprintf (fout, "kappa or abcde under %s (in order of branches):", models[com.model]);
       else
-         fprintf (fout, "kappa under %s:", models[com.model]);
+         fprintf (fout, "kappa or abcde under %s:", models[com.model]);
       for(i=0; i<com.nrate; i++) fprintf(fout," %8.5f", x[k++]);  FPN(fout);
       SetParameters(x);
       if(com.alpha==0) {
-         if((oldfreq=(double*)malloc(tree.nnode*4*sizeof(double)))==NULL) 
+         if((AncientFreqs=(double*)malloc(tree.nnode*4*sizeof(double)))==NULL) 
             error2("out of memory for OldDistributions()");
-         OldDistributions (tree.root, oldfreq);
+         OldDistributions (tree.root, AncientFreqs);
       }
       fputs("\n(frequency parameters for branches)  [frequencies at nodes] (see Yang & Roberts 1995 fig 1)\n\n",fout);
       for(i=0; i<tree.nnode; i++,FPN(fout)) {
-         fprintf (fout, "Node #%d  (", i+1);
+         fprintf (fout, "Node #%2d  (", i+1);
          for(j=0; j<4; j++) fprintf (fout, " %7.5f ", nodes[i].pi[j]);
          fprintf(fout,")");
          if(com.alpha==0) {
             fprintf(fout,"  [");
-            for(j=0; j<4; j++) fprintf(fout," %7.5f", oldfreq[i*4+j]);
-            fprintf(fout," ]");
+            for(j=0; j<4; j++) fprintf(fout," %7.5f", AncientFreqs[i*4+j]);
+            fprintf(fout," GC = %5.3f ]", AncientFreqs[i*4+1]+AncientFreqs[i*4+3]);
          }
       }
-      fprintf(fout,"\nNote: node %d is root.\n",tree.root+1);
+      fprintf(fout,"\nNote: node %d is root.\n", tree.root+1);
       k += com.npi*n31pi;
 
       /* print expected numbers of changes along branches */
@@ -690,11 +689,15 @@ void DetailOutput (FILE *fout, double x[], double var[])
          for(inode=0; inode<tree.nnode; inode++,FPN(fout)) {
             if(inode==tree.root) continue;
             t = nodes[inode].branch;
-            xtoy(oldfreq+nodes[inode].father*n, p0, n);
-            if (com.nhomo>2 && com.model<=TN93)
+            xtoy(AncientFreqs+nodes[inode].father*n, p0, n);
+
+            if (com.nhomo>2 && com.model<=TN93) {
                eigenTN93(com.model, *nodes[inode].pkappa, *(nodes[inode].pkappa+1), nodes[inode].pi, &nR, Root, Cijk);
+               QTN93(com.model, Q, *nodes[inode].pkappa, *(nodes[inode].pkappa+1), nodes[inode].pi);
+            }
             else if (com.nhomo>2 && com.model==REV)
                eigenQREVbase(NULL, Q, nodes[inode].pkappa, nodes[inode].pi, &nR, Root, Cijk);
+
             for(i=0; i<n; i++) /* calculate correction vector c[4] */
                { c[i] = 0;   Q[i*n+i] = 0;  }
 
@@ -707,16 +710,24 @@ void DetailOutput (FILE *fout, double x[], double var[])
                for(j=0; j<n; j++)
                   EXij[i*n+j] = Q[i*n+j] * (nodes[inode].pi[i]*t + c[i]);
             }
-            fprintf(fout, "Node #%2d  (blength = %9.6f, %9.6f)", inode+1, t, sum(EXij,n*n));
-            fprintf(fout, "\npi0: "); for(j=0; j<n; j++) fprintf(fout, " %7.5f ", p0[j]);
-            fprintf(fout, "\npi:  "); for(j=0; j<n; j++) fprintf(fout, " %7.5f ", nodes[inode].pi[j]);
-            fprintf(fout, "\nExij"); 
-            matout(fout, EXij, n, n);
-            /* matout(fout, c, 1, n); */
+            fprintf(fout, "Node #%2d  ", inode+1);
+            if(inode<com.ns) fprintf(fout, "%-10s  ", com.spname[inode]);
+            fprintf(fout, "(blength = %9.6f, %9.6f)", t, sum(EXij,n*n));
+            fprintf(fout, " %s: ", (com.model==HKY85 ? "kappa" : "abcde"));
+            for(j=0; j<(com.model==HKY85?1:5); j++)  fprintf(fout, " %9.6f", *(nodes[inode].pkappa+j));
+            fprintf(fout, "\npi source: "); for(j=0; j<n; j++) fprintf(fout, " %7.5f ", p0[j]);
+            fprintf(fout, "\npi model : "); for(j=0; j<n; j++) fprintf(fout, " %7.5f ", nodes[inode].pi[j]);
+            fprintf(fout, "\nExij\n"); 
+            for(i=0; i<n; i++, FPN(fout)) {
+               for(j=0; j<n; j++)  fprintf(fout, " %9.6f", EXij[i*n+j]);
+               fprintf(fout, "  ");
+               for(j=0; j<n; j++)  fprintf(fout, " %8.1f", EXij[i*n+j]*com.ls);
+            }
+            /* matout(fout, c, 1, n);  */
          }
       }
 
-      if(com.alpha==0) free(oldfreq);
+      if(com.alpha==0) free(AncientFreqs);
    }
    else if (!com.fix_kappa) {
       fprintf(fout,"\nParameters %s in the rate matrix", (com.model<=TN93 ? "(kappa)" : ""));
@@ -742,15 +753,15 @@ void DetailOutput (FILE *fout, double x[], double var[])
          for(i=0; i<com.ngene; i++) {
             fprintf (fout, "\nGene #%d: ", i+1);
             p = (com.Mgene==3 ? com.pi : com.piG[i]);
-            Qrate = (com.Mgene==2 ? x+k : x+k+i*nr[com.model]);
+            Qrate = (com.Mgene==2 ? x+k : x+k+i*nkappa[com.model]);
             if (com.model<=TN93)
-               FOR (j,nr[com.model]) fprintf(fout," %8.5f", Qrate[j]);
+               FOR (j,nkappa[com.model]) fprintf(fout," %8.5f", Qrate[j]);
             else if (com.model==REV || com.model==REVu) 
                /* output Q matrix, no eigen calculation */
                eigenQREVbase(fout, Q, Qrate, p, &nR, Root, Cijk);
          }
-         if (com.Mgene>=3) k+=com.ngene*nr[com.model];
-         else              k+=nr[com.model];
+         if (com.Mgene>=3) k+=com.ngene*nkappa[com.model];
+         else              k+=nkappa[com.model];
       }
       else {
          if (com.model<REV) FOR (i,com.nrate) fprintf (fout, " %8.5f", x[k++]);
@@ -988,7 +999,8 @@ int GetOptions (char *ctlf)
    if (com.model==JC69 || com.model==K80 || com.model==UNREST)
       if (com.nhomo!=2)  com.nhomo=0;
    if (com.model==JC69 || com.model==F81) { com.fix_kappa=1; com.kappa=1; }
-   if (com.model==TN93 || com.model==REV || com.model==REVu)  com.fix_kappa=0;
+   if ((com.model==TN93 || com.model==REV || com.model==REVu) && com.nhomo<=2)
+      com.fix_kappa=0;
    if (com.seqtype==5 && com.model!=REVu)
       error2("RNA-editing model requires REVu");
 
@@ -1015,7 +1027,7 @@ int GetInitials (double x[], int *fromfile)
    SetParameters().  Needs more careful thinking.
 */
    int i,j,k, K=com.ncatG, n31pi=(com.model==T92?1:3);
-   int nkappa[] = {0, 1, 0, 1, 1, 1, 2, 5, 11, -1, -1};
+   int nkappa[] = {0, 1, 0, 1, 1, 1, 2, 5, 11, -1, -1}, nkappasets;
    size_t sconP_new=(size_t)(tree.nnode-com.ns)*com.ncode*com.npatt*com.ncatG*sizeof(double);
    double t=-1;
 
@@ -1069,14 +1081,15 @@ int GetInitials (double x[], int *fromfile)
          nodes[tree.root].label = com.ns+1;
       break;   /* ns+2 pi */
    case (4): 
-      com.npi = tree.nnode;  
-      com.nrate = (!com.fix_kappa && (com.model==F84 || com.model==HKY85) ? tree.nbranch : nkappa[com.model]);
-      break;   /* nnode pi   */
-   case (5): 
-      com.nrate = (!com.fix_kappa && (com.model==F84 || com.model==HKY85) ? tree.nbranch : nkappa[com.model]);
+      com.npi = tree.nnode;     /* nnode pi   */
+      com.nrate = nkappa[com.model]*(com.fix_kappa ? 1 : tree.nbranch);
+      break;
+   case (5):
+      /* com.nrate = (!com.fix_kappa && (com.model==F84 || com.model==HKY85) ? tree.nbranch : nkappa[com.model]); */
+      com.nrate = nkappa[com.model]*(com.fix_kappa ? 1 : tree.nbranch);
       for(i=0,com.npi=0; i<tree.nnode; i++) {
          j = (int)nodes[i].label;
-         if(j+1>com.npi)
+         if(j+1 > com.npi)
             com.npi = j+1;
          if(i!=tree.root && (j<0 || j>tree.nnode-1))
             puts("node label in tree.");
@@ -1092,19 +1105,22 @@ int GetInitials (double x[], int *fromfile)
       eigenTN93 (com.model,com.kappa,com.kappa,com.pi,&nR,Root,Cijk);
    if (com.model==REV || com.model==UNREST)
       for(j=0; j<(com.Mgene>=3?com.ngene:1); j++) {
-         k = com.ntime+com.nrgene+j*(com.model==REV?5:11);
+         k = com.ntime + com.nrgene + j*(com.model==REV?5:11);
          for(i=0; i<com.nrate; i++) 
-            x[k+i] = 0.2 + 0.1*rndu();
-         if (com.model==REV)
-            x[k] = 1;
-         else 
-            x[k] = x[k+3] = x[k+8] = 1;
+            x[k+i] = 0.4 + 0.2*rndu();
+         if(com.model==UNREST)
+            x[k] = x[k+3] = x[k+8] = 0.8+0.2*rndu();
+         if (com.model==REV) {
+            nkappasets = com.nrate/5;
+            for(j=0; j<nkappasets; j++) 
+               x[k+j*5] = 1 + 0.1*(j+1); /*  0.8+0.2*rndu();  */
+         }
       }
    else 
       for(i=0; i<com.nrate; i++)
-         x[com.ntime+com.nrgene+i] = 0.01+com.kappa*(.8+0.4*rndu());
+         x[com.ntime+com.nrgene+i] = 0.02 + com.kappa*(.8+0.4*rndu());
 
-   for(i=0; i<com.npi*n31pi; i++)
+   for(i=0; i<com.npi*n31pi; i++)  /* initials for transformed pi's */
       x[com.ntime+com.nrgene+com.nrate+i] = rndu()*.2;
    com.np = k = com.ntime + com.nrgene + com.nrate + com.npi*n31pi;
 
@@ -1146,7 +1162,7 @@ int GetInitials (double x[], int *fromfile)
    if(com.fix_blength==-1)
       for(i=0; i<com.np; i++)  x[i] = (i<com.ntime ? .1+rndu() : .5+rndu());
 
-   if(finitials) readx(x,fromfile);
+   if(finitials) readx(x, fromfile);
    else    *fromfile=0;
 
    return (0);
@@ -1197,7 +1213,10 @@ int SetParameters(double x[])
       RootTN93 (com.model, k1, k2, com.pi, &t, Root);
    else if (com.nhomo>=3) {
       for (i=0,k=com.ntime+com.nrgene; i<tree.nbranch; i++) {
-         nodes[tree.branches[i][1]].pkappa = (!com.fix_kappa && (com.model==F84 || com.model==HKY85) ? x+k+i : x+k);
+         if(com.fix_kappa)
+            nodes[tree.branches[i][1]].pkappa = x + k;
+         else
+            nodes[tree.branches[i][1]].pkappa = x + k + i*nkappa[com.model];
       }
       k += com.nrate;
 
@@ -1546,10 +1565,10 @@ int TestModel (FILE *fout, double x[], int nsep, double space[])
 #endif
 
 
-int OldDistributions (int inode, double oldfreq[])
+int OldDistributions (int inode, double AncientFreqs[])
 {
 /* reconstruct nucleotide frequencies at and down inode for nonhomogeneous models com.nhomo==3 or 4.
-   oldfreq[tree.nnode*4]
+   AncientFreqs[tree.nnode*4]
 */
    int i, n=4;
    double kappa=com.kappa;
@@ -1558,9 +1577,8 @@ int OldDistributions (int inode, double oldfreq[])
       puts("OldDistributions() does not run when alpha > 0 or model >= TN93");
       return(-1);
    }
-   if (inode==tree.root) {
-      xtoy (nodes[inode].pi, oldfreq+inode*n, n);
-   }
+   if(inode==tree.root)
+      xtoy (nodes[inode].pi, AncientFreqs+inode*n, n);
    else {
       if (com.nhomo>2 && com.model<=TN93)
          eigenTN93(com.model, *nodes[inode].pkappa, *(nodes[inode].pkappa+1), nodes[inode].pi, &nR, Root, Cijk);
@@ -1568,10 +1586,10 @@ int OldDistributions (int inode, double oldfreq[])
          eigenQREVbase(NULL, PMat, nodes[inode].pkappa, nodes[inode].pi, &nR, Root, Cijk);
 
       PMatCijk (PMat, nodes[inode].branch);
-      matby (oldfreq+nodes[inode].father*n, PMat, oldfreq+inode*n, 1, n, n);
+      matby (AncientFreqs+nodes[inode].father*n, PMat, AncientFreqs+inode*n, 1, n, n);
    }
    for(i=0; i<nodes[inode].nson; i++)
-      OldDistributions (nodes[inode].sons[i], oldfreq);
+      OldDistributions (nodes[inode].sons[i], AncientFreqs);
    return (0);
 }
 

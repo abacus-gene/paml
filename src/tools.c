@@ -1223,6 +1223,28 @@ int Add2Ptree (int counts[3], double Ptree[3])
    return(0);
 }
 
+
+int binarysearch (const void *key, const void *base, size_t n, size_t size, int(*compare)(const void *, const void *), int *found)
+{
+/* This searches for key in an array of n elements (base).  The n elements are already sorted.  
+   Each element has size size.  If a match is found, the function returns the index for the 
+   element found.  Otherwise it returns the loc where key should be inserted.  This does not deal with ties.
+*/
+   int l=0, u=n-1, m=u, z;
+   
+   *found = 0;
+   while (l <= u) {
+      m = (l + u)/2;
+      z = (*compare)(key, (char*)base + m*size);
+      if(z<0)       u = m - 1;
+      else if(z>0)  l = m + 1;
+      else          { *found = 1;  break; }
+   }
+   if(m<l) m++;  /* last comparison had z > 0 */
+   return(m);
+}
+
+
 int indexing (double x[], int n, int index[], int descending, int space[])
 {
 /* bubble sort to calculate the indecies for the vector x[].  
@@ -1248,7 +1270,6 @@ int indexing (double x[], int n, int index[], int descending, int space[])
    }
    return (0);
 }
-
 
 int f_and_x(double x[], double f[], int n, int fromf, int LastItem)
 {
@@ -1388,18 +1409,19 @@ double reflect (double x, double a, double b)
 {
 /* This returns a variable in the range (a,b) by reflecting x back into the range
 */
-   int n=0, side;  /* side = 0 for left and 1 for right.  n is number of jumps over interval */
-   double e=0, small=1e-100;   /* e is excess */
+   int side=0;  /* n is number of jumps over interval.  side=0 (left) or 1 (right). */
+   double n, e=0, small=1e-100;   /* e is excess */
 
    if(b-a<small) {
       printf("\nimproper range x0=%.6g (%.6g, %.6g)\n", x, a, b);
       exit(-1);
    }
-   if(x<a)      {  e = a-x;  side = 0;  }
-   else if(x>b) {  e = x-b;  side = 1;  }
+   if(x<a)      { e = a-x;  side = 0; }
+   else if(x>b) { e = x-b;  side = 1; }
    if(e) {
-      n = (int)(e/(b-a));
-      if(n%2) side = 1-side;  /* change side if n is odd */
+      n = floor(e/(b-a));
+      if(fmod(n, 2.0) > 0.1)   /* fmod should be 0 if n is even and 1 if n is odd. */
+         side = 1-side;     /* change side if n is odd */
       e -= n*(b-a);
       x = (side ? b-e : a+e);
    }
@@ -1412,6 +1434,7 @@ double PjumpOptimum = 0.30; /* this is the optimum for the Bactrian move. */
 int ResetFinetuneSteps(FILE *fout, double Pjump[], double finetune[], int nsteps)
 {
    int j, verybadstep=0;
+   double maxstep=99;  /* max step length */
 
    if(noisy>=3) {
       printf("\n\nCurrent Pjump:    ");
@@ -1436,11 +1459,13 @@ int ResetFinetuneSteps(FILE *fout, double Pjump[], double finetune[], int nsteps
          verybadstep = 1;
       }
       else if(Pjump[j] > 0.999) {
-         finetune[j] *= 100;
+         finetune[j] = min2(maxstep, finetune[j]*100);
          verybadstep = 1;
       }
-      else
+      else {
          finetune[j] *= tan(Pi/2*Pjump[j]) / tan(Pi/2*PjumpOptimum);
+         finetune[j] = min2(maxstep, finetune[j]);
+      }
    }
 
    if(noisy>=3) {
@@ -1563,11 +1588,12 @@ double rndAirplane() {
     double z, bAirplane = getRoot(&BAirplane, &dBAirplane, 2.5);
 
     if(rndu() < aAirplane/(2*bAirplane -aAirplane)) {
-        //sample from linear part
+        /* sample from linear part */
         z = sqrt(aAirplane*aAirplane*rndu());
-    } else {
-        // sample from box part
-        z = rndu() * (bAirplane - aAirplane) + aAirplane;
+    }
+    else {
+       /* sample from box part */
+       z = rndu() * (bAirplane - aAirplane) + aAirplane;
     }
     return (rndu() < 0.5 ? -z : z);
 }
@@ -1584,10 +1610,11 @@ double rndParabola() {
     double z, bParab = getRoot(&BParabola, &dBParabola, 2.0);
 
     if(rndu() < aParab/((3*bParab-2*aParab))) {
-        // sample from parabola part
+        /* sample from parabola part */
         z = aParab * pow(rndu(), 1.0/3.0);
-    } else {
-        // sample from the box part
+    }
+    else {
+        /* sample from the box part */
         z = rndu() * (bParab - aParab) + aParab;
     }
     return (rndu() < 0.5 ? -z : z);
@@ -2701,7 +2728,7 @@ void testLBinormal (void)
             if(fabs(L-exp(lnL))>1e-10)
                printf("L - exp(lnL) = %.10g very different.\n", L - exp(lnL));
 
-//            if(L<0 || L>1)
+            if(L<0 || L>1)
                printf("%6.2f %6.2f %6.2f L %15.8g = %15.8g %9.5g\n", x,y,r, L, exp(lnL), lnL);
                
             if(lnL>0)  exit(-1);
@@ -5081,11 +5108,13 @@ int splitline (char line[], int fields[])
 }
 
 
-int scanfile (FILE*fin, int *nrecords, int *nx, int *ReadHeader, char line[], int ifields[])
+int scanfile (FILE*fin, int *nrecords, int *nx, int *HasHeader, char line[], int ifields[])
 {
+ /* If the first line has letters, it is considered to be the header line, and HasHeader=0 is set.
+ */
    int  i, lline=1000000, nxline, eof=0;
 
-   *ReadHeader = 0;
+   *HasHeader = 0;
    for (*nrecords=0; ; ) {
       if (!fgets(line,lline,fin)) break;
       eof = feof(fin);
@@ -5095,10 +5124,13 @@ int scanfile (FILE*fin, int *nrecords, int *nx, int *ReadHeader, char line[], in
       if(*nrecords==0) {
          for(i=0; i<lline && line[i]; i++)
             if(isalpha(line[i])) { 
-               *ReadHeader=1; break; 
+               *HasHeader=1; break; 
             }
       }
       nxline = splitline(line, ifields);
+      if(*nrecords==0 && *HasHeader)
+         printf("First line has variable names, %d variables\n", nxline);
+
       if(nxline == 0)
          continue;
       if(*nrecords == 0)
@@ -5120,11 +5152,11 @@ int scanfile (FILE*fin, int *nrecords, int *nx, int *ReadHeader, char line[], in
    }
    rewind(fin);
 
-   if(*ReadHeader) {
+   if(*HasHeader) {
       fgets(line, lline, fin);
       splitline(line, ifields);
    }
-   if(*ReadHeader)
+   if(*HasHeader)
       (*nrecords) --;
 
    return(0);
@@ -5346,7 +5378,7 @@ double Eff_IntegratedCorrelationTime (double x[], int n, double *mx, double *var
    double Tint=1, rho0=0, rho, m=0, s=0;
    int  i, irho;
 
-   if(n<1000) puts("chain too short for calculating Eff? ");
+   /* if(n<1000) puts("chain too short for calculating Eff? "); */
    for (i=0; i<n; i++) m += x[i];
    m /= n;
    for (i=0; i<n; i++) x[i] -= m;
@@ -5396,7 +5428,7 @@ double Eff_IntegratedCorrelationTime2 (double x[], int n, int nbatch, double mx)
 }
 
 
-int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int propternary)
+int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int propternary, int SkipColumns)
 {
 /* This routine reads n records (observations) each of p continuous variables,
    to calculate summary statistics.  It also uses kernel density estimation to 
@@ -5414,12 +5446,12 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int propternary)
    double h, *y, *gap, *space, v2d[4];
    int nf2d=0, ivar_f2d[MAXNF2D][2]={{5,6},{0,2}}, k2d;
 
-   static int  lline=1000000, ifields[MAXNFIELDS], SkipC1=1, ReadHeader=1;
+   static int  lline=1000000, ifields[MAXNFIELDS], HasHeader=1;
    char *line;
    static char varstr[MAXNFIELDS][32]={""};
 
    if((line=(char*)malloc(lline*sizeof(char)))==NULL) error2("oom ds");
-   scanfile(fin, &n, &p, &ReadHeader, line, ifields);
+   scanfile(fin, &n, &p, &HasHeader, line, ifields);
    printf("\n%d records, %d variables\n", n, p);
    data = (double*)malloc(p*n*sizeof(double));
    mean = (double*)malloc((p*13+p*p+n)*sizeof(double));
@@ -5433,7 +5465,7 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int propternary)
    space=(double*)malloc((n+nbin*nbin*3)*sizeof(double));
    if(space==NULL) { printf("not enough mem for %d variables\n",n); exit(-1); }
 
-   if(ReadHeader)
+   if(HasHeader)
       for(i=0; i<p; i++) sscanf(line+ifields[i], "%s", varstr[i]);
    for(i=0; i<n; i++)
       for(j=0; j<p; j++) 
@@ -5453,7 +5485,7 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int propternary)
    }
 
    printf("Collecting mean, median, min, max, percentiles, etc.\n");
-   for(j=SkipC1,x=data+j*n; j<p; j++,x+=n) {
+   for(j=SkipColumns,x=data+j*n; j<p; j++,x+=n) {
       memmove(y, x, n*sizeof(double));
       Tint[j] = 1/Eff_IntegratedCorrelationTime(y, n, &mean[j], &var[j]);
       memmove(y, x, n*sizeof(double));
@@ -5472,40 +5504,40 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int propternary)
 
    /* variance-covariance matrix */
    zero(var, p*p);
-   for(j=SkipC1; j<p; j++)
-      for(k=SkipC1; k<=j; k++)
+   for(j=SkipColumns; j<p; j++)
+      for(k=SkipColumns; k<=j; k++)
          for(i=0; i<n; i++)
             var[j*p+k] += (data[j*n+i] - mean[j]) * (data[k*n+i] - mean[k]);
-   for(j=SkipC1; j<p; j++)
-      for(k=SkipC1, var[j*p+j]/=(n-1.0); k<j; k++)
+   for(j=SkipColumns; j<p; j++)
+      for(k=SkipColumns, var[j*p+j]/=(n-1.0); k<j; k++)
          var[k*p+j] = var[j*p+k] /= (n-1.0);
 
    fprintf(fout,"\n(A) Descriptive statistics\n\n       ");
-   for (j=SkipC1; j<p; j++) fprintf(fout,"   %s", varstr[j]);
-   fprintf(fout,"\nmean    ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt,mean[j]);
-   fprintf(fout,"\nmedian  ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt,median[j]);
-   fprintf(fout,"\nS.D.    ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt,sqrt(var[j*p+j]));
-   fprintf(fout,"\nmin     ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt,minx[j]);
-   fprintf(fout,"\nmax     ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt,maxx[j]);
-   fprintf(fout,"\n2.5%%    "); for(j=SkipC1;j<p;j++) fprintf(fout,fmt,x025[j]);
-   fprintf(fout,"\n97.5%%   "); for(j=SkipC1;j<p;j++) fprintf(fout,fmt,x975[j]);
-   fprintf(fout,"\n2.5%%HPD "); for(j=SkipC1;j<p;j++) fprintf(fout,fmt,xHPD025[j]);
-   fprintf(fout,"\n97.5%%HPD"); for(j=SkipC1;j<p;j++) fprintf(fout,fmt,xHPD975[j]);
-   fprintf(fout,"\nESS     ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt1,n/Tint[j]);
+   for (j=SkipColumns; j<p; j++) fprintf(fout,"   %s", varstr[j]);
+   fprintf(fout,"\nmean    ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,mean[j]);
+   fprintf(fout,"\nmedian  ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,median[j]);
+   fprintf(fout,"\nS.D.    ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,sqrt(var[j*p+j]));
+   fprintf(fout,"\nmin     ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,minx[j]);
+   fprintf(fout,"\nmax     ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,maxx[j]);
+   fprintf(fout,"\n2.5%%    "); for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,x025[j]);
+   fprintf(fout,"\n97.5%%   "); for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,x975[j]);
+   fprintf(fout,"\n2.5%%HPD "); for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,xHPD025[j]);
+   fprintf(fout,"\n97.5%%HPD"); for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,xHPD975[j]);
+   fprintf(fout,"\nESS     ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt1,n/Tint[j]);
    FPN(F0);  FPN(fout); 
    fflush(fout);
 
    fprintf(fout, "\nCorrelation matrix");
-   for(j=SkipC1; j<p; j++) {
+   for(j=SkipColumns; j<p; j++) {
       fprintf(fout, "\n%-8s ", varstr[j]);
-      for(k=SkipC1; k<=j; k++)
+      for(k=SkipColumns; k<=j; k++)
          fprintf(fout, " %8.5f", var[k*p+j]/sqrt(var[j*p+j]*var[k*p+k]));
    }
    fprintf(fout, "\n         ");
-   for(j=SkipC1; j<p; j++) fprintf(fout,"%9s", varstr[j]);
+   for(j=SkipColumns; j<p; j++) fprintf(fout,"%9s", varstr[j]);
 
    fprintf(fout, "\n\nHistograms and 1-D densities\n");
-   for(jj=SkipC1; jj<p; jj++) {
+   for(jj=SkipColumns; jj<p; jj++) {
       memmove(y, data+jj*n, n*sizeof(double));
       qsort(y, (size_t)n, sizeof(double), comparedouble);
       fprintf(fout, "\n%s\nmidvalue  freq    f(x)\n\n", varstr[jj]);
@@ -5538,19 +5570,19 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int propternary)
    return(0);
 }
 
-int DescriptiveStatisticsSimple (FILE *fout, char infile[], int SkipC1)
+int DescriptiveStatisticsSimple (FILE *fout, char infile[], int SkipColumns)
 {
    FILE *fin=gfopen(infile,"r");
    int  n, p, i, j;
-   char *fmt=" %9.6f", *fmt1=" %9.1f", timestr[32];
+   char *fmt=" %9.6f", *fmt1=" %9.4f", timestr[32];
    double *data, *x, *mean, *median, *minx, *maxx, *x005,*x995,*x025,*x975,*xHPD025,*xHPD975,*var;
    double *Tint, tmp[2], *y;
    char *line;
-   static int lline=1000000, ifields[MAXNFIELDS], ReadHeader=1;
+   static int lline=1000000, ifields[MAXNFIELDS], HasHeader=1;
    static char varstr[MAXNFIELDS][96]={""};
 
    if((line=(char*)malloc(lline*sizeof(char)))==NULL) error2("oom ds");
-   scanfile(fin, &n, &p, &ReadHeader, line, ifields);
+   scanfile(fin, &n, &p, &HasHeader, line, ifields);
    printf("\n%d records, %d variables\n", n, p);
 
    data = (double*)malloc(p*n*sizeof(double));
@@ -5562,7 +5594,7 @@ int DescriptiveStatisticsSimple (FILE *fout, char infile[], int SkipC1)
    x005=maxx+p; x995=x005+p; x025=x995+p; x975=x025+p; xHPD025=x975+p; xHPD975=xHPD025+p;
    var=xHPD975+p;   Tint=var+p;  y=Tint+p;
 
-   if(ReadHeader)
+   if(HasHeader)
       for(i=0; i<p; i++) sscanf(line+ifields[i], "%s", varstr[i]);
    for(i=0; i<n; i++)
       for(j=0; j<p; j++) 
@@ -5570,7 +5602,7 @@ int DescriptiveStatisticsSimple (FILE *fout, char infile[], int SkipC1)
    fclose(fin); 
 
    printf("Collecting mean, median, min, max, percentiles, etc.\n");
-   for(j=SkipC1,x=data+j*n; j<p; j++,x+=n) {
+   for(j=SkipColumns,x=data+j*n; j<p; j++,x+=n) {
       memmove(y, x, n*sizeof(double));
       Tint[j] = 1/Eff_IntegratedCorrelationTime(y, n, &mean[j], &var[j]);
       qsort(x, (size_t)n, sizeof(double), comparedouble);
@@ -5587,18 +5619,18 @@ int DescriptiveStatisticsSimple (FILE *fout, char infile[], int SkipC1)
    }
 
    fprintf(fout,"\n\n       ");
-   for (j=SkipC1; j<p; j++) fprintf(fout,"   %s", varstr[j]);
-   fprintf(fout,"\nmean    ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt,mean[j]);
-   fprintf(fout,"\nmedian  ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt,median[j]);
-   fprintf(fout,"\nS.D.    ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt,sqrt(var[j]));
-   fprintf(fout,"\nmin     ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt,minx[j]);
-   fprintf(fout,"\nmax     ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt,maxx[j]);
-   fprintf(fout,"\n2.5%%    "); for(j=SkipC1;j<p;j++) fprintf(fout,fmt,x025[j]);
-   fprintf(fout,"\n97.5%%   "); for(j=SkipC1;j<p;j++) fprintf(fout,fmt,x975[j]);
-   fprintf(fout,"\n2.5%%HPD "); for(j=SkipC1;j<p;j++) fprintf(fout,fmt,xHPD025[j]);
-   fprintf(fout,"\n97.5%%HPD"); for(j=SkipC1;j<p;j++) fprintf(fout,fmt,xHPD975[j]);
-   fprintf(fout,"\nESS*    ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt1,n/Tint[j]);
-   fprintf(fout,"\nEff*    ");  for(j=SkipC1;j<p;j++) fprintf(fout,fmt1,1/Tint[j]);
+   for (j=SkipColumns; j<p; j++) fprintf(fout,"   %s", varstr[j]);
+   fprintf(fout,"\nmean    ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,mean[j]);
+   fprintf(fout,"\nmedian  ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,median[j]);
+   fprintf(fout,"\nS.D.    ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,sqrt(var[j]));
+   fprintf(fout,"\nmin     ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,minx[j]);
+   fprintf(fout,"\nmax     ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,maxx[j]);
+   fprintf(fout,"\n2.5%%    "); for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,x025[j]);
+   fprintf(fout,"\n97.5%%   "); for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,x975[j]);
+   fprintf(fout,"\n2.5%%HPD "); for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,xHPD025[j]);
+   fprintf(fout,"\n97.5%%HPD"); for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,xHPD975[j]);
+   fprintf(fout,"\nESS*    ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt1,n/Tint[j]);
+   fprintf(fout,"\nEff*    ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt, 1/Tint[j]);
    fflush(fout);
 
    free(data); free(mean); free(line);

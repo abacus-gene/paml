@@ -198,6 +198,7 @@ int printdouble(FILE*fout, double a);
 void strcase (char *str, int direction);
 void error2(char * message);
 int  indexing(double x[], int n, int index[], int descending, int space[]);
+int binarysearch (const void *key, const void *base, size_t n, size_t size, int(*compare)(const void *, const void *), int *found);
 FILE *gfopen(char *filename, char *mode);
 int  appendfile(FILE*fout, char*filename);
 
@@ -237,10 +238,10 @@ int comparefloat  (const void *a, const void *b);
 int comparedouble (const void *a, const void *b);
 double Eff_IntegratedCorrelationTime(double x[], int n, double *mx, double *varx);
 int HPDinterval(double x[], int n, double HPD[2], double alpha);
-int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int propternary);
-int DescriptiveStatisticsSimple (FILE *fout, char infile[], int SkipColumn1);
+int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int propternary, int SkipColumns);
+int DescriptiveStatisticsSimple (FILE *fout, char infile[], int SkipColumns);
 int splitline (char line[], int fields[]);
-int scanfile (FILE*fin, int *nrecords, int *nx, int *ReadHeader, char line[], int ifields[]);
+int scanfile (FILE*fin, int *nrecords, int *nx, int *HasHeader, char line[], int ifields[]);
 
 double bound (int nx, double x0[], double p[], double x[],
     int (*testx) (double x[], int nx));
@@ -314,14 +315,15 @@ void BranchLengthBD(int rooted, double birth, double death, double sample,
      double mut);
 int RandomLHistory (int rooted, double space[]);
 
-void DescentGroup (int inode);
-void BranchPartition (char partition[]);
+void Tree2Partition (char partition[]);
+int Partition2Tree (char splits[], int lsplit, int ns, int nsplit, double label[]);
+void CladeSupport (FILE *fout, char treef[], char mastertreef[], int pick1tree);
+int GetNSfromTreeFile(FILE *ftree, int *ns, int *ntree);
 int NSameBranch (char partition1[],char partition2[], int nib1,int nib2, int IBsame[]);
 
-int RootTN93 (int ischeme, double kapa1, double kapa2, double pi[], 
-    double *scalefactor, double Root[]);
-int EigenTN93 (int ischeme, double kapa1, double kapa2, double pi[],
-    int *nR, double Root[], double Cijk[]);
+int QTN93 (int model, double Q[], double kappa1, double kappa2, double pi[]);
+int RootTN93 (int ischeme, double kapa1, double kapa2, double pi[], double *scalefactor, double Root[]);
+int EigenTN93 (int ischeme, double kapa1, double kapa2, double pi[], int *nR, double Root[], double Cijk[]);
 
 int DownStatesOneNode (int ison, int father);
 int DownStates (int inode);
@@ -384,12 +386,12 @@ enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrAge=8, PrOmega=16} OutTreeOptions;
 #define aParab 1.0
 
 
-#define MAXNFIELDS 100000
+#define MAXNFIELDS 320000
 
 #define PAML_RELEASE      0
 
 #define FullSeqNames      0   /* 1: numbers at the beginning of sequence name are part of name */
 
-#define pamlVerStr "paml version 4.8, March 2014"
+#define pamlVerStr "paml version 4.8a, August 2014"
 
 #endif

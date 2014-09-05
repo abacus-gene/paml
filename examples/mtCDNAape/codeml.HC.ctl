@@ -3,7 +3,7 @@
 
       outfile = mlc           * main result file name
         noisy = 3  * 0,1,2,3,9: how much rubbish on the screen
-      verbose = 0  * 0: concise; 1: detailed, 2: too much
+      verbose = 1  * 0: concise; 1: detailed, 2: too much
       runmode = 0
 
       seqtype = 1  * 1:codons; 2:AAs; 3:codons-->AAs

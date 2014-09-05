@@ -22,7 +22,7 @@
    rgene_gamma = 2 2   * gamma prior for overall rates for genes
   sigma2_gamma = 1 10    * gamma prior for sigma^2     (for clock=2 or 3)
 
-      finetune = 1: .05  0.1  0.12  0.1 .3  * auto (0 or 1) : times, rates, mixing, paras, RateParas, FossilErr
+      finetune = 1: 0.1  0.1  0.1  0.01 .5  * auto (0 or 1) : times, musigma2, rates, mixing, paras, FossilErr
 
          print = 1
         burnin = 2000

@@ -14,7 +14,7 @@
    			 * Model D: model = 3  NSsites = 3
 
         model = 3  * 3 = clade models
-      NSsites = 2  * choose "2" or "3"
+      NSsites = 3  * choose "2" or "3"
 			 
         icode = 0  * 0:universal code; 1:mammalian mt; 2-10:see below
 
@@ -22,7 +22,7 @@
         kappa = 2  * initial or fixed kappa
 
     fix_omega = 0  * 1: omega or omega_1 fixed, 0: estimate 
-        omega = 0.1 * initial or fixed omega, for codons or codon-based AAs
+        omega = 0.1234 * initial or fixed omega, for codons or codon-based AAs
 
     fix_alpha = 1  * 0: estimate gamma shape parameter; 1: fix it at alpha
         alpha = 0. * initial or fixed alpha, 0:infinity (constant rate)

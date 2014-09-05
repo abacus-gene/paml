@@ -48,7 +48,6 @@ double SS, NN, Sd, Nd;  /* kostas, # of syn. sites,# of non syn. sites,# of syn.
 #endif
 
 
-#define EqPartition(p1,p2,ns) (p1==p2||p1+p2+1==(1<<ns))
 
 #ifdef REALSEQUENCE
 
@@ -158,12 +157,13 @@ int ReadMorphology (FILE *fout, FILE *fin)
    }
 
    for(i=0; i<com.ns; i++) {
-      fprintf(fout, com.spname[i]);
+      fprintf(fout, "%-10s ", com.spname[i]);
       for(j=0; j<com.ls; j++)
          fprintf(fout, " %8.5f", data.zmorph[locus][i][j]);
       FPN(fout);
    }
 
+#if(0)
    fscanf(fin, "%s", str);
    fgets(line, 1024, fin);
    i = j = -1;
@@ -175,11 +175,12 @@ int ReadMorphology (FILE *fout, FILE *fin)
       }
    }
    if(i!=com.ls || j!=com.ls) {
-      printf("\ndid not find a good R matrix.  Setting it to I.\n");
+      printf("\ndid not find a good R matrix.  Setting it to identity matrix I.\n");
       for(i=0; i<com.ls; i++) 
          for(j=0; j<com.ls; j++) 
             data.Rmorph[locus][i*com.ls+j] = (i==j);
    }
+#endif
    return(0);
 }
 
@@ -945,7 +946,7 @@ void AllPatterns (FILE* fout)
       sprintf(com.spname[j], "%c ", 'a'+j);
    }
    for(j=0; j<com.ns; j++) 
-      if((com.z[j]=(char*) malloc(com.npatt*sizeof(char))) == NULL)
+      if((com.z[j]=(unsigned char*) malloc(com.npatt*sizeof(char))) == NULL)
          error2("oom in AllPatterns");
    for (h=0; h<com.npatt; h++) {
       for (j=0,it=h; j<com.ns; j++) {
@@ -1005,9 +1006,9 @@ int PatternWeight (void)
       maxnpatt = (int)(pow(nc, (double)com.ns) + 0.5) * com.ngene;
    if(maxnpatt>com.ls) maxnpatt = com.ls;
    p2s  = (int*)malloc(maxnpatt*sizeof(int));
-   zt = (char*)malloc((com.ns+1)*com.ls*n31*sizeof(char));
+   zt = (char*)malloc(com.ls*lpatt*sizeof(char));
    if(p2s==NULL || zt==NULL)  error2("oom p2s or zt");
-   memset(zt, 0, (com.ns+1)*com.ls*n31*sizeof(char));
+   memset(zt, 0, com.ls*lpatt*sizeof(char));
    for(j=0; j<com.ns; j++) 
       for(h=0; h<com.ls; h++) 
          for(k=0; k<n31; k++)
@@ -1102,7 +1103,7 @@ int PatternWeight (void)
    }
 
    for(j=0; j<com.ns; j++) {
-      com.z[j] = (char*)malloc(com.npatt*n31*sizeof(char));
+      com.z[j] = (unsigned char*)malloc(com.npatt*n31*sizeof(char));
       for(ip=0,p=com.z[j]; ip<com.npatt; ip++) 
          for(k=0; k<n31; k++)
             *p++ = zt[p2s[ip]*lpatt + j*n31 + k];
@@ -1173,7 +1174,7 @@ int InitializeBaseAA (FILE *fout)
    for (ig=0,zero(com.pi,n); ig<com.ngene; ig++) {
       if (com.ngene>1)
          fprintf (fout,"\n\nGene %2d (len %4d)", ig+1, com.lgene[ig]-(ig==0?0:com.lgene[ig-1]));
-      fprintf(fout,"\n%*s",wname, "");
+      fprintf(fout,"\n%*s", wname, "");
       for(k=0; k<n; k++) fprintf(fout,"%7c", pch[k]);
 
       /* The following block calculates freqs in each species for each gene.  
@@ -1200,12 +1201,13 @@ int InitializeBaseAA (FILE *fout)
          }   /* for(irf) */
          fprintf(fout,"\n%-*s", wname, com.spname[js]);
          for(k=0; k<n; k++) fprintf(fout, "%8.5f", com.pi[k]);
+         if(com.ncode==4 && com.ngene==1) fprintf(fout, " GC = %5.3f", com.pi[1]+com.pi[3]);
          for(k=0; k<n; k++) com.piG[ig][k] += com.pi[k]/com.ns;
          xtoy(com.pi, pisg+js*n, n);
       }    /* for(js,ns) */
       if(com.ngene>1) {
-         fprintf(fout,"\n\n%-*s",wname,"Mean");
-         for(k=0; k<n; k++) fprintf(fout,"%7.4f",com.piG[ig][k]);
+         fprintf(fout,"\n\n%-*s", wname, "Mean");
+         for(k=0; k<n; k++) fprintf(fout, "%7.4f", com.piG[ig][k]);
       }
 
       Chi2FreqHomo(pisg, com.ns, n, X2G);
@@ -1574,7 +1576,7 @@ int print1seq (FILE*fout, char *z, int ls, int pose[])
    for(h=0; h<ls; h++) {
       hp = (pose ? pose[h] : h);
       if(com.seqtype != CODONseq) {
-         fprintf(fout, "%c", pch[z[hp]]);
+         fprintf(fout, "%c", pch[(int)z[hp]]);
          if((h+1)%gap==0) fputc(' ', fout);
       }
       else
@@ -1658,8 +1660,8 @@ double SeqDivergence (double x[], int model, double alpha, double *kappa)
       fd -= x[i*4+i];
       FOR (j,4) { p[i]+=x[i*4+j]/2;  p[j]+=x[i*4+j]/2; }
    }
-   P1=x[0*4+1]+x[1*4+0];
-   P2=x[2*4+3]+x[3*4+2];
+   P1 = x[0*4+1]+x[1*4+0];
+   P2 = x[2*4+3]+x[3*4+2];
    Q = x[0*4+2]+x[0*4+3]+x[1*4+2]+x[1*4+3]+ x[2*4+0]+x[2*4+1]+x[3*4+0]+x[3*4+1];
    if(fd<small) 
       return(0);
@@ -1835,12 +1837,33 @@ extern int CijkIs0[];
 extern int nR;
 extern double Cijk[], Root[];
 
+int QTN93 (int model, double Q[], double kappa1, double kappa2, double pi[])
+{
+   int i,j;
+   double T=pi[0],C=pi[1],A=pi[2],G=pi[3],Y=T+C,R=A+G, scalefactor;
+
+   if (model==JC69 || model==F81) kappa1=kappa2=com.kappa=1; 
+   else if (com.model<TN93)       kappa2=kappa1;
+   if(model==F84) { kappa2=1+kappa1/R; kappa1=1+kappa1/Y; }
+   scalefactor = 1/(2*T*C*kappa1+2*A*G*kappa2 + 2*Y*R);
+
+   for(i=0; i<4; i++) for(j=0; j<4; j++) Q[i*4+j] = (i==j ? 0 : 1);
+   Q[0*4+1] = Q[1*4+0] = kappa1;
+   Q[2*4+3] = Q[3*4+2] = kappa2;
+   for(i=0; i<4; i++) for(j=0; j<4; j++) Q[i*4+j] *= pi[j]*scalefactor;
+   for(i=0; i<4; i++) { Q[i*4+i] = 0;  Q[i*4+i] = -sum(Q+i*4, 4); }
+
+   return (0);
+}
+
 int RootTN93 (int model, double kappa1, double kappa2, double pi[], 
     double *scalefactor, double Root[])
 {
    double T=pi[0],C=pi[1],A=pi[2],G=pi[3],Y=T+C,R=A+G;
 
-   if (model==F84) { kappa2=1+kappa1/R; kappa1=1+kappa1/Y; }
+   if (model==JC69 || model==F81) kappa1=kappa2=com.kappa=1; 
+   else if (com.model<TN93)       kappa2=kappa1;
+   if(model==F84) { kappa2=1+kappa1/R; kappa1=1+kappa1/Y; }
 
    *scalefactor = 1/(2*T*C*kappa1+2*A*G*kappa2 + 2*Y*R);
 
@@ -1868,7 +1891,7 @@ int eigenTN93 (int model, double kappa1, double kappa2, double pi[],
    else if (com.model<TN93)       kappa2=kappa1;
    RootTN93(model, kappa1, kappa2, pi, &scalefactor, Root);
 
-   *nR=nr = 2+(model==K80||model>=F84)+(model>=HKY85);
+   *nR = nr = 2 + (model==K80||model>=F84) + (model>=HKY85);
    U[0*4+0]=U[1*4+0]=U[2*4+0]=U[3*4+0]=1;
    U[0*4+1]=U[1*4+1]=1/Y;   U[2*4+1]=U[3*4+1]=-1/R;
    U[0*4+2]=U[1*4+2]=0;  U[2*4+2]=G/R;  U[3*4+2]=-A/R;
@@ -2554,8 +2577,10 @@ int PopPaupTreeRubbish(FILE *ftree)
 
    for (; ;) {
       ch=fgetc(ftree);
-      if(ch=='(')          { ungetc(ch,ftree); return(0); }
-      else if(ch==EOF)     return(-1);
+      if(ch=='(')
+         { ungetc(ch,ftree); return(0); }
+      else if(ch==EOF || ch=='/') 
+         return(-1);
    }
    return(0);
 }
@@ -2662,7 +2687,7 @@ int ReadTreeN (FILE *ftree, int *haslength, int *haslabel, int copyname, int pop
    if (isdigit(ch))
       { ReadTreeB(ftree,popline); return(0); }
 
-   PopPaupTreeRubbish(ftree);
+   if(PopPaupTreeRubbish(ftree) == -1) return(-1);
 
    for ( ; ; ) {
       ch = fgetc (ftree);
@@ -2700,7 +2725,7 @@ int ReadTreeN (FILE *ftree, int *haslength, int *haslabel, int copyname, int pop
       }
       else if (ch==':'||ch=='>') { 
          if(ch==':') *haslength=1;
-         fscanf(ftree,"%lf",&nodes[inodeb].branch); 
+         fscanf(ftree, "%lf", &nodes[inodeb].branch); 
       }
       else if (ch==quote[0] || ch==quote[1]) {
          for (k=0; ; k++) {  /* read notes into line[] */
@@ -2772,7 +2797,8 @@ int ReadTreeN (FILE *ftree, int *haslength, int *haslabel, int copyname, int pop
          else {                 /* name */
             if(!copyname) {
                for(i=0; i<com.ns; i++) if (!strcmp(line,com.spname[i])) break;
-               if((cnode=i)==com.ns) { printf("\nSpecies %s?\n", line); exit(-1); }
+               if((cnode=i)==com.ns) 
+                  { printf("\nSpecies %s?\n", line); exit(-1); }
             }
             else {
                if(icurspecies>com.ns-1) {
@@ -2904,9 +2930,14 @@ int OutSubTreeN (FILE *fout, int inode, int spnames, int printopt, char *labelfm
    if((printopt & PrLabel) && nodes[inode].nodeStr && nodes[inode].nodeStr[0])
       fprintf(fout, " %s", nodes[inode].nodeStr);
 #endif
-
+   
    if((printopt & PrBranch) && (inode!=tree.root || nodes[inode].branch>0))
       fprintf(fout, ": %.6f", nodes[inode].branch);
+   /*
+   if((printopt & PrBranch) && nodes[inode].age>0)  // print node ages instead of branch lengths 
+      fprintf(fout, ": %.6f", nodes[inode].age);
+   */
+
    if(nsib == 0)            /* root */
       fputc(';', fout);
    else if (inode == nodes[dad].sons[nsib-1])  /* last sib */
@@ -3133,7 +3164,7 @@ void printtree (int timebranches)
 
    printf("\nns = %d  nnode = %d", com.ns, tree.nnode);
    printf("\n%7s%7s", "father","node");
-   if(timebranches)  printf("%10s%10s%10s", "time","branch","label");
+   if(timebranches)  printf("%10s%10s%10s", "age", "branch", "label");
    printf(" %7s%7s", "nson:","sons");
    FOR (i, tree.nnode) {
       printf ("\n%7d%7d", nodes[i].father, i);
@@ -3200,12 +3231,13 @@ int GetTipDate (double *TipDate, double *TipDate_TimeUnit)
       nodes[i].age = 0;
       j = strlen(com.spname[i]);
       for(indate=0,p=com.spname[i]+j-1; j>=0; j--,p--) {
-         if(isdigit(*p)) indate=1;
+         if(isdigit(*p) || *p=='.') indate=1;
          else if(indate) 
             break;
       }
       sscanf(p+1, "%lf", &nodes[i].age);
-      if(nodes[i].age<=0) error2("Tip date <= 0");
+      if(nodes[i].age<=0)
+         error2("Tip date <= 0");
       else 
          ndates++;
 
@@ -3630,7 +3662,8 @@ int readx(double x[], int *fromfile)
    *fromfile=1;
    if(xin[0]==-1) { *fromfile=-1; LASTROUND=1; }
    else           i++;
-   for( ; i<npin; i++) if(fscanf(finitials,"%lf",&xin[i])!=1) break;
+   for( ; i<npin; i++) 
+      if(fscanf(finitials, "%lf", &xin[i])!=1) break;
    if(i<npin)
       { printf("err at #%d. Edit or remove it.\n",i+1); exit(-1); }
    if(com.runmode>0) {
@@ -3681,51 +3714,332 @@ int CollapsNode (int inode, double x[])
 #endif
 
 
+#if(defined(BPP) || defined(EVOLVER))
 
-void DescentGroup (int inode);
-void BranchPartition (char partition[]);
-
-static char *PARTITION;
-
-void DescentGroup (int inode)
+void Tree2PartitionDescentTree (int inode, char split[])
 {
    int i, ison;
+
    for(i=0; i<nodes[inode].nson; i++) {
       ison = nodes[inode].sons[i];
-      if(ison<com.ns) 
-         PARTITION[ison] = (char)1;
+      if(ison<com.ns)
+         split[ison] = '1';
       else 
-         DescentGroup(ison);
+         Tree2PartitionDescentTree(ison, split);
    }
 }
 
-void BranchPartition (char partition[])
+void Tree2Partition (char splits[])
 {
-/* This calculates branch partitions: partition[nib*com.ns].  
-   partition[0,...,ns-1] is the first partition (split), partition[ns,...,2*ns-1] 
-   is the second, and so on.
-   For large trees, the algorithm used is inefficient.
+/* This generates branch partitions in splits[nib*(com.ns+1)].  
+   splits[0,...,ns-1] is the first split, splits[ns,...,2*ns-1] the second, and so on.
+   For large trees, the algorithm is inefficient.
    The root node has 2 sons if the tree is rooted and >=3 sons if the tree 
    is unrooted.  For unrooted tree, the mark for the first species is set to 0.
    For rooted trees, the mark for the first species can be either 0 or 1.
 */
-   int clock = (nodes[tree.root].nson>=3), i, j;
+   int unrooted = (nodes[tree.root].nson>=3);
+   int s=com.ns, lsplit=s+1, nsplit=tree.nnode-s-1, i, j, k;
+   char *split;
 
-   for (i=com.ns; i<tree.nnode; i++) {
-      if (i != tree.root){
-         PARTITION = partition+(i-com.ns)*com.ns;
-         for(j=0; j<com.ns; j++) PARTITION[j] = (char)0;
-         DescentGroup(i);
-         /* set first species to 0 if tree is unrooted */
-         if(clock && PARTITION[0]) /* unrooted tree */
-            for(j=0; j<com.ns; j++) PARTITION[j] = (char) !PARTITION[j];
-      }
+   if(s<=2) return ;
+   memset(splits, 0, nsplit*lsplit*sizeof(char));
+   for(i=com.ns,k=0; i<tree.nnode; i++) {
+      if(i==tree.root) continue;
+      split = splits+k*lsplit;
+      for(j=0; j<s; j++) split[j] = '0';
+      Tree2PartitionDescentTree(i, split);
+      /* If unrooted tree, set first species to 0 if tree is unrooted */
+      if(unrooted && split[0]=='1')
+         for(j=0; j<s; j++) split[j] = '0' + '1' - split[j];
+      k++;
    }
 }
 
+int Partition2Tree (char splits[], int lsplit, int ns, int nsplit, double label[])
+{
+/* This generates the tree in nodes[] using branch partitions or splits.
+   It constructs pptable[(2*s-1)*(2*s-1)] to generate the tree.  
+   Split i corresponds to node ns+i, while the root is ns + nsplit.
+   label[] has labels for splits and become labels for nodes on the tree.
+   This works even if ns=1 and ns=2.
+*/
+   int i,j,k, s21=ns*2-1, a, minndesc, ndesc[NS]={0};  /* clade size */
+   char debug=0, *p, *pptable;
 
-int NSameBranch (char partition1[],char partition2[], int nib1,int nib2,
-    int IBsame[])
+   if(nsplit>ns-2) error2("too many splits for ns");
+   if(nsplit<0) nsplit=0;
+   if((pptable=(char*)malloc((s21*s21+1)*sizeof(char))) == NULL)
+      error2("oom in Partition2Tree");
+   memset(pptable, 0, s21*s21*sizeof(char));
+
+   /* initialize tree */
+   tree.nnode = ns+nsplit+1;
+   tree.root  = ns+nsplit;
+   tree.nbranch = 0;
+   for(i=0; i<tree.nnode; i++) {
+      nodes[i].father = nodes[i].ibranch = -1;
+      nodes[i].nson = 0;  nodes[i].label = -1;  nodes[i].branch = nodes[i].age = 0;
+   }
+
+   /* set up pptable */
+   for(i=0,p=splits,ndesc[tree.root-ns]=ns; i<nsplit; i++, p+=lsplit) {
+      for(j=0; j<ns; j++) {
+         if(p[j] == '1') {  /* clade (split) i includes tip j */
+            pptable[j*s21 + ns+i] = 1;
+            ndesc[i]++;
+         }
+      }
+   }
+   for(i=0; i<tree.nnode-1; i++) pptable[i*s21+tree.root] = 1;
+   for(i=0; i<nsplit; i++) {
+      for(j=0; j<i; j++) {
+         if(pptable[(ns+i)*s21+ns+j] || pptable[(ns+j)*s21+ns+i] || ndesc[i] == ndesc[j])
+            continue;
+         for(k=0; k<ns; k++)
+            if(pptable[k*s21+ns+i]==1 && pptable[k*s21+ns+j]==1) break;
+         if(k<ns) {  /* i and j are ancestral to k, and are ancestral to each other. */
+            if(ndesc[i] < ndesc[j])   pptable[(ns+i)*s21+ns+j] = 1;
+            else                      pptable[(ns+j)*s21+ns+i] = 1;
+         }
+      }
+   }
+   if(debug) {
+      printf("\npptable\n");
+      for(i=0; i<s21; i++,FPN(F0))
+         for(j=0; j<s21; j++)
+            printf(" %1d", (int)pptable[i*s21+j]);
+      printf("ndesc: ");
+      for(i=0; i<nsplit; i++) printf(" %2d", ndesc[i]);  FPN(F0);
+   }
+
+   /* generate tree nodes and labels.  For each nonroot node, youngest ancestor is dad. */
+   for(i=0; i<tree.nnode-1; i++) {
+      minndesc=ns+1;  a=-1;
+      for(j=ns; j<tree.nnode; j++) {
+         if(pptable[i*s21+j]==1 && minndesc>ndesc[j-ns]) 
+            { minndesc = ndesc[j-ns];  a=j; }
+      }
+      if(a<0)
+         error2("jgl");
+      nodes[i].father = a;
+      nodes[a].sons[nodes[a].nson++] = i;
+      if(a!=tree.root && label) nodes[a].label = label[a-ns];
+   }
+   if(debug) {
+      printtree(1);
+      OutTreeN(F0,1,0);  FPN(F0);
+   }
+   free(pptable);
+   return(0);
+}
+
+
+int GetNSfromTreeFile(FILE *ftree, int *ns, int *ntree)
+{
+   char separators[]="(,):#";
+   int inname=0, k, c;
+   double y;
+
+   *ns = *ntree = -1;
+   k = fscanf(ftree, "%d%d", ns, ntree);
+   if(k==1) { *ntree = *ns; *ns = -1; }
+   else if(k==0) {
+      *ns = 0;
+      while((c = fgetc(ftree)) != ';') {
+         if(c==EOF) return(-1);
+         if(strchr(separators, c)) {
+            if     (c == ':') fscanf(ftree, "%lf", &y);
+            else if(c == '#') fscanf(ftree, "%lf", &y);
+            if(inname) { inname=0; (*ns)++; }
+         }
+         else if(isgraph(c))
+            inname = 1;
+      }
+      rewind(ftree);
+   }
+   return(0);
+}
+
+void CladeSupport (FILE *fout, char treef[], char mastertreef[], int pick1tree)
+{
+/* This reads all bootstrap or Bayesian trees from treef to construct the majority-rule 
+   consensus tree.  It then goes through master trees and attach support values on 
+   splits on each master tree.
+   split1 if for one tree, and split50 is for the majority-rule consensus tree.
+*/
+   int i,j,k, ntreeM,ntree, itreeM, sizetree, found, lline=1024;
+   int *index, *indexspace, maxnsplits, nsplits=0, s, nsplit1, nsplit50, lsplit, same;
+   char *splits=NULL, *split1, *splitM=NULL, *split50=NULL, *pM, line[1024];
+   char pick1treef[32]="pick1tree.tre";
+   double *countsplits=NULL, *Psplit50, *Psame, y;
+   struct TREEN *nodes_t;
+   FILE *ft, *fM=NULL, *f1tree=NULL;
+   int debug=0;
+
+   printf("\nCalculating support values for clades from the sample of trees\n");
+   ft = gfopen(treef, "r");
+   if(mastertreef) fM = fopen(mastertreef, "r");
+
+   GetNSfromTreeFile(ft, &com.ns, &k);  /* species ordered as in first tree in file */
+   if(com.ns<3) error2("need >=3 species to justify this much effort.");
+   s=com.ns;  lsplit=s+1;  maxnsplits=s;
+   if((split1=(char*)malloc(2*(s-2) * lsplit * sizeof(char))) == NULL)
+      error2("oom splits");
+   split50 = split1 + (s-2)*lsplit;
+   if((Psplit50=(double*)malloc(s*sizeof(double))) == NULL)
+      error2("oom Psplit50");
+
+   sizetree=(s*2-1)*sizeof(struct TREEN);
+   if((nodes=(struct TREEN*)malloc(sizetree*2))==NULL) error2("oom");
+   for(i=0; i<s*2-1; i++) nodes[i].nodeStr=NULL;
+   nodes_t = nodes + s*2-1;
+
+   for(ntree=0;  ; ntree++) {
+      if(nsplits+s >= maxnsplits) {
+         maxnsplits *= 2;
+         splits = (char*)realloc(splits, maxnsplits * lsplit * sizeof(char));
+         countsplits = (double*)realloc(countsplits, maxnsplits * 3*sizeof(double));
+         if(splits==NULL || countsplits==NULL) error2("oom splits realloc");
+         index = (int*)(countsplits + maxnsplits);
+         indexspace = index+maxnsplits;
+      }
+      /* copy species names from first tree in file.  */
+      if(ReadTreeN(ft, &i, &j, (ntree==0), 1)) break;
+      if(debug || (ntree+1)%5000==0) {
+         printf("\rtree %5d  ", ntree+1);
+         if(s<15) OutTreeN(F0, 1, 0);
+      }
+      Tree2Partition(split1);
+      nsplit1 = tree.nnode-s-1;
+      if(debug) 
+         { for(i=0; i<nsplit1; i++) printf(" %s", split1+i*lsplit);  printf("\n"); }
+
+      for(i=0; i<nsplit1; i++) {  /* going through splits in current tree */
+         j = binarysearch(split1+i*lsplit, splits, nsplits, lsplit, (int(*)(const void *, const void *))strcmp, &found);
+         if(found)  /* found */
+            countsplits[j]++;
+         else {
+            if(j<nsplits) {  /* check the size of the moved block here */
+               memmove(splits+(j+1)*lsplit, splits+j*lsplit, (nsplits-j)*lsplit*sizeof(char));
+               memmove(countsplits+(j+1), countsplits+j, (nsplits-j)*sizeof(double));
+            }
+            memcpy(splits+j*lsplit, split1+i*lsplit, lsplit*sizeof(char));
+            nsplits++;
+            countsplits[j]=1;
+         }
+      }
+      if(debug) {
+         printf("%4d splits: ", nsplits);
+         for(k=0; k<nsplits; k++) printf(" %s (%.0f)", splits+k*lsplit, countsplits[k]);
+         FPN(F0);
+      }
+   }
+
+   indexing(countsplits, nsplits, index, 1, indexspace);
+
+   printf("\nSpecies in order:\n");
+   for(i=0; i<s; i++) printf("%2d. %s\n", i+1, com.spname[i]);
+   printf("\nList of best splits in the sample of trees\n");
+   for(k=0; k<nsplits; k++) {
+      j = index[k];  y=countsplits[j];
+      printf("  %s  %6.0f %9.5f\n", splits+j*lsplit, y, y/ntree);
+      if(y/ntree < 0.001) break;
+   }
+   fprintf(fout, "\nSpecies in order:\n");
+   for(i=0; i<s; i++) fprintf(fout, "%2d. %s\n", i+1, com.spname[i]);
+   fprintf(fout, "\nList of best splits in the sample of trees\n\n");
+   for(k=0; k<nsplits; k++) {
+      j = index[k];  y=countsplits[j];
+      fprintf(fout, " %s %6.0f %9.5f\n", splits+j*lsplit, y, y/ntree);
+      if(y/ntree < 0.001) break;
+   }
+
+   /* Majority-rule consensus tree */
+   for(k=0,nsplit50=0; k<nsplits; k++)
+      if(countsplits[k]/ntree >= 0.5) nsplit50++;
+   for(k=0,nsplit50=0; k<nsplits; k++) {
+      if(countsplits[k]/ntree > 0.5) {
+         memmove(split50+nsplit50*lsplit, splits+k*lsplit, lsplit);
+         Psplit50[nsplit50 ++] = countsplits[k]/ntree;
+      }
+   }
+   Partition2Tree(split50, lsplit, s, nsplit50, Psplit50);
+   printf("\nMajority-rule consensus tree\n");
+   OutTreeN(F0, 1, PrLabel);  FPN(F0);
+   fprintf(fout, "\nMajority-rule consensus tree\n");
+   OutTreeN(fout, 1, PrLabel);  FPN(fout);
+
+   if(fM==NULL) exit(0);
+   fscanf(fM, "%d%d", &i, &ntreeM);
+   if(i!=s || ntreeM<1) error2("<ns> <ntree> on the first line in master tree.");
+
+   /* Probabilities of trees in the master tree file */
+   splitM = (char*)malloc(ntreeM * (s-2)*lsplit * sizeof(char));
+   Psame = (double*)malloc(ntreeM * sizeof(double));
+   if(splitM==NULL || Psame==NULL) error2("oom splitM");
+   zero(Psame, ntreeM);
+   if(pick1tree>=1 && pick1tree<=ntreeM && (f1tree=(FILE*)fopen(pick1treef,"w"))==NULL)
+      error2("oom");
+   for(itreeM=0,pM=splitM; itreeM<ntreeM; itreeM++,pM+=(s-2)*lsplit) {
+      if(ReadTreeN(fM, &i, &j, 0, 1)) break;
+      if(tree.nnode<s*2-2 || tree.nnode>s*2-1) error2("Master trees have to be binary");
+      Tree2Partition(pM);
+      qsort(pM, tree.nnode-s-1, lsplit, (int(*)(const void *, const void *))strcmp);
+      if(debug) {
+         printf("\nMaster tree %2d: ", itreeM+1);
+         OutTreeN(F0, 1, 0);
+         for(i=0; i<tree.nnode-s-1; i++) printf(" %s", pM+i*lsplit);
+      }
+   }
+   /* read the tree sample again */
+   rewind(ft);
+   for(ntree=0;  ; ntree++) {
+      if(ReadTreeN(ft, &i, &j, 0, 0)) break;
+      fgets(line, lline, ft);
+      Tree2Partition(split1);
+      for(itreeM=0,pM=splitM; itreeM<ntreeM; itreeM++,pM+=(s-2)*lsplit) {
+         for(i=0,same=1; i<tree.nnode-s-1; i++) {
+            if(bsearch(split1+i*lsplit, pM, tree.nnode-s-1, lsplit, (int(*)(const void *, const void *))strcmp) == NULL) 
+               { same=0; break; }
+         }
+         if(same) {
+            Psame[itreeM] ++;
+            if(pick1tree-1==itreeM) {
+               OutTreeN(f1tree, 1, 1); fprintf(f1tree, "%s", line);
+            }
+         }
+      }
+   }
+
+   printf("\nProbabilities of trees in the master tree file\n");
+   fprintf(fout, "\nProbabilities of trees in the master tree file\n");
+   /* read the master trees another round just for printing. */
+   rewind(fM);
+   fscanf(fM, "%d%d", &s, &ntreeM);
+   for(itreeM=0; itreeM<ntreeM; itreeM++) {
+      if(ReadTreeN(fM, &i, &j, 0, 1)) break;
+      Tree2Partition(split1);
+      for(i=s,k=0; i<tree.nnode; i++) {
+         if(i==tree.root) continue;
+         j = binarysearch(split1+k*lsplit, splits, nsplits, lsplit, (int(*)(const void *, const void *))strcmp, &found);
+         if(found) nodes[i].label = countsplits[j];
+         k++;
+      }
+      OutTreeN(F0, 1, PrLabel);
+      printf("  P = %6.4f\n", Psame[itreeM]/ntree);
+      fprintf(fout, "  P = %6.4f\n", Psame[itreeM]/ntree);
+   }
+   free(splits);  free(split1);  free(splitM);  
+   free(countsplits);  free(Psame);  free(Psplit50);  free(nodes);
+   fclose(ft);  fclose(fM);  if(f1tree) fclose(f1tree);
+   exit(0);
+}
+
+#endif
+
+
+int NSameBranch (char partition1[],char partition2[], int nib1,int nib2, int IBsame[])
 {
 /* counts the number of correct (identical) bipartitions.
    nib1 and nib2 are the numbers of interior branches in the two trees
@@ -3733,16 +4047,25 @@ int NSameBranch (char partition1[],char partition2[], int nib1,int nib2,
    that is, interior branches in tree 1 that is also in tree 2.
    IBsame[i]=1 if interior branch i is correct.
 */
-   int i,j,k, nsamebranch,nsamespecies;
+   int i,j,k=0, nsamebranch;
 
+#if(1)
    for (i=0,nsamebranch=0; i<nib1; i++)
       for(j=0,IBsame[i]=0; j<nib2; j++) {
-         for (k=0,nsamespecies=0;k<com.ns;k++)
-            if(partition1[i*com.ns+k] != partition2[j*com.ns+k]) break;
+         if(strcmp(partition1+i*(com.ns+1), partition2+j*(com.ns+1)) == 0) {
+            nsamebranch++;  IBsame[i]=1;  break; 
+         }
+   }
+#else
+   for (i=0,nsamebranch=0; i<nib1; i++)
+      for(j=0,IBsame[i]=0; j<nib2; j++) {
+         for (k=0;k<com.ns;k++)
+            if(partition1[i*(com.ns+1)+k] != partition2[j*(com.ns+1)+k]) break;
          if (k==com.ns) {
             nsamebranch++;  IBsame[i]=1;  break; 
          }
    }
+#endif
    return (nsamebranch);
 }
 

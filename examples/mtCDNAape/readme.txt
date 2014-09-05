@@ -21,10 +21,12 @@ np=12 model=0 aaDist=7: lnL=-20482.229434  k=20.52018  wR=0.02745  wC=0.04658
 np=14 model=2 aaDist=7: lnL=-20440.382774  k=21.36004  wWR=0.15012  wWC=0.30470  wBR=0.02380  wBC=0.03885
 
 
-(B) mtCDNA.HC.txt (control file codeml.HC.ctl) has the human and chimp sequences only, and is the dataset 
-analyzed by Yang and Nielsen (2008, table 1).  The new models described in that 
-paper are implemented using the two control variables CodonFreq and estFreq in 
-the control file codeml.ctl.  You can try to duplicate our results.
+(B) mtCDNA.HC.txt (control file codeml.HC.ctl) has the human and chimp
+sequences only, and is the dataset analyzed by Yang and Nielsen (2008,
+table 1).  The new models described in that paper are implemented
+using the two control variables CodonFreq and estFreq in the control
+file codeml.ctl.  You can try to duplicate our results.  Note that
+some results are in the supplementary result file rst.
 
     CodonFreq = 7  * 0:1/61 each, 1:F1X4, 2:F3X4, 3:codon table
                    * 4:F1x4MG, 5:F3x4MG, 6:FMutSel0, 7:FMutSel

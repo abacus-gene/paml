@@ -40,7 +40,7 @@ int lfunG_d (double x[], double *lnL, double dl[], int np);
 int lfunG_dd (double x[], double *lnL, double dl[], double ddl[], int np);
 
 struct CommonInfo {
-   unsigned char *z[NS], *spname[NS], seqf[32],outf[32],treef[32];
+   unsigned char *z[NS], *spname[NS], seqf[96],outf[96],treef[96];
    int  seqtype, ns, ls, ngene, posG[NGENE+1],lgene[NGENE],*pose,npatt, readpattern;
    int  clock,fix_alpha,fix_kappa,fix_rgene,Malpha,print,verbose;
    int  model, runmode, cleandata, ndata;
@@ -104,8 +104,8 @@ int main (int argc, char *argv[])
    GetOptions (ctlf);
    finitials=fopen("in.basemlg","r");
 
-   if ((fout=fopen (com.outf, "w"))==NULL) error2("outfile creation err.");
-   if((fseq=fopen (com.seqf,"r"))==NULL)  error2("No sequence file!");
+   if ((fout=fopen(com.outf, "w"))==NULL) error2("outfile creation err.");
+   if((fseq=fopen(com.seqf,"r"))==NULL)  error2("No sequence file!");
    ReadSeq (NULL, fseq, com.cleandata, 0);
    if((fpair[0]=(FILE*)fopen(pairfs[0],"w"))==NULL) error2("2base.t file open error");
 
