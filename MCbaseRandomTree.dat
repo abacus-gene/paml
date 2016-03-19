@@ -1,5 +1,5 @@
- 0        * 0: paml format (mc.paml); 1:paup format (mc.nex)
-1234567   * random number seed (odd number)
+ 0     * 0,1:seqs or patterns in paml format (mc.paml); 2:paup format (mc.nex); 3: paup JC69 format
+ -1   * random number seed (odd number)
 
 50 10000 100  * <# seqs>  <# nucleotide sites>  <# replicates>
 

@@ -1,7 +1,7 @@
           seed = -1
        seqfile = mtCDNApri123.txt
       treefile = mtCDNApri.trees
-       outfile = out
+       outfile = out.txt
 
          ndata = 3
        seqtype = 0    * 0: nucleotides; 1:codons; 2:AAs

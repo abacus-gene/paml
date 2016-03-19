@@ -138,6 +138,9 @@ int main (int argc, char *argv[])
    int getdistance=1, i, idata;
    size_t s2=0;
 
+   if(argc>2 && !strcmp(argv[argc-1], "--stdout-no-buf"))
+      setvbuf(stdout, NULL, _IONBF, 0);
+
    starttimer();
    SetSeed(-1, 0);
 
@@ -247,8 +250,21 @@ int main (int argc, char *argv[])
       if(com.Mgene==3) 
          for(i=0; i<com.ngene; i++) xtoy(com.pi, com.piG[i], com.ncode);
 
-      if (com.model==JC69 && !com.readpattern && !com.print) 
-         PatternWeightJC69like(fout);
+      if (com.model==JC69 && !com.readpattern && !com.print) {
+         PatternWeightJC69like();
+         if(fout) {
+            fprintf(fout, "\n\nPrinting out site pattern counts\n");
+            printPatterns(fout);
+         }
+         if(com.verbose==2) {
+            fprintf(fout, "\n%6d %6d\n", com.ns, com.ls);
+            for(i=0; i<com.ns; i++) {
+               fprintf(fout, "\n%-30s  ", com.spname[i]);
+               print1seq (fout, com.z[i], com.ls, com.pose);
+            }
+            fprintf(fout, "\n");
+         }
+      }
 
       com.sconP = (com.ns-1)*com.ncode*(size_t)com.npatt*sizeof(double);
       if((com.conP = (double*)realloc(com.conP, com.sconP))==NULL) 
@@ -684,7 +700,7 @@ void DetailOutput (FILE *fout, double x[], double var[])
       k += com.npi*n31pi;
 
       /* print expected numbers of changes along branches */
-      if(com.print && com.alpha==0 && com.verbose) {
+      if(com.alpha==0) {
          fprintf(fout, "\n\nExpected numbers of nucleotide changes on branches\n\n");
          for(inode=0; inode<tree.nnode; inode++,FPN(fout)) {
             if(inode==tree.root) continue;

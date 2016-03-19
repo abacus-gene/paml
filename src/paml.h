@@ -35,8 +35,8 @@ void ReadPatternFreq (FILE* fout, char* fpattf);
 int Initialize (FILE *fout);
 int MoveCodonSeq (int ns, int ls, char *z[]);
 int PatternWeight (void);
-int PatternWeightJC69like (FILE *fout);
-int PatternWeightSimple (int CollapsJC);
+int PatternWeightJC69like (void);
+int PatternWeightSimple (void);
 int Site2Pattern (FILE *fout);
 
 double getRoot(double (*f)(double), double (*df)(double), double initVal);
@@ -89,19 +89,19 @@ double CDFBeta(double x, double p, double q, double lnbeta);
 double QuantileBeta(double prob, double p, double q, double lnbeta);
 double Quantile(double(*cdf)(double x,double par[]), double p, double x, double par[], double xb[2]);
 double QuantileNormal (double prob);
-double PDFNormal(double x, double mu, double sigma2);
+double PDFNormal (double x, double mu, double sigma2);
 double logPDFNormal(double x, double mu, double sigma2);
-double CDFNormal(double x);
-double logCDFNormal(double x);
-double PDFCauchy(double x, double m, double sigma);
-double PDFloglogistic(double x, double loc, double s);
-double PDFlogt2(double x, double loc, double s);
-double PDFt2(double x, double m, double s);
-double PDFt4(double x, double m, double s);
-double PDFt(double x, double loc, double scale, double df, double lnConst);
-double CDFt(double x, double loc, double scale, double df, double lnbeta);
-double PDFSkewT(double x, double loc, double scale, double shape, double df);
-double PDFSkewN(double x, double loc, double scale, double shape);
+double CDFNormal (double x);
+double logCDFNormal (double x);
+double PDFCauchy (double x, double m, double sigma);
+double PDFloglogistic (double x, double loc, double s);
+double PDFlogt2 (double x, double loc, double s);
+double PDFt2 (double x, double m, double s);
+double PDFt4 (double x, double m, double s);
+double PDFt (double x, double loc, double scale, double df, double lnConst);
+double CDFt (double x, double loc, double scale, double df, double lnbeta);
+double PDFSkewT (double x, double loc, double scale, double shape, double df);
+double PDFSkewN (double x, double loc, double scale, double shape);
 double logPDFSkewN(double x, double loc, double scale, double shape);
 
 int StirlingS2(int n, int k);
@@ -115,11 +115,11 @@ double LBinormal (double h, double k, double r);
 double logLBinormal (double h, double k, double r);
 double probBinomial (int n, int k, double p);
 double probBetaBinomial (int n, int k, double p, double q);
-long factorial(int n);
+double factorial (int n);
 double Binomial(double n, int k, double *scale);
 
-int GaussLegendreRule(double **x, double **w, int order);
-int GaussLaguerreRule(double **x, double **w, int order);
+int GaussLegendreRule(const double **x, const double **w, int order);
+int GaussLaguerreRule(const double **x, const double **w, int order);
 double NIntegrateGaussLegendre(double(*fun)(double x), double a, double b, int order);
 
 int ScatterPlot (int n, int nseries, int yLorR[], double x[], double y[],
@@ -135,7 +135,7 @@ int RemoveIndel(void);
 int f_mono_di (FILE *fout, char z[], int ls, int iring, double fb1[], double fb2[], double CondP[]);
 int PickExtreme (FILE *fout, char z[], int ls, int iring, int lfrag, int ffrag[]);
 
-int print1seq (FILE*fout, char *z, int ls, int pose[]);
+int print1seq (FILE*fout, unsigned char *z, int ls, int pose[]);
 void printSeqs(FILE *fout, int *pose, char keep[], int format);
 int printPatterns(FILE *fout);
 void printSeqsMgenes (void);
@@ -224,6 +224,9 @@ int mattransp1 (double x[], int n);
 int mattransp2 (double x[], double y[], int n, int m);
 int matinv (double x[], int n, int m, double space[]);
 int matexp (double A[], int n, int nTaylorTerms, int nSquares, double space[]);
+#ifdef USE_GSL
+int matexpGSL (double A[], int n, double space[]);
+#endif
 int matsqrt (double A[], int n, double work[]);
 int CholeskyDecomp (double A[], int n, double L[]);
 int eigenQREV (double Q[], double pi[], int n, 
@@ -236,7 +239,7 @@ int correl (double x[], double y[], int n, double *mx, double *my,
             double *vxx, double *vxy, double *vyy, double *r);
 int comparefloat  (const void *a, const void *b);
 int comparedouble (const void *a, const void *b);
-double Eff_IntegratedCorrelationTime(double x[], int n, double *mx, double *varx);
+double Eff_IntegratedCorrelationTime (double x[], int n, double *mx, double *varx);
 int HPDinterval(double x[], int n, double HPD[2], double alpha);
 int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int propternary, int SkipColumns);
 int DescriptiveStatisticsSimple (FILE *fout, char infile[], int SkipColumns);
@@ -317,7 +320,7 @@ int RandomLHistory (int rooted, double space[]);
 
 void Tree2Partition (char partition[]);
 int Partition2Tree (char splits[], int lsplit, int ns, int nsplit, double label[]);
-void CladeSupport (FILE *fout, char treef[], char mastertreef[], int pick1tree);
+void CladeSupport (FILE *fout, char treef[], int getSnames, char mastertreef[], int pick1tree);
 int GetNSfromTreeFile(FILE *ftree, int *ns, int *ntree);
 int NSameBranch (char partition1[],char partition2[], int nib1,int nib2, int IBsame[]);
 
@@ -337,8 +340,9 @@ int CollapsNode (int inode, double x[]);
 
 int MakeTreeIb (int ns, int Ib[], int rooted);
 int GetTreeI (int itree, int ns, int rooted);
-int NumberTrees (int ns, int rooted);
-int CountLHistories(void);
+double CountTrees (int ns, int rooted);
+double CountLHs (int ns);
+int CountLHsTree (void);
 int ListTrees (FILE* fout, int ns, int rooted);
 int GetIofTree (int rooted, int keeptree, double space[]);
 void ReRootTree (int newroot);
@@ -369,7 +373,7 @@ void printSptree(void);
 
 enum {BASEseq=0, CODONseq, AAseq, CODON2AAseq, BINARYseq, BASE5seq} SeqTypes;
 
-enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrAge=8, PrOmega=16} OutTreeOptions;
+enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrNodeStr=8, PrAge=16, PrOmega=32} OutTreeOptions;
 
 
 /* use mean (0; default) for discrete gamma instead of median (1) */
@@ -392,6 +396,6 @@ enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrAge=8, PrOmega=16} OutTreeOptions;
 
 #define FullSeqNames      0   /* 1: numbers at the beginning of sequence name are part of name */
 
-#define pamlVerStr "paml version 4.8a, August 2014"
+#define pamlVerStr "paml version 4.9, March 2015"
 
 #endif

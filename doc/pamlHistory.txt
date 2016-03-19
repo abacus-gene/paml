@@ -10,6 +10,57 @@ https://groups.google.com/forum/#!forum/pamlsoftware.
 
 
 
+
+Version 4.9a, September 2015
+
+codeml (seqtype = 2 for amino acid sequences) crashes when the dataset
+is large, with more than 2M sites, say.  This is due to  a stupid bug
+in an irrelevant part of the code.  This is fixed in 4.9a.
+
+
+Version 4.9, January 2015
+
+(*) mcmctree.  There are now two priors for locus rates (mu_i or rates
+for loci), as summarized in Zhu et al. (2014 Sys Biol).  They are
+specified as follows
+
+   rgene_gamma = alpha_u beta_u alpha prior  * gamma prior for overall rates for genes
+
+where prior = 0 (default) is the conditional i.i.d. prior and prior =
+1 is the gamma-dirichlet prior.
+
+For example the following specifies the conditional i.i.d. prior with
+alpha_mu = 100, beta_mu = 1000, and alpha = 0.5.  Here the average
+overall rate is 0100/1000 = .1 changes per site per time unit.  alpha
+= 0.5 describes the extent of rate variation among loci.
+
+   rgene_gamma = 100 1000 0.5 0  * conditional i.i.d. prior for locus rates
+  sigma2_gamma = 4 100 0.5       * prior for sigma^2     (for clock=2 or 3)
+
+The sigma2_i prior has parameters alpha_u, beta_u, alpha, specified in
+the same format.  
+
+(*) mcmctree.  I have changed the option of setting the finetune step
+lengths for the MCMC algorithms so that each parameter in the model
+has its own step lengths.  As a result, the step lengths are all
+automatically adjusted during the burn-in, and cannot be fixed or
+specified by the user.  The line 
+  finetune = 1: .0040  0.030  0.015  0.03 .55  * times, rates, mixing, paras, RateParas
+in the control file, if present, is read but ignored.  
+
+(*) mcmctree.  The calibration density for S2N (skew 2 normals) is
+incorrectly implemented.  While the correct formula should be 
+  p0 * f1(t) + (1 - p0) f2(t)
+the incorrect formula used is 
+  p0 * f1(t) + f2(t).
+Basically the two skew-normal densities was not given the correct weights.
+If you run the program without data to make sure that the effective prior 
+is sensible, then this mistake should have little impact.  The bug is now 
+fixed.  Thanks to Mario dos Reis.
+
+
+
+
 Version 4.8a, August 2014
 
 (*) baseml (nhomo = 3 or 4).  I have added the nonhomogeneous GTR
@@ -33,9 +84,10 @@ branch on the tree.
 
 I have also added a method for calculating the expected number of
 changes from any nucleotide i to nucleotide j along every branch under
-the nonhomogeneous models (nhomo=3 or 4).  This accounts for the fact
-that the base frequencies are changing over time, and so does the rate
-of substitution.
+the nonhomogeneous models (nhomo=3 or 4).  This is called EMC, and
+accounts for the fact that the base frequencies are changing over
+time, and so does the rate of substitution.  It is invoked by using
+RateAncestor = 1 and verbose = 1.
 
 I tested only the nhomo=4 option carefully and the options nhomo=3 and
 5 are not well tested.
@@ -48,18 +100,21 @@ Version 4.8, March 2014
 has changed in this version, and the gamma-Dirichlet prior is used.
 The old i.i.d. prior is replaced and unavailable anymore.  The new
 gamma-Dirichlet prior is decribed in a paper 
-dos Reis M, Zhu T, Yang Z. 2014. The impact of the rate prior on
-Bayesian estimation of divergence times with multiple loci. Syst
-Biol. in press.
+
+dos Reis, M., T. Zhu, and Z. Yang. 2014. The impact of the rate prior
+on Bayesian estimation of divergence times with multiple
+loci. Syst. Biol. 63:555-565.
 
 (*) codeml.  Added a Bayesian method for estimating distance t and dN/dS
 ratio w in pairwise comparisons.  The option is 
       runmode = -3  * -3: pairwise Bayesian
       runmode = -3 1.1 1.1 1.1 2.2   * -3: pairwise Bayesian
 The four numbers are the parameters in the gamma priors for t and w (a_t b_t a_w b_w).
-The method is described in a manuscript
-Angelis K, dos Reis M, Yang Z. 2014. Bayesian estimation of nonsynonymous/synonymous rate 
-ratios for pairwise sequence comparisons.  Mol Biol Evol.
+The method is described in the following paper:
+
+Angelis, K., M. dos Reis, and Z. Yang. 2014. Bayesian estimation of
+nonsynonymous/synonymous rate ratios for pairwise sequence
+comparisons. Mol. Biol. Evol. 31:1902-1913.
 
 (*) baseml, codeml, mcmctree).  In version 4.7a, I disabled the option
 of reading species indexes in the tree file (for example, the number

@@ -68,5 +68,13 @@ cc -fast -o yn00 yn00.c tools.c -lm
 cc -fast -o chi2 chi2.c -lm
 
 
+If you have the root or administrator, you can copy the executables
+into the folder /usr/local/bin/, so that the programs are available to
+everyone with an account on the system.
+
+scp  baseml basemlg codeml pamp mcmctree evolver yn00 chi2   /usr/local/bin/
+
+
+
 // End of file
 

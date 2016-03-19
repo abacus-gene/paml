@@ -286,6 +286,8 @@ scanf("%d", &KGaussLegendreRule);
    SimulateData2s61();
 #endif
 
+   if(argc>2 && !strcmp(argv[argc-1], "--stdout-no-buf"))
+      setvbuf(stdout, NULL, _IONBF, 0);
    if(argc>1) strncpy(ctlf, argv[1], 95);
 
    GetOptions(ctlf);
@@ -493,8 +495,11 @@ scanf("%d", &KGaussLegendreRule);
       }
       fflush(fout);
 
-      if(com.seqtype==AAseq && com.model==Poisson && !com.print) 
-         PatternWeightJC69like(fout);
+      if(com.seqtype==AAseq && com.model==Poisson && !com.print) {
+         PatternWeightJC69like();
+         fprintf(fout, "\n\nPrinting out site pattern counts\n");
+         printPatterns(fout);
+      }
       if(com.alpha || com.NSsites) {
          s2=com.npatt*com.ncatG*sizeof(double);
          if((com.fhK=(double*)realloc(com.fhK,s2))==NULL) error2("oom fhK");
@@ -2316,7 +2321,6 @@ int GetInitials (double x[], int* fromfile)
       com.conPSiteClass=1;
       sconP_new *= com.ncatG;
    }
-   if(com.sconP<0 || sconP_new<0) error2("data set too large.");
    if(com.sconP<sconP_new) {
       com.sconP = sconP_new;
       printf("\n%9lu bytes for conP, adjusted\n", com.sconP);
@@ -2460,7 +2464,8 @@ int SetParametersNSsites (double x[])
    int K=com.ncatG, i,j, off;
    double w[NBTYPE][3], t, S,dS,dN, spaceP2PI[NCATG*(NCATG+1)], small=1e-4;
    double mr, f;
-   double p0=1, c,e,eT, dwy, y,z, a, b, T, C, lnGa, ww, sign, *xI=NULL, *wI=NULL;  /* truncated NSsites models */
+   double p0=1, c,e,eT, dwy, y,z, a, b, T, C, lnGa, ww, sign;
+   const double *xI=NULL, *wI=NULL;  /* truncated NSsites models */
 
    if(com.NSsites==0) error2("SetParametersNSsites : strange.");
 
@@ -4609,7 +4614,7 @@ int BayesPairwise(int is, int js, double x[], double var[], double maxlogl,
 /*This function returns estimates of E[ t | x ], E[ w | x ], Var[ t | x ], Var[ w | x ],
 Cov[ w,t | x ], Corr[ w,t | x], P[ w>1 | x ]
 */
-   double *nodes = NULL, *weights = NULL;  //contain the points and weights
+   const double *nodes = NULL, *weights = NULL;  //contain the points and weights
    double interm_results[7] = {0,0,0,0,0,0,0}; //contain the normalizing_constant, E[w|x], E[t|x], E[w^2|x], E[t^2|x], E[w*t|x], P[w>1|x]  
    register int i = 0, j = 0;
    int w_index = 0, t_index = 0, way = 0, setp = 0;
@@ -5092,7 +5097,7 @@ char GetAASiteSpecies(int species, int sitepatt)
    Returns '*' if more than two amino acids or '-' if codon is --- or ***.
 */
    int n=com.ncode, c, naa, k;
-   char aa, newaa;
+   char aa=0, newaa=0;
 
    if(com.seqtype!=1)
       error2("GetAASiteSpecies() right now works for codon seqs only.  Check.");

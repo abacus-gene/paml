@@ -2,6 +2,11 @@
 */
 #include "paml.h"
 
+#ifdef USE_GSL
+#include <gsl/gsl_blas.h>
+#include <gsl/gsl_linalg.h>
+#endif
+
 /************************
              sequences 
 *************************/
@@ -688,8 +693,7 @@ int EvolveHKY85 (char source[], char target[], int ls, double t,
    return (0);
 }
 
-int Rates4Sites (double rates[],double alpha,int ncatG,int ls, int cdf,
-    double space[])
+int Rates4Sites (double rates[],double alpha,int ncatG,int ls, int cdf, double space[])
 {
 /* Rates for sites from the gamma (ncatG=0) or discrete-gamma (ncatG>1).
    Rates are converted into the c.d.f. if cdf=1, which is useful for
@@ -1178,13 +1182,13 @@ int fillxc (double x[], double c, int n)
 { int i; for(i=0; i<n; i++) x[i]=c; return (0); }
 
 int xtoy (double x[], double y[], int n)
-{ int i; for (i=0; i<n; y[i]=x[i],i++) ;  return(0); }
+{ int i; for (i=0; i<n; y[i]=x[i],i++) {}  return(0); }
 
 int abyx (double a, double x[], int n)
-{ int i; for (i=0; i<n; x[i]*=a,i++) ;  return(0); }
+{ int i; for (i=0; i<n; x[i]*=a,i++) {}  return(0); }
 
 int axtoy(double a, double x[], double y[], int n)
-{ int i; for (i=0; i<n; y[i] = a*x[i],i++) ;  return(0);}
+{ int i; for (i=0; i<n; y[i] = a*x[i],i++) {}  return(0);}
 
 int axbytoz(double a, double x[], double b, double y[], double z[], int n)
 { int i; for(i=0; i<n; i++)   z[i] = a*x[i]+b*y[i];  return (0); }
@@ -1433,11 +1437,15 @@ double PjumpOptimum = 0.30; /* this is the optimum for the Bactrian move. */
 
 int ResetFinetuneSteps(FILE *fout, double Pjump[], double finetune[], int nsteps)
 {
+/* this abjusts the MCMC proposal step length, using equation 9 in 
+   Yang, Z. & Rodríguez, C. E. 2013 Searching for efficient Markov chain Monte Carlo proposal kernels. Proc. Natl .Acad. Sci. U.S.A. 110, 19307–19312.
+   PjumpOptimum = 0.3 is also from that paper.
+*/
    int j, verybadstep=0;
    double maxstep=99;  /* max step length */
 
    if(noisy>=3) {
-      printf("\n\nCurrent Pjump:    ");
+      printf("\n(nsteps = %d)\nCurrent Pjump:    ", nsteps);
       for(j=0; j<nsteps; j++)
          printf(" %8.5f", Pjump[j]);
       printf("\nCurrent finetune: ");
@@ -1969,7 +1977,7 @@ double CDFNormal (double x)
     double p, t=1.28, y=x*x/2;
 
     if (x<0) {  invers=1;  x=-x; }
-    if (x<t)  
+    if (x<t)
        p = .5 - x * (    .398942280444 - .399903438504 * y
                    /(y + 5.75885480458 - 29.8213557808
                    /(y + 2.62433121679 + 48.6959930692
@@ -2217,7 +2225,7 @@ double LnGamma (double x)
    int nx=(int)x;
 
    if((double)nx==x && nx>=0 && nx<=11)
-      lng = log((double)factorial(nx-1));
+      lng = log(factorial(nx-1));
    else {
       if(x<=0) {
          printf("LnGamma(%.6f) not implemented", x);
@@ -2530,7 +2538,7 @@ double LBinormal (double h, double k, double r)
      <1     (eq. 6)      20       20
 */
    int nGL = (fabs(r)<0.3 ? 16 : 32), i,j;
-   double *x=NULL, *w=NULL;  /* Gauss-Legendre quadrature points */
+   const double *x=NULL, *w=NULL;  /* Gauss-Legendre quadrature points */
    double shk, h0=h,k0=k, sk, L=0, t[2], hk2, y, a=0,b,c,d, bs, as, rs, smallr=1e-10;
 
    h=min2(h0,k0);  k=max2(h0,k0);
@@ -2613,7 +2621,7 @@ double logLBinormal (double h, double k, double r)
    See logCDFNormal() for more details of the idea.
 */
    int nGL = (fabs(r)<0.3 ? 16 : 32), i,j;
-   double *x=NULL, *w=NULL;  /* Gauss-Legendre quadrature points */
+   const double *x=NULL, *w=NULL;  /* Gauss-Legendre quadrature points */
    double shk, h0=h,k0=k, sk, L, t[2], hk2, a,b,c,d, bs, as, rs, signr=(r>=0?1:-1);
    double S1=0,S2=-1e300,S3=-1e300, y,L1=0,L2=0,L3=0, largeneg=-1e300, smallr=1e-10;
 
@@ -2708,6 +2716,36 @@ double logLBinormal (double h, double k, double r)
 
    return(L);
 }
+
+int IntegerPartitions(int n, int prinT)
+{
+/* Jerome Kelleher's algorithm for generating ascending partitions.
+*/
+   int a[256]={0}, npartitions=0, x, y, k, i;
+
+   if(n>255) puts("n too large here");
+   a[k = 1] = n;
+   while(k) {
+      y = a[k] - 1;
+      k--;
+      x = a[k] + 1;
+      while (x <= y) {
+         a[k] = x;
+         y -= x;
+         k++;
+      }
+      a[k] = x + y;
+      a[k+1] = 0;
+      npartitions ++;
+      if(prinT && n<64) {
+         printf("[%3d ]  ", k+1);
+         for(i=0; i<k+1; i++) printf(" %d", a[i]);
+         printf("\n");
+      }
+   }
+   return(npartitions);
+}
+
 
 #if (0)
 void testLBinormal (void)
@@ -3074,30 +3112,30 @@ double Quantile(double(*cdf)(double x, double par[]),
 
 
 
-int GaussLegendreRule(double **x, double **w, int npoints)
+int GaussLegendreRule(const double **x, const double **w, int npoints)
 {
 /* This returns the Gauss-Legendre nodes and weights in x[] and w[].
    npoints = 10, 20, 32, 64, 128, 256, 512, 1024
 */
    int status=0;   
-   static double x4[]  = {0.3399810435848562648026658, 0.8611363115940525752239465};
-   static double w4[]  = {0.6521451548625461426269361, 0.3478548451374538573730639};
+   static const double x4[]  = {0.3399810435848562648026658, 0.8611363115940525752239465};
+   static const double w4[]  = {0.6521451548625461426269361, 0.3478548451374538573730639};
 
-   static double x8[]  = {0.1834346424956498049394761, 0.5255324099163289858177390, 
+   static const double x8[]  = {0.1834346424956498049394761, 0.5255324099163289858177390, 
                           0.7966664774136267395915539, 0.9602898564975362316835609};
-   static double w8[]  = {0.3626837833783619829651504, 0.3137066458778872873379622, 
+   static const double w8[]  = {0.3626837833783619829651504, 0.3137066458778872873379622, 
                           0.2223810344533744705443560, 0.1012285362903762591525314};
 
-   static double x16[] = {0.0950125098376374401853193, 0.2816035507792589132304605, 
+   static const double x16[] = {0.0950125098376374401853193, 0.2816035507792589132304605, 
                           0.4580167776572273863424194, 0.6178762444026437484466718, 
                           0.7554044083550030338951012, 0.8656312023878317438804679, 
                           0.9445750230732325760779884, 0.9894009349916499325961542};
-   static double w16[] = {0.1894506104550684962853967, 0.1826034150449235888667637, 
+   static const double w16[] = {0.1894506104550684962853967, 0.1826034150449235888667637, 
                           0.1691565193950025381893121, 0.1495959888165767320815017, 
                           0.1246289712555338720524763, 0.0951585116824927848099251, 
                           0.0622535239386478928628438, 0.0271524594117540948517806};
 
-   static double x32[] = {0.048307665687738316234812570441, 0.144471961582796493485186373599, 
+   static const double x32[] = {0.048307665687738316234812570441, 0.144471961582796493485186373599, 
                         0.239287362252137074544603209166, 0.331868602282127649779916805730, 
                         0.421351276130635345364119436172, 0.506899908932229390023747474378, 
                         0.587715757240762329040745476402, 0.663044266930215200975115168663,
@@ -3105,7 +3143,7 @@ int GaussLegendreRule(double **x, double **w, int npoints)
                         0.849367613732569970133693004968, 0.896321155766052123965307243719, 
                         0.934906075937739689170919134835, 0.964762255587506430773811928118, 
                         0.985611511545268335400175044631, 0.997263861849481563544981128665};
-   static double w32[] = {0.0965400885147278005667648300636, 0.0956387200792748594190820022041, 
+   static const double w32[] = {0.0965400885147278005667648300636, 0.0956387200792748594190820022041, 
                         0.0938443990808045656391802376681, 0.0911738786957638847128685771116, 
                         0.0876520930044038111427714627518, 0.0833119242269467552221990746043, 
                         0.0781938957870703064717409188283, 0.0723457941088485062253993564785, 
@@ -3114,7 +3152,7 @@ int GaussLegendreRule(double **x, double **w, int npoints)
                         0.0342738629130214331026877322524, 0.0253920653092620594557525897892, 
                         0.0162743947309056706051705622064, 0.0070186100094700966004070637389};
 
-   static double x64[] = {0.024350292663424432508955842854, 0.072993121787799039449542941940, 
+   static const double x64[] = {0.024350292663424432508955842854, 0.072993121787799039449542941940, 
                         0.121462819296120554470376463492, 0.169644420423992818037313629748, 
                         0.217423643740007084149648748989, 0.264687162208767416373964172510, 
                         0.311322871990210956157512698560, 0.357220158337668115950442615046, 
@@ -3130,7 +3168,7 @@ int GaussLegendreRule(double **x, double **w, int npoints)
                         0.961008799652053718918614121897, 0.973326827789910963741853507352, 
                         0.983336253884625956931299302157, 0.991013371476744320739382383443, 
                         0.996340116771955279346924500676, 0.999305041735772139456905624346};
-   static double w64[] = {0.0486909570091397203833653907347, 0.0485754674415034269347990667840, 
+   static const double w64[] = {0.0486909570091397203833653907347, 0.0485754674415034269347990667840, 
                         0.0483447622348029571697695271580, 0.0479993885964583077281261798713,
                         0.0475401657148303086622822069442, 0.0469681828162100173253262857546, 
                         0.0462847965813144172959532492323, 0.0454916279274181444797709969713, 
@@ -3147,7 +3185,7 @@ int GaussLegendreRule(double **x, double **w, int npoints)
                         0.0088467598263639477230309146597, 0.0065044579689783628561173604000, 
                         0.0041470332605624676352875357286, 0.0017832807216964329472960791450};
 
-   static double x128[] = {0.0122236989606157641980521, 0.0366637909687334933302153, 
+   static const double x128[] = {0.0122236989606157641980521, 0.0366637909687334933302153, 
                         0.0610819696041395681037870, 0.0854636405045154986364980, 
                         0.1097942311276437466729747, 0.1340591994611877851175753, 
                         0.1582440427142249339974755, 0.1823343059853371824103826, 
@@ -3179,7 +3217,7 @@ int GaussLegendreRule(double **x, double **w, int npoints)
                         0.9901278184917343833379303, 0.9932571129002129353034372, 
                         0.9957927585349811868641612, 0.9977332486255140198821574, 
                         0.9990774599773758950119878, 0.9998248879471319144736081};
-  static double w128[]  =  {0.0244461801962625182113259, 0.0244315690978500450548486, 
+  static const double w128[]  =  {0.0244461801962625182113259, 0.0244315690978500450548486, 
                         0.0244023556338495820932980, 0.0243585572646906258532685, 
                         0.0243002001679718653234426, 0.0242273192228152481200933, 
                         0.0241399579890192849977167, 0.0240381686810240526375873, 
@@ -3212,7 +3250,7 @@ int GaussLegendreRule(double **x, double **w, int npoints)
                         0.0022382884309626187436221, 0.0016425030186690295387909, 
                         0.0010458126793403487793129, 0.0004493809602920903763943};
 
-   static double x256[]  =  {0.0061239123751895295011702, 0.0183708184788136651179263, 
+   static const double x256[]  =  {0.0061239123751895295011702, 0.0183708184788136651179263, 
                         0.0306149687799790293662786, 0.0428545265363790983812423, 
                         0.0550876556946339841045614, 0.0673125211657164002422903, 
                         0.0795272891002329659032271, 0.0917301271635195520311456, 
@@ -3276,7 +3314,7 @@ int GaussLegendreRule(double **x, double **w, int npoints)
                         0.9975192527567208275634088, 0.9983062664730064440555005, 
                         0.9989435258434088565550263, 0.9994309374662614082408542, 
                         0.9997684374092631861048786, 0.9999560500189922307348012};
-   static double w256[]  =  {0.0122476716402897559040703, 0.0122458343697479201424639, 
+   static const double w256[]  =  {0.0122476716402897559040703, 0.0122458343697479201424639, 
                         0.0122421601042728007697281, 0.0122366493950401581092426, 
                         0.0122293030687102789041463, 0.0122201222273039691917087, 
                         0.0122091082480372404075141, 0.0121962627831147135181810, 
@@ -3341,7 +3379,7 @@ int GaussLegendreRule(double **x, double **w, int npoints)
                         0.0005623489540314098028152, 0.0004124632544261763284322, 
                         0.0002625349442964459062875, 0.0001127890178222721755125};
 
-   static double x512[]  =  {0.0030649621851593961529232, 0.0091947713864329108047442, 
+   static const double x512[]  =  {0.0030649621851593961529232, 0.0091947713864329108047442, 
                         0.0153242350848981855249677, 0.0214531229597748745137841, 
                         0.0275812047119197840615246, 0.0337082500724805951232271, 
                         0.0398340288115484476830396, 0.0459583107468090617788760, 
@@ -3469,7 +3507,7 @@ int GaussLegendreRule(double **x, double **w, int npoints)
                         0.9993784092025992514480161, 0.9995756497983108555936109, 
                         0.9997353306710426625827368, 0.9998574463699794385446275, 
                         0.9999419946068456536361287, 0.9999889909843818679872841};
-   static double w512[] = {0.0061299051754057857591564, 0.0061296748380364986664278, 
+   static const double w512[] = {0.0061299051754057857591564, 0.0061296748380364986664278, 
                         0.0061292141719530834395471, 0.0061285231944655327693402, 
                         0.0061276019315380226384508, 0.0061264504177879366912426, 
                         0.0061250686964845654506976, 0.0061234568195474804311878, 
@@ -3598,7 +3636,7 @@ int GaussLegendreRule(double **x, double **w, int npoints)
                         0.0001408990173881984930124, 0.0001033319034969132362968, 
                         0.0000657657316592401958310, 0.0000282526373739346920387};
 
-   static double x1024[] = {0.0015332313560626384065387, 0.0045996796509132604743248, 
+   static const double x1024[] = {0.0015332313560626384065387, 0.0045996796509132604743248, 
                         0.0076660846940754867627839, 0.0107324176515422803327458, 
                         0.0137986496899844401539048, 0.0168647519770217265449962, 
                         0.0199306956814939776907024, 0.0229964519737322146859283, 
@@ -3854,7 +3892,7 @@ int GaussLegendreRule(double **x, double **w, int npoints)
                         0.9998444384611711916084367, 0.9998938032169419878731474, 
                         0.9999337658606177711221103, 0.9999643261538894550943330, 
                         0.9999854843850284447675914, 0.9999972450545584403516182};
-   static double w1024[] = {0.0030664603092439082115513, 0.0030664314747171934849726, 
+   static const double w1024[] = {0.0030664603092439082115513, 0.0030664314747171934849726, 
                         0.0030663738059349007324470, 0.0030662873034393008056861, 
                         0.0030661719680437936084028, 0.0030660278008329004477528, 
                         0.0030658548031622538363679, 0.0030656529766585847450783, 
@@ -4143,8 +4181,9 @@ double NIntegrateGaussLegendre (double(*fun)(double x), double a, double b, int 
 /* this approximates the integral Nintegrate[fun[x], {x,a,b}].
    npoints is 10, 20, 32 or 64 nodes for legendre.");
 */
-   int j, ixw;
-   double *x=NULL, *w=NULL, sign, s=0, t;
+   int j, ixw, sign;
+   const double *x=NULL, *w=NULL;
+   double s=0, t;
 
    if(npoints%2 != 0)
       error2("this assumes even number of points.");
@@ -4161,24 +4200,24 @@ double NIntegrateGaussLegendre (double(*fun)(double x), double a, double b, int 
 }
 
 
-int GaussLaguerreRule(double **x, double **w, int npoints)
+int GaussLaguerreRule(const double **x, const double **w, int npoints)
 {
 /* this returns the Gauss-Laguerre nodes and weights in x[] and w[].
    npoints = 5, 10, 20.
 */
    int status=0;
-   static double x5[]={0.263560319718140910203061943361E+00,
+   static const double x5[]={0.263560319718140910203061943361E+00,
                        0.141340305910651679221840798019E+01, 
                        0.359642577104072208122318658878E+01, 
                        0.708581000585883755692212418111E+01, 
                        0.126408008442757826594332193066E+02};
-   static double w5[]={0.521755610582808652475860928792E+00,
+   static const double w5[]={0.521755610582808652475860928792E+00,
                        0.398666811083175927454133348144E+00,
                        0.759424496817075953876533114055E-01,
                        0.361175867992204845446126257304E-02,
                        0.233699723857762278911490845516E-04};
 
-   static double x10[]={0.137793470540492430830772505653E+00,
+   static const double x10[]={0.137793470540492430830772505653E+00,
 	                   	0.729454549503170498160373121676E+00,
 	                   	0.180834290174031604823292007575E+01,
 	                   	0.340143369785489951448253222141E+01,
@@ -4188,7 +4227,7 @@ int GaussLaguerreRule(double **x, double **w, int npoints)
                    		0.162792578313781020995326539358E+02,
                    		0.219965858119807619512770901956E+02,
 		                	0.299206970122738915599087933408E+02};
-   static double w10[]={0.308441115765020141547470834678E+00,
+   static const double w10[]={0.308441115765020141547470834678E+00,
 	                   	0.401119929155273551515780309913E+00,
 	                   	0.218068287611809421588648523475E+00,
 	                   	0.620874560986777473929021293135E-01,
@@ -4199,7 +4238,7 @@ int GaussLaguerreRule(double **x, double **w, int npoints)
                    		0.183956482397963078092153522436E-08,
 		                	0.991182721960900855837754728324E-12};
 
-   static double x20[]={0.705398896919887533666890045842E-01,
+   static const double x20[]={0.705398896919887533666890045842E-01,
                         0.372126818001611443794241388761E+00,
                         0.916582102483273564667716277074E+00,
                         0.170730653102834388068768966741E+01,
@@ -4219,7 +4258,7 @@ int GaussLaguerreRule(double **x, double **w, int npoints)
                    		0.476199940473465021399416271529E+02,
                    		0.558107957500638988907507734445E+02,
                         0.665244165256157538186403187915E+02};
-   static double w20[]={0.168746801851113862149223899689E+00,
+   static const double w20[]={0.168746801851113862149223899689E+00,
 	                     0.291254362006068281716795323812E+00,
 	                   	0.266686102867001288549520868998E+00,
 	                   	0.166002453269506840031469127816E+00,
@@ -4388,12 +4427,12 @@ void GetIndexTernary(int *ix, int *iy, double *x, double *y, int itriangle, int 
 
 
 
-long factorial (int n)
+double factorial (int n)
 {
-   long f=1, i;
-   if (n>11) error2("n>10 in factorial");
-   for (i=2; i<=(long)n; i++) f *= i;
-   return (f);
+   double fact=1, i;
+   if (n>50) puts("large n in factorial");
+   for (i=2; i<=(double)n; i++) fact *= i;
+   return (fact);
 }
 
 
@@ -4441,6 +4480,14 @@ int matby (double a[], double b[], double c[], int n, int m, int k)
 /* a[n*m], b[m*k], c[n*k]  ......  c = a*b
 */
 {
+#ifdef USE_GSL
+    memset(c, 0, n*k);
+    gsl_matrix_view A = gsl_matrix_view_array(a, n, m);
+    gsl_matrix_view B = gsl_matrix_view_array(b, m, k);
+    gsl_matrix_view C = gsl_matrix_view_array(c, n, k);
+    
+    gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, &A.matrix, &B.matrix, 0.0, &C.matrix);
+#else
    int i1, i2, i3;
    double t;
 
@@ -4449,6 +4496,7 @@ int matby (double a[], double b[], double c[], int n, int m, int k)
          for (i3=0,t=0; i3<m; i3++) t += a[i1*m+i3]*b[i3*k+i2];
       c[i1*k+i2] = t;
    }
+#endif
    return (0);
 }
 
@@ -4567,6 +4615,24 @@ int matinv (double x[], int n, int m, double space[])
    return(0);
 }
 
+#ifdef USE_GSL
+int matexpGSL(double A[], int n, double space[]) {
+    /* this uses the (unsupported) GSL function for matrix exponential, which
+     appears to work better than the old implementation below. Because it is
+     unsupported though, we should keep an eye on it.
+     */
+    double * EA = space;
+    memset(EA, 0, n*n);
+    gsl_matrix_view m = gsl_matrix_view_array(A, n, n);
+    gsl_matrix_view expm = gsl_matrix_view_array(EA, n, n);
+    
+    gsl_linalg_exponential_ss(&m.matrix, &expm.matrix, 0);
+    
+    memcpy(A, EA, n*n*sizeof(double));
+    
+    return 0;
+}
+#endif
 
 int matexp (double A[], int n, int nTaylorTerms, int nSquares, double space[])
 {
@@ -5112,24 +5178,27 @@ int scanfile (FILE*fin, int *nrecords, int *nx, int *HasHeader, char line[], int
 {
  /* If the first line has letters, it is considered to be the header line, and HasHeader=0 is set.
  */
-   int  i, lline=1000000, nxline, eof=0;
-
-   *HasHeader = 0;
+   int  i, lline=1000000, nxline=0, eof=0, hastext;
+  
+   *nx=0;  *HasHeader=0;
    for (*nrecords=0; ; ) {
-      if (!fgets(line,lline,fin)) break;
+      if (!fgets(line, lline, fin)) break;
       eof = feof(fin);
       if(*nrecords==0 && strchr(line, '\n')==NULL)
          puts(" line too short or too long?");
-
-      if(*nrecords==0) {
-         for(i=0; i<lline && line[i]; i++)
-            if(isalpha(line[i])) { 
-               *HasHeader=1; break; 
-            }
+      for(i=0, hastext=0; i<lline && line[i]; i++)
+         if(line[i]!='e' && line[i]!='E' && isalpha(line[i])) { hastext=1; break; }
+      if(hastext) {
+         if(*nrecords==0) {
+            *HasHeader=1;
+            printf("\nData file has a header line.\n");
+         }
+         else {
+            printf("text found on line %d.", *nrecords + 1);
+            error2("file format");
+         }
       }
       nxline = splitline(line, ifields);
-      if(*nrecords==0 && *HasHeader)
-         printf("First line has variable names, %d variables\n", nxline);
 
       if(nxline == 0)
          continue;
@@ -5144,7 +5213,6 @@ int scanfile (FILE*fin, int *nrecords, int *nx, int *HasHeader, char line[], int
             error2("error in scanfile()");
          }
       }
-
       if(*nx>MAXNFIELDS) error2("raise MAXNFIELDS?");
 
       (*nrecords)++;
@@ -5376,7 +5444,7 @@ double Eff_IntegratedCorrelationTime (double x[], int n, double *mx, double *var
    Note that this destroys x[].
 */
    double Tint=1, rho0=0, rho, m=0, s=0;
-   int  i, irho;
+   int  i, ir;
 
    /* if(n<1000) puts("chain too short for calculating Eff? "); */
    for (i=0; i<n; i++) m += x[i];
@@ -5387,15 +5455,14 @@ double Eff_IntegratedCorrelationTime (double x[], int n, double *mx, double *var
    for (i=0; i<n; i++) x[i] /= s;
 
    if(mx) { *mx=m; *varx=s*s; } 
-   if(s<1E-200) {
-      Tint = -1;
-   }
+   if(s/(fabs(m)+1) < 1E-9)
+      Tint = n;
    else {
-      for(irho=1; irho<n-10; irho++) {
-         for (i=0,rho=0; i<n-irho; i++)
-            rho += x[i]*x[i+irho];
+      for(ir=1; ir<n-10; ir++) {
+         for (i=0,rho=0; i<n-ir; i++)
+            rho += x[i]*x[i+ir];
          rho /= (n-1.0);
-         if(irho>10 && rho+rho0<0) break;
+         if(ir>10 && rho+rho0<0) break;
          Tint += rho*2;
          rho0 = rho;
       }
@@ -5498,7 +5565,7 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int propternary,
       HPDinterval(y, n, tmp, 0.05);
       xHPD025[j] = tmp[0];
       xHPD975[j] = tmp[1];
-      if((j+1)%100==0 || j==p-1)
+      if((j+1)%2==0 || j==p-1)
          printf("\r\t\t%6d/%6d done  %s", j+1, p, printtime(timestr));
    }
 
@@ -5570,73 +5637,6 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int propternary,
    return(0);
 }
 
-int DescriptiveStatisticsSimple (FILE *fout, char infile[], int SkipColumns)
-{
-   FILE *fin=gfopen(infile,"r");
-   int  n, p, i, j;
-   char *fmt=" %9.6f", *fmt1=" %9.4f", timestr[32];
-   double *data, *x, *mean, *median, *minx, *maxx, *x005,*x995,*x025,*x975,*xHPD025,*xHPD975,*var;
-   double *Tint, tmp[2], *y;
-   char *line;
-   static int lline=1000000, ifields[MAXNFIELDS], HasHeader=1;
-   static char varstr[MAXNFIELDS][96]={""};
-
-   if((line=(char*)malloc(lline*sizeof(char)))==NULL) error2("oom ds");
-   scanfile(fin, &n, &p, &HasHeader, line, ifields);
-   printf("\n%d records, %d variables\n", n, p);
-
-   data = (double*)malloc(p*n*sizeof(double));
-   mean = (double*)malloc((p*13+n)*sizeof(double));
-   if (data==NULL||mean==NULL) error2("oom DescriptiveStatistics.");
-   memset(data, 0, p*n*sizeof(double));
-   memset(mean, 0, (p*12+n)*sizeof(double));
-   median=mean+p; minx=median+p; maxx=minx+p; 
-   x005=maxx+p; x995=x005+p; x025=x995+p; x975=x025+p; xHPD025=x975+p; xHPD975=xHPD025+p;
-   var=xHPD975+p;   Tint=var+p;  y=Tint+p;
-
-   if(HasHeader)
-      for(i=0; i<p; i++) sscanf(line+ifields[i], "%s", varstr[i]);
-   for(i=0; i<n; i++)
-      for(j=0; j<p; j++) 
-         fscanf(fin, "%lf", &data[j*n+i]);
-   fclose(fin); 
-
-   printf("Collecting mean, median, min, max, percentiles, etc.\n");
-   for(j=SkipColumns,x=data+j*n; j<p; j++,x+=n) {
-      memmove(y, x, n*sizeof(double));
-      Tint[j] = 1/Eff_IntegratedCorrelationTime(y, n, &mean[j], &var[j]);
-      qsort(x, (size_t)n, sizeof(double), comparedouble);
-      minx[j] = x[0];  maxx[j] = x[n-1];
-      median[j] = (n%2==0 ? (x[n/2]+x[n/2+1])/2 : x[(n+1)/2]);
-      x005[j] = x[(int)(n*.005)];    x995[j] = x[(int)(n*.995)];
-      x025[j] = x[(int)(n*.025)];    x975[j] = x[(int)(n*.975)];
-
-      HPDinterval(x, n, tmp, 0.05);
-      xHPD025[j] = tmp[0];
-      xHPD975[j] = tmp[1];
-      if((j+1)%100==0 || j==p-1)
-         printf("\r\t\t\t%6d/%6d done  %s", j+1, p, printtime(timestr));
-   }
-
-   fprintf(fout,"\n\n       ");
-   for (j=SkipColumns; j<p; j++) fprintf(fout,"   %s", varstr[j]);
-   fprintf(fout,"\nmean    ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,mean[j]);
-   fprintf(fout,"\nmedian  ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,median[j]);
-   fprintf(fout,"\nS.D.    ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,sqrt(var[j]));
-   fprintf(fout,"\nmin     ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,minx[j]);
-   fprintf(fout,"\nmax     ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,maxx[j]);
-   fprintf(fout,"\n2.5%%    "); for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,x025[j]);
-   fprintf(fout,"\n97.5%%   "); for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,x975[j]);
-   fprintf(fout,"\n2.5%%HPD "); for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,xHPD025[j]);
-   fprintf(fout,"\n97.5%%HPD"); for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,xHPD975[j]);
-   fprintf(fout,"\nESS*    ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt1,n/Tint[j]);
-   fprintf(fout,"\nEff*    ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt, 1/Tint[j]);
-   fflush(fout);
-
-   free(data); free(mean); free(line);
-   return(0);
-}
-
 #undef MAXNFIELDS
 
 
@@ -5678,7 +5678,7 @@ int gradient (int n, double x[], double f0, double g[],
       for(i=0; i<n; i++)  {
          for(j=0; j<n; j++) 
             x0[j] = x1[j] = x[j];
-         eh = pow(eh0*(fabs(x[i])+1), 0.67);
+         eh = eh0*(fabs(x[i])+1);
          x0[i] -= eh; x1[i] += eh;
          g[i] = ((*fun)(x1,n) - (*fun)(x0,n))/(eh*2.0);
       }
@@ -6260,7 +6260,7 @@ int gradientB (int n, double x[], double f0, double g[],
       eh = eh0*(fabs(x[i])+1);
       if (xmark[i]==0 && (AlwaysCenter || SIZEp<1)) {   /* central */
          for(j=0; j<n; j++)  x0[j] = x1[j] = x[j];
-         eh = pow(eh, .67);  x0[i] -= eh;  x1[i] += eh;
+         x0[i] -= eh;  x1[i] += eh;
          g[i] = ((*fun)(x1,n) - (*fun)(x0,n))/(eh*2.0);
       }
       else  {                         /* forward or backward */

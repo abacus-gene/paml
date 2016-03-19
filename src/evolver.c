@@ -33,11 +33,14 @@
 #define NCODE         64
 #define NCATG         40
 
+
 struct CommonInfo {
    unsigned char *z[2*NS-1];
    char spname[NS][LSPNAME+1], daafile[512], cleandata, readpattern;
    int ns, ls, npatt, np, ntime, ncode, clock, rooted, model, icode;
    int seqtype, *pose, ncatG, NSsites;
+   int ngene, lgene[1], posG[1+1];  /* not used */
+   double piG[1][4], rgene[1];  /* not used */
    double *fpatt, kappa, omega, alpha, pi[64], *conP, daa[20*20];
    double freqK[NCATG], rK[NCATG];
    char *siteID;    /* used if ncatG>1 */
@@ -64,19 +67,17 @@ int LASTROUND=0; /* not used */
 #include "treespace.c"
 
 void TreeDistances(FILE* fout);
-void Simulate(char*ctlf);
-void MakeSeq(char*z, int ls);
-int EigenQbase(double rates[], double pi[], 
-    double Root[],double U[],double V[],double Q[]);
-int EigenQcodon (int getstats, double kappa,double omega,double pi[],
-    double Root[], double U[], double V[], double Q[]);
-int EigenQaa(double pi[],double Root[], double U[], double V[],double Q[]);
+void Simulate(char *ctlf);
+void MakeSeq(char *z, int ls);
+int EigenQbase(double rates[], double pi[], double Root[],double U[], double V[],double Q[]);
+int EigenQcodon (int getstats, double kappa,double omega,double pi[], double Root[], double U[], double V[], double Q[]);
+int EigenQaa(double pi[], double Root[], double U[], double V[],double Q[]);
 void CladeMrBayesProbabilities (char treefile[]);
 int between_f_and_x(void);
 void LabelClades(FILE *fout);
 
 char *MCctlf0[]={"MCbase.dat","MCcodon.dat","MCaa.dat"};
-char *seqf[3]={"mc.paml", "mc.paml", "mc.nex"};
+char *seqf[]={"mc.paml", "mc.paml", "mc.nex", "mc.nex"};
 
 enum {JC69, K80, F81, F84, HKY85, T92, TN93, REV} BaseModels;
 char *basemodels[]={"JC69","K80","F81","F84","HKY85","T92","TN93","REV"};
@@ -98,6 +99,8 @@ int main (int argc, char*argv[])
    printf("EVOLVER in %s\n", pamlVerStr);
    com.alpha=0; com.cleandata=1; com.model=0; com.NSsites=0;
 
+   if(argc>2 && !strcmp(argv[argc-1], "--stdout-no-buf"))
+      setvbuf(stdout, NULL, _IONBF, 0);
    if(argc>1) {
       gotoption=1;   sscanf(argv[1], "%d", &option);
    }
@@ -216,7 +219,7 @@ int main (int argc, char*argv[])
       Simulate(MCctlf ? MCctlf : MCctlf0[option-5]);
    }
    else if(option==9) {
-      CladeSupport(fout, treefile, mastertreefile, pick1tree);
+      CladeSupport(fout, treefile, 1, mastertreefile, pick1tree);
       /* CladeMrBayesProbabilities("/papers/BPPJC3sB/Karol.trees"); */
    }
    return(0);
@@ -770,110 +773,8 @@ void Evolve1 (int inode)
 }
 
 
-int PatternWeightSimple (int CollapsJC)
-{
-/* This is modified from PatternWeight() and collaps sites into patterns, 
-   for nucleotide, amino acid, or codon sequences.
-   This relies on \0 being the end of the string so that sequences should not be 
-   encoded before this routine is called.
-   com.pose[i] has labels for genes as input and maps sites to patterns in return.
-   com.fpatt, a vector of doubles, wastes space as site pattern counts are integers.
-   Sequences z[ns*ls] are copied into patterns zt[ls*lpatt], and bsearch is used 
-   twice to avoid excessive copying, to count npatt first & to generate fpatt etc.
-*/
-   int maxnpatt=com.ls, h, l,u, ip, j, k, same;
-   /* int n31 = (com.seqtype==CODONseq ? 3 : 1); */
-   int n31 = 1;
-   int lpatt = com.ns*n31+1;   /* extra 0 used for easy debugging, can be avoided */
-   int *p2s;  /* point patterns to sites in zt */
-   char *zt, *p;
-   double nc = (com.seqtype == 1 ? 64 : com.ncode) + !com.cleandata+1;
-   int debug=0;
-   char DS[]="DS";
 
-   /* (A) Collect and sort patterns.  Get com.npatt.
-      Move sequences com.z[ns][ls] into sites zt[ls*lpatt].  
-      Use p2s to map patterns to sites in zt to avoid copying.
-   */
-
-   if((com.seqtype==1 && com.ns<5) || (com.seqtype!=1 && com.ns<7))
-      maxnpatt = (int)(pow(nc, (double)com.ns) + 0.5);
-   if(maxnpatt>com.ls) maxnpatt = com.ls;
-   p2s  = (int*)malloc(maxnpatt*sizeof(int));
-   zt = (char*)malloc(com.ls*lpatt*sizeof(char));
-   if(p2s==NULL || zt==NULL)  error2("oom p2s or zt");
-   memset(zt, 0, com.ls*lpatt*sizeof(char));
-   for(j=0; j<com.ns; j++) 
-      for(h=0; h<com.ls; h++) 
-         for(k=0; k<n31; k++)
-            zt[h*lpatt+j*n31+k] = com.z[j][h*n31+k];
-
-   com.npatt = l = u = ip = 0;
-   for(h=0; h<com.ls; h++) {
-      if(debug) printf("\nh %3d %s", h, zt+h*lpatt);
-      /* bsearch in existing patterns.  Knuth 1998 Vol3 Ed2 p.410 
-         ip is the loc for match or insertion.  [l,u] is the search interval.
-      */
-      same = 0;
-      if(h != 0) {  /* not 1st pattern? */
-         for(l=0, u=com.npatt-1; ; ) {
-            if(u<l) break;
-            ip = (l+u)/2;
-            k = strcmp(zt+h*lpatt, zt+p2s[ip]*lpatt);
-            if(k<0)        u = ip - 1;
-            else if(k>0)   l = ip + 1;
-            else         { same = 1;  break; }
-         }
-      }
-      if(!same) {
-         if(com.npatt>maxnpatt) 
-            error2("npatt > maxnpatt");
-         if(l > ip) ip++;        /* last comparison in bsearch had k > 0. */
-         /* Insert new pattern at ip.  This is the expensive step. */
-
-         if(ip<com.npatt)
-            memmove(p2s+ip+1, p2s+ip, (com.npatt-ip)*sizeof(int));
-         p2s[ip] = h;
-         com.npatt ++;
-      }
-
-      if(debug) {
-         printf(": %3d (%c ilu %3d%3d%3d) ", com.npatt, DS[same], ip, l, u);
-         for(j=0; j<com.npatt; j++)
-            printf(" %s", zt+p2s[j]*lpatt);
-      }
-   }     /* for (h)  */
-
-   /* (B) count pattern frequencies */
-   com.fpatt = (double*)realloc(com.fpatt, com.npatt*sizeof(double));
-   if(com.fpatt==NULL) error2("oom fpatt");
-   for(ip=0; ip<com.npatt; ip++) com.fpatt[ip] = 0;
-   for(h=0; h<com.ls; h++) {
-      for(same=0, l=0, u=com.npatt-1; ; ) {
-         if(u<l) break;
-         ip = (l+u)/2;
-         k = strcmp(zt+h*lpatt, zt+p2s[ip]*lpatt);
-         if(k<0)        u = ip - 1;
-         else if(k>0)   l = ip + 1;
-         else         { same = 1;  break; }
-      }
-      if(!same)
-         error2("ghost pattern?");
-      com.fpatt[ip]++;
-   }     /* for (h)  */
-
-   for(j=0; j<com.ns; j++) {
-      for(ip=0,p=com.z[j]; ip<com.npatt; ip++) 
-         for(k=0; k<n31; k++)
-            *p++ = zt[p2s[ip]*lpatt+j*n31+k];
-   }
-   free(p2s);  free(zt);
-
-   return (0);
-}
-
-
-void Simulate (char*ctlf)
+void Simulate (char *ctlf)
 {
 /* simulate nr data sets of nucleotide, codon, or AA sequences.
    ls: number of nucleotides, codons, or AAs in each sequence.
@@ -881,7 +782,7 @@ void Simulate (char*ctlf)
    When com.alpha or com.ncatG>1, sites are randomized after sequences are 
    generated.
    space[com.ls] is used to hold site marks.
-   format (0: paml sites; 1: paml patterns; 2: paup nex)
+   format:  0: paml sites; 1: paml patterns; 2: paup nex; 3: paup JC69 format
  */
    char *ancf="ancestral.txt", *siteIDf="siterates.txt";
    FILE *fin, *fseq, *ftree=NULL, *fanc=NULL, *fsiteID=NULL;
@@ -899,10 +800,10 @@ void Simulate (char*ctlf)
    printf("\nReading options from data file %s\n", ctlf);
    com.ncode = n = (com.seqtype==0 ? 4 : (com.seqtype==1?64:20));
    fin = (FILE*)gfopen(ctlf,"r");
-   fscanf(fin, "%d", &format);  fgets(line, lline, fin);
+   fscanf(fin, "%d", &format);
+   fgets(line, lline, fin);
    printf("\nSimulated data will go into %s.\n", seqf[format]);
-   if(format==2) printf("%s, %s, & %s will be appended if existent.\n",
-                       paupstart,paupblock,paupend);
+   if(format==2) printf("%s, %s, & %s will be appended if existent.\n", paupstart,paupblock,paupend);
 
    fscanf (fin, "%d", &i);
    fgets(line, lline, fin);
@@ -920,8 +821,8 @@ void Simulate (char*ctlf)
       sprintf(com.spname[i],"S%d",i+1);
 
    if(fixtree) {
-      fscanf(fin,"%lf",&tlength);   fgets(line, lline, fin);
-      if(ReadTreeN(fin,&i,&j, 1, 1))  /* might overwrite spname */
+      fscanf(fin, "%lf", &tlength);   fgets(line, lline, fin);
+      if(ReadTreeN(fin, &i, &j, 1, 1))  /* might overwrite spname */
          error2("err tree..");
 
       if(i==0) error2("use : to specify branch lengths in tree");
@@ -939,7 +840,7 @@ void Simulate (char*ctlf)
       }
       if(com.seqtype==CODONseq && com.model && !com.NSsites) { /* branch model */
          FOR(i,tree.nnode) nodes[i].omega=nodes[i].label;
-         FPN(F0);  OutTreeN(F0, 1, PrBranch&PrLabel);  FPN(F0);
+         FPN(F0);  OutTreeN(F0, 1, PrBranch|PrLabel);  FPN(F0);
       }
    }
    else {   /* random trees, broken or need testing? */
@@ -950,7 +851,7 @@ void Simulate (char*ctlf)
    }
 
    if(com.seqtype==BASEseq) {
-      fscanf(fin,"%d",&com.model);  
+      fscanf(fin,"%d", &com.model);
       fgets(line, lline, fin);
       if(com.model<0 || com.model>REV) error2("model err");
       if(com.model==T92) error2("T92: please use HKY85 with T=A and C=G.");
@@ -1109,7 +1010,7 @@ void Simulate (char*ctlf)
    puts("\nAll parameters are read.  Ready to simulate\n");
    for(j=0; j<com.ns*2-1; j++)
       com.z[j] = (unsigned char*)malloc(com.ls*sizeof(unsigned char));
-   sspace = max2(sspace, com.ls*(int)sizeof(double));
+   sspace = max2(sspace, 8000000);
    space  = (double*)malloc(sspace);
    if(com.alpha || com.ncatG) tmpseq=(char*)space;
    if (com.z[com.ns*2-1-1]==NULL) error2("oom for seqs");
@@ -1119,12 +1020,12 @@ void Simulate (char*ctlf)
    }
 
    fseq = gfopen(seqf[format], "w");
-   if(format==2) appendfile(fseq, paupstart);
+   if(format==2 || format==3) appendfile(fseq, paupstart);
    
    fanc = (FILE*)gfopen(ancf, "w");
    if(fixtree) {
       fputs("\nAncestral sequences generated during simulation ",fanc);
-      fprintf(fanc,"(check against %s)\n",seqf[format]);
+      fprintf(fanc, "(check against %s)\n", seqf[format]);
       OutTreeN(fanc,0,0); FPN(fanc); OutTreeB(fanc); FPN(fanc);
    }
    if(com.alpha || com.NSsites) {
@@ -1152,7 +1053,7 @@ void Simulate (char*ctlf)
       MakeSeq(com.z[tree.root], com.ls);
 
       if (com.alpha)
-         Rates4Sites(com.siterates,com.alpha,com.ncatG,com.ls, 0,space);
+         Rates4Sites(com.siterates, com.alpha, com.ncatG, com.ls, 0,space);
       else if(com.seqtype==1 && com.NSsites) { /* for NSsites */
          /* the table for the alias algorithm is the same, but ncatG is small. */
          MultiNomialAliasSetTable(com.ncatG, com.freqK, Falias, Lalias, space);
@@ -1187,22 +1088,25 @@ void Simulate (char*ctlf)
       }
 
       /* print sequences*/
-      if(format==1) {
-         for(i=0; i<com.ns; i++) for(h=0; h<com.ls; h++) com.z[i][h] ++;
-         PatternWeightSimple(0);
-         for(i=0; i<com.ns; i++) for(h=0; h<com.npatt; h++) com.z[i][h] --;
+      if(format==1 || format==3) {
+         for(i=0; i<com.ns; i++) for(h=0; h<com.ls; h++)    com.z[i][h] ++;  /* coded as 1, 2, ... */
+         PatternWeightSimple();
+         for(i=0; i<com.ns; i++) for(h=0; h<com.npatt; h++) com.z[i][h] --;  /* coded as 0, 1, ... */
+         if(format==3) 
+            PatternWeightJC69like();
       }
-      if(format==2) fprintf(fseq,"\n\n[Replicate # %d]\n", ir+1);
+      if(format==2 || format==3) fprintf(fseq,"\n\n[Replicate # %d]\n", ir+1);
       printSeqs(fseq, NULL, NULL, format); /* printsma not usable as it codes into 0,1,...,60. */
-      if(format==2 && !fixtree) {
+
+      if((format==2 || format==3) && !fixtree) {
          fprintf(fseq,"\nbegin tree;\n   tree true_tree = [&U] "); 
          OutTreeN(fseq,1,1); fputs(";\n",fseq);
          fprintf(fseq,"end;\n\n");
       }
-      if(format==2) appendfile(fseq,paupblock);
+      if(format==2 || format==3) appendfile(fseq, paupblock);
 
       /* print ancestral seqs, rates for sites. */
-      if(format!=1) {
+      if(format!=1 && format!=3) {  /* don't print ancestors if site patterns are printed. */
          j = (com.seqtype==CODONseq?3*com.ls:com.ls);
          fprintf(fanc,"[replicate %d]\n",ir+1);
 
@@ -1252,7 +1156,7 @@ void Simulate (char*ctlf)
 
       printf ("\rdid data set %d %s", ir+1, (com.ls>100000||nr<100? "\n" : ""));
    }   /* for (ir) */
-   if(format==2) appendfile(fseq, paupend);
+   if(format==2 || format==3) appendfile(fseq, paupend);
 
    fclose(fseq);  if(!fixtree) fclose(fanc);  
    if(com.alpha || com.NSsites) fclose(fsiteID);

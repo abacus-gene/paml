@@ -67,20 +67,8 @@ int GetTreeI (int itree, int ns, int rooted)
 }
 
 
-/*
-int NumberofTrees (int ns, int rooted)
-{
-   int i, ntree=1;
 
-   if (ns>15) error2 ("ns too large in NumberofTrees().");
-   for (i=4; i<=ns; i++)  ntree *= 2*i-5;
-   if (rooted) ntree *= 2*i-3;
-   return (ntree);
-}
-*/
-
-
-int CountLHistories (void)
+int CountLHsTree (void)
 {
 /* This counts the number of labeled histories for a given rooted tree.
 */
@@ -148,7 +136,7 @@ int ListTrees (FILE* fout, int ns, int rooted)
       MakeTreeIb(ns, Ib, rooted);
       OutTreeN(fout, (com.ns<=26), 0);
 
-      if(rooted) fprintf(fout, " [%7d %6d LHs]\n", NTrees++, CountLHistories());
+      if(rooted) fprintf(fout, " [%7d %6d LHs]\n", NTrees++, CountLHsTree());
       else fprintf(fout, " [%7d]\n", NTrees++);
 
       for (i=nM-1,Ib[nM-1]++,finish=0; i>=0; i--) {

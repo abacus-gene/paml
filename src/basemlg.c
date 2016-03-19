@@ -100,6 +100,8 @@ int main (int argc, char *argv[])
    printf("BASEMLG in %s\n", pamlVerStr);
    frate=fopen(ratef,"w");  frub=fopen("rub","w");  flfh=fopen("lnf","w");
 
+   if(argc>2 && !strcmp(argv[argc-1], "--stdout-no-buf"))
+      setvbuf(stdout, NULL, _IONBF, 0);
    if (argc>1) { strncpy(ctlf, argv[1], 95); printf ("\nctlfile is %s.\n", ctlf); }
    GetOptions (ctlf);
    finitials=fopen("in.basemlg","r");
@@ -120,8 +122,11 @@ int main (int argc, char *argv[])
    if (SeqDistance==NULL||ancestor==NULL) error2("oom");
 
    InitializeBaseAA(fout);
-   if (com.model==JC69) PatternWeightJC69like(fout);
-
+   if (com.model==JC69) {
+      PatternWeightJC69like();
+      fprintf(fout, "\n\nPrinting out site pattern counts\n");
+      printPatterns(fout);
+   }
    DistanceMatNuc (fout, fpair[0], com.model, com.alpha);
    if (com.model<=HKY85)
       eigenTN93 (com.model, com.kappa, com.kappa, com.pi, &nR, Root, Cijk);
