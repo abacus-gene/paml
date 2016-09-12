@@ -69,7 +69,6 @@ double lnpriorTimesBDS_Approach1(void);
 double lnpriorTimesTipDate(void);
 double lnpriorTimes(void);
 double lnpriorRates(void);
-double logPriorRatioGamma(double xnew, double xold, double a, double b);
 void copySptree(void);
 void printSptree(void);
 double InfinitesitesClock(double *FixedDs);
@@ -3026,7 +3025,8 @@ int UpdateParaRates (double *lnL, double finetune[], char accept[], double space
             lnacceptance += lnpRnew - data.lnpR;
          }
          if(lnacceptance>=0 || rndu()<exp(lnacceptance)) {
-            accept[ip*g1+locus] = (char)1;            if (com.clock==1 && locus<g) {    /* mu_i but not sigma2_i exist in model. */
+            accept[ip*g1+locus] = (char)1;
+            if (com.clock==1 && locus<g) {    /* mu_i but not sigma2_i exist in model. */
                *lnL += lnLd;
                data.lnpDi[locus] = lnpDinew;
                if(mcmc.usedata==1) AcceptRejectLocus(locus,1);
@@ -3259,15 +3259,6 @@ int UpdateRates (double *lnL, double finetune[], char accept[])
    return(0);
 }
 
-
-double logPriorRatioGamma(double xnew, double x, double a, double b)
-{
-/* This calculates the log of prior ratio when x is updated from xold to xnew.
-   x has distribution with parameters a and b.
-
-*/
-   return (a-1)*log(xnew/x) - b*(xnew-x);
-}
 
 int UpdateParameters (double *lnL, double finetune[], char accept[])
 {
@@ -3632,7 +3623,7 @@ int DescriptiveStatisticsSimpleMCMCTREE (FILE *fout, char infile[], int nbin)
    FILE *fin=gfopen(infile,"r"), *fFigTree;
    char timestr[32], FigTreef[96]="FigTree.tre";
    double *dat, *x, *mean, *median, *minx, *maxx, *x005,*x995,*x025,*x975,*xHPD025,*xHPD975,*var;
-   double *y, *Tint, tmp[2];
+   double *y, *Tint, tmp[2], rho1;
    int  n, p, i, j, jj;
    size_t sizedata=0;
    static int lline=10000000, ifields[MAXNFIELDS], SkipC1=1, HasHeader;
@@ -3671,7 +3662,7 @@ int DescriptiveStatisticsSimpleMCMCTREE (FILE *fout, char infile[], int nbin)
    printf("Collecting mean, median, min, max, percentiles, etc.\n");
    for(j=SkipC1,x=dat+j*n; j<p; j++,x+=n) {
       memmove(y, x, n*sizeof(double));
-      Tint[j] = 1/Eff_IntegratedCorrelationTime(y, n, &mean[j], &var[j]);
+      Tint[j] = 1/Eff_IntegratedCorrelationTime(y, n, &mean[j], &var[j], &rho1);
       qsort(x, (size_t)n, sizeof(double), comparedouble);
       minx[j] = x[0];  maxx[j] = x[n-1];
       median[j] = (n%2==0 ? (x[n/2]+x[n/2+1])/2 : x[(n+1)/2]);

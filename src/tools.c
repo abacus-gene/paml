@@ -1966,15 +1966,13 @@ double logPDFNormal (double x, double mu, double sigma2)
 
 double CDFNormal (double x)
 {
-/* Hill ID  (1973)  The normal integral.  Applied Statistics, 22:424-427.
-   Algorithm AS 66.   (error < ?)
-   adapted by Z. Yang, March 1994.  Hill's routine does not look good, and I
-   haven't consulted the following reference.
-      Adams AG  (1969)  Algorithm 39.  Areas under the normal curve.
-      Computer J. 12: 197-198.
+/* Hill ID (1973) The normal integral. Applied Statistics, 22:424-427.  (Algorithm AS 66)
+   Adams AG (1969) Algorithm 39. Areas under the normal curve. Computer J. 12: 197-198.
+
+   adapted by Z. Yang, March 1994.      
 */
     int invers=0;
-    double p, t=1.28, y=x*x/2;
+    double p, t = 1.28, y = x*x/2;
 
     if (x<0) {  invers=1;  x=-x; }
     if (x<t)
@@ -2262,6 +2260,15 @@ double PDFGamma (double x, double alpha, double beta)
       error2("large alpha in PDFGamma()");
    return pow(beta*x,alpha)/x * exp(-beta*x - LnGamma(alpha));
 }
+
+double logPriorRatioGamma(double xnew, double x, double a, double b)
+{
+/* This calculates the log of prior ratio when x has a gamma prior G(x; a, b) with mean a/b
+   and x is updated from xold to xnew.
+*/
+   return (a-1)*log(xnew/x) - b*(xnew-x);
+}
+
 
 double PDF_InverseGamma (double x, double alpha, double beta)
 {
@@ -4430,8 +4437,8 @@ void GetIndexTernary(int *ix, int *iy, double *x, double *y, int itriangle, int 
 double factorial (int n)
 {
    double fact=1, i;
-   if (n>50) puts("large n in factorial");
-   for (i=2; i<=(double)n; i++) fact *= i;
+   if (n>100) printf("factorial(%d) may be too large\n", n);
+   for (i=2; i<=n; i++) fact *= i;
    return (fact);
 }
 
@@ -5077,31 +5084,30 @@ int MeanVar (double x[], int n, double *m, double *v)
 {
    int i;
 
-   for (i=0,*m=0; i<n; i++) *m  = (*m*i + x[i])/(i + 1.);
+   for (i=0,*m=0; i<n; i++) *m  += x[i];
+   *m /= n;
    for (i=0,*v=0; i<n; i++) *v += square(x[i] -  *m);
    if (n>1) *v /= (n-1.);
    return(0);
 }
 
-int variance (double x[], int n, int nx, double mx[], double vx[])
+int variance (double x[], int n, int p, double m[], double v[])
 {
-/* x[nx][n], mx[nx], vx[nx][nx]
+/* x[p][n], m[p], v[p][p]
 */
    int i, j, k;
 
-   for(i=0; i<nx; i++)  mx[i]=0;
-   for(i=0; i<nx; i++) {
-      for(k=0; k<n; k++) {
-         mx[i] = (mx[i]*k + x[i*n+k])/(k + 1.);
-      }
+   for(i=0; i<p; i++) {
+      for(k=0, m[i]=0; k<n; k++)  m[i] += x[i*n+k];
+      m[i] /= n;
    }
-   for(i=0; i<nx*nx; i++) 
-      vx[i] = 0;
-   for (i=0; i<nx; i++) 
-      for (j=i; j<nx; j++) {
+   for(i=0; i<p*p; i++) 
+      v[i] = 0;
+   for (i=0; i<p; i++) 
+      for (j=i; j<p; j++) {
          for(k=0; k<n; k++) 
-            vx[i*nx+j] += (x[i*n+k] - mx[i]) * (x[j*n+k] - mx[j]);
-       vx[j*nx+i] = (vx[i*nx+j] /= (n - 1.));
+            v[i*p+j] += (x[i*n+k] - m[i]) * (x[j*n+k] - m[j]);
+       v[j*p+i] = (v[i*p+j] /= (n - 1.));
    }
    return(0);
 }
@@ -5109,15 +5115,18 @@ int variance (double x[], int n, int nx, double mx[], double vx[])
 int correl (double x[], double y[], int n, double *mx, double *my, double *vxx, double *vxy, double *vyy, double *r)
 {
    int i;
+   double dx, dy;
 
    *mx = *my = *vxx = *vxy = *vyy = 0.0;
    for (i=0; i<n; i++) {
       /* update vxx & vyy before mx & my */
-      *vxx += square(x[i] - *mx) * i/(i+1.);
-      *vyy += square(y[i] - *my) * i/(i+1.);
-      *vxy += (x[i] - *mx) * (y[i] - *my) * i/(i+1.);
-      *mx = (*mx * i + x[i])/(i+1.);
-      *my = (*my * i + y[i])/(i+1.);
+      dx = x[i] - *mx;
+      dy = y[i] - *my;
+      *vxx += dx*dx * i/(i+1.);
+      *vyy += dy*dy * i/(i+1.);
+      *vxy += dx*dy * i/(i+1.);
+      *mx += dx/(i+1.);
+      *my += dy/(i+1.);
    }
    *vxx /= (n-1.0);
    *vyy /= (n-1.0);
@@ -5437,7 +5446,7 @@ int HPDinterval(double x[], int n, double HPD[2], double alpha)
    return(0);
 }
 
-double Eff_IntegratedCorrelationTime (double x[], int n, double *mx, double *varx)
+double Eff_IntegratedCorrelationTime (double x[], int n, double *mx, double *varx, double *rho1)
 {
 /* This calculates Efficiency or Tint using Geyer's (1992) initial positive 
    sequence method.
@@ -5462,6 +5471,7 @@ double Eff_IntegratedCorrelationTime (double x[], int n, double *mx, double *var
          for (i=0,rho=0; i<n-ir; i++)
             rho += x[i]*x[i+ir];
          rho /= (n-1.0);
+         if(ir==1) *rho1 = rho;
          if(ir>10 && rho+rho0<0) break;
          Tint += rho*2;
          rho0 = rho;
@@ -5509,7 +5519,7 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int propternary,
    int  n, p, i,j,k, jj,kk, nrho=200;
    char *fmt=" %9.6f", *fmt1=" %9.1f", timestr[32];
    double *data, *x, *mean, *median, *minx, *maxx, *x005,*x995,*x025,*x975,*xHPD025,*xHPD975,*var;
-   double *Tint, tmp[2], d;
+   double *Tint, tmp[2], d, rho1;
    double h, *y, *gap, *space, v2d[4];
    int nf2d=0, ivar_f2d[MAXNF2D][2]={{5,6},{0,2}}, k2d;
 
@@ -5539,10 +5549,12 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int propternary,
          fscanf(fin, "%lf", &data[j*n+i]);
    fclose(fin); 
 
+   /*
    if(p>1) {
       printf("\nGreat offer!  I can smooth a few 2-D densities for free.  How many do you want? ");
       scanf("%d", &nf2d);
    }
+   */
    if(nf2d>MAXNF2D) error2("I don't want to do that many!");
    for(i=0; i<nf2d; i++) {
       printf("pair #%d (e.g., type  1 3  to use variables #1 and #3)? ",i+1);
@@ -5554,7 +5566,7 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int propternary,
    printf("Collecting mean, median, min, max, percentiles, etc.\n");
    for(j=SkipColumns,x=data+j*n; j<p; j++,x+=n) {
       memmove(y, x, n*sizeof(double));
-      Tint[j] = 1/Eff_IntegratedCorrelationTime(y, n, &mean[j], &var[j]);
+      Tint[j] = 1/Eff_IntegratedCorrelationTime(y, n, &mean[j], &var[j], &rho1);
       memmove(y, x, n*sizeof(double));
       qsort(y, (size_t)n, sizeof(double), comparedouble);
       minx[j] = y[0];  maxx[j] = y[n-1];

@@ -11,10 +11,31 @@ https://groups.google.com/forum/#!forum/pamlsoftware.
 
 
 
+Version 4.9b, March 2016
+
+(*) codeml.  I have added the BEB calculation for clade model D.  I
+deleted the option of having two site classes under model D so that
+both clade models C and D now assume three site classes.  The
+difference between models C and D is that in C, w1 = 1 is fixed, while
+in D, w1 is a free parameter, just like w0.  Both the ML iteration and
+the BEB calculation under models C and D allow two or more clades
+(branch types), but note that an increase in the number of clades by 1
+roughly increases the computation by 10 times.  Also the BEB
+calculation under model D is about 10 times more expensive than that
+under model C.  I updated the codeml section of the documentation to
+remove the description of the old models (like M1 and M2) and focus on
+the new models that are in the program (like M1a and M2a).
+
+baseml & codeml.  If the tree has labels using the symbol #,
+the program will crash.  This is caused by a bug in the routine for
+reading trees from the tree file.  This is now fixed.
+
+
+
 Version 4.9a, September 2015
 
 codeml (seqtype = 2 for amino acid sequences) crashes when the dataset
-is large, with more than 2M sites, say.  This is due to  a stupid bug
+is large, with more than 2M sites, say.  This is due to a stupid bug
 in an irrelevant part of the code.  This is fixed in 4.9a.
 
 

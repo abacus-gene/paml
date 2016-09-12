@@ -184,7 +184,7 @@ int PatternWeightJC69like (void)
     
     if(com.seqtype==1)
         error2("PatternWeightJC69like does not work for codon seqs");
-    if(noisy>=3) printf("Counting site patterns again, for JC69.\n");
+    if(noisy>3) printf("Counting site patterns again, for JC69.\n");
     gap = (char) (strchr(pch, (int)'-') - pch);
     for (h=0,com.npatt=0,ig=-1; h<npatt0; h++) {
         if (ig<com.ngene-1 && h==com.posG[ig+1])
@@ -247,7 +247,7 @@ int PatternWeightJC69like (void)
                 if(com.pose[k]==h) com.pose[k] = ht;
     }     /* for (h)   */
     com.posG[com.ngene] = com.npatt;
-    if(noisy>=3) printf ("new no. site patterns:%7d\n", com.npatt);
+    if(noisy>3) printf ("new no. site patterns:%7d\n", com.npatt);
     
     return (0);
 }
@@ -605,7 +605,7 @@ readseq:
                 if (!isgraph(com.spname[j][k]))   com.spname[j][k]=0;
                 else    break;
             
-            if (noisy>=2) printf ("Reading seq #%2d: %s     \r", j+1, com.spname[j]);
+            if (noisy>=2) printf ("Reading seq #%2d: %s     %s", j+1, com.spname[j], (noisy>3 ? "\n" : "\r"));
             for (k=0; k<com.ls; p++) {
                 while (*p=='\n' || *p=='\0') {
                     p=fgets(line, lline, fseq);
@@ -2893,18 +2893,19 @@ int ReadTreeN (FILE *ftree, int *haslength, int *haslabel, int copyname, int pop
             nodes[inodeb].nodeStr = (char*)malloc(k*sizeof(char));
             if (nodes[inodeb].nodeStr == NULL) error2("oom nodeStr");
             strcpy(nodes[inodeb].nodeStr, line);
-            if((pch = strchr(line,'#')) || (pch = strchr(line,'<'))) {
-                if ((pch=strchr(line, '<')))  hascalibration = 1;
-                else                          *haslabel = 1;
-                sscanf(pch+1, "%lf", &nodes[inodeb].label);
+
+
+            if(pch = strchr(line,'#')) {
+               *haslabel = 1;
+               sscanf(pch+1, "%lf", &nodes[inodeb].label);
             }
-            if((pch = strchr(line,'>'))) {
-                hascalibration = 1;
-                sscanf(pch+1, "%lf", &nodes[inodeb].branch);
-            }
-            if((pch = strchr(line,'$'))) {
+            else if((pch = strchr(line,'$'))) {
                 *haslabel=1;
                 sscanf(pch+1, "%d", &CladeLabel[inodeb]);
+            }
+            else if(pch = strchr(line,'<')) {
+                hascalibration = 1;
+                sscanf(pch+1, "%lf", &nodes[inodeb].label);
             }
             if((pch = strchr(line,'=')) || (pch = strchr(line,'@'))) {
                 sscanf(pch+1, "%lf", &nodes[inodeb].age);
@@ -4028,7 +4029,8 @@ void CladeSupport (FILE *fout, char treef[], int getSnames, char mastertreef[], 
     char *split1, *splits=NULL, *splitM=NULL, *split50=NULL, *pM, *ptree, *ptrees=NULL, *pc;
     double *countsplits=NULL, *countptree=NULL, *Psplit50, *Psame, y, cdf;
     char pick1treef[32]="pick1tree.tre", line[1024];
-    struct TREEN *nodes_t;
+    struct TREEN *besttree;
+    int besttreeroot=-1;
     FILE *ft, *fM=NULL, *f1tree=NULL;
     int debug=0;
     
@@ -4051,7 +4053,7 @@ void CladeSupport (FILE *fout, char treef[], int getSnames, char mastertreef[], 
     sizetree=(s*2-1)*sizeof(struct TREEN);
     if((nodes=(struct TREEN*)malloc(sizetree*2))==NULL) error2("oom");
     for(i=0; i<s*2-1; i++) nodes[i].nodeStr=NULL;
-    nodes_t = nodes + s*2-1;
+    besttree = nodes + s*2-1;
     
     /* read and process trees in treef */
     for(ntree=0;  ; ntree++) {
@@ -4148,6 +4150,10 @@ void CladeSupport (FILE *fout, char treef[], int getSnames, char mastertreef[], 
         OutTreeN(fout, 1, 0);
         /* for(i=0; i<nsplit1; i++) fprintf(fout, "%s", split1+i*lsplit); */
         fprintf(fout, "\n");
+        if(k==0) {
+           memmove(besttree, nodes, sizetree);
+           besttreeroot = tree.root;
+        }
         if(cdf>0.99 && y/ntree < 0.001) break;
     }
     
@@ -4181,7 +4187,13 @@ void CladeSupport (FILE *fout, char treef[], int getSnames, char mastertreef[], 
     OutTreeN(fout, 1, PrLabel);  FPN(fout);
     
     if(mastertreef) fM = fopen(mastertreef, "r");
-    if(fM==NULL) goto CleanUp;
+    if(fM==NULL) {
+       fM = fopen("besttree", "w+");
+       fprintf(fM, "%6d  %6d\n\n", com.ns, 1);   
+       memmove(nodes, besttree, sizetree);  tree.root=besttreeroot;
+       OutTreeN(fM, 1, 0);  FPN(fM);
+       rewind(fM);
+    }
     
     fscanf(fM, "%d%d", &i, &ntreeM);
     if(i!=s || ntreeM<1) error2("<ns> <ntree> on the first line in master tree.");
@@ -4224,8 +4236,8 @@ void CladeSupport (FILE *fout, char treef[], int getSnames, char mastertreef[], 
         }
     }
     
-    printf("\n(D) Probabilities of trees in the master tree file\n");
-    fprintf(fout, "\n(D) Probabilities of trees in the master tree file\n");
+    printf("\n(D) Best tree (or trees from the mastertree file) with support values\n");
+    fprintf(fout, "\n(D) Best tree (or trees from the mastertree file) with support values\n");
     /* read the master trees another round just for printing. */
     rewind(fM);
     fscanf(fM, "%d%d", &s, &ntreeM);
@@ -4238,16 +4250,13 @@ void CladeSupport (FILE *fout, char treef[], int getSnames, char mastertreef[], 
             if(found) nodes[i].label = countsplits[j]/ntree;
             k++;
         }
-        printf(" P = %6.4f  ", Psame[itreeM]/ntree);
-        OutTreeN(F0, 1, PrLabel);  FPN(F0);
-        
-        fprintf(fout, " P = %6.4f  ", Psame[itreeM]/ntree);
-        OutTreeN(fout, 1, PrLabel);  FPN(fout);
-        
+        OutTreeN(F0, 1, PrLabel);
+        printf("  [P = %7.5f]\n", Psame[itreeM]/ntree);
+        OutTreeN(fout, 1, PrLabel);
+        fprintf(fout, "  [P = %7.5f]\n", Psame[itreeM]/ntree);
     }
     if(pick1tree) printf("\ntree #%d collected into %s\n", pick1tree, pick1treef);
     
-CleanUp:
     if(fM) {
         free(splitM);  free(Psame);
         fclose(fM);    if(f1tree) fclose(f1tree);

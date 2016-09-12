@@ -1437,7 +1437,6 @@ int ConditionalPNode (int inode, int igene, double x[])
                nodes[inode].conP[h*n+j] *= t;
             }
       }
-
    }        /*  for (ison)  */
    if(com.NnodeScale && com.nodeScale[inode])  NodeScale(inode, pos0, pos1);
    return (0);

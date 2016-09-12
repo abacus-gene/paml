@@ -81,6 +81,7 @@ double QuantileChi2 (double prob, double v);
 #define QuantileGamma(prob,alpha,beta) QuantileChi2(prob,2.0*(alpha))/(2.0*(beta))
 double  PDFGamma(double x, double alpha, double beta);
 #define CDFGamma(x,alpha,beta) IncompleteGamma((beta)*(x),alpha,LnGamma(alpha))
+double logPriorRatioGamma(double xnew, double xold, double a, double b);
 double  PDF_InverseGamma(double x, double alpha, double beta);
 #define CDF_InverseGamma(x,alpha,beta) (1-CDFGamma(1/(x),alpha,beta))
 #define CDFChi2(x,v) CDFGamma(x,(v)/2.0,0.5)
@@ -239,7 +240,7 @@ int correl (double x[], double y[], int n, double *mx, double *my,
             double *vxx, double *vxy, double *vyy, double *r);
 int comparefloat  (const void *a, const void *b);
 int comparedouble (const void *a, const void *b);
-double Eff_IntegratedCorrelationTime (double x[], int n, double *mx, double *varx);
+double Eff_IntegratedCorrelationTime (double x[], int n, double *mx, double *varx, double *rho1);
 int HPDinterval(double x[], int n, double HPD[2], double alpha);
 int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int propternary, int SkipColumns);
 int DescriptiveStatisticsSimple (FILE *fout, char infile[], int SkipColumns);
