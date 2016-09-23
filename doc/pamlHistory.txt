@@ -9,6 +9,10 @@ https://groups.google.com/forum/#!forum/pamlsoftware.
 
 
 
+Version 4.9c, September 2016
+
+Added GPL license statement in various places.
+
 
 
 Version 4.9b, March 2016

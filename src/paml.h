@@ -53,7 +53,7 @@ double rnduM0V1 (void);
 double rndNormal(void);
 double rndBox(void);
 double rndAirplane(void);
-double rndParabola(void);
+double rndStrawhat(void);
 double rndBactrian(void);
 double rndBactrianTriangle(void);
 double rndBactrianLaplace(void);
@@ -388,8 +388,7 @@ enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrNodeStr=8, PrAge=16, PrOmega=32} Out
 #define aBox 0.5
 #define bBox (sqrt(12 - 3*aBox*aBox) - aBox) / 2
 #define aAirplane 1.0
-#define aParab 1.0
-
+#define aStrawhat 1.0
 
 #define MAXNFIELDS 320000
 

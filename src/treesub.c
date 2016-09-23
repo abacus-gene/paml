@@ -68,7 +68,8 @@ int PatternWeightSimple(void)
     int n31 = 1;
     int lpatt = com.ns*n31 + 1;   /* extra 0 used for easy debugging, can be avoided */
     int *p2s;  /* point patterns to sites in zt */
-    char *zt, *p;
+    char *zt;
+    unsigned char *p;
     double nc = (com.seqtype == 1 ? 64 : com.ncode) + !com.cleandata + 1;
     int debug = 0;
     char DS[] = "DS";
@@ -270,20 +271,19 @@ int hasbase (char *str)
 }
 
 
-int GetSeqFileType(FILE *fseq, int *paupseq);
+int GetSeqFileType(FILE *fseq, int *NEXUSseq);
 int IdenticalSeqs(void);
 void RemoveEmptySequences(void);
 
 int GetSeqFileType(FILE *fseq, int *format)
 {
-    /* paupstart="begin data" and paupend="matrix" identify nexus file format.
+    /* NEXUSstart="begin data" and NEXUSdata="matrix" identify nexus file format.
      Modify if necessary.
      format: 0: alignment; 1: fasta; 2: nexus.
-     
      */
     int  lline=1000, ch, aligned;
     char fastastarter='>';
-    char line[1000], *paupstart="begin data",*paupend="matrix", *p;
+    char line[1000], *NEXUSstart="begin data", *NEXUSdata="matrix", *p;
     char *ntax="ntax",*nchar="nchar";
     
     while (isspace(ch=fgetc(fseq)))
@@ -306,7 +306,7 @@ int GetSeqFileType(FILE *fseq, int *format)
     for ( ; ; ) {
         if(fgets(line,lline,fseq)==NULL) error2("seq err1: EOF");
         strcase(line,0);
-        if(strstr(line,paupstart)) break;
+        if(strstr(line,NEXUSstart)) break;
     }
     for ( ; ; ) {
         if(fgets(line,lline,fseq)==NULL) error2("seq err2: EOF");
@@ -324,12 +324,12 @@ int GetSeqFileType(FILE *fseq, int *format)
     for ( ; ; ) {
         if(fgets(line,lline,fseq)==NULL) error2("seq err1: EOF");
         strcase(line,0);
-        if (strstr(line,paupend)) break;
+        if (strstr(line, NEXUSdata)) break;
     }
     return(0);
 }
 
-int PopupComment(FILE *fseq)
+int PopupNEXUSComment(FILE *fseq)
 {
     int ch, comment1=']';
     for( ; ; ) {
@@ -410,7 +410,7 @@ int ReadSeq (FILE *fout, FILE *fseq, int cleandata, int locus)
      data are clean or are cleaned, and com.cleandata=0 is the data are unclean.
      */
     char *p,*p1, eq='.', comment0='[', *line;
-    int format=0;  /* 0: paml/phylip, 1: fasta; 2: paup/nexus */
+    int format=0;  /* 0: paml/phylip, 1: fasta; 2: NEXUS/nexus */
     int i,j,k, ch, noptline=0, lspname=LSPNAME, miss=0, nb;
     int lline=10000, lt[NS], igroup, Sequential=1,basecoding=0;
     int n31=(com.seqtype==CODONseq||com.seqtype==CODON2AAseq?3:1);
@@ -418,7 +418,9 @@ int ReadSeq (FILE *fout, FILE *fseq, int cleandata, int locus)
     int h,b[3]={0};
     char *pch=((com.seqtype<=1||com.seqtype==CODON2AAseq) ? BASEs : (com.seqtype==2 ? AAs: (com.seqtype==5 ? BASEs5 : BINs)));
     char str[4]="   ";
+    char *NEXUSend="end;";
     double lst;
+
 #if(MCMCTREE)
     data.datatype[locus] = com.seqtype;
 #endif
@@ -517,7 +519,7 @@ int ReadSeq (FILE *fout, FILE *fseq, int cleandata, int locus)
         for(ch=0; ; ) {
             ch = (char)fgetc(fseq);
             if(ch == comment0)
-                PopupComment(fseq);
+                PopupNEXUSComment(fseq);
             if(isalnum(ch)) break;
         }
         
@@ -712,8 +714,37 @@ readseq:
             
         }               /* for (igroup) */
     }
+    if(format==2) {  /* NEXUS format: pop up extra lines until "end;"  */
+       for ( ; ; ) {
+           if(fgets(line,lline,fseq)==NULL) error2("seq err1: EOF");
+           strcase(line,0);
+           if (strstr(line, NEXUSend)) break;
+       }
+    }
     free(line);
-    
+
+/*** delete empty sequences ******************/
+#if(0)
+{ int ns1 = com.ns, del[100] = { 0 };
+    for (i = 0; i < com.ns; i++) {
+       for (h = 0; h < com.ls; h++)   if (com.z[i][h] != '?') break;
+       if (h == com.ls) {
+          del[i] = 1;
+          ns1--;
+       }
+    }
+    fprintf(fnew, "\n\n%4d %6d\n", ns1, com.ls);
+    for (i = 0; i < com.ns; i++) {
+       if (!del[i]) {
+          fprintf(fnew, "\n%-40s  ", com.spname[i]);
+          for (h = 0; h < com.ls; h++) fprintf(fnew, "%c", com.z[i][h]);
+       }
+    }
+    fflush(fnew);
+}
+#endif
+
+
 #ifdef CODEML
     /* mask stop codons as ???.  */
     if(com.seqtype==1 && MarkStopCodons())
@@ -772,22 +803,24 @@ readseq:
 #if (defined CODEML)
     /* list sites with 2 types of serine codons: TC? and TCY.  19 March 2014, Ziheng. */
     if(com.seqtype==1) {
-        char codon[4]="";
-        int nbox0, nbox1;
-        for(h=0; h<com.ls; h++) {
-            for(i=0,nbox0=nbox1=0; i<com.ns; i++) {
-                codon[0]=com.z[i][h*3+0];
-                codon[1]=com.z[i][h*3+1];
-                codon[2]=com.z[i][h*3+2];
-                if(codon[0]=='T' && codon[1]=='C') nbox0++;
-                else if(codon[0]=='A' && codon[1]=='G' && (codon[2]=='T' || codon[2]=='C')) nbox1++;
-            }
-            if(nbox0 && nbox1 && nbox0+nbox1==com.ns) {
-                printf("\ncodon %7d: ", h+1);
-                for(i=0; i<com.ns; i++)
-                    printf("%c%c%c ", com.z[i][h*3+0], com.z[i][h*3+1], com.z[i][h*3+2]);
-            }
-        }
+       char codon[4]="";
+       int nbox0, nbox1, present=0;
+       for(h=0; h<com.ls; h++) {
+          for(i=0,nbox0=nbox1=0; i<com.ns; i++) {
+             codon[0]=com.z[i][h*3+0];
+             codon[1]=com.z[i][h*3+1];
+             codon[2]=com.z[i][h*3+2];
+             if(codon[0]=='T' && codon[1]=='C') nbox0++;
+             else if(codon[0]=='A' && codon[1]=='G' && (codon[2]=='T' || codon[2]=='C')) nbox1++;
+          }
+          if(nbox0 && nbox1 && nbox0+nbox1==com.ns) {
+             present=1;
+             printf("\ncodon site %6d: ", h+1);
+             for(i=0; i<com.ns; i++)
+                printf("%c%c%c ", com.z[i][h*3+0], com.z[i][h*3+1], com.z[i][h*3+2]);
+          }
+       }
+       if(present) printf("\nAbove are 'synonymous' sites with 2 types of serine codons: TC? and TCY.\n");
     }
 #endif
     
@@ -1700,7 +1733,7 @@ int print1seq (FILE*fout, unsigned char *z, int ls, int pose[])
 
 void printSeqs (FILE *fout, int *pose, char keep[], int format)
 {
-/* Print sequences into fout, using paml (format=0 or 1) or paup (format=2)
+/* Print sequences into fout, using paml (format=0 or 1) or NEXUS (format=2)
    formats.
    Use pose=NULL if called before site patterns are collapsed.
    keep[] marks the sequences to be printed.  Use NULL for keep if all sequences
@@ -1711,8 +1744,8 @@ void printSeqs (FILE *fout, int *pose, char keep[], int format)
    See notes in print1seq()
      
    format = 0,1: PAML sites or patterns
-   2: PAUP Nexus format.
-   3: PAUP Nexus JC69 format
+   2: NEXUS Nexus format.
+   3: NEXUS Nexus JC69 format
      
    This is used by evolver.  Check and merge with printsma().
 */
@@ -1734,7 +1767,7 @@ void printSeqs (FILE *fout, int *pose, char keep[], int format)
    for(j=0; j<com.ns; j++,FPN(fout)) {
       if(keep && !keep[j]) continue;
       fprintf(fout,"%s%-*s  ", (format==2 || format==3 ? "      " : ""), wname, com.spname[j]);
-      if(format==3) {     /* PAUP Nexus JC69 format */
+      if(format==3) {     /* NEXUS Nexus JC69 format */
          for(h=0,ls1=0; h<com.npatt; h++)
             for(i=0; i<(int)com.fpatt[h]; i++) {
                fprintf(fout, "%c", pch[com.z[j][h]]);
@@ -3084,11 +3117,13 @@ int OutSubTreeN (FILE *fout, int inode, int spnames, int printopt)
     if((printopt & PrNodeNum) && nodes[inode].nson)
         fprintf(fout," %d ", inode+1);
     if((printopt & PrLabel) && nodes[inode].label>0)
-        fprintf(fout, " #%.6f", nodes[inode].label);
+       fprintf(fout, " #%.6f", nodes[inode].label);
+       /* fprintf(fout, " [&label=%.6f]", nodes[inode].label); */
+
     if((printopt & PrAge) && nodes[inode].age)
         fprintf(fout, " @%.6f", nodes[inode].age);
     
-    /*  Add branch labels to be read by Rod Page's TreeView. */
+    /*  Add branch labels to be read by Rod Page's TreeView.  */
 #if (defined CODEML)
     if((printopt & PrOmega) && inode != tree.root)
         fprintf(fout, " #%.6g ", nodes[inode].omega);
@@ -3337,7 +3372,7 @@ void PointconPnodes (void)
      This routine updates internal nodes com.conP only.
      End nodes (com.conP0) are updated in InitConditionalPNode().
      */
-    int nintern=0, i;
+    size_t nintern=0, i;
     
     for(i=0; i<tree.nbranch+1; i++)
         if(nodes[i].nson>0)  /* more thinking */
@@ -6627,7 +6662,7 @@ int AncestralJointPPSG2000 (FILE *fout, double x[])
         if((com.space=(double*)realloc(com.space,com.sspace))==NULL) error2("oom space");
     }
     for(i=0; i<NBESTANC; i++) {
-        lnPanc[i]= com.conP+i*nintern*com.npatt*n;
+        lnPanc[i]= com.conP + (size_t)i*nintern*com.npatt*n;
         icharNode[i] = (int*)com.space+i*nintern*com.npatt*n;
         charNode[i] = (char*)((int*)com.space+NBESTANC*nintern*com.npatt*n) + i*nintern*com.npatt*n;
         ancState1site = charNode[0]+NBESTANC*nintern*com.npatt*n;
@@ -6679,7 +6714,7 @@ int AncestralJointPPSG2000 (FILE *fout, double x[])
     free(PMatTips);
     free(combScore);
     com.sconP = sconPold;
-    if((com.conP=(double*)realloc(com.conP,com.sconP))==NULL)
+    if((com.conP=(double*)realloc(com.conP, com.sconP))==NULL)
         error2("conP");
     PointconPnodes();
     return (0);
@@ -7329,7 +7364,7 @@ int fx_r (double x[], int np)
                 if(com.NnodeScale)
                     com.nodeScaleF += (size_t)com.npatt*com.NnodeScale;
                 for(i=com.ns; i<tree.nnode; i++)
-                    nodes[i].conP += (tree.nnode-com.ns)*com.ncode*(size_t)com.npatt;
+                    nodes[i].conP += (size_t)(tree.nnode-com.ns)*com.ncode*com.npatt;
             }
             SetPSiteClass(ir,x);
             ConditionalPNode(tree.root,ig, x);
@@ -7362,7 +7397,7 @@ int fx_r (double x[], int np)
             if(com.NnodeScale)
                 com.nodeScaleF -= (com.ncatG-1)*com.NnodeScale*(size_t)com.npatt;
             for(i=com.ns; i<tree.nnode; i++)
-                nodes[i].conP -= (com.ncatG-1)*(tree.nnode-com.ns)*com.ncode*(size_t)com.npatt;
+                nodes[i].conP -= (size_t)(com.ncatG-1)*(tree.nnode-com.ns)*com.ncode*com.npatt;
         }
     }  /* for(ig) */
     return(0);

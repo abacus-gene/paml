@@ -3,6 +3,16 @@ Notes for compiling PAML on UNIX systems, including MAC OS X
 Ziheng Yang (z.yang@ucl.ac.uk)
 Last updated, 10 December 2003
 
+Copyright notice and disclaimer
+
+The software package is provided "as is" without warranty of any
+kind. In no event shall the author or his employer be held responsible
+for any damage resulting from the use of this software, including but
+not limited to the frustration that you may experience in using the
+package.  The program package, including source codes, example data
+sets, executables, and this documentation, is maintained by Ziheng
+Yang and distributed under the GNU GPL v3.
+
 
 Instructions for compiling 
 ==========================
@@ -77,4 +87,3 @@ scp  baseml basemlg codeml pamp mcmctree evolver yn00 chi2   /usr/local/bin/
 
 
 // End of file
-

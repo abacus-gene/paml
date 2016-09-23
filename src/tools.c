@@ -1156,16 +1156,20 @@ FILE *gfopen(char *filename, char *mode)
 
 int appendfile(FILE*fout, char*filename)
 {
-   FILE *fin=fopen(filename,"r");
-   int ch;
+   FILE *fin = fopen(filename, "r");
+   int ch, status = 0;
 
-   if(fin) {
-      while((ch=fgetc(fin))!=EOF) 
-         fputc(ch,fout);
+   if (fin == NULL) {
+      printf("file %s not found!", filename);
+      status = -1;
+   }
+   else {
+      while ((ch = fgetc(fin)) != EOF)
+         fputc(ch, fout);
       fclose(fin);
       fflush(fout);
    }
-   return(0);
+   return(status);
 }
 
 
@@ -1569,65 +1573,80 @@ double rndBox(void)
     return z;
 }
 
-double getRoot(double (*f)(double), double (*df)(double), double initVal) {
-    double x, newx = initVal;
-    int nIter = 0;
-    do {
-        x = newx;
-        newx = x - (*f)(x) / (*df)(x);
-        nIter++;
-    } while((fabs(x-newx) > 1e-10) && nIter < 100);
+double getRoot(double (*f)(double), double (*df)(double), double initVal)
+{
+   double x, newx = initVal;
+   int nIter = 0;
+   do {
+      x = newx;
+      newx = x - (*f)(x) / (*df)(x);
+      nIter++;
+   } while((fabs(x-newx) > 1e-10) && nIter < 100);
     
-    if(fabs(x-newx) > 1e-10) {
-        error2("root finder didn't converge");
-    }
-    return(newx);
+   if(fabs(x-newx) > 1e-10) {
+      error2("root finder didn't converge");
+   }
+   return(newx);
 }
 
-double BAirplane(double b) {
-    return 4*b*b*b - 12*b + 6*aAirplane - aAirplane * aAirplane * aAirplane;
+double BAirplane(double b) 
+{
+   return 4*b*b*b - 12*b + 6*aAirplane - aAirplane * aAirplane * aAirplane;
 }
 
 double dBAirplane(double b) {
     return 12*b*b - 12;
 }
 
-double rndAirplane() {
-    double z, bAirplane = getRoot(&BAirplane, &dBAirplane, 2.5);
+double rndAirplane() 
+{
+   static int firsttime=1;
+   static double bAirplane;
+   double z;
 
-    if(rndu() < aAirplane/(2*bAirplane -aAirplane)) {
-        /* sample from linear part */
-        z = sqrt(aAirplane*aAirplane*rndu());
-    }
-    else {
-       /* sample from box part */
-       z = rndu() * (bAirplane - aAirplane) + aAirplane;
-    }
-    return (rndu() < 0.5 ? -z : z);
+   if(firsttime) {
+      bAirplane = getRoot(&BAirplane, &dBAirplane, 2.5);
+      firsttime = 0;
+   }
+   if(rndu() < aAirplane/(2*bAirplane -aAirplane)) {
+      /* sample from linear part */
+      z = sqrt(aAirplane*aAirplane*rndu());
+   }
+   else {
+      /* sample from box part */
+      z = rndu() * (bAirplane - aAirplane) + aAirplane;
+   }
+   return (rndu() < 0.5 ? -z : z);
 }
 
-double BParabola(double b) {
-    return 5*b*b*b - 15*b + 10*aParab - 2*aParab*aParab*aParab;
+double BStrawhat(double b) { 
+   return 5*b*b*b - 15*b + 10*aStrawhat - 2*aStrawhat*aStrawhat*aStrawhat;
 }
 
-double dBParabola(double b) {
-    return 15*b*b - 15;
+double dBStrawhat(double b) {
+   return 15*b*b - 15;
 }
 
-double rndParabola() {
-    double z, bParab = getRoot(&BParabola, &dBParabola, 2.0);
+double rndStrawhat()
+{
+   static int firsttime=1;
+   static double bStrawhat;
+   double z;
 
-    if(rndu() < aParab/((3*bParab-2*aParab))) {
-        /* sample from parabola part */
-        z = aParab * pow(rndu(), 1.0/3.0);
-    }
-    else {
-        /* sample from the box part */
-        z = rndu() * (bParab - aParab) + aParab;
-    }
-    return (rndu() < 0.5 ? -z : z);
+   if(firsttime) {
+      bStrawhat = getRoot(&BStrawhat, &dBStrawhat, 2.0);
+      firsttime = 0;
+   }
+   if(rndu() < aStrawhat/((3*bStrawhat-2*aStrawhat))) {
+      /* sample from Strawhat part */
+      z = aStrawhat * pow(rndu(), 1.0/3.0);
+   }
+   else {
+      /* sample from the box part */
+      z = rndu() * (bStrawhat - aStrawhat) + aStrawhat;
+   }
+   return (rndu() < 0.5 ? -z : z);
 }
-
 
 
 double rndloglogistic (double loc, double s)
@@ -5602,7 +5621,9 @@ int DescriptiveStatistics (FILE *fout, char infile[], int nbin, int propternary,
    fprintf(fout,"\n97.5%%   "); for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,x975[j]);
    fprintf(fout,"\n2.5%%HPD "); for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,xHPD025[j]);
    fprintf(fout,"\n97.5%%HPD"); for(j=SkipColumns;j<p;j++) fprintf(fout,fmt,xHPD975[j]);
-   fprintf(fout,"\nESS     ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt1,n/Tint[j]);
+   fprintf(fout,"\nESS*    ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt1,n/Tint[j]);
+   fprintf(fout,"\nEff*    ");  for(j=SkipColumns;j<p;j++) fprintf(fout,fmt, 1/Tint[j]);
+
    FPN(F0);  FPN(fout); 
    fflush(fout);
 
