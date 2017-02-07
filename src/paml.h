@@ -51,6 +51,7 @@ double reflect(double x, double a, double b);
 #define rndexp(mean) (-(mean)*log(rndu()))
 double rnduM0V1 (void);
 double rndNormal(void);
+int rndBinomial(int n, double p);
 double rndBox(void);
 double rndAirplane(void);
 double rndStrawhat(void);
@@ -82,8 +83,8 @@ double QuantileChi2 (double prob, double v);
 double  PDFGamma(double x, double alpha, double beta);
 #define CDFGamma(x,alpha,beta) IncompleteGamma((beta)*(x),alpha,LnGamma(alpha))
 double logPriorRatioGamma(double xnew, double xold, double a, double b);
-double  PDF_InverseGamma(double x, double alpha, double beta);
-#define CDF_InverseGamma(x,alpha,beta) (1-CDFGamma(1/(x),alpha,beta))
+double  PDFinvGamma(double x, double alpha, double beta);
+#define CDFinvGamma(x,alpha,beta) (1-CDFGamma(1/(x),alpha,beta))
 #define CDFChi2(x,v) CDFGamma(x,(v)/2.0,0.5)
 double PDFBeta(double x, double p, double q);
 double CDFBeta(double x, double p, double q, double lnbeta);
@@ -118,7 +119,7 @@ double probBinomial (int n, int k, double p);
 double probBetaBinomial (int n, int k, double p, double q);
 double factorial (int n);
 double Binomial(double n, int k, double *scale);
-
+int BinomialK(double alpha, int n, double C[], double S[]);
 int GaussLegendreRule(const double **x, const double **w, int order);
 int GaussLaguerreRule(const double **x, const double **w, int order);
 double NIntegrateGaussLegendre(double(*fun)(double x), double a, double b, int order);
@@ -396,6 +397,6 @@ enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrNodeStr=8, PrAge=16, PrOmega=32} Out
 
 #define FullSeqNames      0   /* 1: numbers at the beginning of sequence name are part of name */
 
-#define pamlVerStr "paml version 4.9, March 2015"
+#define pamlVerStr "paml version 4.9d, February 2017"
 
 #endif

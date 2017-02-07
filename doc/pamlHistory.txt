@@ -9,9 +9,35 @@ https://groups.google.com/forum/#!forum/pamlsoftware.
 
 
 
+Version 4.9d, February 2017
+
+(*) mcmctree.  Changed the default prior for rates for loci to
+gamma-Dirichlet (dos Reis 2014), and updated the documentation as
+well.  It was set to the conditional i.i.d. prior (Zhu et al. 2015).
+
+(*) mcmctree.  Added Bayes factor calculation.  A program called
+BFdriver is included in the release, as well as a pdf document in the
+folder examples/DatingSoftBound/.  We suggest that you use the exact
+likelihood calculation when you use this option, since the normal
+approximation is unreliable when the power posterior is close to the
+prior (when beta is small).
+
+
+
+
 Version 4.9c, September 2016
 
-Added GPL license statement in various places.
+(*) Added GPL license statement in various places.
+
+(*) codeml.  When two or more trees are in the tree file and the
+specified model is the branch model, the program counts the number of
+parameters correctly only for the first tree.  For the second or later
+trees, it overcounts the parameters in the model.  The lnL and
+parameter estimates are still correct, but the printed values for the
+extra parameters are more or less random numbers and vary among
+different runs of the same analysis.  The bug was introduced in
+version 4.7a and affects the versions since then until 4.9b.  It is
+now fixed.  Thanks to Casey Bergman.
 
 
 

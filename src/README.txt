@@ -1,7 +1,8 @@
 Notes for compiling PAML on UNIX systems, including MAC OS X
 
 Ziheng Yang (z.yang@ucl.ac.uk)
-Last updated, 10 December 2003
+Last updated, 17 October 2016
+
 
 Copyright notice and disclaimer
 

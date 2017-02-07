@@ -247,10 +247,11 @@ int main (int argc, char *argv[])
          if(SeqDistance==NULL||ancestor==NULL) error2("oom distance&ancestor");
       }
       InitializeBaseAA(fout);
+
       if(com.Mgene==3) 
          for(i=0; i<com.ngene; i++) xtoy(com.pi, com.piG[i], com.ncode);
 
-      if (com.model==JC69 && !com.readpattern && !com.print) {
+      if (com.model==JC69 && com.ngene<=1 && !com.readpattern && !com.print) {
          PatternWeightJC69like();
          if(fout) {
             fprintf(fout, "\n\nPrinting out site pattern counts\n");
@@ -274,8 +275,7 @@ int main (int argc, char *argv[])
          if((com.fhK=(double*)realloc(com.fhK,s2))==NULL) error2("oom");
       }
 
-      printf ("\n%9ld bytes for distance ",
-         com.ns*(com.ns-1)/2*(sizeof(double)+sizeof(int)));
+      printf ("\n%9ld bytes for distance ", com.ns*(com.ns-1)/2*(sizeof(double)+sizeof(int)));
       printf("\n%9lu bytes for conP\n", com.sconP);
       printf("%9lu bytes for fhK\n%9lu bytes for space\n", s2, com.sspace);
 

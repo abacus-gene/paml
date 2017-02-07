@@ -6,7 +6,7 @@
    degrees of freedom and the tail probability (type I error rate) for 
    given observed chi-square statistic and degree of freedom.
 
-      Ziheng Yang,  October 1993.
+   Ziheng Yang,  October 1993.
 */
 
 #include <stdio.h>
@@ -26,8 +26,8 @@ double IncompleteGamma (double x, double alpha, double ln_gamma_alpha);
 
 int main(int argc, char*argv[])
 {
-   int i,j, n=20, ndf=200, nprob=8, option=0;
-   double df, chi2, d=1.0/n, prob[]={.005, .025, .1, .5, .90, .95, .99, .999};
+   int i,j, n=20, ndf=200, nprob=8, option=0, df;
+   double chi2, d=1.0/n, prob[]={.005, .025, .1, .5, .90, .95, .99, .999};
 
    if (argc!=2 && argc!=3) {
       printf ("\n\nChi-square critical values\n");
@@ -51,21 +51,21 @@ int main(int argc, char*argv[])
    else if(argc==2) {
       for (; ; ) {
          printf ("\nd.f. & Chi^2 value (Ctrl-c to break)? ");
-         scanf ("%lf%lf", &df, &chi2);
+         scanf ("%d%lf", &df, &chi2);
          if(df<1 || chi2<0) break;
          prob[0] = 1-CDFChi2(chi2,df);
-         printf ("\ndf = %2.0f  prob = %.9f = %.3e\n", df, prob[0], prob[0]);
+         printf ("\ndf = %2d  prob = %.9f = %.3e\n", df, prob[0], prob[0]);
       }
    }
    else if(argc==3) {
       df = atoi(argv[1]);
       chi2 = atof(argv[2]);
       if(df<1 || chi2<0) {
-         printf("df = %d  ch2 = %.4f invalid", df, chi2);
+         printf("df = %2d  ch2 = %.4f invalid", df, chi2);
          exit(-1);
       }
       prob[0] = 1 - CDFChi2(chi2, df);
-      printf ("\ndf = %2.0f  prob = %.9f = %.3e\n", df, prob[0], prob[0]);
+      printf ("\ndf = %2d  prob = %.9f = %.3e\n", df, prob[0], prob[0]);
    }
    printf ("\n");
    return (0);

@@ -3,7 +3,7 @@
  such as baseml, basemlg, codeml, and pamp.
  */
 
-extern char BASEs[], *EquateBASE[], BASEs5[], *EquateBASE5[], AAs[], BINs[], CODONs[][4], nChara[], CharaMap[][64];
+extern char BASEs[], *EquateBASE[], AAs[], BINs[], CODONs[][4], nChara[], CharaMap[][64];
 
 extern int noisy;
 
@@ -54,29 +54,29 @@ double SS, NN, Sd, Nd;  /* kostas, # of syn. sites,# of non syn. sites,# of syn.
 
 int PatternWeightSimple(void)
 {
-/* This is modified from PatternWeight() and collaps sites into patterns,
-   for nucleotide, amino acid, or codon sequences.
-   This relies on \0 being the end of the string so that sequences should not be
-   encoded before this routine is called.
-   com.pose[i] has labels for genes as input and maps sites to patterns in return.
-   com.fpatt, a vector of doubles, wastes space as site pattern counts are integers.
-   Sequences z[ns*ls] are copied into patterns zt[ls*lpatt], and bsearch is used
-   twice to avoid excessive copying, to count npatt first & to generate fpatt etc.
+/* This is modified from PatternWeight(), and does not deal with multiple genes in 
+   the same alignment (com.ngene, com.lgene[], com.posG[], etc.)
+   Binary search is used to sort site patterns, with patterns represented using 0-ended strings.
+   The routine works with nucleotide, amino acid, or codon sequences.
+   This should work with both encoded and un-encoded sequences.
+   If com.pose is not NULL, this generates the site-to-pattern map in com.pose[].
+   com.fpatt holds site-pattern counts.
+   Sequences z[ns][ls] are copied into patterns zt[ls*lpatt], and bsearch is used
+   twice to avoid excessive copying, first to count npatt and identify the site patterns and 
+   second to generate fpatt[], pose[] etc.
 */
     int maxnpatt = com.ls, h, l, u, ip, j, k, same;
-    /* int n31 = (com.seqtype==CODONseq ? 3 : 1); */
-    int n31 = 1;
-    int lpatt = com.ns*n31 + 1;   /* extra 0 used for easy debugging, can be avoided */
+    int n31 = (com.seqtype==CODONseq ? 3 : 1);
+    int lpatt = com.ns*n31 + 1;
     int *p2s;  /* point patterns to sites in zt */
-    char *zt;
-    unsigned char *p;
+    char timestr[36];
+    unsigned char *p, *zt;
     double nc = (com.seqtype == 1 ? 64 : com.ncode) + !com.cleandata + 1;
     int debug = 0;
-    char DS[] = "DS";
     
     /* (A) Collect and sort patterns.  Get com.npatt.
-     Move sequences com.z[ns][ls] into sites zt[ls*lpatt].
-     Use p2s to map patterns to sites in zt to avoid copying.
+           Move sequences com.z[ns][ls] into sites zt[ls*lpatt].
+           Use p2s to map patterns to sites in zt to avoid copying.
      */
     
     if ((com.seqtype == 1 && com.ns<5) || (com.seqtype != 1 && com.ns<7))
@@ -89,13 +89,13 @@ int PatternWeightSimple(void)
     for (j = 0; j<com.ns; j++)
         for (h = 0; h<com.ls; h++)
             for (k = 0; k<n31; k++)
-                zt[h*lpatt + j*n31 + k] = com.z[j][h*n31 + k];
+                zt[h*lpatt + j*n31 + k] = (unsigned char)(com.z[j][h*n31 + k] + 1);
     
     com.npatt = l = u = ip = 0;
     for (h = 0; h<com.ls; h++) {
         if (debug) printf("\nh %3d %s", h, zt + h*lpatt);
         /* bsearch in existing patterns.  Knuth 1998 Vol3 Ed2 p.410
-         ip is the loc for match or insertion.  [l,u] is the search interval.
+           ip is the loc for match or insertion.  [l,u] is the search interval.
          */
         same = 0;
         if (h != 0) {  /* not 1st pattern? */
@@ -121,16 +121,21 @@ int PatternWeightSimple(void)
         }
         
         if (debug) {
-            printf(": %3d (%c ilu %3d%3d%3d) ", com.npatt, DS[same], ip, l, u);
+            printf(": %3d (%c ilu %3d%3d%3d) ", com.npatt, (same?'S':'D'), ip, l, u);
             for (j = 0; j<com.npatt; j++)
                 printf(" %s", zt + p2s[j] * lpatt);
         }
+        if(noisy>2 && ((h+1)%10000==0 || h+1==com.ls))
+           printf("\r%12d patterns at %8d / %8d sites (%.1f%%), %s",
+              com.npatt, h+1, com.ls, (h+1.)*100/com.ls, printtime(timestr));
     }     /* for (h)  */
-    
+    if(noisy>2) printf("\n%d patterns\n", com.npatt);
+
     /* (B) count pattern frequencies */
     com.fpatt = (double*)realloc(com.fpatt, com.npatt*sizeof(double));
     if (com.fpatt == NULL) error2("oom fpatt");
-    for (ip = 0; ip<com.npatt; ip++) com.fpatt[ip] = 0;
+    memset(com.fpatt, 0, com.npatt*sizeof(double));
+
     for (h = 0; h<com.ls; h++) {
         for (same = 0, l = 0, u = com.npatt - 1;;) {
             if (u<l) break;
@@ -143,114 +148,188 @@ int PatternWeightSimple(void)
         if (!same)
             error2("ghost pattern?");
         com.fpatt[ip]++;
+        if(com.pose) com.pose[h] = ip;
     }     /* for (h)  */
-    
     for (j = 0; j<com.ns; j++) {
-        for (ip = 0, p = com.z[j]; ip<com.npatt; ip++)
-            for (k = 0; k<n31; k++)
-                *p++ = zt[p2s[ip] * lpatt + j*n31 + k];
+       com.z[j] = p = (unsigned char*)realloc(com.z[j], com.npatt * sizeof(unsigned char));
+       for (ip = 0; ip<com.npatt; ip++)
+          for (k = 0; k<n31; k++)
+             *p++ = (unsigned char)(zt[p2s[ip] * lpatt + j*n31 + k] - 1);
     }
     free(p2s);  free(zt);
     
     return (0);
 }
 
+int ConvertSiteJC69like(unsigned char *z[], int ns, int h, unsigned char zh[])
+{
+/* This converts a site (or pattern) of nucleotides or amino acids for JC69-like models.
+   Sequence alignments in com.z[] are already encoded into 0, 1, ...
+   If the data have no ambiguities (com.cleandata=1), the routine converts,
+   for example, a site 1120 (CCAT) into 0012 (TTCA) before checking against old
+   patterns already found.  If a site contain non-gap ambiguities, it is not
+   converted.  For every site, the routine changes ? or N into - first, and then
+   convert the site iff there are no non-gap ambiguities.  Thus CC?T will be
+   converted into CC-T first and then into TT-C.  A site with CCRT will not be
+   convertd.  In theory such sites may be compressed as well, but the effort is
+   perhaps not worthwhile.
+*/
+   char b, gap;
+   char *pch = (com.seqtype == 0 ? BASEs : (com.seqtype == 2 ? AAs : BINs));
+   int npatt0 = com.npatt, j, k, same = 0, convert;
+
+   gap = (char)(strchr(pch, (int)'-') - pch);
+
+   if (com.cleandata) { /* clean data, always convert */
+      zh[0] = b = 0;
+      b++;
+      for (j = 1; j<com.ns; j++) {
+         for (k = 0; k<j; k++)
+            if (z[j][h] == z[k][h]) break;
+         zh[j] = (k<j ? zh[k] : b++);
+      }
+   }
+   else { /* convert only if there are no non-gap ambiguity characters */
+      for (j = 0; j<ns; j++)
+         zh[j] = z[j][h];
+
+      /* After this loop, convert = 0 or 1 decides whether to convert. */
+      for (j = 0, convert = 1; j<ns; j++) {
+         if (zh[j] < com.ncode)
+            continue;
+         if (nChara[(int)zh[j]] == com.ncode) {
+            zh[j] = gap;
+            continue;
+         }
+         convert = 0;
+         break;
+      }
+      if (convert) {
+         b = 0;
+         if (zh[0] != gap)
+            zh[0] = b++;
+         for (j = 1; j<ns; j++) {
+            if (zh[j] != gap) {
+               for (k = 0; k<j; k++)
+                  if (zh[j] == z[k][h]) break;
+               if (k<j) zh[j] = zh[k];
+               else    zh[j] = b++;
+            }
+         }
+      }
+   }
+   for (j = 0; j<ns; j++)  zh[j] ++;  /* change 0 to 1. */
+   return(0);
+}
+
+
 int PatternWeightJC69like (void)
 {
-    /* This collaps site patterns further for JC69-like models, called after
-     PatternWeight().  This is used for JC and poisson amino acid models.
-     The routine could be merged into PatternWeight(), which should lead to
-     faster computation, but this is not done because right now
-     InitializeBaseAA() prints out base or amino acid frequencies after
-     PatternWeight() and before this routine.
-     
-     If the data have no ambiguities (com.cleandata=1), the routine recodes
-     the data, for example, changing data at a site 1120 (CCAT) into 0012
-     (TTCA) before checking against old patterns already found.  If the data
-     contain ambiguities, they are not encoded.  In that case, for every
-     site, the routine changes ? or N into - first.  It then checks whether there
-     are any other ambibiguities and will recode if and only if there are not
-     any other ambiguities.  For example, a site with data CC?T will be
-     changed into CC-T first and then recoded into TT-C and checked against
-     old patterns found.  A site with data CCRT will not be recoded.  In theory
-     such sites may be packed as well, but perhaps the effort is not worthwhile.
-     The routine checks data like CCRT against old patterns already found,
-     
-     If com.pose is not NULL, the routine also updates com.pose.  This allows
-     the program to work if com.readpattern==1.
-     */
-    char zh[NS], b, gap;
-    char *pch=(com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs: (com.seqtype==5?BASEs5:BINs)));
-    int npatt0=com.npatt, h, ht, j,k, same=0, ig, recode;
+/*  This collaps site patterns further for JC69-like models, called after
+    PatternWeight().  This is used for JC and poisson amino acid models.
+    The routine could be merged into PatternWeight(), which should lead to
+    faster computation, but this is not done because right now
+    InitializeBaseAA() prints out base or amino acid frequencies after
+    PatternWeight() and before this routine.
     
-    if(com.seqtype==1)
-        error2("PatternWeightJC69like does not work for codon seqs");
-    if(noisy>3) printf("Counting site patterns again, for JC69.\n");
-    gap = (char) (strchr(pch, (int)'-') - pch);
-    for (h=0,com.npatt=0,ig=-1; h<npatt0; h++) {
-        if (ig<com.ngene-1 && h==com.posG[ig+1])
-            com.posG[++ig] = com.npatt;
-        
-        if(com.cleandata) { /* clean data, always recode */
-            zh[0] = b = 0;
-            b++;
-            for (j=1; j<com.ns; j++) {
-                for(k=0; k<j; k++)
-                    if (com.z[j][h]==com.z[k][h]) break;
-                zh[j] = (k<j ? zh[k] : b++);
-            }
-        }
-        else { /* recode only if there are no non-gap ambiguity characters */
-            for(j=0; j<com.ns; j++)
-                zh[j] = com.z[j][h];
-            
-            /* After this loop, recode = 0 or 1 decides whether to recode. */
-            for (j=0,recode=1; j<com.ns; j++) {
-                if (zh[j] < com.ncode)
-                    continue;
-                if (nChara[(int)zh[j]] == com.ncode) {
-                    zh[j] = gap;
-                    continue;
-                }
-                recode = 0;
-                break;
-            }
-            if(recode) {
-                b = 0;
-                if(zh[0] != gap)
-                    zh[0] = b++;
-                for (j=1; j<com.ns; j++) {
-                    if(zh[j] != gap) {
-                        for(k=0; k<j; k++)
-                            if (zh[j] == com.z[k][h]) break;
-                        if(k<j) zh[j] = zh[k];
-                        else    zh[j] = b++;
-                    }
-                }
-            }
-        }
-        
-        for (ht=com.posG[ig],same=0; ht<com.npatt; ht++) {
-            for (j=0,same=1; j<com.ns; j++)
-                if (zh[j]!=com.z[j][ht]) {
-                    same = 0;  break;
-                }
-            if (same) break;
-        }
-        if (same)
-            com.fpatt[ht] += com.fpatt[h];
-        else {
-            for(j=0; j<com.ns; j++) com.z[j][com.npatt] = zh[j];
-            com.fpatt[com.npatt++] = com.fpatt[h];
-        }
-        if(com.pose)
-            for(k=0; k<com.ls; k++)
-                if(com.pose[k]==h) com.pose[k] = ht;
-    }     /* for (h)   */
-    com.posG[com.ngene] = com.npatt;
-    if(noisy>3) printf ("new no. site patterns:%7d\n", com.npatt);
-    
-    return (0);
+    If com.pose is not NULL, the routine also updates com.pose.  This allows the program 
+    to work if com.readpattern==1.  
+    This works for nucleotide and amino acid models, but not codon models.
+    This routine is nearly identical to PatternWeight, which works for un-encoded sequences.  
+    fpatt0 stores the old com.fpatt info, while com.fpatt is shrunk.
+    Think about merging them (encode sequences first and compress sites).
+*/
+   int npatt0=com.npatt, lpatt = com.ns + 1, h, l, u, ip, j, k, same;
+   int *p2s;  /* point patterns to sites in zt */
+   char timestr[36];
+   unsigned char *p, *zt;
+   double *fpatt0;
+   int debug = 0;
+
+   /* (A) Collect and sort patterns.  Get com.npatt.
+          Move sequences com.z[ns][ls] into sites zt[ls*lpatt].
+          Use p2s to map patterns to sites in zt to avoid copying.
+   */
+   if (noisy>2) printf("Counting site patterns again, for JC69.. %s\n", printtime(timestr));
+   if (com.seqtype == 1) error2("PatternWeightJC69like does not work for codon seqs");
+   if (com.ngene>1) error2("PatternWeightJC69like does not work when ngene > 1");
+
+   p2s = (int*)malloc(npatt0 * sizeof(int));
+   zt = (char*)malloc(npatt0*lpatt * sizeof(char));
+   fpatt0 = (double*)malloc(npatt0* sizeof(double));
+   if (p2s == NULL || zt == NULL || fpatt0 == NULL)  error2("oom p2s or zt or fpatt0");
+   memset(zt, 0, npatt0*lpatt * sizeof(char));
+   memmove(fpatt0, com.fpatt, npatt0*sizeof(double));
+   for (h = 0; h<npatt0; h++)
+      ConvertSiteJC69like(com.z, com.ns, h, zt + h*lpatt);
+
+   l = u = ip = com.npatt = 0;
+   for (h = 0; h<npatt0; h++) {
+      if (debug) printf("\nh %3d %s", h, zt + h*lpatt);
+
+      /* bsearch in existing patterns.  Knuth 1998 Vol3 Ed2 p.410
+      ip is the loc for match or insertion.  [l,u] is the search interval.
+      */
+      same = 0;
+      if (h != 0) {  /* not 1st pattern? */
+         for (l = 0, u = com.npatt - 1; ; ) {
+            if (u<l) break;
+            ip = (l + u) / 2;
+            k = strcmp(zt + h*lpatt, zt + p2s[ip] * lpatt);
+            if (k<0)        u = ip - 1;
+            else if (k>0)   l = ip + 1;
+            else { same = 1;  break; }
+         }
+      }
+      if (!same) {
+         if (l > ip) ip++;        /* last comparison in bsearch had k > 0. */
+         /* Insert new pattern at ip.  This is the expensive step. */
+         if (ip<com.npatt)
+            memmove(p2s + ip + 1, p2s + ip, (com.npatt - ip) * sizeof(int));
+         p2s[ip] = h;
+         com.npatt++;
+      }
+      if (debug) {
+         printf(": %3d (%c ilu %3d%3d%3d) ", com.npatt, (same ? 'S' : 'D'), ip, l, u);
+         for (j = 0; j<com.npatt; j++)
+            printf(" %s", zt + p2s[j] * lpatt);
+      }
+      if (noisy>2 && ((h + 1) % 10000 == 0 || h + 1 == npatt0))
+         printf("\rCompressing, %6d patterns at %6d / %6d sites (%.1f%%), %s",
+            com.npatt, h + 1, npatt0, (h + 1.) * 100 / npatt0, printtime(timestr));
+   }     /* for (h)  */
+   if (noisy>2) printf("\n");
+
+   /* (B) count pattern frequencies and collect pose[] */
+   com.fpatt = (double*)realloc(com.fpatt, com.npatt * sizeof(double));
+   memset(com.fpatt, 0, com.npatt * sizeof(double));
+
+   for (h = 0; h<npatt0; h++) {
+      for (same = 0, l = 0, u = com.npatt - 1; ; ) {
+         if (u<l) break;
+         ip = (l + u) / 2;
+         k = strcmp(zt + h*lpatt, zt + p2s[ip] * lpatt);
+         if (k<0)        u = ip - 1;
+         else if (k>0)   l = ip + 1;
+         else { same = 1;  break; }
+      }
+      if (!same) error2("ghost pattern?");
+      com.fpatt[ip] += fpatt0[h];
+      if(com.pose) com.pose[h] = ip;
+      if (noisy>2 && ((h + 1) % 10000 == 0 || h + 1 == npatt0))
+         printf("\rCollecting patterns, %6d patterns at %6d / %6d sites (%.1f%%), %s",
+            com.npatt, h + 1, npatt0, (h + 1.) * 100 / npatt0, printtime(timestr));
+   }     /* for (h)  */
+   if (noisy>2) printf("\n");
+
+   for (j = 0; j<com.ns; j++) {
+      com.z[j] = (unsigned char*)realloc(com.z[j], com.npatt * sizeof(unsigned char));
+      for (ip = 0, p = com.z[j]; ip<com.npatt; ip++)
+         *p++ = (unsigned char)(zt[p2s[ip] * lpatt + j] - 1);
+   }
+   free(p2s);  free(zt);  free(fpatt0);
+
+   return (0);
 }
 
 
@@ -416,7 +495,7 @@ int ReadSeq (FILE *fout, FILE *fseq, int cleandata, int locus)
     int n31=(com.seqtype==CODONseq||com.seqtype==CODON2AAseq?3:1);
     int gap=(n31==3?3:10), nchar=(com.seqtype==AAseq?20:4);
     int h,b[3]={0};
-    char *pch=((com.seqtype<=1||com.seqtype==CODON2AAseq) ? BASEs : (com.seqtype==2 ? AAs: (com.seqtype==5 ? BASEs5 : BINs)));
+    char *pch=((com.seqtype<=1||com.seqtype==CODON2AAseq) ? BASEs : (com.seqtype==2 ? AAs: BINs));
     char str[4]="   ";
     char *NEXUSend="end;";
     double lst;
@@ -430,7 +509,7 @@ int ReadSeq (FILE *fout, FILE *fseq, int cleandata, int locus)
     if (noisy>=9 && (com.seqtype<=CODONseq||com.seqtype==CODON2AAseq)) {
         puts("\n\nAmbiguity character definition table:\n");
         for(i=0; i<(int)strlen(BASEs); i++) {
-            nb = strlen(EquateBASE[i]);
+            nb = (int)strlen(EquateBASE[i]);
             printf("%c (%d): ", BASEs[i], nb);
             for(j=0; j<nb; j++)  printf("%c ", EquateBASE[i][j]);
             FPN(F0);
@@ -598,9 +677,9 @@ readseq:
             }
             p = line+(line[0]=='=' || line[0]=='>') ;
             while(isspace(*p)) p++;
-            if ((ch=strstr(p,"  ")-p)<lspname && ch>0) lspname=ch;
+            if ((ch=(int)(strstr(p,"  ")-p)) < lspname && ch>0) lspname=ch;
             strncpy (com.spname[j], p, lspname);
-            k = strlen(com.spname[j]);
+            k = (int)strlen(com.spname[j]);
             p += (k<lspname?k:lspname);
             
             for (; k>0; k--) /* trim spaces */
@@ -667,10 +746,10 @@ readseq:
                 if (igroup==0) {
                     lspname = LSPNAME;
                     while(isspace(*p)) p++;
-                    if ((ch=strstr(p,"  ")-p)<lspname && ch>0)
+                    if ((ch = (int)(strstr(p,"  ")-p)) < lspname && ch>0)
                         lspname = ch;
                     strncpy (com.spname[j], p, lspname);
-                    k = strlen(com.spname[j]);
+                    k = (int)strlen(com.spname[j]);
                     p += (k<lspname?k:lspname);
                     
                     for (; k>0; k--)   /* trim spaces */
@@ -996,18 +1075,18 @@ int printPatterns(FILE *fout)
 
 void EncodeSeqs (void)
 {
-    /* This encodes sequences and set up com.TipMap[][], called after sites are collapsed
-     into patterns.
-     */
+/* This encodes sequences and set up com.TipMap[][], called after sites are collapsed
+   into patterns.
+*/
     int n=com.ncode, nA, is,h, i, j, k,ic, indel=0, ch, b[3];
-    char *pch = ((com.seqtype==0||com.seqtype==1) ? BASEs : (com.seqtype==2 ? AAs : (com.seqtype==5 ? BASEs5: BINs)));
+    char *pch = ((com.seqtype==0||com.seqtype==1) ? BASEs : (com.seqtype==2 ? AAs : BINs));
     unsigned char c[4]="", str[4]="   ";
     
     if(com.seqtype != 1) {
         for(is=0; is<com.ns; is++) {
             for (h=0; h<com.npatt; h++) {
                 ch = com.z[is][h];
-                com.z[is][h] = (char)(k = strchr(pch, ch) - pch);
+                com.z[is][h] = (char)(k = (int)(strchr(pch, ch) - pch));
                 if(k<0) {
                     printf("strange character %c in seq %d site %d\n", ch, is+1, h+1);
                     exit(-1);
@@ -1070,9 +1149,9 @@ void SetMapAmbiguity (void)
     /* This sets up CharaMap, the map from the ambiguity characters to resolved characters.
      */
     int n=com.ncode, i,j, i0,i1,i2, nb[3], ib[3][4], ic;
-    char *pch = (com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs : (com.seqtype==5 ? BASEs5: BINs)));
-    char *pbases = (com.seqtype==0 ? BASEs : (com.seqtype==5 ? BASEs5: NULL));
-    char **pEquateBASE = (com.seqtype==0 ? EquateBASE : (com.seqtype==5 ? EquateBASE5 : NULL));
+    char *pch = (com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs : BINs));
+    char *pbases = (com.seqtype==0 ? BASEs : NULL);
+    char **pEquateBASE = (com.seqtype==0 ? EquateBASE : NULL);
     char debug=0;
     
     for(j=0; j<n; j++) {  /* basic characters, coded according to the definition in pch. */
@@ -1221,145 +1300,140 @@ void AllPatterns (FILE* fout)
 }
 
 
-int PatternWeight (void)
+int PatternWeight(void)
 {
-    /* This collaps sites into patterns, for nucleotide, amino acid, or codon sequences.
-     This relies on \0 being the end of the string so that sequences should not be
-     encoded before this routine is called.
-     com.pose[i] has labels for genes as input and maps sites to patterns in return.
-     com.fpatt, a vector of doubles, wastes space as site pattern counts are integers.
-     Sequences z[ns*ls] are copied into patterns zt[ls*lpatt], and bsearch is used
-     twice to avoid excessive copying, to count npatt first & to generate fpatt etc.
-     */
-    int maxnpatt=com.ls, h, ip,l,u, j, k, same, ig, *poset;
-    // int gap = (com.seqtype==CODONseq ? 3 : 10);
-    int n31 = (com.seqtype==CODONseq ? 3 : 1);
-    int lpatt=com.ns*n31+1;   /* extra 0 used for easy debugging, can be voided */
-    int *p2s;  /* point patterns to sites in zt */
-    char *zt, timestr[36];
-    unsigned char *p;
-    double nc = (com.seqtype == 1 ? 64 : com.ncode) + !com.cleandata+1;
-    int debug=0;
-    char DS[]="DS";
-    
-    /* (A)
-     Collect and sort patterns.  Get com.npatt, com.lgene, com.posG.
-     Move sequences com.z[ns][ls] into sites zt[ls*lpatt].
-     Use p2s to map patterns to sites in zt to avoid copying.
-     */
-    if(noisy) printf("Counting site patterns.. %s\n", printtime(timestr));
-    
-    if((com.seqtype==1 && com.ns<5) || (com.seqtype!=1 && com.ns<7))
-        maxnpatt = (int)(pow(nc, (double)com.ns) + 0.5) * com.ngene;
-    if(maxnpatt>com.ls) maxnpatt = com.ls;
-    p2s  = (int*)malloc(maxnpatt*sizeof(int));
-    zt = (char*)malloc(com.ls*lpatt*sizeof(char));
-    if(p2s==NULL || zt==NULL)  error2("oom p2s or zt");
-    memset(zt, 0, com.ls*lpatt*sizeof(char));
-    for(j=0; j<com.ns; j++)
-        for(h=0; h<com.ls; h++)
-            for(k=0; k<n31; k++)
-                zt[h*lpatt+j*n31+k] = com.z[j][h*n31+k];
-    
-    for(j=0; j<com.ns; j++) free(com.z[j]);
-    
-    for(ig=0; ig<com.ngene; ig++) com.lgene[ig] = 0;
-    for(ig=0,com.npatt=0; ig<com.ngene; ig++) {
-        com.posG[ig] = l = u = ip = com.npatt;
-        for(h=0; h<com.ls; h++) {
-            if(com.pose[h] != ig) continue;
-            if(debug) printf("\nh %3d %s", h, zt+h*lpatt);
-            
-            /* bsearch in existing patterns.  Knuth 1998 Vol3 Ed2 p.410
-             ip is the loc for match or insertion.  [l,u] is the search interval.
-             */
-            same = 0;
-            if(com.lgene[ig]++ != 0) {  /* not 1st pattern? */
-                for(l=com.posG[ig], u=com.npatt-1; ; ) {
-                    if(u<l) break;
-                    ip = (l+u)/2;
-                    k = strcmp(zt+h*lpatt, zt+p2s[ip]*lpatt);
-                    if(k<0)        u = ip - 1;
-                    else if(k>0)   l = ip + 1;
-                    else         { same = 1;  break; }
-                }
+/* This collaps sites into patterns, for nucleotide, amino acid, or codon sequences.
+   This relies on \0 being the end of the string.
+   com.pose[i] has labels for genes as input and maps sites to patterns in return.
+   com.fpatt has site-pattern counts.
+   This deals with multiple genes/partitions, and uses com.ngene, com.lgene[], com.posG[] etc.
+   Sequences z[ns][ls] are copied into patterns zt[ls*lpatt], and bsearch is used
+   twice to avoid excessive copying, the first round to count npatt and identify the site patterns
+   and the second round to generate fpatt[] & com.pose[].
+*/
+   int maxnpatt = com.ls, h, ip, l, u, j, k, same, ig, *poset;
+   // int gap = (com.seqtype==CODONseq ? 3 : 10);
+   int n31 = (com.seqtype == CODONseq ? 3 : 1);
+   int lpatt = com.ns*n31 + 1;   /* extra 0 used for easy debugging, can be voided */
+   int *p2s;  /* point patterns to sites in zt */
+   char timestr[36];
+   unsigned char *p, *zt;
+   double nc = (com.seqtype == 1 ? 64 : com.ncode) + !com.cleandata + 1;
+   int debug = 0;
+
+   /* (A) Collect and sort patterns.  Get com.npatt, com.lgene, com.posG.
+   Move sequences com.z[ns][ls] into sites zt[ls*lpatt].
+   Use p2s to map patterns to sites in zt to avoid copying.
+   */
+   if (noisy) printf("Counting site patterns.. %s\n", printtime(timestr));
+
+   if ((com.seqtype == 1 && com.ns<5) || (com.seqtype != 1 && com.ns<7))
+      maxnpatt = (int)(pow(nc, (double)com.ns) + 0.5) * com.ngene;
+   if (maxnpatt>com.ls) maxnpatt = com.ls;
+   p2s = (int*)malloc(maxnpatt * sizeof(int));
+   zt = (char*)malloc(com.ls*lpatt * sizeof(char));
+   if (p2s == NULL || zt == NULL)  error2("oom p2s or zt");
+   memset(zt, 0, com.ls*lpatt * sizeof(char));
+   for (j = 0; j<com.ns; j++)
+      for (h = 0; h<com.ls; h++)
+         for (k = 0; k<n31; k++)
+            zt[h*lpatt + j*n31 + k] = (unsigned char)(com.z[j][h*n31 + k] + 1);
+
+   for (ig = 0; ig<com.ngene; ig++) com.lgene[ig] = 0;
+   for (ig = 0, com.npatt = 0; ig<com.ngene; ig++) {
+      com.posG[ig] = l = u = ip = com.npatt;
+      for (h = 0; h<com.ls; h++) {
+         if (com.pose[h] != ig) continue;
+         if (debug) printf("\nh %3d %s", h, zt + h*lpatt);
+
+         /* bsearch in existing patterns.  Knuth 1998 Vol3 Ed2 p.410
+         ip is the loc for match or insertion.  [l,u] is the search interval.
+         */
+         same = 0;
+         if (com.lgene[ig]++ != 0) {  /* not 1st pattern? */
+            for (l = com.posG[ig], u = com.npatt - 1; ; ) {
+               if (u<l) break;
+               ip = (l + u) / 2;
+               k = strcmp(zt + h*lpatt, zt + p2s[ip] * lpatt);
+               if (k<0)        u = ip - 1;
+               else if (k>0)   l = ip + 1;
+               else { same = 1;  break; }
             }
-            if(!same) {
-                if(com.npatt>maxnpatt)
-                    error2("npatt > maxnpatt");
-                if(l > ip) ip++;        /* last comparison in bsearch had k > 0. */
-                /* Insert new pattern at ip.  This is the expensive step. */
-                
-                if(ip<com.npatt)
-                    memmove(p2s+ip+1, p2s+ip, (com.npatt-ip)*sizeof(int));
-                
-                /*
-                 for(j=com.npatt; j>ip; j--)
-                 p2s[j] = p2s[j-1];
-                 */
-                p2s[ip] = h;
-                com.npatt ++;
-            }
-            
-            if(debug) {
-                printf(": %3d (%c ilu %3d%3d%3d) ", com.npatt, DS[same], ip, l, u);
-                for(j=0; j<com.npatt; j++)
-                    printf(" %s", zt+p2s[j]*lpatt);
-            }
-            if(noisy && ((h+1)%10000==0 || h+1==com.ls))
-                printf("\r%12d patterns at %8d / %8d sites (%.1f%%), %s",
-                       com.npatt, h+1, com.ls, (h+1.)*100/com.ls, printtime(timestr));
-            
-        }     /* for (h)  */
-    }        /* for (ig) */
-    if(noisy) FPN(F0);
-    
-    /* (B) count pattern frequencies and collect pose[] */
-    com.posG[com.ngene] = com.npatt;
-    for(j=0; j<com.ngene; j++)
-        if(com.lgene[j]==0)
-            error2("some gene labels are missing");
-    for(j=1; j<com.ngene; j++)
-        com.lgene[j] += com.lgene[j-1];
-    
-    com.fpatt = (double*)realloc(com.fpatt, com.npatt*sizeof(double));
-    poset = (int*)malloc(com.ls*sizeof(int));
-    if(com.fpatt==NULL || poset==NULL) error2("oom poset");
-    for(ip=0; ip<com.npatt; ip++) com.fpatt[ip] = 0;
-    
-    for(ig=0; ig<com.ngene; ig++) {
-        for(h=0; h<com.ls; h++) {
-            if(com.pose[h] != ig) continue;
-            for(same=0, l=com.posG[ig], u=com.posG[ig+1]-1; ; ) {
-                if(u<l) break;
-                ip = (l+u)/2;
-                k = strcmp(zt+h*lpatt, zt+p2s[ip]*lpatt);
-                if(k<0)        u = ip - 1;
-                else if(k>0)   l = ip + 1;
-                else         { same = 1;  break; }
-            }
-            if(!same)
-                error2("ghost pattern?");
-            com.fpatt[ip]++;
-            poset[h] = ip;
-        }     /* for (h)  */
-    }        /* for (ig) */
-    
-    if(com.seqtype==CODONseq && com.ngene==3 &&com.lgene[0]==com.ls/3) {
-        puts("\nCheck option G in data file? (Enter)\n");
-    }
-    
-    for(j=0; j<com.ns; j++) {
-        com.z[j] = (unsigned char*)malloc(com.npatt*n31*sizeof(char));
-        for(ip=0,p=com.z[j]; ip<com.npatt; ip++)
-            for(k=0; k<n31; k++)
-                *p++ = zt[p2s[ip]*lpatt + j*n31 + k];
-    }
-    memcpy(com.pose, poset, com.ls*sizeof(int));
-    free(poset);  free(p2s);  free(zt);
-    
-    return (0);
+         }
+         if (!same) {
+            if (com.npatt>maxnpatt)
+               error2("npatt > maxnpatt");
+            if (l > ip) ip++;        /* last comparison in bsearch had k > 0. */
+                                     /* Insert new pattern at ip.  This is the expensive step. */
+            if (ip<com.npatt)
+               memmove(p2s + ip + 1, p2s + ip, (com.npatt - ip) * sizeof(int));
+            p2s[ip] = h;
+            com.npatt++;
+         }
+
+         if (debug) {
+            printf(": %3d (%c ilu %3d%3d%3d) ", com.npatt, (same ? 'S' : 'D'), ip, l, u);
+            for (j = 0; j<com.npatt; j++)
+               printf(" %s", zt + p2s[j] * lpatt);
+         }
+         if (noisy && ((h + 1) % 10000 == 0 || h + 1 == com.ls))
+            printf("\rCompressing, %6d patterns at %6d / %6d sites (%.1f%%), %s",
+               com.npatt, h + 1, com.ls, (h + 1.) * 100 / com.ls, printtime(timestr));
+
+      }     /* for (h)  */
+      if (noisy) FPN(F0);
+   }        /* for (ig) */
+
+            /* (B) count pattern frequencies and collect pose[] */
+   com.posG[com.ngene] = com.npatt;
+   for (j = 0; j<com.ngene; j++)
+      if (com.lgene[j] == 0)
+         error2("some genes do not have any sites?");
+   for (j = 1; j<com.ngene; j++)
+      com.lgene[j] += com.lgene[j - 1];
+
+   com.fpatt = (double*)realloc(com.fpatt, com.npatt * sizeof(double));
+   poset = (int*)malloc(com.ls * sizeof(int));
+   if (com.fpatt == NULL || poset == NULL) error2("oom poset");
+   memset(com.fpatt, 0, com.npatt * sizeof(double));
+
+   for (ig = 0; ig<com.ngene; ig++) {
+      for (h = 0; h<com.ls; h++) {
+         if (com.pose[h] != ig) continue;
+         for (same = 0, l = com.posG[ig], u = com.posG[ig + 1] - 1; ; ) {
+            if (u<l) break;
+            ip = (l + u) / 2;
+            k = strcmp(zt + h*lpatt, zt + p2s[ip] * lpatt);
+            if (k<0)        u = ip - 1;
+            else if (k>0)   l = ip + 1;
+            else { same = 1;  break; }
+         }
+         if (!same)
+            error2("ghost pattern?");
+         com.fpatt[ip]++;
+         poset[h] = ip;
+         if (noisy && ((h + 1) % 10000 == 0 || h + 1 == com.ls))
+            printf("\rCollecting patterns, %6d patterns at %6d / %6d sites (%.1f%%), %s",
+               com.npatt, h + 1, com.ls, (h + 1.) * 100 / com.ls, printtime(timestr));
+      }     /* for (h)  */
+      if (noisy) FPN(F0);
+   }        /* for (ig) */
+
+   if (com.seqtype == CODONseq && com.ngene == 3 && com.lgene[0] == com.ls / 3)
+      puts("\nCheck option G in data file?\n");
+
+   for (j = 0; j<com.ns; j++) {
+      com.z[j] = (unsigned char*)realloc(com.z[j], com.npatt*n31 * sizeof(unsigned char));
+      for (ip = 0, p = com.z[j]; ip<com.npatt; ip++)
+         for (k = 0; k<n31; k++)
+            *p++ = (unsigned char)(zt[p2s[ip] * lpatt + j*n31 + k] - 1);
+   }
+   memcpy(com.pose, poset, com.ls * sizeof(int));
+   free(poset);  free(p2s);  free(zt);
+
+   return (0);
 }
+
 
 
 void AddFreqSeqGene(int js,int ig,double pi0[],double pi[]);
@@ -1402,7 +1476,7 @@ int InitializeBaseAA (FILE *fout)
      This routine is called by baseml and aaml.  codonml uses another
      routine InitializeCodon()
      */
-    char *pch = (com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs : (com.seqtype==5 ? BASEs5: BINs)));
+    char *pch = (com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs : BINs));
     char indel[]="-?";
     int wname=30, h,js,k, ig, nconstp, n=com.ncode;
     int irf, nrf=20;
@@ -1551,7 +1625,7 @@ void AddFreqSeqGene(int js, int ig, double pi0[], double pi[])
      using pi0, by resolving ambiguities.  The data are coded.  com.cleandata==1 or 0.
      This is for nucleotide and amino acid sequences only.
      */
-    //char *pch = (com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs : (com.seqtype==5 ? BASEs5: BINs)));
+    //char *pch = (com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs : BINs));
     int k, h, b, n=com.ncode;
     double t;
     
@@ -1598,7 +1672,7 @@ int RemoveIndel(void)
      */
     int  n=com.ncode, h,k, j,js,lnew,nindel, n31=1;
     char b, *miss;  /* miss[h]=1 if site (codon) h is missing, 0 otherwise */
-    char *pch=((com.seqtype<=1||com.seqtype==CODON2AAseq)?BASEs:(com.seqtype==2?AAs: (com.seqtype==5?BASEs5:BINs)));
+    char *pch=((com.seqtype<=1||com.seqtype==CODON2AAseq)?BASEs:(com.seqtype==2?AAs: BINs));
     
     if(com.seqtype==CODONseq || com.seqtype==CODON2AAseq) {
         n31=3; n=4;
@@ -1654,7 +1728,7 @@ int MPInformSites (void)
      Not used for a long time.  Does not work if com.pose is NULL.
      */
     char *imark;
-    char *pch=(com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs: (com.seqtype==5?BASEs5:BINs)));
+    char *pch=(com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs: BINs));
     int h, i, markb[NS], inf, lsinf;
     FILE *finf, *fninf;
     
@@ -1715,7 +1789,7 @@ int print1seq (FILE*fout, unsigned char *z, int ls, int pose[])
      This uses com.seqtype.
      */
     int h, hp, gap=10;
-    char *pch=(com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs: (com.seqtype==5?BASEs5:BINs)));
+    char *pch=(com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs: BINs));
     // char str[4]="";
     // int nb = (com.seqtype==CODONseq?3:1);
     
@@ -1781,13 +1855,14 @@ void printSeqs (FILE *fout, int *pose, char keep[], int format)
    else if (format==1) {
        for(h=0,FPN(fout); h<com.npatt; h++) {
            /* fprintf(fout," %12.8f", com.fpatt[h]/(double)com.ls); */
-           fprintf(fout, " %.0f", com.fpatt[h]);
+           fprintf(fout, " %4.0f", com.fpatt[h]);
            if((h+1)%15==0) FPN(fout);
        }
    }
    fprintf(fout,"\n\n");
    fflush(fout);
 }
+
 
 #define gammap(x,alpha) (alpha*(1-pow(x,-1.0/alpha)))
 /* DistanceREV () used to be here, moved to pamp.
@@ -3372,11 +3447,11 @@ void PointconPnodes (void)
      This routine updates internal nodes com.conP only.
      End nodes (com.conP0) are updated in InitConditionalPNode().
      */
-    size_t nintern=0, i;
+    int nintern=0, i;
     
     for(i=0; i<tree.nbranch+1; i++)
         if(nodes[i].nson>0)  /* more thinking */
-            nodes[i].conP = com.conP + com.ncode*com.npatt*nintern ++;
+            nodes[i].conP = com.conP + (size_t)com.ncode*com.npatt*nintern ++;
 }
 
 
@@ -4492,7 +4567,7 @@ int StepwiseAdditionMP (double space[])
     _U0=(int*)malloc(com.npatt*_mnnode*sizeof(int));
     _step0=(int*)malloc(com.npatt*_mnnode*sizeof(int));
     if (noisy>2)
-        printf("\n%9ld bytes for MP (U0 & N0)\n", 2*com.npatt*_mnnode*sizeof(int));
+        printf("\n%9zd bytes for MP (U0 & N0)\n", 2*com.npatt*_mnnode*sizeof(int));
     if (_U0==NULL || _step0==NULL) error2("oom U0&step0");
     
     FOR (i,ns0)  z0[i]=com.z[i];
@@ -5971,7 +6046,7 @@ int AncestralMarginal (FILE *fout, double x[], double fhsiteAnc[], double Sir[])
      Deals with node scaling to avoid underflows.  See above
      (Z. Yang, 2 Sept 2001)
      */
-    char *pch=(com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs: (com.seqtype==5?BASEs5:BINs)));
+    char *pch=(com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs: BINs));
     char *zanc, str[4]="",codon[2][4]={"   ","   "}, aa[4]="";
     char *sitepatt=(com.readpattern?"pattern":"site");
     int n=com.ncode, inode, ic=0,b[3],i,j,k1=-1,k2=-1,c1,c2,k3, lsc=com.ls;
@@ -6290,7 +6365,7 @@ int ChangesSites(FILE*frst, int coding, char *zanc)
      nonsynonymous changes are counted separately.
      Added in Nov 2000.
      */
-    char *pch=(com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs: (com.seqtype==5?BASEs5:BINs)));
+    char *pch=(com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs: BINs));
     char codon[2][4]={"   ","   "};
     int  h,hp,inode,k1,k2,d, ls1=(com.readpattern?com.npatt:com.ls);
     double S,N,Sd,Nd, S1,N1,Sd1,Nd1, b,btotal=0, p,C;
@@ -6578,7 +6653,7 @@ void PrintAncState1site (char ancState1site[], double prob)
 {
     int i;
     char codon[4]="";
-    char *pch=(com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs: (com.seqtype==5?BASEs5:BINs)));
+    char *pch=(com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs: BINs));
     
     for(i=0; i<tree.nnode-com.ns; i++) {
         if(com.seqtype==1) {
@@ -6626,7 +6701,7 @@ int AncestralJointPPSG2000 (FILE *fout, double x[])
      This outputs results by pattern.  I tried to print results by site (rather than by pattern), 
      but gave up as some variables use the same memory (e.g., combIndex) for different site patterns.
      */
-    char *pch=(com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs: (com.seqtype==5?BASEs5:BINs)));
+    char *pch=(com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs: BINs));
     char codon[4]="";
     int n=com.ncode, nintern=tree.nnode-com.ns, nson, i,j,k,h,hp,igene;
     int maxnson, maxncomb, lst=(com.readpattern?com.npatt:com.ls);
@@ -7458,7 +7533,7 @@ int print1site (FILE*fout, int h)
      site in the original data file or the h-th pattern.  The data are coded.
      naa > 1 if the codon codes for more than one amino acid.
      */
-    char *pch=(com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs: (com.seqtype==5?BASEs5:BINs)));
+    char *pch=(com.seqtype==0 ? BASEs : (com.seqtype==2 ? AAs: BINs));
     char compatibleAAs[20]="";
     int n=com.ncode, i, b, aa=0;
     

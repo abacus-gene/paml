@@ -487,7 +487,7 @@ scanf("%d", &KGaussLegendreRule);
       }
       fflush(fout);
 
-      if(com.seqtype==AAseq && com.model==Poisson && !com.print) {
+      if(com.seqtype==AAseq && com.model==Poisson && com.ngene<=1 && !com.print) {
          PatternWeightJC69like();
          fprintf(fout, "\n\nPrinting out site pattern counts\n");
          printPatterns(fout);
@@ -1813,7 +1813,6 @@ int SetxBound (int np, double xb[][2])
    k = com.ntime+com.nrgene+com.nkappa; 
 
    /* codon frequency parameters */
-   
    k += j = (com.seqtype==CODONseq && com.codonf>=FMutSel0 ? 3 : 0);
    if(com.seqtype==CODONseq && com.npi>3 
       && (com.codonf==Fcodon || com.codonf==FMutSel0 ||com.codonf==FMutSel)) {
@@ -1982,11 +1981,13 @@ int GetInitialsCodon (double x[])
    int k=com.ntime+com.nrgene, i,j, K=com.ncatG, nsyncodon[20];
    double mr=0;
 
+   com.nrate = com.nkappa = (com.hkyREV ? 5 : !com.fix_kappa);
+   com.nrate += com.npi;
    if(com.nrate) { /* either kappa, omega, or both for each gene */
       if(com.Mgene<=2) {
          if(com.hkyREV) {
-            x[k++]=.5+rndu(); 
-            for(i=0; i<4; i++) x[k++]=.1+rndu(); 
+            x[k++] = .5 + rndu(); 
+            for(i=0; i<4; i++) x[k++] = .1 + rndu(); 
          }
          else if (!com.fix_kappa) 
             x[k++] = com.kappa;
@@ -2062,14 +2063,6 @@ int GetInitialsCodon (double x[])
             com.nrate += (com.model==NSbranchB ? tree.nbranch : com.nOmega-1+!com.fix_omega);
          else if(com.aaDist==0)
             com.nrate += !com.fix_omega + com.nbtype - 1;
-/*
-         if(com.aaDist==0)
-            com.nrate = com.nkappa+!com.fix_omega+com.nbtype-1;
-         else if (com.aaDist==AAClasses) 
-            com.nrate = com.nkappa + com.nOmegaType*com.nbtype;
-         else if (com.model==NSbranchB || com.model==NSbranch2)
-            com.nrate += (com.model==NSbranchB ? tree.nbranch : com.nOmega-1+!com.fix_omega);
-*/
          k = com.ntime+com.nrgene;
          for(i=0; i<com.nrate; i++)
             x[k++] = com.omega * (0.8+0.4*rndu());
@@ -6667,7 +6660,7 @@ int lfunNSsites_ACD (FILE* frst, double x[], int np)
    /* # of site classes under model and index for site class */
    int nclassM = (modelACD==mA?4:3), iclassM, *iw, i;
    double para[4+NBTYPE][40]={{0}}, postpara[4+NBTYPE][40];  /* paras on grid : n1d<=40 */
-   double fh, fX, *lnfXs,S1,S2, *pclassM, *postSite, *postp0p1;
+   double fh, fX, *lnfXs, S1, S2, *pclassM, *postSite, *postp0p1;
    double fhk[4], t, cutoff=0.5;
    char timestr[32], paras[4+NBTYPE][4]={"p0","p1","w0","w2","w3","w4","w5","w6","w7"}, *sig, aa;
 
@@ -6709,7 +6702,7 @@ int lfunNSsites_ACD (FILE* frst, double x[], int np)
    get_pclassM_iw_ACD(iw, pclassM, para, n1d);
 
    /* calculate the marginal likelihood f(X), and postpara[].  S2 is scale. */
-   printf("%s\n", printtime(timestr));
+   printf("Time: %s\n", printtime(timestr));
    printf("Calculating the marginal likelihood f(X).\n");
    fX=1;  S2=-1e300;
    for(j=0; j<dim; j++)  /* postpara[0-1] for p0p1 ignored */
@@ -6765,8 +6758,8 @@ int lfunNSsites_ACD (FILE* frst, double x[], int np)
    for(k=0; k<n1d*n1d; k++) 
       postp0p1[k] /=fX;
 
-   fX = log(fX)+S2;
-   printf("\tlog(fX) = %12.6f  S = %12.6f %12.6f\n", fX+S1, S1, S2);
+   fX = log(fX) + S2;
+   printf("\tlog(fX) = %12.6f  S = %12.6f %12.6f\n", fX+S1-dim*log((double)n1d), S1, S2);
 
    /* calculate posterior prob for site classes at each site.  S1 is scale factor */
    printf("Calculating f(w_k|X), posterior for site classes for each site.  Slow!\n");
@@ -6777,7 +6770,7 @@ int lfunNSsites_ACD (FILE* frst, double x[], int np)
          for(j=dim-1,it=igrid; j>=0; j--) { ip[j]=it%n1d; it/=n1d; }
          for(k=0,fh=0; k<nclassM; k++) /* duplicated calculation */
             fh += fhk[k] = pclassM[igrid*nclassM+k]*com.fhK[iw[igrid*nclassM+k]*com.npatt+h];
-         for(k=0; k<nclassM; k++) {
+         for(k=0; k<nclassM; k++) {    /* log & exp in this loop is expensive  */
             t = log(fhk[k]/fh) + lnfXs[igrid] - fX;
             if(t>-300) postSite[k*com.npatt+h] += exp(t);
          }

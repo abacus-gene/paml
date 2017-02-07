@@ -1,13 +1,13 @@
           seed = -1
-       seqfile = mtCDNApri123.txt
-      treefile = mtCDNApri.trees
+       seqfile = ../mtCDNApri123.txt
+      treefile = ../mtCDNApri.trees
       mcmcfile = mcmc.txt
        outfile = out.txt
 
          ndata = 3
        seqtype = 0    * 0: nucleotides; 1:codons; 2:AAs
        usedata = 1    * 0: no data; 1:seq like; 2:normal approximation; 3:out.BV (in.BV)
-         clock = 2    * 1: global clock; 2: independent rates; 3: correlated rates
+         clock = 3    * 1: global clock; 2: independent rates; 3: correlated rates
        RootAge = '<1.0'  * safe constraint on root age, used if no fossil for root.
 
          model = 0    * 0:JC69, 1:K80, 2:F81, 3:F84, 4:HKY85
@@ -28,6 +28,4 @@
          print = 1   * 0: no mcmc sample; 1: everything except branch rates 2: everything
         burnin = 2000
       sampfreq = 2
-       nsample = 20000
-
-*** Note: Make your window wider (100 columns) before running the program.
+       nsample = 200000

@@ -176,6 +176,8 @@ double PMat[16], Cijk[64], Root[4];
 double _rateSite=1, OldAge=999;
 int debug=0, LASTROUND=0, BayesEB, testlnL=0, NPMat=0; /* no use for this */
 
+double BFbeta=0;
+
 /* for sptree.nodes[].fossil: lower, upper, bounds, gamma, inverse-gamma */
 enum {LOWER_F=1, UPPER_F, BOUND_F, GAMMA_F, SKEWN_F, SKEWT_F, S2N_F} FOSSIL_FLAGS;
 char *fossils[]={" ", "L", "U", "B", "G", "SN", "ST", "S2N"};
@@ -305,14 +307,14 @@ int GetMem (void)
    Memory arrangement if(com.conPSiteClass=1):
    ncode*npatt for each node, by node, by iclass, by locus
 */
-   int g = data.ngene, g1=g+(data.rgeneprior==0);
+   int g = data.ngene, g1 = g + (data.rgeneprior == 0);
    int locus, j, k, s = sptree.nspecies, s1, sG = 1, sfhK = 0;
    double *conP, *rates;
 
    /* get mem for conP (internal nodes) */
    if(mcmc.usedata==1) {
       if(!com.fix_alpha && mcmc.saveconP) {
-         com.conPSiteClass=1;  sG=com.ncatG;
+         com.conPSiteClass = 1;  sG = com.ncatG;
       }
       data.conP_offset[0] = 0;
       for(locus=0,com.sconP=0; locus<g; locus++) {
@@ -703,7 +705,7 @@ double lnpD_locus (int locus)
    else if(mcmc.usedata==2)
       lnL = lnpD_locus_Approx(locus);
 
-   return (lnL);
+   return (lnL*BFbeta);
 }
 
 double lnpData (double lnpDi[])
@@ -1026,9 +1028,9 @@ int GenerateBlengthGH (char infile[])
 int GetOptions (char *ctlf)
 {
    int  transform0=ARCSIN_B; /* default transform: SQRT_B, LOG_B, ARCSIN_B */
-   int  iopt, i, j, nopt=29, lline=4096;
-   char line[4096], *pline, *peq, opt[32], *comment="*#";
-   char *optstr[] = {"seed", "seqfile","treefile", "outfile", "mcmcfile", 
+   int  iopt, i, j, nopt=30, lline=4096;
+   char line[4096], *pline, *peq, opt[33], *comment="*#";
+   char *optstr[] = {"seed", "seqfile","treefile", "outfile", "mcmcfile", "BayesFactorBeta",
         "seqtype", "aaRatefile", "icode", "noisy", "usedata", "ndata", "model", "clock", 
         "TipDate", "RootAge", "fossilerror", "alpha", "ncatG", "cleandata", 
         "BDparas", "kappa_gamma", "alpha_gamma", 
@@ -1037,6 +1039,7 @@ int GetOptions (char *ctlf)
    double t=1, *eps=mcmc.finetune;
    FILE  *fctl=gfopen (ctlf, "r");
 
+   data.rgeneprior = 1;  /* default rate prior is gamma-Dirichlet. */
    data.transform = transform0;
    if (fctl) {
       if (noisy) printf ("\nReading options from %s..\n", ctlf);
@@ -1061,25 +1064,26 @@ int GetOptions (char *ctlf)
                   case ( 2): sscanf(pline+1, "%s", com.treef);   break;
                   case ( 3): sscanf(pline+1, "%s", com.outf);    break;
                   case ( 4): sscanf(pline+1, "%s", com.mcmcf);   break;
-                  case ( 5): com.seqtype=(int)t;    break;
-                  case ( 6): sscanf(pline+2,"%s", com.daafile);  break;
-                  case ( 7): com.icode=(int)t;      break;
-                  case ( 8): noisy=(int)t;          break;
-                  case ( 9): 
+                  case ( 5): sscanf(pline + 1, "%lf", &BFbeta);  /* beta for marginal likelihood */
+                  case ( 6): com.seqtype=(int)t;    break;
+                  case ( 7): sscanf(pline+2,"%s", com.daafile);  break;
+                  case ( 8): com.icode=(int)t;      break;
+                  case ( 9): noisy=(int)t;          break;
+                  case (10): 
                      j=sscanf(pline+1, "%d %s%d", &mcmc.usedata, com.inBVf, &data.transform);
                      if(mcmc.usedata==2)
                         if(strchr(com.inBVf, '*')) { strcpy(com.inBVf, "in.BV"); data.transform=transform0; }
                         else if(j==2)              data.transform=transform0;
                      break;
-                  case (10): com.ndata=(int)t;      break;
-                  case (11): com.model=(int)t;      break;
-                  case (12): com.clock=(int)t;      break;
-                  case (13): 
+                  case (11): com.ndata=(int)t;      break;
+                  case (12): com.model=(int)t;      break;
+                  case (13): com.clock=(int)t;      break;
+                  case (14): 
                      sscanf(pline+2, "%lf%lf", &com.TipDate, &com.TipDate_TimeUnit);
                      if(com.TipDate && com.TipDate_TimeUnit==0) error2("should set com.TipDate_TimeUnit");
                      data.transform = SQRT_B;  /* SQRT_B, LOG_B, ARCSIN_B */
                      break;
-                  case (14):
+                  case (15):
                      sptree.RootAge[2] = sptree.RootAge[3] = 0.025;  /* default tail probs */
                      if((strchr(line, '>') || strchr(line, '<')) && (strstr(line, "U(") || strstr(line, "B(")))
                         error2("don't mix < U B on the RootAge line");
@@ -1094,35 +1098,35 @@ int GetOptions (char *ctlf)
                      else if((pline=strstr(line, "B(")))
                         sscanf(pline+2, "%lf,%lf,%lf,%lf", &sptree.RootAge[0], &sptree.RootAge[1], &sptree.RootAge[2], &sptree.RootAge[3]);
                      break;
-                  case (15):
+                  case (16):
                      data.pfossilerror[0] = 0.0;
                      data.pfossilerror[2] = 1;  /* default: minimum 2 good fossils */
                      sscanf(pline+1, "%lf%lf%lf", data.pfossilerror, data.pfossilerror+1, data.pfossilerror+2);
                      break;
-                  case (16): com.alpha=t;           break;
-                  case (17): com.ncatG=(int)t;      break;
-                  case (18): com.cleandata=(int)t;  break;
-                  case (19): 
+                  case (17): com.alpha=t;           break;
+                  case (18): com.ncatG=(int)t;      break;
+                  case (19): com.cleandata=(int)t;  break;
+                  case (20): 
                      sscanf(pline+1,"%lf%lf%lf%lf", &data.BDS[0],&data.BDS[1],&data.BDS[2],&data.BDS[3]);
                      break;
-                  case (20): 
-                     sscanf(pline+1,"%lf%lf", data.kappagamma, data.kappagamma+1); break;
                   case (21): 
-                     sscanf(pline+1,"%lf%lf", data.alphagamma, data.alphagamma+1); break;
+                     sscanf(pline+1,"%lf%lf", data.kappagamma, data.kappagamma+1); break;
                   case (22): 
-                     sscanf(pline+1,"%lf%lf%lf%d", &data.rgenepara[0], &data.rgenepara[1], &data.rgenepara[2], &data.rgeneprior); 
-                     if(data.rgenepara[2]<=0) data.rgenepara[2]=1;
-                     if(data.rgeneprior<0)  data.rgeneprior=0;
-                     break;
+                     sscanf(pline+1,"%lf%lf", data.alphagamma, data.alphagamma+1); break;
                   case (23): 
+                     sscanf(pline+1,"%lf%lf%lf%d", &data.rgenepara[0], &data.rgenepara[1], &data.rgenepara[2], &data.rgeneprior); 
+                     if(data.rgenepara[2]<=0)  data.rgenepara[2] = 1;
+                     if(data.rgeneprior<0)     data.rgeneprior=0;
+                     break;
+                  case (24): 
                      sscanf(pline+1,"%lf%lf%lf", data.sigma2para, data.sigma2para+1, data.sigma2para+2); 
                      if(data.sigma2para[2]<=0) data.sigma2para[2]=1;
                      break;
-                  case (24): mcmc.print=(int)t;     break;
-                  case (25): mcmc.burnin=(int)t;    break;
-                  case (26): mcmc.sampfreq=(int)t;  break;
-                  case (27): mcmc.nsample=(int)t;   break;
-                  case (28):
+                  case (25): mcmc.print=(int)t;     break;
+                  case (26): mcmc.burnin=(int)t;    break;
+                  case (27): mcmc.sampfreq=(int)t;  break;
+                  case (28): mcmc.nsample=(int)t;   break;
+                  case (29):
                      puts("finetune is deprecated now.");
                      break;
                      sscanf(pline + 1, "%d:%lf%lf%lf%lf%lf%lf", &j, eps, eps + 1, eps + 2, eps + 3, eps + 4, eps + 5);
@@ -1151,6 +1155,12 @@ int GetOptions (char *ctlf)
    if(com.alpha==0)  { com.fix_alpha=1; com.nalpha=0; }
    if(com.clock<1 || com.clock>3) error2("clock should be 1, 2, 3?");
    if (mcmc.burnin <= 0) puts("burnin=0: no automatic step adjustment?");
+
+   if (BFbeta && mcmc.usedata ==0)
+      error2("marginal like for prior with usedata =0?");
+   else if (BFbeta==0)
+      BFbeta = 1;
+
    return(0);
 }
 
@@ -1346,6 +1356,7 @@ double Infinitesites(FILE *fout)
    char *FidedDf[2]={"FixedDsClock1.txt", "FixedDsClock23.txt"};
    FILE *fin=gfopen(FidedDf[com.clock>1],"r"), *fmcmc=gfopen(com.mcmcf,"w");
 
+   if(BFbeta != 1) error2("BFbeta should not be used for Infinitesites?");
    com.model=0;  com.alpha=0;
    mcmc.usedata = 0;
    if(data.rgeneprior==0) puts("\aInfiniteSites, not working for cond i.i.d. locus rate prior?");
@@ -2880,7 +2891,7 @@ int UpdateTimes (double *lnL, double finetune[], char accept[])
 }
 
 
-#if (1)  /*  this is not used now. */
+#if (0)  /*  this is not used now. */
 
 int UpdateTimesClock23(double *lnL, double finetune[], char accept[])
 {
@@ -3770,7 +3781,7 @@ int MCMC (FILE* fout)
 {
    FILE *fmcmc = NULL;
    int nxpr[2]={6, 2}, i, j, k, ir, g=data.ngene;
-   double lnL=0, nround=0, *x, *mx, postEFossil[MaxNFossils]={0};
+   double lnL=0, mlnL=0, nround=0, *x, *mx, postEFossil[MaxNFossils]={0};
    double au=data.rgenepara[0], bu=data.rgenepara[1], a=data.rgenepara[2];
    char timestr[36];
 
@@ -3854,6 +3865,7 @@ int MCMC (FILE* fout)
          nround = 0;
          zero(mcmc.Pjump, mcmc.nfinetune);
          zero(mx, com.np); 
+         mlnL = 0;
          testlnL = 1;
          if(fabs(lnL-lnpData(data.lnpDi)) > 0.001) {
             printf("\n%12.6f = %12.6f?  Resetting lnL\n", lnL, lnpData(data.lnpDi));
@@ -3885,6 +3897,7 @@ int MCMC (FILE* fout)
          mcmc.Pjump[j] = (mcmc.Pjump[j]*(nround-1) + mcmc.accept[j])/nround;
       if(mcmc.print) collectx(fmcmc, x);
       for(j=0; j<com.np; j++) mx[j] = (mx[j]*(nround-1) + x[j])/nround;
+      mlnL = (mlnL*(nround-1)+lnL/BFbeta)/nround;
 
       if(data.pfossilerror[0])
          getPfossilerr(postEFossil, nround);
@@ -3892,7 +3905,7 @@ int MCMC (FILE* fout)
       if(mcmc.print && ir>=0 && (ir==0 || (ir+1)%mcmc.sampfreq==0)) {
          fprintf(fmcmc,"%d", ir+1);   
          for(j=0;j<com.np; j++) fprintf(fmcmc,"\t%.7f",x[j]);
-         if(mcmc.usedata) fprintf(fmcmc,"\t%.3f",lnL);
+         if(mcmc.usedata) fprintf(fmcmc,"\t%.3f", lnL/BFbeta);
          FPN(fmcmc);
       }
       if((ir+1)%max2(mcmc.sampfreq, mcmc.sampfreq*mcmc.nsample/100)==0) {
@@ -3904,7 +3917,7 @@ int MCMC (FILE* fout)
          FOR(j,nxpr[0]) printf(" %5.3f", mx[j]);
          if(com.np>nxpr[0]+nxpr[1] && nxpr[1]) printf(" -");
          FOR(j,nxpr[1]) printf(" %5.3f", mx[com.np-nxpr[1]+j]);
-         if(mcmc.usedata) printf(" %4.1f", lnL);
+         if(mcmc.usedata) printf(" %4.1f", mlnL);
       }
 
       if(mcmc.sampfreq*mcmc.nsample>20 && (ir+1)%(mcmc.sampfreq*mcmc.nsample/20)==0) {
@@ -3923,6 +3936,7 @@ int MCMC (FILE* fout)
 
    if(mcmc.print) fclose(fmcmc);
 
+   if(BFbeta!=1) printf("\nBFbeta = %8.6f  E_b(lnf(X)) = %9.4f\n", BFbeta, mlnL);
    printf("\nTime used: %s", printtime(timestr));
    fprintf(fout,"\nTime used: %s", printtime(timestr));
 

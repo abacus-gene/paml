@@ -10,7 +10,7 @@
       seqtype = 1   * 1:codons; 2:AAs; 3:codons-->AAs
     CodonFreq = 2   * 0:1/61 each, 1:F1X4, 2:F3X4, 3:codon table
         clock = 0   * 0: no clock, unrooted tree, 1: clock, rooted tree
-        model = 0
+        model = 2
                     * models for codons:
                         * 0:one, 1:b, 2:2 or more dN/dS ratios for branches
 
@@ -28,7 +28,7 @@
         ncatG = 4   * # of categories in the dG or AdG models of rates
 
         getSE = 0   * 0: don't want them, 1: want S.E.s of estimates
- RateAncestor = 1   * (1/0): rates (alpha>0) or ancestral states (alpha=0)
+ RateAncestor = 0   * (1/0): rates (alpha>0) or ancestral states (alpha=0)
 
   fix_blength = 1  * 0: ignore, -1: random, 1: initial, 2: fixed
        method = 0   * 0: simultaneous; 1: one branch at a time

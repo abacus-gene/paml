@@ -14,9 +14,7 @@
 char BASEs[]="TCAGUYRMKSWHBVD-N?";
 char *EquateBASE[]={"T","C","A","G", "T", "TC","AG","CA","TG","CG","TA",
      "TCA","TCG","CAG","TAG", "TCAG","TCAG","TCAG"};
-char BASEs5[]="TCAGEUYRMKSWHBVD-N?";
-char *EquateBASE5[]={"T","C","A","G", "E", "T", "TC","AG","CA","TG","CG","TA",
-     "TCA","TCG","CAG","TAG", "TCAG","TCAG","TCAG"};
+
 char CODONs[256][4], AAs[] = "ARNDCQEGHILKMFPSTWYV-*?X";
 char nChara[256], CharaMap[256][64];
 char AA3Str[]= {"AlaArgAsnAspCysGlnGluGlyHisIleLeuLysMetPheProSerThrTrpTyrVal***"};
@@ -133,7 +131,7 @@ int CodeChara (char b, int seqtype)
 /* This codes nucleotides or amino acids into 0, 1, 2, ...
 */
    int i, n=(seqtype<=1?4:(seqtype==2?20:2));
-   char *pch=(seqtype<=1 ? BASEs : (seqtype==2 ? AAs: (seqtype==5 ? BASEs5 : BINs)));
+   char *pch=(seqtype<=1 ? BASEs : (seqtype==2 ? AAs: BINs));
 
    if (seqtype<=1)
       switch (b) {
@@ -174,7 +172,7 @@ int transform (char *z, int ls, int direction, int seqtype)
 */
    int il, status=0;
    char *p;
-   char *pch=(seqtype<=1 ? BASEs : (seqtype==2 ? AAs: (seqtype==5 ? BASEs5 : BINs)));
+   char *pch=(seqtype<=1 ? BASEs : (seqtype==2 ? AAs: BINs));
 
    if (direction)
       for (il=0,p=z; il<ls; il++,p++) {
@@ -757,16 +755,16 @@ int NucListall(char b, int *nb, int ib[4])
 */
    int j, k;
 
-   k = strchr(BASEs,(int)b) - BASEs;
+   k = (int)(strchr(BASEs,(int)b) - BASEs);
    if(k<0)
       { printf("NucListall: strange character %c\n",b); return(-1);}
    if(k<4) {
       *nb = 1; ib[0] = k;
    }
    else {
-      *nb = strlen(EquateBASE[k]);
+      *nb = (int)strlen(EquateBASE[k]);
       for(j=0; j< *nb; j++)
-         ib[j] = strchr(BASEs,EquateBASE[k][j]) - BASEs;
+         ib[j] = (int)(strchr(BASEs,EquateBASE[k][j]) - BASEs);
    }
    return(0);
 }
@@ -842,7 +840,7 @@ int printcu (FILE *fout, double fcodon[], int icode)
    if (fcodon) { zero(faa,21);  zero(fb3x4,12); }
    else     wc=0;
    for(i=0; i<4; i++) strcpy(ss3[i],"\0\0\0");
-   noodle = strc(4*(10+2+wc)-2,word[1]);
+   noodle = strc(4*(10+2+wc)-2, word[1]);
    fprintf(fout, "\n%s\n", noodle);
    for(i=0; i<4; i++,FPN(fout)) {
       for(j=0; j<4; j++)  {
@@ -1028,7 +1026,7 @@ int printsma (FILE*fout, char*spname[], unsigned char*z[], int ns, int l, int ll
 */
    int igroup, ngroup, lt, h,hp, i, b,b0=-1,igap, lspname=30, lseqlen=7;
    char indel='-', ambi='?', equal='.';
-   char *pch=(seqtype<=1 ? BASEs : (seqtype==2 ? AAs: (seqtype==5 ? BASEs5 : BINs)));
+   char *pch=(seqtype<=1 ? BASEs : (seqtype==2 ? AAs: BINs));
    char codon[4]="   ";
 
    if(l==0) return(1);
@@ -1082,7 +1080,7 @@ void starttimer (void)
    time_start=time(NULL);
 }
 
-char* printtime (char timestr[])
+char *printtime (char timestr[])
 {
 /* print time elapsed since last call to starttimer()
 */
@@ -1093,8 +1091,8 @@ char* printtime (char timestr[])
    h = (int)t/3600;
    m = (int)(t%3600)/60;
    s = (int)(t-(t/60)*60);
-   if(h)  sprintf(timestr,"%d:%02d:%02d", h,m,s);
-   else   sprintf(timestr,"%2d:%02d", m,s);
+   if(h) sprintf(timestr,"%d:%02d:%02d", h,m,s);
+   else  sprintf(timestr, "%2d:%02d", m, s);
    return(timestr);
 }
 
@@ -1238,7 +1236,7 @@ int binarysearch (const void *key, const void *base, size_t n, size_t size, int(
    Each element has size size.  If a match is found, the function returns the index for the 
    element found.  Otherwise it returns the loc where key should be inserted.  This does not deal with ties.
 */
-   int l=0, u=n-1, m=u, z;
+   int l=0, u=(int)n-1, m=u, z;
    
    *found = 0;
    while (l <= u) {
@@ -1316,8 +1314,7 @@ void bigexp(double lnx, double *a, double *b)
    *a = pow(10, z-(*b));
 }
 
-static unsigned int z_rndu=1237;
-static int          w_rndu=1237;
+unsigned int z_rndu=1237, w_rndu=1237;
 
 void SetSeed (int seed, int PrintSeed)
 {
@@ -1530,6 +1527,18 @@ double rndNormal (void)
    }
    s = sqrt(-2*log(s)/s);
    return (u*s);  /* (v*s) is the other N(0,1) variate, wasted. */
+}
+
+
+int rndBinomial(int n, double p)
+{
+/* This may be too slow when n is large.
+*/
+   int i, x=0;
+
+   for (i=0; i<n; i++) 
+      if(rndu() < p) x ++;
+   return (x);
 }
 
 
@@ -2289,7 +2298,7 @@ double logPriorRatioGamma(double xnew, double x, double a, double b)
 }
 
 
-double PDF_InverseGamma (double x, double alpha, double beta)
+double PDFinvGamma (double x, double alpha, double beta)
 {
 /* inverse-gamma density: 
    mean=beta/(alpha-1); var=beta^2/[(alpha-1)^2*(alpha-2)]
@@ -2838,23 +2847,23 @@ double probBinomial (int n, int k, double p)
 }
 
 
-double probBetaBinomial (int n, int k, double p, double q)
+double probBetaBinomial(int n, int k, double p, double q)
 {
 /* This calculates beta-binomial probability of k succeses out of n trials,
-   The binomial probability parameter has distribution beta(p, q)
+   The binomial probability parameter has distribution beta(a, b)
 
-   prob(x) = C1(-a,k) * C2(-b,n-k)/C3(-a-b,n)
+   prob(x) = C1(-a, k) * C2(-b, n-k) / C3(-a-b, n)
 */
-   double a=p,b=q, C1,C2,C3,scale1,scale2,scale3;
+   double a = p, b = q, C1, C2, C3, scale1, scale2, scale3;
 
-   if(a<=0 || b<=0) return(0);
+   if (a <= 0 || b <= 0) return(0);
    C1 = Binomial(-a, k, &scale1);
-   C2 = Binomial(-b, n-k, &scale2);
-   C3 = Binomial(-a-b, n, &scale3);
-   C1 *= C2/C3;
-   if(C1<0) 
+   C2 = Binomial(-b, n - k, &scale2);
+   C3 = Binomial(-a - b, n, &scale3);
+   C1 *= C2 / C3;
+   if (C1<0)
       error2("error in probBetaBinomial");
-   return C1*exp(scale1+scale2-scale3);
+   return C1*exp(scale1 + scale2 - scale3);
 }
 
 
@@ -4467,25 +4476,58 @@ double Binomial (double n, int k, double *scale)
 /* calculates (n choose k), where n is any real number, and k is integer.
    If(*scale!=0) the result should be c+exp(*scale).
 */
-   double c=1,i,large=1e99;
+   double c = 1, i, large = 1e99;
 
    *scale=0;
    if((int)k!=k) 
       error2("k is not a whole number in Binomial.");
-   if(n<0 && k%2==1) 
-      c = -1;
-   if(k==0) return(1);
-   if(n>0 && (k<0 || k>n)) return (0);
+   if (k == 0) return(1);
+   if (n>0 && (k<0 || k>n)) return (0);
 
-   if(n>0 && (int)n==n) k=min2(k,(int)n-k);
-   for (i=1; i<=k; i++) {
-      c *= (n-k+i)/i;
-      if(c>large) { 
-         *scale += log(c); c=1; 
+   if(n>0 && (int)n==n) k = min2(k, (int)n - k);
+   for (i = 1; i <= k; i++) {
+      c *= (n - k + i) / i;
+      if (c > large) {
+         *scale += log(c); c = 1;
       } 
    }
    return(c);
 }
+
+int BinomialK (double alpha, int n, double C[], double S[])
+{
+/* This calculates (alpha, i), for i = 0, ..., n.  The result are in C[i] * exp(S[i]).
+*/
+   int i, nround = n, alphaint = (int)alpha;
+   double c = 1, large = 1E200;
+
+   if (alpha>0 && fabs(alpha - alphaint) < 1e-100) { /* usual combinations */
+      nround = min2(n, alphaint / 2);
+   }
+   C[0] = 1;  S[0] = 0;
+   for (i = 1; i <= nround; i++) {
+      c *= (alpha - i + 1) / i;
+      S[i] = S[i - 1];
+      if (c > large) {
+         S[i] += log(c);  c = 1;
+      }
+      C[i] = c;
+   }
+   for (; i <= min2(n, alphaint); i++) {   /* if alpha is int and n > alpha/2 */
+      C[i] = C[alphaint - i];  S[i] = S[alphaint - i];
+   }
+   for (; i <= n; i++) {                  /* if alpha is int and n > alpha */
+      C[i] = 0;  S[i] = 0;
+   }
+   /*
+   matout2(F0, C, n / 10, 10, 9, 1);
+   matout2(F0, S, n / 10, 10, 9, 1);
+   for (i = 0; i <= n; i++) C[i] *= exp(S[i]);
+   matout2(F0, C, n / 10, 10, 9, 1);
+   */
+   return(0);
+}
+
 
 /****************************
           Vectors and matrices 
@@ -4555,7 +4597,8 @@ int matout (FILE *fout, double x[], int n, int m)
 {
    int i,j;
    for (i=0,FPN(fout); i<n; i++,FPN(fout)) 
-      FOR(j,m) fprintf(fout," %11.6f", x[i*m+j]);
+      for(j=0; j<m; j++)
+         fprintf(fout," %11.6f", x[i*m+j]);
    return (0);
 }
 
@@ -5704,25 +5747,25 @@ int gradient (int n, double x[], double f0, double g[],
 {
 /*  f0 = fun(x) is always given.
 */
-   int i,j;
-   double *x0=space, *x1=space+n, eh0=Small_Diff, eh;  /* 1e-7 */
+   int i, j;
+   double *x0 = space, *x1 = space + n, eh0 = Small_Diff, eh;  /* 1e-7 */
 
    if (Central) {
-      for(i=0; i<n; i++)  {
-         for(j=0; j<n; j++) 
+      for (i = 0; i<n; i++) {
+         for (j = 0; j<n; j++)
             x0[j] = x1[j] = x[j];
-         eh = eh0*(fabs(x[i])+1);
+         eh = pow(eh0*(fabs(x[i]) + 1), 0.67);
          x0[i] -= eh; x1[i] += eh;
-         g[i] = ((*fun)(x1,n) - (*fun)(x0,n))/(eh*2.0);
+         g[i] = ((*fun)(x1, n) - (*fun)(x0, n)) / (eh*2.0);
       }
    }
    else {
-      for(i=0; i<n; i++)  {
-         for(j=0; j<n; j++)
-            x1[j]=x[j];
-         eh=eh0*(fabs(x[i])+1);
-         x1[i]+=eh;
-         g[i] = ((*fun)(x1,n)-f0)/eh;
+      for (i = 0; i<n; i++) {
+         for (j = 0; j<n; j++)
+            x1[j] = x[j];
+         eh = eh0*(fabs(x[i]) + 1);
+         x1[i] += eh;
+         g[i] = ((*fun)(x1, n) - f0) / eh;
       }
    }
    return(0);
@@ -6286,21 +6329,21 @@ int gradientB (int n, double x[], double f0, double g[],
 /* f0=fun(x) is always provided.
    xmark=0: central; 1: upper; -1: down
 */
-   int i,j;
-   double *x0=space, *x1=space+n, eh0=Small_Diff, eh;  /* eh0=1e-6 || 1e-7 */
+   int i, j;
+   double *x0 = space, *x1 = space + n, eh0 = Small_Diff, eh;  /* eh0=1e-6 || 1e-7 */
 
-   for(i=0; i<n; i++) {
-      eh = eh0*(fabs(x[i])+1);
-      if (xmark[i]==0 && (AlwaysCenter || SIZEp<1)) {   /* central */
-         for(j=0; j<n; j++)  x0[j] = x1[j] = x[j];
-         x0[i] -= eh;  x1[i] += eh;
-         g[i] = ((*fun)(x1,n) - (*fun)(x0,n))/(eh*2.0);
+   for (i = 0; i<n; i++) {
+      eh = eh0*(fabs(x[i]) + 1);
+      if (xmark[i] == 0 && (AlwaysCenter || SIZEp<1)) {   /* central */
+         for (j = 0; j<n; j++)  x0[j] = x1[j] = x[j];
+         eh = pow(eh, .67);  x0[i] -= eh;  x1[i] += eh;
+         g[i] = ((*fun)(x1, n) - (*fun)(x0, n)) / (eh*2.0);
       }
-      else  {                         /* forward or backward */
-         for(j=0; j<n; j++)  x1[j] = x[j];
+      else {                         /* forward or backward */
+         for (j = 0; j<n; j++)  x1[j] = x[j];
          if (xmark[i]) eh *= -xmark[i];
          x1[i] += eh;
-         g[i] = ((*fun)(x1,n) - f0)/eh;
+         g[i] = ((*fun)(x1, n) - f0) / eh;
       }
    }
    return(0);
