@@ -11,16 +11,23 @@ https://groups.google.com/forum/#!forum/pamlsoftware.
 
 Version 4.9d, February 2017
 
+(*) mcmctree.  A bug was introduced which causes the program to read
+the fossil calibration information in the tree file incorrectly, if
+lower bounds are specified using the symbol '>'.  If you use the
+notation "B()" or "L()", the information is read correctly.  This bug
+was introduced in version 4.9b and exists also in 4.9c.  Versions 4.9a
+and earlier were correct.
+
 (*) mcmctree.  Changed the default prior for rates for loci to
 gamma-Dirichlet (dos Reis 2014), and updated the documentation as
 well.  It was set to the conditional i.i.d. prior (Zhu et al. 2015).
 
 (*) mcmctree.  Added Bayes factor calculation.  A program called
 BFdriver is included in the release, as well as a pdf document in the
-folder examples/DatingSoftBound/.  We suggest that you use the exact
-likelihood calculation when you use this option, since the normal
-approximation is unreliable when the power posterior is close to the
-prior (when beta is small).
+folder examples/DatingSoftBound/BFdriverDOC.pdf.  We suggest that you 
+use the exact likelihood calculation when you use this option, since the 
+normal approximation is unreliable when the power posterior is close to 
+the prior (when beta is small).
 
 
 

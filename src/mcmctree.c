@@ -21,7 +21,7 @@
 
 #include "paml.h"
 
-#define NS            800
+#define NS            400
 #define NBRANCH      (NS*2-2)
 #define NNODE        (NS*2-1)
 #define MAXNSONS      3
@@ -233,6 +233,7 @@ int main (int argc, char *argv[])
    fprintf(fout, "MCMCTREE (%s) %s\n", pamlVerStr, com.seqf);
 
    ReadTreeSeqs(fout);
+
    if(data.pfossilerror && (data.pfossilerror[2]<0 || data.pfossilerror[2]>sptree.nfossil))
       error2("nMinCorrect for fossil errors is out of range.");
 

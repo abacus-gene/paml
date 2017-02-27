@@ -27,7 +27,7 @@
 
          print = 1   * 0: no mcmc sample; 1: everything except branch rates 2: everything
         burnin = 2000
-      sampfreq = 2
+      sampfreq = 10
        nsample = 20000
 
 *** Note: Make your window wider (100 columns) before running the program.

@@ -2987,7 +2987,7 @@ int ReadTreeN (FILE *ftree, int *haslength, int *haslabel, int copyname, int pop
         else if (ch==':'||ch=='>') {
             if(ch==':') *haslength=1;
             else         hascalibration = 1;
-            fscanf(ftree,"%lf",&nodes[inodeb].branch);
+            fscanf(ftree, "%lf", &nodes[inodeb].branch);
         }
         else if (ch==quote[0] || ch==quote[1]) {
             for (k=0; ; k++) {  /* read notes into line[] */
@@ -3007,11 +3007,15 @@ int ReadTreeN (FILE *ftree, int *haslength, int *haslabel, int copyname, int pop
                *haslabel = 1;
                sscanf(pch+1, "%lf", &nodes[inodeb].label);
             }
-            else if((pch = strchr(line,'$'))) {
+            else if(pch = strchr(line,'$')) {
                 *haslabel=1;
                 sscanf(pch+1, "%d", &CladeLabel[inodeb]);
             }
-            else if(pch = strchr(line,'<')) {
+            else if(pch = strchr(line, '>')) {
+               hascalibration = 1;
+               sscanf(pch + 1, "%lf", &nodes[inodeb].branch);
+            }
+            else if(pch = strchr(line, '<')) {
                 hascalibration = 1;
                 sscanf(pch+1, "%lf", &nodes[inodeb].label);
             }
@@ -8576,7 +8580,7 @@ int ReadTreeSeqs (FILE*fout)
     if (haslength & 1)
         error2("Tree should have fossil calibrations but not branch lengths!");
 #endif
-    
+
     /* read sequences at each locus, construct gene tree by pruning sptree */
     data.ngene = com.ndata;
     com.ndata=1;
