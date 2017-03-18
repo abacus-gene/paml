@@ -2880,41 +2880,39 @@ int IsNameNumber(char line[])
 
 
 
+/* Read a tree from ftree, using the parenthesis node representation of trees.
+Branch lengths are read in nodes[].branch, and branch (node) labels
+(integers) are preceeded by # and read in nodes[].label.  If the clade label
+$ is used, the label is read into CladeLabel[] first and then moved into
+nodes[].label in the routine DownTreeCladeLabel().
+     
+Calibration information for mcmctree may be read into nodes[].branch and nodes[].label,
+as well as nodes[].NodeStr, and is processed inside mcmctree.
+*haslength is set to 1 (branch lengths), 2 (calibration info) or 3 (both).
+However, the bit for calibrations is set only if the symbols > < exist and not for
+calibrations specified using L, U, G, etc, which will be stored in nodes[].NodeStr
+and processed using ProcessFossilInfo() in mcmctree.
+mcmctree should abort if *haslength == 1 or 3 after this routine.
+     
+This assumes that com.ns is known.  Names are considered case-sensitive, with trailing spaces ignored.
+     
+copyname = 0: species numbers and names are both accepted, but names have to match the names
+              in com.spname[], which are from the sequence data file.  
+              Used by baseml and codeml, for example.
+           1: species names are copied into com.spname[], but species numbers are accepted.  
+              Used by evolver for simulation, in which case no species names were read before.
+           2: the tree must have species names, which are copied into com.spname[].
+
+Note that com.ns is assumed known.  To remove this restrition, one has to consider the space 
+for nodes[], CladeLabel, starting node number etc.
+     
+isname = 0:   species number; 1: species name;
+     
+Ziheng note (18/12/2011): I have changed the code so that sequence number is not used
+anymore.  isname = 1 always.
+*/
 int ReadTreeN (FILE *ftree, int *haslength, int *haslabel, int copyname, int popline)
 {
-    /* Read a tree from ftree, using the parenthesis node representation of trees.
-     Branch lengths are read in nodes[].branch, and branch (node) labels
-     (integers) are preceeded by # and read in nodes[].label.  If the clade label
-     $ is used, the label is read into CladeLabel[] first and then moved into
-     nodes[].label in the routine DownTreeCladeLabel().
-     
-     Calibration information for mcmctree may be read into nodes[].branch and nodes[].label,
-     as well as nodes[].NodeStr, and is processed inside mcmctree.
-     *haslength is set to 1 (branch lengths), 2 (calibration info) or 3 (both).
-     However, the bit for calibrations is set only if the symbols > < exist and not for
-     calibrations specified using L, U, G, etc, which will be stored in nodes[].NodeStr
-     and processed using ProcessFossilInfo() in mcmctree.
-     mcmctree should abort if *haslength == 1 or 3 after this routine.
-     
-     This assumes that com.ns is known.
-     Species names are considered case-sensitive, with trailing spaces ignored.
-     
-     copyname = 0: species numbers and names are both accepted, but names have
-     to match the names in com.spname[], which are from the
-     sequence data file.  Used by baseml and codeml, for example.
-     1: species names are copied into com.spname[], but species
-     numbers are accepted.  Used by evolver for simulation,
-     in which case no species names were read before.
-     2: the tree must have species names, which are copied into com.spname[].
-     Note that com.ns is assumed known.  To remove this restrition,
-     one has to consider the space for nodes[], CladeLabel, starting
-     node number etc.
-     
-     isname = 0:   species number; 1: species name;
-     
-     Ziheng note (18/12/2011): I have changed the code so that sequence number is not used
-     anymore.  isname = 1 always.
-     */
     int hascalibration=0, cnode, cfather = -1;  /* current node and father */
     int inodeb=0;  /* node number that will have the next branch length */
     int cladeLabels=0, i,j,k, level=0, isname, ch=' ', icurspecies=0;

@@ -1798,7 +1798,6 @@ int rndpoisson (double m)
    return ((int) em);
 }
 
-
 double rndgamma (double a)
 {
 /* This returns a random variable from gamma(a, 1).
@@ -1806,37 +1805,35 @@ double rndgamma (double a)
    ACM Transactions on Mathematical Software, 26 (3): 363-372.
    This is not entirely safe and is noted to produce zero when a is small (0.001).
  */
-   double a0=a, c, d, u, v, x;
+   double a0 = a, c, d, u, v, x, small=1E-300;
 
-   if(a<1) a ++;
+   if (a < 1) a++;
 
-   d = a - 1.0/3.0;
-   c = (1.0/3.0) / sqrt(d);
+   d = a - 1.0 / 3.0;
+   c = (1.0 / 3.0) / sqrt(d);
 
-   for ( ; ; ) {
+   for (; ; ) {
       do {
-         x = rndNormal();
+         x = rndNormal( );
          v = 1.0 + c * x;
-      }
-      while (v <= 0);
- 
-      v *= v * v;
-      u = rndu();
+      } while (v <= 0);
 
-      if (u < 1 - 0.0331 * x * x * x * x) 
+      v *= v * v;
+      u = rndu( );
+
+      if (u < 1 - 0.0331 * x * x * x * x)
          break;
       if (log(u) < 0.5 * x * x + d * (1 - v + log(v)))
          break;
    }
    v *= d;
 
-   if(a0 < 1) 
-      v *= pow(rndu(), 1/a0);
-   if(v==0) 
-      printf("\a\nrndgamma returning 0.\n");
+   if (a0 < 1)    /* this may cause underflow if a is small, like 0.01 */
+      v *= pow(rndu( ), 1 / a0);
+   if (v == 0)   /* underflow */
+      v = small;
    return v;
 }
-
 
 double rndbeta (double p, double q)
 {
@@ -4364,11 +4361,11 @@ int ScatterPlot (int n, int nseries, int yLorR[], double x[], double y[],
    printf ("\ny[1]: (%10.2e, %10.2e)\n", ymin[0], ymax[0]);
    if (ny==2) printf ("y[2]: (%10.2e, %10.2e)  \n", ymin[1], ymax[1]);
 
-   chart=(char*)malloc((nrow+1)*ncolr*sizeof(char));
+   chart = (char*)malloc((nrow+1)*ncolr*sizeof(char));
    for (i=0; i<nrow+1; i++) {
       for (j=1; j<ncol; j++) chart[i*ncolr+j]=' ';
-      if (i%5==0) chart[i*ncolr+0]=chart[i*ncolr+j++]='+'; 
-      else        chart[i*ncolr+0]=chart[i*ncolr+j++]='|'; 
+      if (i%5==0) chart[i*ncolr+0] = chart[i*ncolr+j++] = '+'; 
+      else        chart[i*ncolr+0] = chart[i*ncolr+j++] = '|'; 
       chart[i*ncolr+j]='\0'; 
       if (i==0||i==nrow) 
          FOR(j,ncol+1) chart[i*ncolr+j]=(char)(j%10==0?'+':'-');
@@ -5858,7 +5855,7 @@ int nls2 (FILE *fout, double *sx, double * x0, int nx,
    (*fun) (x0, y, n, ny);
    for (i=0, s0=0; i<ny; i++)   s0 += y[i]*y[i];
 
-   FOR (ii, maxround)  {
+   for(ii=0; ii<maxround; ii++)  {
       increase=0;
       if (jacobi)  (*jacobi) (x0, J, n, ny);
       else         jacobi_gradient (x0, J, fun, space_J, n, ny);
@@ -5869,7 +5866,7 @@ int nls2 (FILE *fout, double *sx, double * x0, int nx,
          v = sqrt (t) / (double) (ny*n);     /*  v = 0.0;  */
       }
 
-      FOR (i,n)  {
+      for (i = 0; i<n; i++) {
          for (j=0,t=0; j<ny; j++)  t += J[j*n+i] * y[j];
          g[i] = 2*t;
          C[i*(n+1)+n] = -t;
@@ -5884,11 +5881,11 @@ int nls2 (FILE *fout, double *sx, double * x0, int nx,
          v *= bigger;
          continue;
       }
-      FOR (i,n)   p[i] = C[i*(n+1)+n];
+      for (i = 0; i<n; i++)  p[i] = C[i*(n+1)+n];
 
       t = bound (n, x0, p, x, testx);
       if (t>1) t=1;
-      FOR (i,n) x[i] = x0[i] + t * p[i];
+      for (i=0; i<n; i++) x[i] = x0[i] + t * p[i];
 
       (*fun) (x, y, n, ny);
       for (i=0,s=0; i<ny; i++)  s += y[i]*y[i];
@@ -5911,8 +5908,7 @@ int nls2 (FILE *fout, double *sx, double * x0, int nx,
 
 
 
-double bound (int nx, double x0[], double p[], double x[],
-       int(*testx)(double x[], int nx))
+double bound (int nx, double x0[], double p[], double x[], int(*testx)(double x[], int nx))
 {
 /* find largest t so that x[]=x0[]+t*p[] is still acceptable.
    for bounded minimization, p is possibly changed in this function
@@ -5922,7 +5918,7 @@ double bound (int nx, double x0[], double p[], double x[],
    double factor=20, by=1, small=1e-8;  /* small=(SIZEp>1?1e-7:1e-8) */ 
 
    xtoy (x0, x, nx);
-   FOR (i,nx)  {
+   for (i = 0; i<nx; i++)  {
       x[i]=x0[i]+small*p[i];
       if ((*testx) (x, nx))  {  p[i]=0.0;  nd++; }
       x[i]=x0[i];
@@ -5930,7 +5926,7 @@ double bound (int nx, double x0[], double p[], double x[],
    if (nd==nx) { if (noisy) puts ("bound:no move.."); return (0); }
 
    for (by=0.75; ; ) {
-      FOR (i,nx)  x[i]=x0[i]+factor*p[i];
+      for (i = 0; i<nx; i++) x[i]=x0[i]+factor*p[i];
       if ((*testx)(x,nx)==0)  break;
       factor *= by;
    }
@@ -5940,7 +5936,7 @@ double bound (int nx, double x0[], double p[], double x[],
 
 
 
-double LineSearch (double(*fun)(double x),double *f,double *x0,double xb[2],double step, double e)
+double LineSearch(double(*fun)(double x), double *f, double *x0, double xb[2], double step, double e)
 {
 /* linear search using quadratic interpolation 
 
