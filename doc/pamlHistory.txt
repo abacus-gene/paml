@@ -9,6 +9,18 @@ https://groups.google.com/forum/#!forum/pamlsoftware.
 
 
 
+Version 4.9g, December 2017
+
+(*) codeml.  A bug caused the BEB calculation under the site model M8
+(NSsites = 8) to be incorrect, with the program printing out warming
+messages like "strange: f[ 5] = -0.0587063 very small."  This bug was
+introduced in version 4.9b and affects versions 4.9b-f.  A different
+bug was introduced in version 4.9f that causes the log likelihood
+function under the site model M8 (NSsites = 8) to calculated
+incorrectly.  These are now fixed.
+
+
+
 Version 4.9f, October 2017
 
 (*) baseml, nonhomogeneous models (nhomo & fix_kappa).  Those models

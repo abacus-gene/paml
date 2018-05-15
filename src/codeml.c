@@ -16,9 +16,9 @@
 
 #include "paml.h"
 
-#define NS            700
-#define NBRANCH       (NS*2-2)
-#define NNODE         (NS*2-1)
+#define NS            5000
+#define NBRANCH       (NS*2 - 2)
+#define NNODE         (NS*2 - 1)
 #define MAXNSONS      100
 #define NGENE         2000
 #define LSPNAME       96
@@ -26,7 +26,7 @@
 #define NCATG         40
 #define NBTYPE        8
 
-#define NP            (NBRANCH*2+NGENE-1+2+NCODE+2)
+#define NP            (NBRANCH*2 + NGENE - 1 + 2 + NCODE + 2)
 /*
 #define NP            (NBRANCH+NGENE-1+189+2+NCODE+2)
 */
@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
    char *seqtypestr[3] = { "CODONML", "AAML", "CODON2AAML" };
    char *Mgenestr[] = { "diff. rate", "separate data", "diff. rate & pi",
                      "diff. rate & k&w", "diff. rate & pi & k&w" };
-   int getdistance = 1, i, k, idata, nc, nUVR, cleandata0;
+   int getdistance = 0, i, k, idata, nc, nUVR, cleandata0;
    size_t s2;
 
    starttimer();
@@ -356,8 +356,6 @@ int main(int argc, char *argv[])
          fprintf(frub, "\nData set %2d\n", idata + 1);
       }
 
-      if (idata)
-         GetOptions(ctlf); /* warning: ndata, cleandata etc. are read again. */
       if (nnsmodels > 1) {
          if (com.seqtype != 1) error2("batch run of site models requires codon seqs.");
          if (com.fix_omega) error2("fix omega during batch run?");
@@ -737,9 +735,9 @@ int Forestry(FILE *fout)
       printf("Out..\nlnL  = %12.6f\n", -lnL);
 
       printf("%d lfun, %d eigenQcodon, %d P(t)\n", NFunCall, NEigenQ, NPMatUVRoot);
-      if (itree == 0)
-      {
-         lnL0 = lnL;  FOR(i, np - com.ntime) xcom[i] = x[com.ntime + i];
+      if (itree == 0)  {
+         lnL0 = lnL;  
+         for (i = 0; i < np - com.ntime; i++)   xcom[i] = x[com.ntime + i];
       }
       else if (!j)
          for (i = 0; i < np - com.ntime; i++) xcom[i] = xcom[i] * .2 + x[com.ntime + i] * 0.8;
@@ -1451,11 +1449,191 @@ int ReadDaafiles(char *line)
    */
    int  i, ng = (com.ndata > 1 ? com.ndata : NGENE), markgenes[NGENE];
 
-   splitline(line, markgenes);
+   splitline(line, ng, markgenes);
    for (i = 0; i < ng; i++) {
       if (!isalnum(line[markgenes[i]])) break;
       sscanf(line + markgenes[i], "%s", data.daafile[i]);
       printf("protein %2d uses %s\n", i + 1, data.daafile[i]);
+   }
+   return(0);
+}
+
+int getnrate(int firsttime)
+{
+   int i, j;
+
+   if (com.seqtype == AAseq || com.seqtype == CODON2AAseq) {
+      if (com.NSsites) error2("use NSsites=0 for amino acids?");
+      if (com.hkyREV && com.model != FromCodon)  /*  REV & FromCodon not well-tested. */
+         error2("use hkyREV=0 for amino acids?");
+      com.ncode = 20;
+      if (com.aaDist == AAClasses)
+         com.nrate = com.nkappa = (com.hkyREV ? 5 : !com.fix_kappa);
+
+      switch (com.model) {
+      case (Poisson):  case (EqualInput): case (Empirical): case (Empirical_F):
+         com.fix_kappa = 1; com.kappa = 0; com.nrate = 0;   break;
+      case (FromCodon):
+         com.nrate = com.nkappa = (com.hkyREV ? 5 : !com.fix_kappa);
+         if (com.aaDist) com.nrate++;
+         if (com.fix_omega) error2("fix_omega = 1");
+         if (com.codonf) {
+            com.codonf = 0;  puts("CodonFreq=0 reset for model=6.");
+         }
+         break;
+      case (REVaa_0): com.fix_kappa = 0; com.kappa = 0; break;
+      case (REVaa):   com.fix_kappa = 0; com.kappa = 0; com.nrate = 189; break;
+      default: error2("model unavailable");
+      }
+      if (com.Mgene > 2 || (com.Mgene == 2 && (com.model == Fequal || com.model == 2)))
+         error2("Mgene && model");
+      if (com.seqtype == 2 && com.model != FromCodon && com.model != AAClasses) {
+         com.fix_kappa = com.fix_omega = 1; com.kappa = com.omega = 0;
+      }
+   }
+   else if (com.seqtype == CODONseq) {
+      if (com.nparK)
+         if (com.model || com.aaDist || com.NSsites != NSdiscrete || com.alpha || com.rho)
+            error2("HMM model option");
+      if (com.Mgene > 1 && com.model) error2("Mgene & model?");
+      if (com.fix_kappa) {
+         if (com.hkyREV)
+            error2("can't fix kappa for the codon model you selected.");
+         else
+            com.pkappa[0] = com.kappa;
+      }
+      if (com.codonf >= FMutSel0 && com.Mgene >= 2)
+         error2("model FMutSel + Mgene not implemented");
+      if (com.runmode == -2 && com.seqtype == 1 && com.npi)
+         error2("runmode = -2 not implemented for codon models with frequencies");
+      if (com.runmode == -3 && com.seqtype == 1 && com.npi)
+         error2("runmode = -3 not implemented for codon models with frequencies");
+      if (com.hkyREV && (com.aaDist || com.Mgene > 1))
+         error2("hkyREV with aaDist or Mgene: check options?\a");
+      if (com.NSsites<0 || com.NSsites>maxNSsitesModels || (com.NSsites > 13 && com.NSsites < 22))
+         error2("option NSsites.");
+      if (com.aaDist && com.NSsites)
+         error2("aaDist & NSsites don't work together");
+      if ((com.model && com.aaDist)
+         && (com.model > NSbranch2 || com.aaDist != AAClasses))
+         error2("model & aaDist");
+      if (com.model == NSbranch3 && com.NSsites != 2 && com.NSsites != 3)
+         error2("clade model should have model = 3 NSsites = 2 or 3.");
+
+      if (com.aaDist && com.fix_omega)
+         error2("can't fix_omega for aaDist models");
+
+      com.nrate = com.nkappa = (com.hkyREV ? 5 : !com.fix_kappa);
+
+      /* pi_T, pi_C, pi_A are counted as frequency parameters pi. */
+      if (com.codonf == 0)
+         com.npi = 0;
+      if (com.codonf == FMutSel0)     /* FMutSel0: pi_TCA plus 20 AA freqs. */
+         com.npi = 3 + (com.npi ? 20 - 1 : 0);
+      else if (com.codonf == FMutSel) /* FMutSel:  pi_TCA plus 60 codon freqs. */
+         com.npi = 3 + (com.npi ? com.ncode - 1 : 0);
+      else if (com.npi) {
+         if (com.codonf == F1x4 || com.codonf == F1x4MG)  com.npi = 3;
+         else if (com.codonf == F3x4 || com.codonf == F3x4MG)  com.npi = 9;
+         else if (com.codonf == Fcodon)                        com.npi = com.ncode - 1;
+      }
+      com.nrate += com.npi;
+
+      if (com.aaDist != AAClasses) {
+         if (com.fix_kappa > 1) error2("fix_kappa>1, not tested.");  /** ???? */
+         if (com.model > 0 && (com.alpha || !com.fix_alpha))
+            error2("dN/dS ratios among branches not implemented for gamma");
+         if (com.model > 0 && com.clock)
+            error2("model and clock don't work together");
+         if (com.fix_omega) {
+            com.omega_fix = com.omega;
+            if ((com.model == 0 && com.NSsites == NSdiscrete)
+               || (com.model && com.NSsites && com.NSsites != NSpselection
+                  &&com.NSsites != NSdiscrete && com.NSsites != NSbetaw))
+               error2("\afix_omega?");
+         }
+         if (com.model > NSbranch3) error2("seqtype or model.");
+         if (com.model == NSbranch2 && com.clock == 2)
+            error2("NSbranch & local clock.");
+         if (com.model == NSbranch3 && (com.NSsites == NSpselection || com.NSsites == NSdiscrete) && com.ncatG != 3) {
+            com.ncatG = 3; puts("ncatG = 3 reset.");
+         }
+         if (com.kappa < 0)  error2("kappa..");
+         if (com.runmode)  com.fix_blength = 0;
+         if ((com.runmode == -2 || com.runmode == -3) && (com.NSsites || com.alpha || com.aaDist))
+            error2("wrong model for pairwise comparison.\ncheck NSsites, alpha, aaDist, model etc.");
+         if (com.runmode > 0 && com.model == 2) error2("tree search & model");
+         if (com.aaDist && com.NSsites != 0 && com.NSsites != NSdiscrete)
+            error2("NSsites && aaDist.");
+
+         if ((com.NSsites || nnsmodels > 1) && (com.alpha || com.fix_alpha == 0))
+            error2("NSsites & Gamma");
+         if (com.seqtype == 1 && (com.alpha || com.fix_alpha == 0))
+            puts("\aGamma codon model: are you sure this is the model you want to use? ");
+
+         if (com.aaDist == 0) {
+            if ((!com.fix_omega || (com.Mgene && com.Mgene >= 3)) && !com.NSsites && !com.model)
+               com.nrate++;
+         }
+         else {
+            if (com.aaDist <= 6)          com.nrate += 2;   /* a & b, PSB2000 */
+            else if (com.aaDist == FIT1)  com.nrate += 4;   /* fitness models: */
+            else if (com.aaDist == FIT2)  com.nrate += 5;   /* ap, p*, av, v*, b */
+            if (com.aaDist >= FIT1)
+               for (i = 0; i < 2; i++)
+                  for (j = 0; j < 20; j++) AAchem[i][j] /= AAchem[i][20];
+         }
+
+         if (com.NSsites) {
+            if (com.NSsites == NSfreqs && com.ncatG != 5)  {
+               puts("\nncatG changed to 5."); com.ncatG = 5;
+            }
+            if (com.model && com.NSsites)
+               if ((com.model != 2 && com.model != 3)
+                  || (com.NSsites != NSpselection && com.NSsites != NSdiscrete))
+                  error2("only NSsites=2,3 & model=2,3 are compatible.");
+            switch (com.NSsites) {
+            case (NSnneutral):   com.ncatG = 2;  break;
+            case (NSpselection):
+            case (NSM2aRel):
+               com.ncatG = 3;  break;
+            case (NSbetaw):      
+            case (NS02normal):
+               if (firsttime) com.ncatG++;  break;
+            }
+
+            if (com.model == 2) { /* branchsite models A & B */
+               if (com.ncatG != 3) puts("\nbranch-site model: ncatG reset.");
+               com.ncatG = 4;
+               com.nrate += (com.NSsites == 2 ? 2 : 3);
+            }
+            else if (com.model == 3) { /* Clade models C & D */
+               if (com.NSsites == NSpselection)  com.nrate += 3;
+               else if (com.NSsites == NSdiscrete)    com.nrate += com.ncatG + 1;
+            }
+            else if (com.NSsites == NSnneutral) {
+               if (!com.fix_omega) com.nrate++;
+               else { com.nrate++; com.omega_fix = com.omega; }
+            }
+            else if (com.NSsites == NSpselection || com.NSsites == NSM2aRel) {
+               if (!com.fix_omega) com.nrate += 2;
+               else { com.nrate++; com.omega_fix = com.omega; }
+            }
+            else if (com.NSsites == NSbetaw)
+            {
+               if (!com.fix_omega) com.nrate++; else com.omega_fix = com.omega;
+            }
+            else if (com.NSsites == NSdiscrete && com.aaDist) {
+               if (com.aaDist <= 6) com.nrate += com.ncatG;  /* a&b PSB2000 */
+               else {  /* fitness models */
+                  com.nrate = !com.fix_kappa + 4 * com.ncatG;
+                  if (com.aaDist == FIT2) com.nrate += com.ncatG;
+               }
+            }
+            else if (com.NSsites == NSdiscrete)
+               com.nrate += com.ncatG;    /* omega's */
+         }
+      }
    }
    return(0);
 }
@@ -1531,7 +1709,7 @@ int GetOptions(char *ctlf)
                case (21):
                   com.icode = (int)t;
                   if (com.seqtype == 1 && (com.clock == 5 || com.clock == 6)) {
-                     ng = splitline(++pline, markgenes);
+                     ng = splitline(++pline, min2(ng, com.ndata), markgenes);
                      for (j = 0; j < min2(ng, com.ndata); j++)
                         if (!sscanf(pline + markgenes[j], "%d", &data.icode[j])) break;
 
@@ -1544,7 +1722,7 @@ int GetOptions(char *ctlf)
                case (24):
                   com.kappa = t;
                   if (com.seqtype == 1 && com.fix_kappa && (com.clock == 5 || com.clock == 6)) {
-                     ng = splitline(++pline, markgenes);
+                     ng = splitline(++pline, min2(ng, com.ndata), markgenes);
                      for (j = 0; j < min2(ng, com.ndata); j++)
                         if (!sscanf(pline + markgenes[j], "%lf", &data.kappa[j])) break;
 
@@ -1555,7 +1733,7 @@ int GetOptions(char *ctlf)
                case (26):
                   com.omega = t;
                   if (com.seqtype == 1 && com.fix_omega && (com.clock == 5 || com.clock == 6)) {
-                     ng = splitline(++pline, markgenes);
+                     ng = splitline(++pline, min2(ng, com.ndata), markgenes);
                      for (j = 0; j < min2(ng, com.ndata); j++)
                         if (!sscanf(pline + markgenes[j], "%lf", &data.omega[j])) break;
 
@@ -1567,7 +1745,7 @@ int GetOptions(char *ctlf)
                case (28):
                   com.alpha = t;
                   if (com.fix_alpha && t && (com.clock == 5 || com.clock == 6)) {
-                     ng = splitline(++pline, markgenes);
+                     ng = splitline(++pline, min2(ng, com.ndata), markgenes);
                      for (j = 0; j < min2(ng, com.ndata); j++)
                         if (!sscanf(pline + markgenes[j], "%lf", &data.alpha[j])) break;
 
@@ -1599,196 +1777,19 @@ int GetOptions(char *ctlf)
    if (noisy) FPN(F0);
    if (com.seqtype == 1 || com.model == FromCodon)
       setmark_61_64();
-   if (com.seqtype == AAseq || com.seqtype == CODON2AAseq) {
-      if (com.NSsites) error2("use NSsites=0 for amino acids?");
-      if (com.hkyREV && com.model != FromCodon)  /*  REV & FromCodon not well-tested. */
-         error2("use hkyREV=0 for amino acids?");
-      com.ncode = 20;
-      if (com.aaDist == AAClasses)
-         com.nrate = com.nkappa = (com.hkyREV ? 5 : !com.fix_kappa);
 
-      switch (com.model) {
-      case (Poisson):  case (EqualInput): case (Empirical): case (Empirical_F):
-         com.fix_kappa = 1; com.kappa = 0; com.nrate = 0;   break;
-      case (FromCodon):
-         com.nrate = com.nkappa = (com.hkyREV ? 5 : !com.fix_kappa);
-         if (com.aaDist) com.nrate++;
-         if (com.fix_omega) error2("fix_omega = 1");
-         if (com.codonf) {
-            com.codonf = 0;  puts("CodonFreq=0 reset for model=6.");
-         }
-         break;
-      case (REVaa_0): com.fix_kappa = 0; com.kappa = 0; break;
-      case (REVaa):   com.fix_kappa = 0; com.kappa = 0; com.nrate = 189; break;
-      default: error2("model unavailable");
-      }
-      if (com.Mgene > 2 || (com.Mgene == 2 && (com.model == Fequal || com.model == 2)))
-         error2("Mgene && model");
-      if (com.seqtype == 2 && com.model != FromCodon && com.model != AAClasses)
-      {
-         com.fix_kappa = com.fix_omega = 1; com.kappa = com.omega = 0;
-      }
-   }
-   else if (com.seqtype == CODONseq) {
-      if (com.nparK)
-         if (com.model || com.aaDist || com.NSsites != NSdiscrete || com.alpha || com.rho)
-            error2("HMM model option");
-      if (com.Mgene > 1 && com.model) error2("Mgene & model?");
-      if (com.fix_kappa) {
-         if (com.hkyREV)
-            error2("can't fix kappa for the codon model you selected.");
-         else
-            com.pkappa[0] = com.kappa;
-      }
-      if (com.codonf >= FMutSel0 && com.Mgene >= 2)
-         error2("model FMutSel + Mgene not implemented");
-      if (com.runmode == -2 && com.seqtype == 1 && com.npi)
-         error2("runmode = -2 not implemented for codon models with frequencies");
-      if (com.runmode == -3 && com.seqtype == 1 && com.npi)
-         error2("runmode = -3 not implemented for codon models with frequencies");
-      if (com.hkyREV && (com.aaDist || com.Mgene > 1))
-         error2("hkyREV with aaDist or Mgene: check options?\a");
-      if (com.NSsites<0 || com.NSsites>maxNSsitesModels || (com.NSsites > 13 && com.NSsites < 22))
-         error2("option NSsites.");
-      if (com.aaDist && com.NSsites)
-         error2("aaDist & NSsites don't work together");
-      if ((com.model && com.aaDist)
-         && (com.model > NSbranch2 || com.aaDist != AAClasses))
-         error2("model & aaDist");
-      if (com.model == NSbranch3 && com.NSsites != 2 && com.NSsites != 3)
-         error2("clade model should have model = 3 NSsites = 2 or 3.");
-
-      if (com.aaDist && com.fix_omega)
-         error2("can't fix_omega for aaDist models");
-
-      com.nrate = com.nkappa = (com.hkyREV ? 5 : !com.fix_kappa);
-
-      /* pi_T, pi_C, pi_A are counted as frequency parameters pi. */
-      if (com.codonf == 0)
-         com.npi = 0;
-      if (com.codonf == FMutSel0)     /* FMutSel0: pi_TCA plus 20 AA freqs. */
-         com.npi = 3 + (com.npi ? 20 - 1 : 0);
-      else if (com.codonf == FMutSel) /* FMutSel:  pi_TCA plus 60 codon freqs. */
-         com.npi = 3 + (com.npi ? com.ncode - 1 : 0);
-      else if (com.npi) {
-         if (com.codonf == F1x4 || com.codonf == F1x4MG)  com.npi = 3;
-         else if (com.codonf == F3x4 || com.codonf == F3x4MG)  com.npi = 9;
-         else if (com.codonf == Fcodon)                      com.npi = com.ncode - 1;
-      }
-      com.nrate += com.npi;
-
-      if (com.aaDist != AAClasses) {
-         if (com.fix_kappa > 1) error2("fix_kappa>1, not tested.");  /** ???? */
-         if (com.model > 0 && (com.alpha || !com.fix_alpha))
-            error2("dN/dS ratios among branches not implemented for gamma");
-         if (com.model > 0 && com.clock)
-            error2("model and clock don't work together");
-         if (com.fix_omega) {
-            com.omega_fix = com.omega;
-            if ((com.model == 0 && com.NSsites == NSdiscrete)
-               || (com.model && com.NSsites && com.NSsites != NSpselection
-                  &&com.NSsites != NSdiscrete && com.NSsites != NSbetaw))
-               error2("\afix_omega?");
-         }
-         if (com.model > NSbranch3) error2("seqtype or model.");
-         /*
-                  if (com.model==NSbranch2 && com.clock==2)
-                     error2("NSbranch & local clock.");
-         */
-         if (com.model == NSbranch3 && (com.NSsites == NSpselection || com.NSsites == NSdiscrete) && com.ncatG != 3)
-         {
-            com.ncatG = 3; puts("ncatG = 3 reset.");
-         }
-         if (com.kappa < 0)  error2("kappa..");
-         if (com.runmode)  com.fix_blength = 0;
-         if ((com.runmode == -2 || com.runmode == -3) && (com.NSsites || com.alpha || com.aaDist))
-            error2("wrong model for pairwise comparison.\ncheck NSsites, alpha, aaDist, model etc.");
-         if (com.runmode > 0 && com.model == 2) error2("tree search & model");
-         if (com.aaDist && com.NSsites != 0 && com.NSsites != NSdiscrete)
-            error2("NSsites && aaDist.");
-
-         if ((com.NSsites || nnsmodels > 1) && (com.alpha || com.fix_alpha == 0))
-            error2("NSsites & Gamma");
-         if (com.seqtype == 1 && (com.alpha || com.fix_alpha == 0))
-            puts("\aGamma codon model: are you sure this is the model you want to use? ");
-
-         if (com.aaDist == 0) {
-            if ((!com.fix_omega || (com.Mgene && com.Mgene >= 3)) && !com.NSsites && !com.model)
-               com.nrate++;
-         }
-         else {
-            if (com.aaDist <= 6)          com.nrate += 2;   /* a & b, PSB2000 */
-            else if (com.aaDist == FIT1)  com.nrate += 4;   /* fitness models: */
-            else if (com.aaDist == FIT2)  com.nrate += 5;   /* ap, p*, av, v*, b */
-            if (com.aaDist >= FIT1)
-               for (i = 0; i < 2; i++)
-                  for (j = 0; j < 20; j++) AAchem[i][j] /= AAchem[i][20];
-         }
-
-         if (com.NSsites) {
-            if (com.NSsites == NSfreqs && com.ncatG != 5)
-            {
-               puts("\nncatG changed to 5."); com.ncatG = 5;
-            }
-            if (com.model && com.NSsites)
-               if ((com.model != 2 && com.model != 3)
-                  || (com.NSsites != NSpselection && com.NSsites != NSdiscrete))
-                  error2("only NSsites=2,3 & model=2,3 are compatible.");
-            switch (com.NSsites) {
-            case (NSnneutral):   com.ncatG = 2;  break;
-            case (NSpselection):
-            case (NSM2aRel):
-               com.ncatG = 3;  break;
-            case (NSbetaw):      com.ncatG++;  break;
-            case (NS02normal):   com.ncatG++;  break;
-            }
-
-            if (com.model == 2) { /* branchsite models A & B */
-               if (com.ncatG != 3) puts("\nbranch-site model: ncatG reset.");
-               com.ncatG = 4;
-               com.nrate += (com.NSsites == 2 ? 2 : 3);
-            }
-            else if (com.model == 3) { /* Clade models C & D */
-               if (com.NSsites == NSpselection)  com.nrate += 3;
-               else if (com.NSsites == NSdiscrete)    com.nrate += com.ncatG + 1;
-            }
-            else if (com.NSsites == NSnneutral) {
-               if (!com.fix_omega) com.nrate++;
-               else { com.nrate++; com.omega_fix = com.omega; }
-            }
-            else if (com.NSsites == NSpselection || com.NSsites == NSM2aRel) {
-               if (!com.fix_omega) com.nrate += 2;
-               else { com.nrate++; com.omega_fix = com.omega; }
-            }
-            else if (com.NSsites == NSbetaw)
-            {
-               if (!com.fix_omega) com.nrate++; else com.omega_fix = com.omega;
-            }
-            else if (com.NSsites == NSdiscrete && com.aaDist) {
-               if (com.aaDist <= 6) com.nrate += com.ncatG;  /* a&b PSB2000 */
-               else {  /* fitness models */
-                  com.nrate = !com.fix_kappa + 4 * com.ncatG;
-                  if (com.aaDist == FIT2) com.nrate += com.ncatG;
-               }
-            }
-            else if (com.NSsites == NSdiscrete)
-               com.nrate += com.ncatG;    /* omega's */
-         }
-      }
-   }
-   else
+   if (com.seqtype != AAseq && com.seqtype == CODON2AAseq && com.seqtype == CODONseq)
       error2("seqtype..");
+   getnrate(1);
 
    if ((com.runmode == -2 || com.runmode == -3) && com.cleandata == 0) {
       com.cleandata = 1;
       if (noisy) puts("gaps are removed for pairwise comparison.");
    }
-   if (com.method && (com.clock || com.rho))
-   {
+   if (com.method && (com.clock || com.rho)) {
       com.method = 0; puts("Iteration method reset: method = 0");
    }
-   if (com.method && com.seqtype == 2 && com.model == FromCodon)
-   {
+   if (com.method && com.seqtype == 2 && com.model == FromCodon)   {
       com.method = 0; puts("\awork on method = 1 for model = 6");
    }
 
@@ -2023,8 +2024,7 @@ int GetInitialsCodon(double x[])
    int k = com.ntime + com.nrgene, i, j, K = com.ncatG, nsyncodon[20];
    double mr = 0;
 
-   com.nrate = com.nkappa = (com.hkyREV ? 5 : !com.fix_kappa);
-   com.nrate += com.npi;
+   getnrate(0);
    if (com.nrate) { /* either kappa, omega, or both for each gene */
       if (com.Mgene <= 2) {
          if (com.hkyREV) {
@@ -6203,7 +6203,7 @@ void get_pclassM_iw_M2M8(int iw[], double pclassM[], double para[][100], int n1d
    */
    int dim = (com.NSsites == 8 || M2a ? 4 : 3), ngrid, igrid, i, j, k, it, ip[4] = { 0 };
    int nclassM = (com.NSsites == NSpselection ? 3 : n1d + 1);
-   double p0, p1, p, q, cdf0 = 0, cdf1 = 1;
+   double p0, p1, p, q, cdf0, cdf1;
 
    ngrid = n1d*n1d*n1d*(dim == 4 ? n1d : 1);
    for (igrid = 0; igrid < ngrid; igrid++) {
@@ -6222,7 +6222,7 @@ void get_pclassM_iw_M2M8(int iw[], double pclassM[], double para[][100], int n1d
             }
 
             if (M2a == 0) {     /*M2 */
-               if (k < 2) iw[igrid*nclassM + k] = k;                 /* w0 or w1 */
+               if (k < 2) iw[igrid*nclassM + k] = k;                /* w0 or w1 */
                else    iw[igrid*nclassM + k] = 2 + ip[2];           /* w2 */
             }
             else {  /* M2a */
@@ -6236,7 +6236,8 @@ void get_pclassM_iw_M2M8(int iw[], double pclassM[], double para[][100], int n1d
             if (k < n1d) {  /* w from beta */
                p = para[1][ip[1]];
                q = para[2][ip[2]];
-               if (k > 0)     cdf0 = CDFBeta(k / (double)n1d, p, q, 0);
+               cdf0 = 0;  cdf1 = 1;
+               if (k > 0)       cdf0 = CDFBeta(k / (double)n1d, p, q, 0);
                if (k < n1d - 1) cdf1 = CDFBeta((k + 1.0) / n1d, p, q, 0);
                pclassM[igrid*nclassM + k] = p0*(cdf1 - cdf0);
                iw[igrid*nclassM + k] = k;
@@ -6278,7 +6279,7 @@ int lfunNSsites_M2M8(FILE* frst, double x[], int np)
 
       Ziheng, Copenhagen, 17 May 2004.
    */
-   int n1d = 10, M2a = 1, ternary = 1, trianglePriorM8 = 0, ip[4] = { 0 };
+   int n1d = 4, M2a = 1, ternary = 1, trianglePriorM8 = 0, ip[4] = { 0 };
    double p0b[] = { 0,1 }, p1b[] = { 0,1 }, w0b[] = { 0,1 };  /* w0b for M2a only. */
    double wsb[] = { 1,11 };           /* for w2 in M2 & M2a, or for ws in M8 */
    double p_beta_b[] = { 0,2 }, q_beta_b[] = { 0,2 };
@@ -6295,9 +6296,15 @@ int lfunNSsites_M2M8(FILE* frst, double x[], int np)
 
    printf("\nBEBing (dim = %d).  This may take several minutes.", dim);
 
-   if (com.NSsites == 8) { paras[0] = "p0"; paras[1] = "p"; paras[2] = "q"; paras[3] = "ws"; }
-   else if (!M2a) { paras[0] = "p0"; paras[1] = "p1";  paras[2] = "w2"; }
-   else { paras[0] = "p0"; paras[1] = "p1";  paras[2] = "w0"; paras[3] = "w2"; }
+   if (com.NSsites == 8)  {
+      paras[0] = "p0"; paras[1] = "p"; paras[2] = "q"; paras[3] = "ws";
+   }
+   else if (!M2a)   {
+      paras[0] = "p0"; paras[1] = "p1";  paras[2] = "w2";
+   }
+   else {
+      paras[0] = "p0"; paras[1] = "p1";  paras[2] = "w0"; paras[3] = "w2";
+   }
 
    ngrid = n1d*n1d*n1d*(dim == 4 ? n1d : 1);
    if (com.NSsites == 8) com.ncatG = n1d + n1d;  /* w from beta & ws */
@@ -6337,8 +6344,8 @@ int lfunNSsites_M2M8(FILE* frst, double x[], int np)
       and posterior of parameters postpara[].  S2 is the scale factor. */
    printf("Calculating f(X), the marginal likelihood.\n");
    fX = 1;  S2 = -1e300;
-   for (j = 0; j < dim; j++) for (k = 0; k < n1d; k++) postpara[j][k] = 0;
-   if (ternary) for (k = 0; k < n1d*n1d; k++) postp0p1[k] = 0;
+   for (j = 0; j < dim; j++) for (k = 0; k < n1d; k++) postpara[j][k] = 1;
+   if (ternary) for (k = 0; k < n1d*n1d; k++) postp0p1[k] = 1;
    for (igrid = 0; igrid < ngrid; igrid++) {
       for (j = dim - 1, it = igrid; j >= 0; j--) { ip[j] = it%n1d; it /= n1d; }
       if (com.NSsites == 2 && !ternary && para[0][ip[0]] + para[1][ip[1]] > 1)
@@ -6718,7 +6725,7 @@ int lfunNSsites_ACD(FILE* frst, double x[], int np)
    int dim, ngrid, igrid, ip[4 + NBTYPE], j, k, h, hp, it;
    int refsp = 0, ncatG0 = com.ncatG, lst = (com.readpattern ? com.npatt : com.ls);
    /* # of site classes under model and index for site class */
-   int nclassM = (modelACD == mA ? 4 : 3), iclassM, *iw, i;
+   int nclassM = (modelACD == mA ? 4 : 3), *iw, i;
    double para[4 + NBTYPE][40] = { {0} }, postpara[4 + NBTYPE][40];  /* paras on grid : n1d<=40 */
    double fh, fX, *lnfXs, S1, S2, *pclassM, *postSite, *postp0p1;
    double fhk[4], t, cutoff = 0.5;

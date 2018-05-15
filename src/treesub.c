@@ -1,4 +1,4 @@
-/* TREESUB.c
+/* TadingESUB.c
  subroutines that operates on trees, inserted into other programs
  such as baseml, basemlg, codeml, and pamp.
  */
@@ -693,7 +693,7 @@ int ReadSeq(FILE *fout, FILE *fseq, int cleandata, int locus)
                if (!isgraph(com.spname[j][k]))   com.spname[j][k] = 0;
                else    break;
 
-               if (noisy >= 2) printf("Reading seq #%2d: %s     %s", j + 1, com.spname[j], (noisy > 3 ? "\n" : "\r"));
+               if (noisy >= 2) printf("Reading seq #%2d: %s       %s", j + 1, com.spname[j], (noisy > 3 ? "\n" : "\r"));
                for (k = 0; k < com.ls; p++) {
                   while (*p == '\n' || *p == '\0') {
                      p = fgets(line, lline, fseq);
@@ -888,7 +888,7 @@ int ReadSeq(FILE *fout, FILE *fseq, int cleandata, int locus)
 #endif
 
 
-#if (defined CODEML)
+#if (0 && defined CODEML)
       /* list sites with 2 types of serine codons: TC? and TCY.  19 March 2014, Ziheng. */
       if (com.seqtype == 1) {
          char codon[4] = "";
@@ -925,6 +925,10 @@ int ReadSeq(FILE *fout, FILE *fseq, int cleandata, int locus)
          RemoveEmptySequences();
 
 #endif
+
+
+/***** GIBBON, 2017.10.8 **/
+//return(0);
 
       if (!com.readpattern)
          PatternWeight();
@@ -974,11 +978,11 @@ int ReadSeq(FILE *fout, FILE *fseq, int cleandata, int locus)
 
 int MarkStopCodons(void)
 {
-   /* this converts the whole column into ??? if there is a stop codon in one sequence.
-    Data in com.z[] are just read in and not encoded yet.
-    */
+/* this converts the whole column into ??? if there is a stop codon in one sequence.
+   Data in com.z[] are just read in and not encoded yet.
+*/
    int i, j, h, k, NColumnEdited = 0;
-   char codon[4] = "", stops[6][4] = { "","","" }, nstops = 0;
+   char codon[4] = "", stops[6][4] = { "", "", "" }, nstops = 0;
 
    if (com.seqtype != 1) error2("should not be here");
 
@@ -993,7 +997,7 @@ int MarkStopCodons(void)
          codon[2] = com.z[i][h * 3 + 2];
          for (j = 0; j < nstops; j++)
             if (strcmp(codon, stops[j]) == 0) {
-               printf("stop codon %s in seq. # %3d (%s)\r", codon, i + 1, com.spname[i]);
+               printf("stop codon %s in seq. # %3d (%s), nucleotide site %d\r", codon, i + 1, com.spname[i], h*3+1);
                break;
             }
          if (j < nstops) break;
@@ -3220,7 +3224,12 @@ int OutSubTreeN(FILE *fout, int inode, int spnames, int printopt);
 
 int OutSubTreeN(FILE *fout, int inode, int spnames, int printopt)
 {
-   int i, dad = nodes[inode].father, nsib = (inode == tree.root ? 0 : nodes[dad].nson);
+   int i, dad, nsib;
+
+   if (inode > com.ns * 2 - 1)
+      error2("inode large?");
+   dad = nodes[inode].father;
+   nsib = (inode == tree.root ? 0 : nodes[dad].nson);
 
    if (inode != tree.root && inode == nodes[dad].sons[0])
       fputc('(', fout);
@@ -3474,13 +3483,13 @@ void printtree(int timebranches)
    printf("\n%7s%7s", "father", "node");
    if (timebranches)  printf("%10s%10s%10s", "age", "branch", "label");
    printf(" %7s%7s", "nson:", "sons");
-   FOR(i, tree.nnode) {
+   for (i = 0; i < tree.nnode; i++) {
       printf("\n%7d%7d", nodes[i].father, i);
       if (timebranches)
          printf(" %9.6f %9.6f %9.0f", nodes[i].age, nodes[i].branch, nodes[i].label);
 
       printf("%7d: ", nodes[i].nson);
-      FOR(j, nodes[i].nson) printf(" %2d", nodes[i].sons[j]);
+      for (j = 0; j < nodes[i].nson; j++)  printf(" %2d", nodes[i].sons[j]);
    }
    FPN(F0);
    OutTreeN(F0, 0, 0); FPN(F0);
@@ -4093,12 +4102,12 @@ void Tree2Partition(char splits[])
 
 int Partition2Tree(char splits[], int lsplit, int ns, int nsplit, double label[])
 {
-   /* This generates the tree in nodes[] using splits or branch partitions.
-    It constructs pptable[(2*s-1)*(2*s-1)] to generate the tree.
-    Split i corresponds to node ns+i, while the root is ns + nsplit.
-    label[] has labels for splits and become labels for nodes on the tree.
-    This works even if ns=1 and ns=2.
-    */
+/* This generates the tree in nodes[] using splits or branch partitions.
+   It constructs pptable[(2*s-1)*(2*s-1)] to generate the tree.
+   Split i corresponds to node ns+i, while the root is ns + nsplit.
+   label[] has labels for splits and become labels for nodes on the tree.
+   This works even if ns=1 and ns=2.
+*/
    int i, j, k, s21 = ns * 2 - 1, a, minndesc, ndesc[NS] = { 0 };  /* clade size */
    char debug = 0, *p, *pptable;
 
@@ -4135,7 +4144,7 @@ int Partition2Tree(char splits[], int lsplit, int ns, int nsplit, double label[]
             if (pptable[k*s21 + ns + i] == 1 && pptable[k*s21 + ns + j] == 1) break;
          if (k < ns) {  /* i and j are ancestral to k, and are ancestral to each other. */
             if (ndesc[i] < ndesc[j])   pptable[(ns + i)*s21 + ns + j] = 1;
-            else                      pptable[(ns + j)*s21 + ns + i] = 1;
+            else                       pptable[(ns + j)*s21 + ns + i] = 1;
          }
       }
    }
@@ -4152,14 +4161,15 @@ int Partition2Tree(char splits[], int lsplit, int ns, int nsplit, double label[]
    for (i = 0; i < tree.nnode - 1; i++) {
       minndesc = ns + 1;  a = -1;
       for (j = ns; j < tree.nnode; j++) {
-         if (pptable[i*s21 + j] == 1 && minndesc > ndesc[j - ns])
-         {
-            minndesc = ndesc[j - ns];  a = j;
+         if (pptable[i*s21 + j] == 1 && minndesc > ndesc[j - ns]) {
+            minndesc = ndesc[j - ns];
+            a = j;
          }
       }
       if (a < 0)
          error2("jgl");
       nodes[i].father = a;
+      if (nodes[a].nson > MAXNSONS) error2("Partition2Tree: raise MAXNSONS?");
       nodes[a].sons[nodes[a].nson++] = i;
       if (a != tree.root && label) nodes[a].label = label[a - ns];
    }
@@ -4271,9 +4281,9 @@ void CladeSupport(FILE *fout, char treef[], int getSnames, char mastertreef[], i
 
       /* Process the tree */
       qsort(split1, nsplit1, lsplit, (int(*)(const void *, const void *))strcmp);
-      if (debug)
-      {
-         for (i = 0; i < nsplit1; i++) printf(" %s", split1 + i*lsplit);  printf("\n");
+      if (debug)   {
+         for (i = 0; i < nsplit1; i++) printf(" %s", split1 + i*lsplit);
+         printf("\n");
       }
       for (i = 0, pc = ptree; i < nsplit1; i++)
          for (j = 0; j < s; j++) *pc++ = split1[i*lsplit + j];
@@ -4328,8 +4338,9 @@ void CladeSupport(FILE *fout, char treef[], int getSnames, char mastertreef[], i
 
    for (k = 0, cdf = 0; k < nptree; k++) {
       j = index[k];  y = countptree[j];
-      for (i = 0, pc = split1; i < nsplit1; i++, *pc++ = '\0') for (i1 = 0; i1 < s; i1++)
-         *pc++ = ptrees[j*sizeptree + i*s + i1];
+      for (i = 0, pc = split1; i < nsplit1; i++, *pc++ = '\0')
+         for (i1 = 0; i1 < s; i1++)
+            *pc++ = ptrees[j*sizeptree + i*s + i1];
       Partition2Tree(split1, lsplit, s, nsplit1, NULL);
       printf(" %6.0f %8.5f %8.5f  ", y, y / ntree, (cdf += y / ntree));
       OutTreeN(F0, 1, 0);
@@ -4344,7 +4355,7 @@ void CladeSupport(FILE *fout, char treef[], int getSnames, char mastertreef[], i
          memmove(besttree, nodes, sizetree);
          besttreeroot = tree.root;
       }
-      if (cdf > 0.99 && y / ntree < 0.001) break;
+      if (k > 9 && cdf > 0.99 && y / ntree < 0.001) break;
    }
 
    printf("\n(B) Best splits in the sample of trees (%d splits in all)\n", nsplits);
@@ -4352,13 +4363,13 @@ void CladeSupport(FILE *fout, char treef[], int getSnames, char mastertreef[], i
    for (k = 0; k < nsplits; k++) {
       j = index[k];  y = countsplits[j];
       printf(" %6.0f %9.5f  %s\n", y, y / ntree, splits + j*lsplit);
-      if (y / ntree < 0.001) break;
+      if (k > 9 && y / ntree < 0.001) break;
    }
    fprintf(fout, "\n(B) Best splits in the sample of trees (%d splits in all)\n", nsplits);
    for (k = 0; k < nsplits; k++) {
       j = index[k];  y = countsplits[j];
       fprintf(fout, " %6.0f %9.5f  %s\n", y, y / ntree, splits + j*lsplit);
-      if (y / ntree < 0.002) break;
+      if (k > 9 && y / ntree < 0.001) break;
    }
 
    /* Majority-rule consensus tree */
@@ -4422,7 +4433,7 @@ void CladeSupport(FILE *fout, char treef[], int getSnames, char mastertreef[], i
          if (same) {
             Psame[itreeM] ++;
             if (pick1tree - 1 == itreeM) {
-               OutTreeN(f1tree, 1, 1); fprintf(f1tree, "%s", line);
+               OutTreeN(f1tree, 1, 1);   fprintf(f1tree, "%s", line);
             }
          }
       }
@@ -4654,15 +4665,14 @@ int StepwiseAdditionMP(double space[])
       printf("\n%9zd bytes for MP (U0 & N0)\n", 2 * com.npatt*_mnnode * sizeof(int));
    if (_U0 == NULL || _step0 == NULL) error2("oom U0&step0");
 
-   FOR(i, ns0)  z0[i] = com.z[i];
+   for (i = 0; i < ns0; i++)  z0[i] = com.z[i];
    tree.nbranch = tree.root = com.ns = 3;
-   FOR(i, tree.nbranch) { tree.branches[i][0] = com.ns; tree.branches[i][1] = i; }
+   for (i = 0; i < tree.nbranch; i++) { tree.branches[i][0] = com.ns; tree.branches[i][1] = i; }
    BranchToNode();
-   FOR(h, com.npatt)
-      FOR(i, com.ns)
-   {
-      _U0[h*_mnnode + i] = 1 << (com.z[i][h] - 1); _step0[h*_mnnode + i] = 0;
-   }
+   for(h=0; h<com.npatt; h++)
+      for(i=0; i<com.ns; i++)   {
+         _U0[h*_mnnode + i] = 1 << (com.z[i][h] - 1); _step0[h*_mnnode + i] = 0;
+      }
    for (is = com.ns, tie = 0; is < ns0; is++) {
       treestar.tree = tree;  memcpy(treestar.nodes, nodes, sizetree);
 
@@ -6999,14 +7009,14 @@ void InitializeNodeScale(void)
    com.NnodeScale = 0;
    com.nodeScale = (char*)realloc(com.nodeScale, tree.nnode * sizeof(char));
    if (com.nodeScale == NULL) error2("oom");
-   for (i = 0; i < tree.nnode; i++) com.nodeScale[i] = 0;
+   for (i = 0; i < tree.nnode; i++) com.nodeScale[i] = (char)0;
    SetNodeScale(tree.root);
    nS = com.NnodeScale*com.npatt;
    if (com.conPSiteClass) nS *= com.ncatG;
    if (com.NnodeScale) {
       if ((com.nodeScaleF = (double*)realloc(com.nodeScaleF, nS * sizeof(double))) == NULL)
          error2("oom nscale");
-      for (i = 0; i < nS; i++) com.nodeScaleF[i] = 0;
+      memset(com.nodeScaleF, 0, nS * sizeof(double));
 
       if (noisy) {
          printf("\n%d node(s) used for scaling (Yang 2000 J Mol Evol 51:423-432):\n", com.NnodeScale);
@@ -7447,20 +7457,20 @@ void print_lnf_site(int h, double logfh)
 
 double lfundG(double x[], int np)
 {
-   /* likelihood function for site-class models.
-    This deals with scaling for nodes to avoid underflow if(com.NnodeScale).
-    The routine calls fx_r() to calculate com.fhK[], which holds log{f(x|r)}
-    when scaling or f(x|r) when not.  Scaling factors are set and used for each
-    site class (ir) to calculate log(f(x|r).  When scaling is used, the routine
-    converts com.fhK[] into f(x|r), by collecting scaling factors into lnL.
-    The rest of the calculation then becomes the same and relies on f(x|r).
-    Check notes in fx_r.
-    This is also used for NSsites models in codonml.
-    Note that scaling is used between fx_r() and ConditionalPNode()
-    When this routine is used under the multiple-gene site-class model, note
-    that right now it assumes one set of com.freqK[] for the different genes,
-    which may be an issue.
-    */
+/* likelihood function for site-class models.
+   This deals with scaling for nodes to avoid underflow if(com.NnodeScale).
+   The routine calls fx_r() to calculate com.fhK[], which holds log{f(x|r)}
+   when scaling or f(x|r) when not.  Scaling factors are set and used for each
+   site class (ir) to calculate log(f(x|r).  When scaling is used, the routine
+   converts com.fhK[] into f(x|r), by collecting scaling factors into lnL.
+   The rest of the calculation then becomes the same and relies on f(x|r).
+   Check notes in fx_r.
+   This is also used for NSsites models in codonml.
+   Note that scaling is used between fx_r() and ConditionalPNode()
+   When this routine is used under the multiple-gene site-class model, note
+   that right now it assumes one set of com.freqK[] for the different genes,
+   which may be an issue.
+*/
    int h, ir, it, FPE = 0;
    double lnL = 0, fh = 0, t;
 
@@ -7580,9 +7590,11 @@ int fx_r(double x[], int np)
             }
             if (!com.NnodeScale)
                com.fhK[ir*com.npatt + h] = fh;
-            else
-               for (k = 0, com.fhK[ir*com.npatt + h] = log(fh); k < com.NnodeScale; k++)
+            else {
+               com.fhK[ir*com.npatt + h] = log(fh);
+               for (k = 0; k < com.NnodeScale; k++)
                   com.fhK[ir*com.npatt + h] += com.nodeScaleF[k*com.npatt + h];
+            }
          }  /* for (h) */
       }     /* for (ir) */
 

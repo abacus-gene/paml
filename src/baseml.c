@@ -929,7 +929,7 @@ int GetOptions(char *ctlf)
                   com.kappa = t;
                   if (com.fix_kappa && (com.clock == 5 || com.clock == 6)
                      && com.model != 0 && com.model != 2) {
-                     ng = splitline(++pline, markgenes);
+                     ng = splitline(++pline, min2(ng, com.ndata), markgenes);
                      for (j = 0; j < min2(ng, com.ndata); j++)
                         if (!sscanf(pline + markgenes[j], "%lf", &data.kappa[j])) break;
                      /*
@@ -941,7 +941,7 @@ int GetOptions(char *ctlf)
                case (19):
                   com.alpha = t;
                   if (com.fix_alpha && t && (com.clock == 5 || com.clock == 6)) {
-                     ng = splitline(++pline, markgenes);
+                     ng = splitline(++pline, min2(ng, com.ndata), markgenes);
                      for (j = 0; j < min2(ng, com.ndata); j++)
                         if (!sscanf(pline + markgenes[j], "%lf", &data.alpha[j])) break;
                      /*

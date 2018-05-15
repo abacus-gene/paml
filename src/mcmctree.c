@@ -3691,7 +3691,7 @@ int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[], int nbin)
       Tint[j] = 1 / Eff_IntegratedCorrelationTime(y, n, &mean[j], &var[j], &rho1);
       qsort(x, (size_t)n, sizeof(double), comparedouble);
       minx[j] = x[0];  maxx[j] = x[n - 1];
-      median[j] = (n % 2 == 0 ? (x[n / 2] + x[n / 2 + 1]) / 2 : x[(n + 1) / 2]);
+      median[j] = (n % 2 == 0 ? (x[n/2 - 1] + x[n/2]) / 2 : x[n/2]);
       x005[j] = x[(int)(n*.005)];    x995[j] = x[(int)(n*.995)];
       x025[j] = x[(int)(n*.025)];    x975[j] = x[(int)(n*.975)];
 

@@ -1119,7 +1119,8 @@ char *strc(int n, int c)
    int i;
 
    if (n > 255) error2("line >255 in strc");
-   FOR(i, n) s[i] = (char)c;    s[n] = 0;
+   for (i = 0; i < n; i++) s[i] = (char)c;
+   s[n] = 0;
    return (s);
 }
 
@@ -1399,7 +1400,7 @@ double rndu2(void)
    /* 32-bit integer assumed.
       From Ripley (1987) table 2.4 line 4.
    */
-   w_rndu = abs(w_rndu * 16807) % 2147483647;
+   w_rndu = (w_rndu * 16807) % 2147483647;
    if (w_rndu == 0)  w_rndu = 13;
    return w_rndu / 2147483647.0;
 }
@@ -5277,28 +5278,29 @@ int comparedouble(const void *a, const void *b)
 }
 
 
-int splitline(char line[], int fields[])
+int splitline(char line[], int nfields, int fields[])
 {
-   /* This finds out how many fields there are in the line, and marks the starting
-      positions of the fields.
-      Fields are separated by spaces, and texts are allowed as well.
-   */
-   int lline = 1000000, i, nfields = 0, InSpace = 1;
+/* This finds out how many fields there are in the line, and marks the starting positions of the fields.
+   if(nfield>0), only nfield fiends are read.  Otherwise read until end of line or until MAXNFIELDS.
+   Fields are separated by spaces, and texts are allowed as well.
+   returns the number of fields read.
+*/
+   int i, nfieldsread = 0, InSpace = 1;
    char *p = line;
 
-   for (i = 0; i < lline && *p && *p != '\n'; i++, p++) {
+   for (i = 0; (nfields==-1 || nfieldsread<nfields) && *p && *p != '\n'; i++, p++) {
       if (isspace(*p))
          InSpace = 1;
       else {
          if (InSpace) {
             InSpace = 0;
-            fields[nfields++] = i;
-            if (nfields > MAXNFIELDS)
+            fields[nfieldsread ++] = i;
+            if (nfieldsread > MAXNFIELDS)
                puts("raise MAXNFIELDS?");
          }
       }
    }
-   return(nfields);
+   return(nfieldsread);
 }
 
 
@@ -5326,7 +5328,7 @@ int scanfile(FILE*fin, int *nrecords, int *nx, int *HasHeader, char line[], int 
             error2("file format");
          }
       }
-      nxline = splitline(line, ifields);
+      nxline = splitline(line, MAXNFIELDS, ifields);
 
       if (nxline == 0)
          continue;
@@ -5350,7 +5352,7 @@ int scanfile(FILE*fin, int *nrecords, int *nx, int *HasHeader, char line[], int 
 
    if (*HasHeader) {
       fgets(line, lline, fin);
-      splitline(line, ifields);
+      splitline(line, MAXNFIELDS, ifields);
    }
    if (*HasHeader)
       (*nrecords)--;
@@ -5364,12 +5366,9 @@ int scanfile(FILE*fin, int *nrecords, int *nx, int *HasHeader, char line[], int 
 #define MAXNF2D  5
 #define SQRT5    2.2360679774997896964
 #define Epanechnikov(t) ((0.75-0.15*(t)*(t))/SQRT5)
-int splitline(char line[], int fields[]);
 
-/* density1d and density2d need to be reworked to account for edge effects.
-   October 2006
+/* October 2006: density1d and density2d need to be reworked to account for edge effects.
 */
-
 
 int density1d(FILE* fout, double y[], int n, int nbin, double minx,
    double gap, double h, double space[], int propternary)
@@ -5689,7 +5688,7 @@ int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int propternary, 
       memmove(y, x, n * sizeof(double));
       qsort(y, (size_t)n, sizeof(double), comparedouble);
       minx[j] = y[0];  maxx[j] = y[n - 1];
-      median[j] = (n % 2 == 0 ? (y[n / 2] + y[n / 2 + 1]) / 2 : y[(n + 1) / 2]);
+      median[j] = (n % 2 == 0 ? (y[n/2 - 1] + y[n/2]) / 2 : y[n/2]);
       x005[j] = y[(int)(n*.005)];    x995[j] = y[(int)(n*.995)];
       x025[j] = y[(int)(n*.025)];    x975[j] = y[(int)(n*.975)];
 

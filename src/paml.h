@@ -245,7 +245,7 @@ double Eff_IntegratedCorrelationTime (double x[], int n, double *mx, double *var
 int HPDinterval(double x[], int n, double HPD[2], double alpha);
 int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int propternary, int SkipColumns);
 int DescriptiveStatisticsSimple (FILE *fout, char infile[], int SkipColumns);
-int splitline (char line[], int fields[]);
+int splitline(char line[], int nfields, int fields[]);
 int scanfile (FILE*fin, int *nrecords, int *nx, int *HasHeader, char line[], int ifields[]);
 
 double bound (int nx, double x0[], double p[], double x[],
