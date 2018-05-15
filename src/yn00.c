@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
       }
 
       ReadSeq((com.verbose?fout:NULL), fseq, com.cleandata, 0);
-      SetMapAmbiguity();
+      SetMapAmbiguity(com.seqtype, 0);
 
       sspace = max2(200000,64*com.ns*sizeof(double));
       sspace = max2(sspace,64*64*5*sizeof(double));

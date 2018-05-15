@@ -8,6 +8,46 @@ discussion site
 https://groups.google.com/forum/#!forum/pamlsoftware.
 
 
+Version 4.9h, March 2018
+
+(*) mcmctree: gamma-Dirichlet versus conditional i.i.d. priors for
+rates for loci.  Since 4.9d, the program and the documentation are
+inconsistent about the two priors, and which value (0 or 1) means
+which prior.  I have now checked the program and the documentation to
+make sure that they are consistent:
+
+prior = 0: gamma-Dirichlet (dos Reis 2014).  This is the default.
+prior = 1: conditional i.i.d. prior (Zhu et al. 2015).
+
+I believe these two are similar especially if the number of loci
+(partitions) is large, but no serious comparisons between the two
+priors have been published.
+
+Thanks to Adnan Moussalli for pointing out the errors.
+
+(*) codeml.  It was discovered that the mechanistic amino acid
+substitution model implemented in Yang et al. (1998; see table 3),
+specified by seqtype = 2 model = 6, has been broken for a long time,
+since version 3.0 (2000) at least.  Version 2.0 (1999) seems to be
+correct.  This means that the model become broken soon since it was
+published.  I have now fixed this.
+
+This model of amino acid substitution starts from a Markov chain for
+codons and then aggregate the states and merge the synonymous codons
+into one state (the coded amino acid).  This is an approximate
+formulation since the process after state aggregation is not Markovian
+anymore.
+
+I have now added another codon-based amino acid substitution model
+that treats amino acids as ambiguities codons.  The model is specified
+by seqtype = 2 model = 5.  This is an exact formulation.
+
+
+(*) codeml.  The number of categories in the BEB calculation under M2
+and M8 is unintentionally set to 4 rather than 10.  I have changed
+this back to 10.  The details of this calculation are in Yang et
+al. 2005 MBE.
+
 
 Version 4.9g, December 2017
 
@@ -16,7 +56,7 @@ Version 4.9g, December 2017
 messages like "strange: f[ 5] = -0.0587063 very small."  This bug was
 introduced in version 4.9b and affects versions 4.9b-f.  A different
 bug was introduced in version 4.9f that causes the log likelihood
-function under the site model M8 (NSsites = 8) to calculated
+function under the site model M8 (NSsites = 8) to be calculated
 incorrectly.  These are now fixed.
 
 

@@ -83,7 +83,7 @@ struct TREEN {
 }  *nodes, **gnodes, nodes_t[2 * NS - 1];
 
 
-/* for sptree.nodes[].fossil: lower, upper, bounds, gamma, inverse-gamma */
+/* for stree.nodes[].fossil: lower, upper, bounds, gamma, inverse-gamma */
 enum { LOWER_F = 1, UPPER_F, BOUND_F } FOSSIL_FLAGS;
 char *fossils[] = { " ", "L", "U", "B" };
 
@@ -95,7 +95,7 @@ struct SPECIESTREE {
       double age, pfossil[7];   /* lower and upper bounds or alpha & beta */
       double *lnrates;          /* log rates for loci */
    } nodes[2 * NS - 1];
-}  sptree;
+}  stree;
 /* all trees are binary & rooted, with ancestors unknown. */
 
 struct DATA { /* locus-specific data and tree information */
@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
             error2("oom blengths0");
       }
 
-      SetMapAmbiguity();
+      SetMapAmbiguity(com.seqtype, 0);
 
       /* AllPatterns(fout); */
 

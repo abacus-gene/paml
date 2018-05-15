@@ -4,7 +4,6 @@
 #if (!defined PAML_H)
 #define PAML_H
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -30,7 +29,7 @@
 int ReadSeq (FILE *fout, FILE *fseq, int cleandata, int locus);
 int ScanFastaFile(FILE *f, int *ns, int *ls, int *aligned);
 void EncodeSeqs (void);
-void SetMapAmbiguity(void);
+void SetMapAmbiguity(int seqtype, int ModelAA2Codon);
 void ReadPatternFreq (FILE* fout, char* fpattf);
 int Initialize (FILE *fout);
 int MoveCodonSeq (int ns, int ls, char *z[]);
@@ -242,6 +241,8 @@ int correl (double x[], double y[], int n, double *mx, double *my,
 int comparefloat  (const void *a, const void *b);
 int comparedouble (const void *a, const void *b);
 double Eff_IntegratedCorrelationTime (double x[], int n, double *mx, double *varx, double *rho1);
+double Eff_IntegratedCorrelationTime2(double x[], int n, int nbatch, double *mx, double *varx);
+
 int HPDinterval(double x[], int n, double HPD[2], double alpha);
 int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int propternary, int SkipColumns);
 int DescriptiveStatisticsSimple (FILE *fout, char infile[], int SkipColumns);
@@ -385,7 +386,7 @@ enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrNodeStr=8, PrAge=16, PrOmega=32} Out
 #define FAST_RANDOM_NUMBER
 
 #define mBactrian  0.95
-#define sBactrian  sqrt(1-mBactrian*mBactrian)
+#define sBactrian  sqrt(1 - mBactrian*mBactrian)
 #define aBox 0.5
 #define bBox (sqrt(12 - 3*aBox*aBox) - aBox) / 2
 #define aAirplane 1.0
@@ -397,6 +398,6 @@ enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrNodeStr=8, PrAge=16, PrOmega=32} Out
 
 #define FullSeqNames      0   /* 1: numbers at the beginning of sequence name are part of name */
 
-#define pamlVerStr "paml version 4.9f, October 2017"
+#define pamlVerStr "paml version 4.9h, March 2018"
 
 #endif

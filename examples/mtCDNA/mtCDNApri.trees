@@ -1,3 +1,6 @@
  7   1
+(((human, (chimpanzee, bonobo)), gorilla), (orangutan, Sumatran), gibbon);
+
+// end of file
 
 (((human: 0.254974, (chimpanzee: 0.078779, bonobo: 0.067071): 0.120425): 0.104179, gorilla: 0.302845): 0.289306, (orangutan: 0.168115, Sumatran: 0.141455): 0.573030, gibbon: 0.930806);  [unrooted tree, M0 F3x4 branch lengths]

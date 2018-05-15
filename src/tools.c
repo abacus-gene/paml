@@ -14,8 +14,8 @@
 char BASEs[] = "TCAGUYRMKSWHBVD-N?";
 char *EquateBASE[] = { "T","C","A","G", "T", "TC","AG","CA","TG","CG","TA",
      "TCA","TCG","CAG","TAG", "TCAG","TCAG","TCAG" };
-
-char CODONs[256][4], AAs[] = "ARNDCQEGHILKMFPSTWYV-*?X";
+char CODONs[256][4];
+char AAs[] = "ARNDCQEGHILKMFPSTWYV-*?X";
 char nChara[256], CharaMap[256][64];
 char AA3Str[] = { "AlaArgAsnAspCysGlnGluGlyHisIleLeuLysMetPheProSerThrTrpTyrVal***" };
 char BINs[] = "TC";
@@ -1347,7 +1347,7 @@ void bigexp(double lnx, double *a, double *b)
    *a = pow(10, z - (*b));
 }
 
-unsigned int z_rndu = 1237, w_rndu = 1237;
+unsigned int z_rndu = 666, w_rndu = 1237;
 
 void SetSeed(int seed, int PrintSeed)
 {
@@ -5571,7 +5571,7 @@ double Eff_IntegratedCorrelationTime(double x[], int n, double *mx, double *varx
       Note that this destroys x[].
    */
    double Tint = 1, rho0 = 0, rho, m = 0, s = 0;
-   int  i, ir;
+   int  i, ir, minNr = 10;
 
    /* if(n<1000) puts("chain too short for calculating Eff? "); */
    for (i = 0; i < n; i++) m += x[i];
@@ -5585,12 +5585,12 @@ double Eff_IntegratedCorrelationTime(double x[], int n, double *mx, double *varx
    if (s / (fabs(m) + 1) < 1E-9)
       Tint = n;
    else {
-      for (ir = 1; ir < n - 10; ir++) {
+      for (ir = 1; ir < n - minNr; ir++) {
          for (i = 0, rho = 0; i < n - ir; i++)
             rho += x[i] * x[i + ir];
          rho /= (n - 1.0);
          if (ir == 1) *rho1 = rho;
-         if (ir > 10 && rho + rho0 < 0) break;
+         if (ir > minNr && rho + rho0 < 0) break;
          Tint += rho * 2;
          rho0 = rho;
       }
@@ -5599,26 +5599,36 @@ double Eff_IntegratedCorrelationTime(double x[], int n, double *mx, double *varx
 }
 
 
-double Eff_IntegratedCorrelationTime2(double x[], int n, int nbatch, double mx)
+double Eff_IntegratedCorrelationTime2 (double x[], int n, int nbatch, double *mx, double *varx)
 {
    /* This calculates Eff, by using batch means.  Tau, the integrated correlation time, is 1/Eff.
-      mx is input.
-      This is found to be unreliable.
+   mx is input.
+   This is found to be unreliable.
    */
-   int lb, i, j;
-   double mxb, vx = 0, E = 0;
+   int lenbatch, i, j;
+   double mxb, vx = 0, E = 0, m = 0, s = 0;
 
-   if (n < 1000) puts("chain too short for calculating Eff? ");
-   lb = n / nbatch;
+   /* if(n<1000) puts("chain too short for calculating Eff? "); */
+   /* normalize the x vector for numerical stability */
+   for (i = 0; i < n; i++) m += x[i];
+   m /= n;
+   for (i = 0; i < n; i++) x[i] -= m;
+   for (i = 0; i < n; i++) s += x[i] * x[i];
+   s = sqrt(s / (n - 1.0));
+   for (i = 0; i < n; i++) x[i] /= s;
+
+   *mx = m;  *varx = s*s;
+
+   lenbatch = n / nbatch;
    for (i = 0; i < nbatch; i++) {
-      for (j = 0, mxb = 0; j < lb; j++) {
-         mxb += x[i*lb + j];
-         vx += square(x[i*lb + j] - mx);
+      for (j = 0, mxb = 0; j < lenbatch; j++) {
+         mxb += x[i*lenbatch + j];
+         vx += square(x[i*lenbatch + j]);
       }
-      mxb /= lb;
-      E += square(mxb - mx) / nbatch;
+      mxb /= lenbatch;
+      E += mxb*mxb / nbatch;
    }
-   E = (vx / n) / (E*lb);
+   E = (vx / n) / (E*lenbatch);
    return(E);
 }
 
