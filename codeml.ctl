@@ -48,7 +48,7 @@
 
    Small_Diff = .5e-6
     cleandata = 1  * remove sites with ambiguity data (1:yes, 0:no)?
-*  fix_blength = -1  * 0: ignore, -1: random, 1: initial, 2: fixed
+*  fix_blength = 1  * 0: ignore, -1: random, 1: initial, 2: fixed, 3: proportional
        method = 0  * Optimization method 0: simultaneous; 1: one branch a time
 
 * Genetic codes: 0:universal, 1:mammalian mt., 2:yeast mt., 3:mold mt.,

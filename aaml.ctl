@@ -1,5 +1,5 @@
-      seqfile = D:\A\MySoft\paml4.6\stewart.aa
-     treefile = D:\A\MySoft\paml4.6\stewart.trees
+      seqfile = stewart.aa
+     treefile = stewart.trees
 
       outfile = mlc
         noisy = 9

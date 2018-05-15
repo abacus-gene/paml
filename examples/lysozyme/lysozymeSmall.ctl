@@ -30,6 +30,7 @@
         getSE = 0   * 0: don't want them, 1: want S.E.s of estimates
  RateAncestor = 0   * (1/0): rates (alpha>0) or ancestral states (alpha=0)
        method = 0   * 0: simultaneous; 1: one branch at a time
+  fix_blength = 0  * 0: ignore, -1: random, 1: initial, 2: fixed, 3: proportional
 
 
 * Specifications for duplicating results for the small data set in table 1

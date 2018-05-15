@@ -30,4 +30,4 @@
 
    Small_Diff = .45e-6
     cleandata = 1  * remove sites with ambiguity data (1:yes, 0:no)?
-  fix_blength = 0  * 0: ignore, -1: random, 1: initial, 2: fixed
+  fix_blength = 0  * 0: ignore, -1: random, 1: initial, 2: fixed, 3: proportional

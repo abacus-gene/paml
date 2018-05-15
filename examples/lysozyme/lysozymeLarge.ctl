@@ -37,3 +37,4 @@
    Small_Diff = .5e-6
 *    cleandata = 1
 *       method = 1   * 0: simultaneous; 1: one branch at a time
+  fix_blength = 0  * 0: ignore, -1: random, 1: initial, 2: fixed, 3: proportional

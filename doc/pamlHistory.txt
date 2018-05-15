@@ -9,20 +9,75 @@ https://groups.google.com/forum/#!forum/pamlsoftware.
 
 
 
+Version 4.9f, October 2017
+
+(*) baseml, nonhomogeneous models (nhomo & fix_kappa).  Those models
+allow different branches on the tree to have different Q matrices.
+Roughly nhomo controls the base frequency parameters while gix_kappa
+controls kappa or the exchangeability parameters (a b c d e in
+GTR/REV, for example).  I added the option (nhomo = 5, fix_kappa = 2),
+which lets the user to define branch types, so that branches of the
+same type have the same exchangeability parameters (a b c d e for GTR)
+and base composition parameters, while branches of different types
+have different parameters.  Branch types are labeled (using # and $),
+0, 1, 2, ....  The labels should be consecutive positive integers.
+The old options nhomo = 3 or 4 work for some models like GTR, but not
+some other models which also have base composition parameters.  In
+this update, I think those options should work with all those models.
+I have also edited the documentation (look for option variable nhomo
+for baseml).
+
+
+(*) baseml & codeml.  i added an option fix_blength = 3
+(proportional), which means that branch lengths will be proporational
+to those given in the tree file, and the proportionality factor is
+estimated by ML.
+
+(*) codeml.  The program does not count the parameters correctly for
+model M0 when fix_kappa = 1.  The bug was introduced in version 4.9c
+and affects versions 4.9c-e.  This is now fixed.
+
+(*) codeml (seqtype = 2 model = 2).  If you are analyzing multiple
+protein data sets (ndata > 1) under the empirical models such as wag,
+jtt, dayhoff.  The results for the first data set are correct, but all
+later data sets are analyzed incorrectly under the corresponding +F
+models, that is, wag+F, jtt+F, dayhoff+F, etc.  A bug in the program
+means that for the second and later data sets, the equilibrium amino
+acid frequencies are taken from the real data and not correctly set to
+those specified by the empirical models.  I note that this bug was
+recorded in the update Version 3.14b, April 2005, but it was somehow
+not fixed, even in that version.  This is now fixed.  Thanks to Nick
+Goldman for reporting this again.
+
+(*) evolver (options 5, 6, 7 for simulating nucleotide, codon and
+amino acid alignments).  If you choose the option of printing out the
+site pattern counts instead of the sequences (specified at the
+beginning of the control file such as MCbase.dat), and if you are
+simulating two or more alignments, the program crashes after finishing
+the first alignment.  This is now fixed.
+
+(*) mcmctree.  The program crashes if you have a mixture of
+morphological loci and molecular loci, if not all the morphological
+loci are before the molecular loci.  I have now fixed this.  
+I think this was never described anyway.
+
+
+
 Version 4.9e, March 2017
 
-Edited the readme files to change the license to GPL.
+(*) Edited the readme files to change the license to GPL.
+
+(*) mcmctree.  A bug was introduced in version 4.9b which causes the
+program to read the fossil calibration information in the tree file
+incorrectly, if joint (minimum and maximum) bounds are specified using
+the symbol '<' and '>'.  If you use the notation "B()", "L()", and
+'U()', the information is read correctly.  This bug was introduced in
+version 4.9b and exists in 4.9c and 4.9d.  Versions 4.9a and earlier
+were correct.
 
 
 
 Version 4.9d, February 2017
-
-(*) mcmctree.  A bug was introduced which causes the program to read
-the fossil calibration information in the tree file incorrectly, if
-lower (minimum) bounds are specified using the symbol '>'.  If you use
-the notation "B()" or "L()", the information is read correctly.  This
-bug was introduced in version 4.9b and exists also in 4.9c.  Versions
-4.9a and earlier were correct.
 
 (*) mcmctree.  Changed the default prior for rates for loci to
 gamma-Dirichlet (dos Reis 2014), and updated the documentation as
@@ -34,7 +89,6 @@ folder examples/DatingSoftBound/BFdriverDOC.pdf.  We suggest that you
 use the exact likelihood calculation when you use this option, since the 
 normal approximation is unreliable when the power posterior is close to 
 the prior (when beta is small).
-
 
 
 

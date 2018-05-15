@@ -32,3 +32,4 @@
    Small_Diff = 3e-7
     cleandata = 0  * remove sites with ambiguity data (1:yes, 0:no)?
        method = 0  * 0: simultaneous; 1: one branch at a time
+*  fix_blength = 0  * 0: ignore, -1: random, 1: initial, 2: fixed, 3: proportional

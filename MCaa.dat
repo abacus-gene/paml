@@ -8,7 +8,7 @@
 (((Human:0.06135, Chimpanzee:0.07636):0.03287, Gorilla:0.08197):0.11219, Orangutan:0.28339, Gibbon:0.42389);
 
 .5 8        * <alpha; see notes below>  <#categories for discrete gamma>
-2 mtmam.dat * <model> [aa substitution rate file, need only if model=2 or 3]
+2 dat/mtmam.dat * <model> [aa substitution rate file, need only if model=2 or 3]
 
 0.05 0.05 0.05 0.05 0.05 0.05 0.05 0.05 0.05 0.05 
 0.05 0.05 0.05 0.05 0.05 0.05 0.05 0.05 0.05 0.05 

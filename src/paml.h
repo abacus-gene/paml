@@ -68,6 +68,7 @@ double rndlogistic (void);
 double rndloglogistic (double loc, double s);
 double rndgamma(double alpha);
 double rndbeta(double p, double q);
+int rnddirichlet (double x[], double alpha[], int K);
 int rndpoisson(double m);
 int rndNegBinomial(double shape, double mean);
 int SampleCat (double P[], int n, double space[]);
@@ -167,7 +168,7 @@ int EvolveHKY85 (char source[], char target[], int ls, double t,
     double rates[], double pi[], double kapa, int isHKY85);
 double DistanceIJ (int is, int js, int model, double alpha, double *kappa);
 int DistanceMatNuc (FILE *fout, FILE*f2base, int model, double alpha);
-int EigenQREVbase (FILE* fout, double kappa[], double pi[], 
+int EigenQGTRbase (FILE* fout, double kappa[], double pi[], 
                    int *nR, double Root[], double Cijk[]);
 int  DistanceMatNG86 (FILE *fout, FILE*fds, FILE*fdn, FILE*dt, double alpha);
 int  setmark_61_64 (void);
@@ -231,8 +232,7 @@ int matexpGSL (double A[], int n, double space[]);
 #endif
 int matsqrt (double A[], int n, double work[]);
 int CholeskyDecomp (double A[], int n, double L[]);
-int eigenQREV (double Q[], double pi[], int n, 
-               double Root[], double U[], double V[], double spacesqrtpi[]);
+int eigenQREV (double Q[], double pi[], int n, double Root[], double U[], double V[], double spacesqrtpi[]);
 int eigenRealSym(double A[], int n, double Root[], double work[]);
 
 int MeanVar (double x[], int n, double *mean, double *var);
@@ -397,6 +397,6 @@ enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrNodeStr=8, PrAge=16, PrOmega=32} Out
 
 #define FullSeqNames      0   /* 1: numbers at the beginning of sequence name are part of name */
 
-#define pamlVerStr "paml version 4.9d, February 2017"
+#define pamlVerStr "paml version 4.9f, October 2017"
 
 #endif
