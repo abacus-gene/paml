@@ -30,7 +30,7 @@ int Forestry(FILE *fout);
 void DetailOutput(FILE *fout, double x[], double var[]);
 int GetOptions(char *ctlf);
 int GetInitials(double x[], int *fromfile);
-int GetInitialsTime(double x[]);
+int GetInitialsTimes(double x[]);
 int SetxInitials(int np, double x[], double xb[][2]);
 int SetParameters(double x[]);
 int SetPGene(int igene, int _pi, int _UVRoot, int _alpha, double x[]);
@@ -52,7 +52,7 @@ int GroupDistances();
 
 struct CommonInfo {
    unsigned char *z[NS];
-   char *spname[NS], seqf[512], outf[512], treef[512], cleandata;
+   char *spname[NS], seqf[2048], outf[2048], treef[2048], cleandata;
    char oldconP[NNODE];  /* update conP for nodes to save computation (0 yes; 1 no) */
    int seqtype, ns, ls, ngene, posG[NGENE + 1], lgene[NGENE], *pose, npatt, readpattern;
    int np, ntime, nrgene, nrate, nalpha, npi, nhomo, ncatG, ncode, Mgene;
@@ -72,14 +72,16 @@ struct CommonInfo {
    int fix_omega;
    double omega;
 }  com;
+
 struct TREEB {
    int  nbranch, nnode, root, branches[NBRANCH][2];
    double lnL;
 }  tree;
+
 struct TREEN {
    int father, nson, sons[MAXNSONS], ibranch, ipop;
-   double branch, age, *pkappa, pi[4], *conP, label;
-   char *nodeStr, fossil;
+   double branch, age, *pkappa, pi[4], *conP, label, label2;
+   char fossil, *name, *annotation;
 }  *nodes, **gnodes, nodes_t[2 * NS - 1];
 
 
@@ -92,7 +94,7 @@ struct SPECIESTREE {
    struct TREESPN {
       char name[LSPNAME + 1], fossil, usefossil;  /* fossil: 0, 1, 2, 3 */
       int father, nson, sons[2];
-      double age, pfossil[7];   /* lower and upper bounds or alpha & beta */
+      double label, age, pfossil[7];   /* lower and upper bounds or alpha & beta */
       double *lnrates;          /* log rates for loci */
    } nodes[2 * NS - 1];
 }  stree;
@@ -129,16 +131,16 @@ int N_PMatUVRoot = 0;
 #include "treesub.c"
 #include "treespace.c"
 
-int main(int argc, char *argv[])
+int main (int argc, char *argv[])
 {
    FILE *fout, *fseq = NULL, *fpair[6];
    char pairfs[1][32] = { "2base.t" };
-   char rstf[512] = "rst", ctlf[512] = "baseml.ctl", timestr[64];
+   char rstf[2048] = "rst", ctlf[2048] = "baseml.ctl", timestr[64];
    char *Mgenestr[] = { "diff. rate", "separate data", "diff. rate & pi",
                      "diff. rate & kappa", "diff. rate & pi & kappa" };
    int getdistance = 1, i, idata;
    size_t s2 = 0;
-
+   
    if (argc > 2 && !strcmp(argv[argc - 1], "--stdout-no-buf"))
       setvbuf(stdout, NULL, _IONBF, 0);
 
@@ -266,7 +268,13 @@ int main(int argc, char *argv[])
             fprintf(fout, "\n\nPrinting out site pattern counts\n");
             printPatterns(fout);
          }
-         if (com.verbose == 2) {
+         if (com.verbose >= 2) {
+            fprintf(fout, "\nSite-to-pattern map: ");
+            for (i = 0; i < com.ls; i++)
+               fprintf(fout, " %2d", com.pose[i] + 1);
+            fprintf(fout, "\n");
+
+            fprintf(fout, "\n**** Alignment mutated for JC69-like models ****\n");
             fprintf(fout, "\n%6d %6d\n", com.ns, com.ls);
             for (i = 0; i < com.ns; i++) {
                fprintf(fout, "\n%-30s  ", com.spname[i]);
@@ -410,9 +418,11 @@ int Forestry(FILE *fout)
    fprintf(flnf, "%6d %6d %6d\n", ntree, com.ls, com.npatt);
 
    for (itree = 0; ntree == -1 || itree < ntree; itree++, iteration = 1) {
-      if (ReadTreeN(ftree, &haslength, &i, 0, 1)) {
+      if (ReadTreeN(ftree, &haslength, 0, 1)) {
          puts("\nend of tree file.");   break;
       }
+      ProcessNodeAnnotation(&i);
+
       if (noisy) printf("\nTREE # %2d: ", itree + 1);
       fprintf(fout, "\nTREE # %2d:  ", itree + 1);
       fprintf(frub, "\n\nTREE # %2d\n", itree + 1);
@@ -490,7 +500,9 @@ int Forestry(FILE *fout)
          else                                  status = 0;
       }
 
-      if (itree == 0) { lnL0 = lnLbest = lnL; btree = 0; }
+      if (itree == 0) {
+         lnL0 = lnLbest = lnL; btree = 0;
+      }
       else if (lnL < lnLbest) {
          lnLbest = lnL;  btree = itree;
       }
@@ -623,12 +635,12 @@ int Forestry(FILE *fout)
 
 void PrintBestTree(FILE *fout, FILE *ftree, int btree)
 {
-   int itree, ntree, i, j;
+   int itree, ntree, i;
 
    rewind(ftree);
    GetTreeFileType(ftree, &ntree, &i, 0);
    for (itree = 0; ntree == -1 || itree < ntree; itree++) {
-      if (ReadTreeN(ftree, &i, &j, 0, 1)) {
+      if (ReadTreeN(ftree, &i, 0, 1)) {
          puts("\nend of tree file."); break;
       }
       if (itree == btree)
@@ -1443,7 +1455,7 @@ int ConditionalPNode(int inode, int igene, double x[])
 
       if (com.clock < 5) {
          if (com.clock)  t *= GetBranchRate(igene, (int)nodes[ison].label, x, NULL);
-         else           t *= com.rgene[igene];
+         else            t *= com.rgene[igene];
       }
       GetPMatBranch(PMat, x, t, ison);
 
@@ -1473,26 +1485,25 @@ int ConditionalPNode(int inode, int igene, double x[])
    return (0);
 }
 
-
 int PMatCijk(double P[], double t)
 {
-   /* P(t)ij = SUM Cijk * exp{Root*t}
-   */
+/* P(t)ij = SUM Cijk * exp{Root*t}
+*/
    int i, j, k, n = com.ncode, nr = nR;
-   double expt[5], pij;
+   double exptm1[5] = {0};
 
-   if (t < -.001 && noisy>3)
-      printf("\nt = %.5f in PMatCijk", t);
-   if (t < 1e-200) { identity(P, n); return(0); }
-
-   for (k = 1; k < nr; k++) expt[k] = exp(t*Root[k]);
-   for (i = 0; i < n; i++) for (j = 0; j < n; j++) {
-      for (k = 1, pij = Cijk[i*n*nr + j*nr + 0]; k < nr; k++)
-         pij += Cijk[i*n*nr + j*nr + k] * expt[k];
-      P[i*n + j] = (pij > 0 ? pij : 0);
+   memset(P, 0, n*n * sizeof(double));
+   for (k = 1; k < nr; k++) exptm1[k] = expm1(t*Root[k]);
+   for (i = 0; i < n; i++) {
+      for (j = 0; j < n; j++) {
+         for (k = 0; k < nr; k++)
+            P[i*n + j] += Cijk[i*n*nr + j*nr + k] * exptm1[k];
+      }
+      P[i*n + i] ++;
    }
    return (0);
 }
+
 
 
 #ifdef UNDEFINED

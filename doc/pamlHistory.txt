@@ -8,6 +8,41 @@ discussion site
 https://groups.google.com/forum/#!forum/pamlsoftware.
 
 
+Version 4.9i, February 2019
+
+(*) mcmctree: I have added an option (duplication = 1) for dating a
+tree with both speciations and gene duplications, so that some nodes
+on the tree share divergence times.  Nodes sharing ages are identified
+using labels in the tree file: #1, #2, ....  I have yet to update the
+document about specification of the model.
+
+(*) mcmctree: The TipDate option was written for one locus or
+partition and never worked for more than two loci/partitions.  I have
+edited the code so that it works for multiple partitions, some of
+which may be molecular and the others morphological.
+
+(*) codeml: The option estFreq = 0 when codonFreq = 6 (FMutSel0) and 7
+(FMutSel) is not working in versions 4.9g and 4.9h.  This is fixed
+now.  This option uses the observed codon or amino acid frequencies
+for the mutation-selection models of codon usage.  Instead the program
+estimates the frequencies using maximum likeihood, which is what the
+option estFreq = 1 does.  Look at the README file in the
+examples/mtCDNAape/ folder.
+
+(*) codeml clade model D: The bounds for the w (dN/dS) ratios in the
+first site classes are set tp (0.0001, 0.5) for w0 and (0.5, 1.5) for
+w1, in versions 4.9b,c,d,e,f,g, since I added the BEB calculation for
+clade model D in 4.9b.  The motivation for the bounds is that site
+class 0 represents strong purifying selection with a small w0, while
+site class 1 should include sites under weak purifying selection with
+a larger w1.  However the bounds are arbitrary.  In some datasets, the
+MLEs are found to be at the bounds, making the interpretation awkward.
+I have changed the bounds to the following: 
+w0b[]={0.0001, 1.0}, w1b[]={0.01, 1.5}.
+This means that the user should swap the estimates of w0 and w2 if w0 > w1.
+
+
+
 Version 4.9h, March 2018
 
 (*) mcmctree: gamma-Dirichlet versus conditional i.i.d. priors for

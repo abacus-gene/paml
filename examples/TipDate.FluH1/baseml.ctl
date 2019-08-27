@@ -18,7 +18,7 @@
     fix_kappa = 0   * 0: estimate kappa; 1: fix kappa at value below
         kappa = 2   * initial or fixed kappas
  
-    fix_alpha = 0   * 0: estimate alpha; 1: fix alpha at value below
+    fix_alpha = 1   * 0: estimate alpha; 1: fix alpha at value below
         alpha = 0.25   * initial or fixed alpha, 0:infinity (constant rate)
         ncatG = 5   * # of categories in the dG, AdG, or nparK models of rates
       fix_rho = 1   * 0: estimate rho; 1: fix rho at value below

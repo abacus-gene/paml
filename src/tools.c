@@ -1,3 +1,4 @@
+
 /* tools.c
 */
 #include "paml.h"
@@ -152,11 +153,11 @@ int dnamaker(char z[], int ls, double pi[])
    /* sequences z[] are coded 0,1,2,3
    */
    int i, j;
-   double p[4], r, small = 1e-5;
+   double p[4], r, smallv = 1e-5;
 
    xtoy(pi, p, 4);
    for (i = 1; i < 4; i++) p[i] += p[i - 1];
-   if (fabs(p[3] - 1) > small)
+   if (fabs(p[3] - 1) > smallv)
       error2("sum pi != 1..");
    for (i = 0; i < ls; i++) {
       for (j = 0, r = rndu(); j < 4; j++)
@@ -206,11 +207,11 @@ int f_mono_di(FILE *fout, char *z, int ls, int iring,
    fprintf(fout, "\nmono-\n");
    FOR(i, 4) fprintf(fout, "%12.4f", fb1[i]);
    fprintf(fout, "\n\ndi-  & conditional P\n");
-   FOR(i, 4) {
-      FOR(j, 4) fprintf(fout, "%9.4f%7.4f  ", fb2[i * 4 + j], CondP[i * 4 + j]);
-      FPN(fout);
+   for (i = 0; i < 4; i++) {
+      for (j = 0; j < 4; j++) fprintf(fout, "%9.4f%7.4f  ", fb2[i * 4 + j], CondP[i * 4 + j]);
+      fprintf(fout, "\n");
    }
-   FPN(fout);
+   fprintf(fout, "\n");
    return (0);
 }
 
@@ -481,12 +482,12 @@ int difcodonLWL85(char codon1[], char codon2[], double sites[3], double sdiff[3]
 int testTransP(double P[], int n)
 {
    int i, j, status = 0;
-   double sum, small = 1e-10;
+   double sum, smallv = 1e-10;
 
    for (i = 0; i < n; i++) {
       for (j = 0, sum = 0; j < n; sum += P[i*n + j++])
-         if (P[i*n + j] < -small) status = -1;
-      if (fabs(sum - 1) > small && status == 0) {
+         if (P[i*n + j] < -smallv) status = -1;
+      if (fabs(sum - 1) > smallv && status == 0) {
          printf("\nrow sum (#%2d) = 1 = %10.6f", i + 1, sum);
          status = -1;
       }
@@ -500,7 +501,7 @@ double testDetailedBalance(double P[], double pi[], int n)
       to 0 if the detailed balance condition holds.
    */
    int i, j, status = 0;
-   double small = 1e-10, maxdiff = 0, d;
+   double smallv = 1e-10, maxdiff = 0, d;
 
    for (i = 0; i < n; i++) {
       for (j = 0; j < n; j++) {
@@ -517,22 +518,16 @@ int PMatUVRoot(double P[], double t, int n, double U[], double V[], double Root[
    /* P(t) = U * exp{Root*t} * V
    */
    int i, j, k;
-   double expt, uexpt, *pP;
-   double smallp = 0;
+   double exptm1, uexpt, *pP;
 
    NPMatUVRoot++;
-   if (t < -0.1) printf("\nt = %.5f in PMatUVRoot", t);
-   if (t < 1e-100) {
-      identity(P, n);
-      return(0);
-   }
-   for (k = 0, zero(P, n*n); k < n; k++)
-      for (i = 0, pP = P, expt = exp(t*Root[k]); i < n; i++)
-         for (j = 0, uexpt = U[i*n + k] * expt; j < n; j++)
+   memset(P, 0, n*n * sizeof(double));
+   for (k = 0; k < n; k++) {
+      for (i = 0, pP = P, exptm1 = expm1(t*Root[k]); i < n; i++)
+         for (j = 0, uexpt = U[i*n + k] * exptm1; j < n; j++)
             *pP++ += uexpt*V[k*n + j];
-
-   for (i = 0; i < n*n; i++)
-      if (P[i] < smallp)  P[i] = 0;
+   }
+   for (i = 0; i < n; i++)  P[i*n+i] ++;
 
 #if (DEBUG>=5)
    if (testTransP(P, n)) {
@@ -543,6 +538,7 @@ int PMatUVRoot(double P[], double t, int n, double U[], double V[], double Root[
 
    return (0);
 }
+
 
 
 int PMatQRev(double Q[], double pi[], double t, int n, double space[])
@@ -563,14 +559,12 @@ int PMatQRev(double Q[], double pi[], double t, int n, double space[])
 
 void pijJC69(double pij[2], double t)
 {
-   if (t < -0.0001)
+   double exptm1;
+   if (t < -1e-6)
       printf("\nt = %.5f in pijJC69", t);
-   if (t < 1e-100) {
-      pij[0] = 1; pij[1] = 0;
-   }
-   else {
-      pij[0] = (1. + 3 * exp(-4 * t / 3.)) / 4;  pij[1] = (1 - pij[0]) / 3;
-   }
+   exptm1 = expm1(-4 * t / 3.);
+   pij[0] = 1. + 3/4.0 * exptm1;
+   pij[1] = -exptm1 / 4;
 }
 
 
@@ -582,21 +576,23 @@ int PMatK80(double P[], double t, double kappa)
    int i, j;
    double e1, e2;
 
-   if (t < -0.01)
+   if (t < -1e-6)
       printf("\nt = %.5f in PMatK80", t);
-   if (t < 1e-100) { identity(P, 4); return(0); }
-   e1 = exp(-4 * t / (kappa + 2));
-   if (fabs(kappa - 1) < 1e-5) {
-      for (i = 0; i < 4; i++) for (j = 0; j < 4; j++)
-         if (i == j) P[i * 4 + j] = (1 + 3 * e1) / 4;
-         else        P[i * 4 + j] = (1 - e1) / 4;
+
+   e1 = expm1(-4 * t / (kappa + 2));
+   if (fabs(kappa - 1) < 1e-20) {
+      for (i = 0; i < 4; i++)
+         for (j = 0; j < 4; j++)
+            if (i == j) P[i * 4 + j] = 1. + 3 / 4.0 * e1;
+            else        P[i * 4 + j] = -e1 / 4;
    }
    else {
-      e2 = exp(-2 * t*(kappa + 1) / (kappa + 2));
-      for (i = 0; i < 4; i++)  P[i * 4 + i] = (1 + e1 + 2 * e2) / 4;
-      P[0 * 4 + 1] = P[1 * 4 + 0] = P[2 * 4 + 3] = P[3 * 4 + 2] = (1 + e1 - 2 * e2) / 4;
+      e2 = expm1(-2 * t*(kappa + 1) / (kappa + 2));
+      for (i = 0; i < 4; i++)
+         P[i * 4 + i] = 1 + (e1 + 2 * e2) / 4;
+      P[0 * 4 + 1] = P[1 * 4 + 0] = P[2 * 4 + 3] = P[3 * 4 + 2] = (e1 - 2 * e2) / 4;
       P[0 * 4 + 2] = P[0 * 4 + 3] = P[2 * 4 + 0] = P[3 * 4 + 0] =
-         P[1 * 4 + 2] = P[1 * 4 + 3] = P[2 * 4 + 1] = P[3 * 4 + 1] = (1 - e1) / 4;
+         P[1 * 4 + 2] = P[1 * 4 + 3] = P[2 * 4 + 1] = P[3 * 4 + 1] = -e1 / 4;
    }
    return (0);
 }
@@ -605,22 +601,23 @@ int PMatK80(double P[], double t, double kappa)
 int PMatT92(double P[], double t, double kappa, double pGC)
 {
    /* PMat for Tamura'92
-      t is branch lnegth, number of changes per site.
+   t is branch lnegth, number of changes per site.
    */
    double e1, e2;
    t /= (pGC*(1 - pGC)*kappa + .5);
 
-   if (t < -0.1) printf("\nt = %.5f in PMatT92", t);
-   if (t < 1e-100) { identity(P, 4); return(0); }
-   e1 = exp(-t); e2 = exp(-(kappa + 1)*t / 2);
+   if (t < -1e-4) printf("\nt = %.5f in PMatT92", t);
+   e1 = expm1(-t);
+   e2 = expm1(-(kappa + 1)*t / 2);
 
-   P[0 * 4 + 0] = P[2 * 4 + 2] = (1 - pGC) / 2 * (1 + e1) + pGC*e2;
-   P[1 * 4 + 1] = P[3 * 4 + 3] = pGC / 2 * (1 + e1) + (1 - pGC)*e2;
-   P[1 * 4 + 0] = P[3 * 4 + 2] = (1 - pGC) / 2 * (1 + e1) - (1 - pGC)*e2;
-   P[0 * 4 + 1] = P[2 * 4 + 3] = pGC / 2 * (1 + e1) - pGC*e2;
+   P[0 * 4 + 0] = P[2 * 4 + 2] = 1 + 0.5*(1 - pGC) * e1 + pGC*e2;
+   P[1 * 4 + 1] = P[3 * 4 + 3] = 1 + pGC / 2 * e1 + (1 - pGC)*e2;
+   P[1 * 4 + 0] = P[3 * 4 + 2] = (1 - pGC) / 2 * e1 - (1 - pGC)*e2;
+   P[0 * 4 + 1] = P[2 * 4 + 3] = pGC / 2 * e1 - pGC*e2;
 
-   P[0 * 4 + 2] = P[2 * 4 + 0] = P[3 * 4 + 0] = P[1 * 4 + 2] = (1 - pGC) / 2 * (1 - e1);
-   P[1 * 4 + 3] = P[3 * 4 + 1] = P[0 * 4 + 3] = P[2 * 4 + 1] = pGC / 2 * (1 - e1);
+   P[0 * 4 + 2] = P[2 * 4 + 0] = P[3 * 4 + 0] = P[1 * 4 + 2] = -(1 - pGC) / 2 * e1;
+   P[1 * 4 + 3] = P[3 * 4 + 1] = P[0 * 4 + 3] = P[2 * 4 + 1] = -pGC / 2 * e1;
+
    return (0);
 }
 
@@ -628,43 +625,37 @@ int PMatT92(double P[], double t, double kappa, double pGC)
 int PMatTN93(double P[], double a1t, double a2t, double bt, double pi[])
 {
    double T = pi[0], C = pi[1], A = pi[2], G = pi[3], Y = T + C, R = A + G;
-   double e1, e2, e3, small = -1e-3;
+   double e1, e2, e3, smallv = -1e-6;
 
-   if (noisy && (a1t < small || a2t < small || bt < small))
+   if (noisy && (a1t < smallv || a2t < smallv || bt < smallv))
       printf("\nat=%12.6f %12.6f  bt=%12.6f", a1t, a2t, bt);
 
-   if (a1t + a2t + bt < 1e-300)
-   {
-      identity(P, 4);  return(0);
-   }
+   e1 = expm1(-bt);
+   e2 = expm1(-(R*a2t + Y*bt));
+   e3 = expm1(-(Y*a1t + R*bt));
 
-   e1 = exp(-bt);
-   e2 = exp(-(R*a2t + Y*bt));
-   e3 = exp(-(Y*a1t + R*bt));
+   P[0 * 4 + 0] = 1 + (R*T*e1 + C*e3) / Y;
+   P[0 * 4 + 1] = (R*e1 - e3)*C / Y;
+   P[0 * 4 + 2] = -A*e1;
+   P[0 * 4 + 3] = -G*e1;
 
-   P[0 * 4 + 0] = T + R*T / Y*e1 + C / Y*e3;
-   P[0 * 4 + 1] = C + R*C / Y*e1 - C / Y*e3;
-   P[0 * 4 + 2] = A*(1 - e1);
-   P[0 * 4 + 3] = G*(1 - e1);
+   P[1 * 4 + 0] = (R*e1 - e3)*T / Y;
+   P[1 * 4 + 1] = 1 + (R*C*e1 + T*e3) / Y;
+   P[1 * 4 + 2] = -A*e1;
+   P[1 * 4 + 3] = -G*e1;
 
-   P[1 * 4 + 0] = T + R*T / Y*e1 - T / Y*e3;
-   P[1 * 4 + 1] = C + R*C / Y*e1 + T / Y*e3;
-   P[1 * 4 + 2] = A*(1 - e1);
-   P[1 * 4 + 3] = G*(1 - e1);
+   P[2 * 4 + 0] = -T*e1;
+   P[2 * 4 + 1] = -C*e1;
+   P[2 * 4 + 2] = 1 + Y*A / R*e1 + G / R*e2;
+   P[2 * 4 + 3] = Y*G / R*e1 - G / R*e2;
 
-   P[2 * 4 + 0] = T*(1 - e1);
-   P[2 * 4 + 1] = C*(1 - e1);
-   P[2 * 4 + 2] = A + Y*A / R*e1 + G / R*e2;
-   P[2 * 4 + 3] = G + Y*G / R*e1 - G / R*e2;
-
-   P[3 * 4 + 0] = T*(1 - e1);
-   P[3 * 4 + 1] = C*(1 - e1);
-   P[3 * 4 + 2] = A + Y*A / R*e1 - A / R*e2;
-   P[3 * 4 + 3] = G + Y*G / R*e1 + A / R*e2;
+   P[3 * 4 + 0] = -T*e1;
+   P[3 * 4 + 1] = -C*e1;
+   P[3 * 4 + 2] = Y*A / R*e1 - A / R*e2;
+   P[3 * 4 + 3] = 1 + Y*G / R*e1 + A / R*e2;
 
    return(0);
 }
-
 
 
 int EvolveHKY85(char source[], char target[], int ls, double t,
@@ -849,7 +840,7 @@ int printcu(FILE *fout, double fcodon[], int icode)
    for (i = 0; i < 4; i++) strcpy(ss3[i], "\0\0\0");
    noodle = strc(4 * (10 + 2 + wc) - 2, word[1]);
    fprintf(fout, "\n%s\n", noodle);
-   for (i = 0; i < 4; i++, FPN(fout)) {
+   for (i = 0; i < 4; i++) {
       for (j = 0; j < 4; j++) {
          for (k = 0; k < 4; k++) {
             it = i * 16 + k * 4 + j;
@@ -866,9 +857,9 @@ int printcu(FILE *fout, double fcodon[], int icode)
             if (fcodon) fprintf(fout, "%*.*f", wc, wd, fcodon[it]);
             if (k < 3) fprintf(fout, " %c ", word[0]);
          }
-         FPN(fout);
+         fprintf(fout, "\n");
       }
-      fputs(noodle, fout);
+      fprintf(fout, "%s\n", noodle);
    }
    return(0);
 }
@@ -880,7 +871,7 @@ int printcums(FILE *fout, int ns, double fcodons[], int icode)
    char *word = "|-", aa3[4] = "   ", codon[4] = "   ", ss3[4][4], *noodle;
 
    ngroup = (ns - 1) / neach + 1;
-   for (igroup = 0; igroup < ngroup; igroup++, FPN(fout)) {
+   for (igroup = 0; igroup < ngroup; igroup++) {
       if (igroup == ngroup - 1)
          neach = ns - neach0*igroup;
       noodle = strc(4 * (10 + wc*neach) - 2, word[1]);
@@ -903,10 +894,11 @@ int printcums(FILE *fout, int ns, double fcodons[], int icode)
                   fprintf(fout, " %*.*f", wc - 1, wd, fcodons[(igroup*neach0 + i1) * 64 + it]);
                if (k < 3) fprintf(fout, " %c ", word[0]);
             }
-            FPN(fout);
+            fprintf(fout, "\n");
          }
          fputs(noodle, fout);
       }
+      fprintf(fout, "\n");
    }
    return(0);
 }
@@ -1011,14 +1003,14 @@ int ScanFastaFile(FILE *fin, int *ns, int *ls, int *aligned)
 int printaSeq(FILE *fout, char z[], int ls, int lline, int gap)
 {
    int i;
-   FOR(i, ls) {
+   for (i = 0; i < ls; i++) {
       fprintf(fout, "%c", z[i]);
       if (gap && (i + 1) % gap == 0)  fprintf(fout, " ");
-      if ((i + 1) % lline == 0) { fprintf(fout, "%7d", i + 1); FPN(fout); }
+      if ((i + 1) % lline == 0) fprintf(fout, "%7d\n", i + 1);
    }
    i = ls%lline;
    if (i) fprintf(fout, "%*d\n", 7 + lline + lline / gap - i - i / gap, ls);
-   FPN(fout);
+   fprintf(fout, "\n");
    return (0);
 }
 
@@ -1040,7 +1032,8 @@ int printsma(FILE*fout, char*spname[], unsigned char*z[], int ns, int l, int lli
    codon[0] = -1;  /* to avoid warning */
    if (gap == 0) gap = lline + 1;
    ngroup = (l - 1) / lline + 1;
-   for (igroup = 0, FPN(fout); igroup < ngroup; igroup++, FPN(fout)) {
+   fprintf(fout, "\n");
+   for (igroup = 0; igroup < ngroup; igroup++) {
       lt = min2(l, (igroup + 1)*lline);  /* seqlen mark at the end of block */
       igap = lline + (lline / gap) + lspname + 1 - lseqlen - 1; /* spaces */
       if (igroup + 1 == ngroup)
@@ -1067,10 +1060,11 @@ int printsma(FILE*fout, char*spname[], unsigned char*z[], int ns, int l, int lli
                fputc(' ', fout); igap = 0;
             }
          }
-         FPN(fout);
+         fprintf(fout, "\n");
       }
+      fprintf(fout, "\n");
    }
-   FPN(fout);
+   fprintf(fout, "\n");
    return(0);
 }
 
@@ -1099,7 +1093,7 @@ char *printtime(char timestr[])
    m = (int)(t % 3600) / 60;
    s = (int)(t - (t / 60) * 60);
    if (h) sprintf(timestr, "%d:%02d:%02d", h, m, s);
-   else  sprintf(timestr, "%2d:%02d", m, s);
+   else   sprintf(timestr, "%2d:%02d", m, s);
    return(timestr);
 }
 
@@ -1181,7 +1175,8 @@ int appendfile(FILE*fout, char*filename)
 
 void error2(char * message)
 {
-   fprintf(stderr, "\nError: %s.\n", message); exit(-1);
+   fprintf(stderr, "\nError: %s.\n", message); 
+   exit(-1);
 }
 
 int zero(double x[], int n)
@@ -1342,7 +1337,7 @@ void bigexp(double lnx, double *a, double *b)
    /* this prints out x = e^lnx as  a*10^b
    */
    double z;
-   z = lnx*log10(2.71828);
+   z = lnx*0.43429448190325182765;   /* log10(e) = 0.43429448190325182765 */
    *b = floor(z);
    *a = pow(10, z - (*b));
 }
@@ -1351,25 +1346,26 @@ unsigned int z_rndu = 666, w_rndu = 1237;
 
 void SetSeed(int seed, int PrintSeed)
 {
-   int i;
-   FILE *frand, *fseed;
-
-   if (sizeof(unsigned int) != 4)
-      error2("oh-oh, we are in trouble.  int not 32-bit?");
+   /* Note seed is of type int with -1 meaning "please find a seed".
+     z_rndu and w_rndu are of type unsigned int.
+   */
+   if (sizeof(int) != 4)
+      error2("oh-oh, we are in trouble.  int not 32-bit?  rndu() assumes 32-bit int.");
 
    if (seed <= 0) {
-      frand = fopen("/dev/urandom", "r");
+      FILE *frand = fopen("/dev/urandom", "r");
       if (frand) {
-         for (i = 0, seed = 0; i < sizeof(int); i++)
-            seed += (seed << 8) + getc(frand);
-         seed = 2 * seed + 1;
+         if (fread(&seed, sizeof(int), 1, frand) != 1)
+            error2("failure to read white noise...");
          fclose(frand);
+         seed = abs(seed * 2 - 1);
       }
       else {
-         seed = abs(12341 * (int)time(NULL) + 1);
+         seed = abs(1234 * (int)time(NULL) + 1);
       }
 
       if (PrintSeed) {
+         FILE *fseed;
          fseed = fopen("SeedUsed", "w");
          if (fseed == NULL) error2("can't open file SeedUsed.");
          fprintf(fseed, "%d\n", seed);
@@ -1386,23 +1382,24 @@ void SetSeed(int seed, int PrintSeed)
 
 double rndu(void)
 {
-   /* 32-bit integer assumed.
-      From Ripley (1987) p. 46 or table 2.4 line 2.
-      This may return 0 or 1, which can be a problem.
-   */
+   /* 32-bit integer assumed.  From Ripley (1987) p. 46 or table 2.4 line 2. */
+#if 0
    z_rndu = z_rndu * 69069 + 1;
    if (z_rndu == 0 || z_rndu == 4294967295)  z_rndu = 13;
    return z_rndu / 4294967295.0;
+#else
+   z_rndu = z_rndu * 69069 + 1;
+   if (z_rndu == 0)  z_rndu = 12345671;
+   return ldexp((double)z_rndu, -32);
+#endif
 }
 
 double rndu2(void)
 {
-   /* 32-bit integer assumed.
-      From Ripley (1987) table 2.4 line 4.
-   */
-   w_rndu = (w_rndu * 16807) % 2147483647;
-   if (w_rndu == 0)  w_rndu = 13;
-   return w_rndu / 2147483647.0;
+   /* 32-bit integer assumed.  From Ripley (1987) table 2.4 line 4. */
+   w_rndu = (w_rndu * 16807) % 2147483647;  /* can this be made faster */
+   if (w_rndu == 0)  w_rndu = 12345671;
+   return ldexp((double)w_rndu, -31);
 }
 
 #else 
@@ -1443,13 +1440,13 @@ double rnduM0V1(void)
 
 double reflect(double x, double a, double b)
 {
-   /* This returns a variable in the range (a,b) by reflecting x back into the range
-   */
+/* This returns a variable in the range (a, b) by reflecting x back into the range
+*/
    int side = 0;  /* n is number of jumps over interval.  side=0 (left) or 1 (right). */
-   double n, e = 0, small = 1e-100;   /* e is excess */
+   double n, e = 0, smallv = 1e-200;    /* e is excess */
 
-   if (b - a < small) {
-      printf("\nimproper range x0=%.6g (%.6g, %.6g)\n", x, a, b);
+   if (b - a < smallv) {
+      printf("\nimproper range x0 = %.9g (%.9g, %.9g)\n", x, a, b);
       exit(-1);
    }
    if (x < a) { e = a - x;  side = 0; }
@@ -1457,19 +1454,25 @@ double reflect(double x, double a, double b)
    if (e) {
       n = floor(e / (b - a));
       if (fmod(n, 2.0) > 0.1)   /* fmod should be 0 if n is even and 1 if n is odd. */
-         side = 1 - side;     /* change side if n is odd */
+         side = 1 - side;       /* change side if n is odd */
       e -= n*(b - a);
       x = (side ? b - e : a + e);
    }
+
+   /* If x lands on boundary after reflection, sample a point at random in the interval. */
+   smallv = (b - a)*1e-9;
+   while (x - a < smallv || b - x < smallv)  
+      x = a + (b - a)*rndu();
+
    return(x);
 }
 
 
 double PjumpOptimum = 0.30; /* this is the optimum for the Bactrian move. */
 
-int ResetFinetuneSteps(FILE *fout, double Pjump[], double finetune[], int nsteps)
+int ResetStepLengths(FILE *fout, double Pjump[], double finetune[], int nsteps)
 {
-   /* this abjusts the MCMC proposal step length, using equation 9 in
+   /* this abjusts the MCMC proposal step lengths, using equation 9 in
       Yang, Z. & Rodríguez, C. E. 2013 Searching for efficient Markov chain Monte Carlo proposal kernels. Proc. Natl .Acad. Sci. U.S.A. 110, 19307–19312.
       PjumpOptimum = 0.3 is also from that paper.
    */
@@ -1836,7 +1839,7 @@ double rndgamma(double a)
       ACM Transactions on Mathematical Software, 26 (3): 363-372.
       This is not entirely safe and is noted to produce zero when a is small (0.001).
     */
-   double a0 = a, c, d, u, v, x, small = 1E-300;
+   double a0 = a, c, d, u, v, x, smallv = 1E-300;
 
    if (a < 1) a++;
 
@@ -1862,7 +1865,7 @@ double rndgamma(double a)
    if (a0 < 1)    /* this may cause underflow if a is small, like 0.01 */
       v *= pow(rndu(), 1 / a0);
    if (v == 0)   /* underflow */
-      v = small;
+      v = smallv;
    return v;
 }
 
@@ -1962,7 +1965,7 @@ int MultiNomial2(int n, int ncat, double prob[], int nobs[], double space[])
       to speed up the process when ncat is large.
    */
    int i, j, crude = (ncat > 20), ncrude, lcrude[200];
-   double r, *pcdf = (space == NULL ? prob : space), small = 1e-5;
+   double r, *pcdf = (space == NULL ? prob : space), smallv = 1e-5;
 
    ncrude = max2(5, ncat / 20); ncrude = min2(200, ncrude);
    for (i = 0; i < ncat; i++) nobs[i] = 0;
@@ -1970,7 +1973,7 @@ int MultiNomial2(int n, int ncat, double prob[], int nobs[], double space[])
       xtoy(prob, pcdf, ncat);
       for (i = 1; i < ncat; i++) pcdf[i] += pcdf[i - 1];
    }
-   if (fabs(pcdf[ncat - 1] - 1) > small)
+   if (fabs(pcdf[ncat - 1] - 1) > smallv)
       error2("sum P!=1 in MultiNomial2");
    if (crude) {
       for (j = 1, lcrude[0] = i = 0; j < ncrude; j++) {
@@ -2036,7 +2039,6 @@ double CDFNormal(double x)
 {
    /* Hill ID (1973) The normal integral. Applied Statistics, 22:424-427.  (Algorithm AS 66)
       Adams AG (1969) Algorithm 39. Areas under the normal curve. Computer J. 12: 197-198.
-
       adapted by Z. Yang, March 1994.
    */
    int invers = 0;
@@ -2060,7 +2062,6 @@ double CDFNormal(double x)
    return (invers ? p : 1 - p);
 }
 
-
 double logCDFNormal(double x)
 {
    /* logarithm of CDF of N(0,1).
@@ -2074,13 +2075,13 @@ double logCDFNormal(double x)
       For 3 < x < 7, both approaches are close, but when x = 8, Mathematica and
       log(CDFNormal) give the incorrect answer -6.66133815E-16, while the correct
       value is log(F(8)) = log(1 - F(-8)) ~= -F(-8) = -6.22096057E-16.
+      Note on 2019.1.5: In R, pnorm(8,0,1, log.p=TRUE) gives -6.220961e-16, which is correct.
 
       F(x) when x<-10 is reliably calculatd using the series expansion, even though
       log(CDFNormal) works until F(-38) = 2.88542835E-316.
 
-
       Regarding calculation of the logarithm of Pr(a < X < b), note that
-      F(-9) - F(-10) = F(10) - F(9), but the left side is better computationally.
+      F(-9) - F(-10) = F(10) - F(9), but the left-hand side is better computationally.
    */
    double lnF, z = fabs(x), C, low = -10, high = 5;
 
@@ -2424,12 +2425,12 @@ double QuantileChi2(double prob, double v)
           Chi2 distribution.  Applied Statistics 24: 385-388.  (AS91)
       Converted into C by Ziheng Yang, Oct. 1993.
    */
-   double e = .5e-6, aa = .6931471805, p = prob, g, small = 1e-6;
+   double e = .5e-6, aa = .6931471805, p = prob, g, smallv = 1e-6;
    double xx, c, ch, a = 0, q = 0, p1 = 0, p2 = 0, t = 0, x = 0, b = 0, s1, s2, s3, s4, s5, s6;
 
-   if (p < small)   return(0);
-   if (p > 1 - small) return(9999);
-   if (v <= 0)      return (-1);
+   if (p < smallv)     return(0);
+   if (p > 1 - smallv) return(9999);
+   if (v <= 0)         return (-1);
 
    g = LnGamma(v / 2);
    xx = v / 2;   c = xx - 1;
@@ -2911,9 +2912,9 @@ double PDFBeta(double x, double p, double q)
 {
    /* Returns pdf of beta(p,q)
    */
-   double y, small = 1e-20;
+   double y, smallv = 1e-20;
 
-   if (x < small || x>1 - small)
+   if (x < smallv || x>1 - smallv)
       error2("bad x in PDFbeta");
 
    y = (p - 1)*log(x) + (q - 1)*log(1 - x);
@@ -2939,12 +2940,12 @@ double CDFBeta(double x, double pin, double qin, double lnbeta)
        Bosten and Battiste (1974).
        Remark on Algorithm 179, CACM 17, p153, (1974).
    */
-   double ans, c, finsum, p, ps, p1, q, term, xb, xi, y, small = 1e-15;
+   double ans, c, finsum, p, ps, p1, q, term, xb, xi, y, smallv = 1e-15;
    int n, i, ib;
    static double eps = 0, alneps = 0, sml = 0, alnsml = 0;
 
-   if (x < small)        return 0;
-   else if (x > 1 - small) return 1;
+   if (x < smallv)        return 0;
+   else if (x > 1 - smallv) return 1;
    if (pin <= 0 || qin <= 0) {
       printf("p=%.4f q=%.4f: parameter outside range in CDFBeta", pin, qin);
       return (-1);
@@ -4662,7 +4663,7 @@ int matout2(FILE * fout, double x[], int n, int m, int wid, int deci)
    fprintf(fout, "\n");
    for (i = 0; i < n; i++) {
       for (j = 0; j < m; j++)
-         fprintf(fout, " %*.*f", wid - 1, deci, x[i*m + j]);
+         fprintf(fout, " %*.*g", wid - 1, deci, x[i*m + j]);
       fprintf(fout, "\n");
    }
    return (0);
@@ -4920,10 +4921,10 @@ int eigenQREV(double Q[], double pi[], int n, double Root[], double U[], double 
       Ziheng Yang, 25 December 2001 (ref is CME/eigenQ.pdf)
    */
    int i, j, inew, jnew, nnew, status;
-   double *pi_sqrt = spacesqrtpi, small = 1e-100;
+   double *pi_sqrt = spacesqrtpi, smallv = 1e-100;
 
    for (j = 0, nnew = 0; j < n; j++)
-      if (pi[j] > small)
+      if (pi[j] > smallv)
          pi_sqrt[nnew++] = sqrt(pi[j]);
 
    /* store in U the symmetrical matrix S = sqrt(D) * Q * sqrt(-D) */
@@ -4939,9 +4940,9 @@ int eigenQREV(double Q[], double pi[], int n, double Root[], double U[], double 
    }
    else {
       for (i = 0, inew = 0; i < n; i++) {
-         if (pi[i] > small) {
+         if (pi[i] > smallv) {
             for (j = 0, jnew = 0; j < i; j++)
-               if (pi[j] > small) {
+               if (pi[j] > smallv) {
                   U[inew*nnew + jnew] = U[jnew*nnew + inew]
                      = Q[i*n + j] * pi_sqrt[inew] / pi_sqrt[jnew];
                   jnew++;
@@ -4954,11 +4955,11 @@ int eigenQREV(double Q[], double pi[], int n, double Root[], double U[], double 
       status = eigenRealSym(U, nnew, Root, V);
 
       for (i = n - 1, inew = nnew - 1; i >= 0; i--)   /* construct Root */
-         Root[i] = (pi[i] > small ? Root[inew--] : 0);
+         Root[i] = (pi[i] > smallv ? Root[inew--] : 0);
       for (i = n - 1, inew = nnew - 1; i >= 0; i--) {  /* construct V */
-         if (pi[i] > small) {
+         if (pi[i] > smallv) {
             for (j = n - 1, jnew = nnew - 1; j >= 0; j--)
-               if (pi[j] > small) {
+               if (pi[j] > smallv) {
                   V[i*n + j] = U[jnew*nnew + inew] * pi_sqrt[jnew];
                   jnew--;
                }
@@ -4970,9 +4971,9 @@ int eigenQREV(double Q[], double pi[], int n, double Root[], double U[], double 
             for (j = 0; j < n; j++)  V[i*n + j] = (i == j);
       }
       for (i = n - 1, inew = nnew - 1; i >= 0; i--) {  /* construct U */
-         if (pi[i] > small) {
+         if (pi[i] > smallv) {
             for (j = n - 1, jnew = nnew - 1; j >= 0; j--)
-               if (pi[j] > small) {
+               if (pi[j] > smallv) {
                   U[i*n + j] = U[inew*nnew + jnew] / pi_sqrt[inew];
                   jnew--;
                }
@@ -5564,31 +5565,32 @@ int HPDinterval(double x[], int n, double HPD[2], double alpha)
    return(0);
 }
 
-double Eff_IntegratedCorrelationTime(double x[], int n, double *mx, double *varx, double *rho1)
+
+double Eff_IntegratedCorrelationTime(double x[], int n, double *mx, double *vx, double *rho1)
 {
    /* This calculates Efficiency or Tint using Geyer's (1992) initial positive
       sequence method.
       Note that this destroys x[].
    */
    double Tint = 1, rho0 = 0, rho, m = 0, s = 0;
-   int  i, ir, minNr = 10;
+   int  i, ir, minNr = 10, maxNr = 2000;
 
    /* if(n<1000) puts("chain too short for calculating Eff? "); */
    for (i = 0; i < n; i++) m += x[i];
    m /= n;
    for (i = 0; i < n; i++) x[i] -= m;
    for (i = 0; i < n; i++) s += x[i] * x[i];
-   s = sqrt(s / (n - 1.0));
+   s = sqrt(s / n);
    for (i = 0; i < n; i++) x[i] /= s;
 
-   if (mx) { *mx = m; *varx = s*s; }
+   if (mx) { *mx = m; *vx = s*s; }
    if (s / (fabs(m) + 1) < 1E-9)
       Tint = n;
    else {
-      for (ir = 1; ir < n - minNr; ir++) {
+      for (ir = 1; ir < min2(maxNr, n - minNr); ir++) {
          for (i = 0, rho = 0; i < n - ir; i++)
             rho += x[i] * x[i + ir];
-         rho /= (n - 1.0);
+         rho /= (n - ir);
          if (ir == 1) *rho1 = rho;
          if (ir > minNr && rho + rho0 < 0) break;
          Tint += rho * 2;
@@ -5599,14 +5601,14 @@ double Eff_IntegratedCorrelationTime(double x[], int n, double *mx, double *varx
 }
 
 
-double Eff_IntegratedCorrelationTime2 (double x[], int n, int nbatch, double *mx, double *varx)
+double Eff_IntegratedCorrelationTime2 (double x[], int n, int nbatch, double *mx, double *vx)
 {
    /* This calculates Eff, by using batch means.  Tau, the integrated correlation time, is 1/Eff.
-   mx is input.
-   This is found to be unreliable.
+   This is unreliable when Eff is very low.
+   V(mxb) = Vx/(lenbatch*E) = 1/(lenbatch*E).  The variables are normalized to have mean and Vx=1.
    */
    int lenbatch, i, j;
-   double mxb, vx = 0, E = 0, m = 0, s = 0;
+   double mxb, vxb = 0, E, m = 0, s = 0;
 
    /* if(n<1000) puts("chain too short for calculating Eff? "); */
    /* normalize the x vector for numerical stability */
@@ -5614,21 +5616,19 @@ double Eff_IntegratedCorrelationTime2 (double x[], int n, int nbatch, double *mx
    m /= n;
    for (i = 0; i < n; i++) x[i] -= m;
    for (i = 0; i < n; i++) s += x[i] * x[i];
-   s = sqrt(s / (n - 1.0));
+   s = sqrt(s / n);
    for (i = 0; i < n; i++) x[i] /= s;
-
-   *mx = m;  *varx = s*s;
+   *mx = m;  *vx = s*s;
 
    lenbatch = n / nbatch;
-   for (i = 0; i < nbatch; i++) {
-      for (j = 0, mxb = 0; j < lenbatch; j++) {
+   for (i = 0, vxb = 0; i < nbatch; i++) {
+      for (j = 0, mxb = 0; j < lenbatch; j++)
          mxb += x[i*lenbatch + j];
-         vx += square(x[i*lenbatch + j]);
-      }
       mxb /= lenbatch;
-      E += mxb*mxb / nbatch;
+      vxb += mxb*mxb / nbatch;
    }
-   E = (vx / n) / (E*lenbatch);
+   E = 1 / (vxb*lenbatch);
+   if (E*lenbatch < 1) puts("batch too short?");
    return(E);
 }
 
@@ -5677,12 +5677,11 @@ int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int propternary, 
          fscanf(fin, "%lf", &data[j*n + i]);
    fclose(fin);
 
-   /*
    if(p>1) {
       printf("\nGreat offer!  I can smooth a few 2-D densities for free.  How many do you want? ");
       scanf("%d", &nf2d);
    }
-   */
+   
    if (nf2d > MAXNF2D) error2("I don't want to do that many!");
    for (i = 0; i < nf2d; i++) {
       printf("pair #%d (e.g., type  1 3  to use variables #1 and #3)? ", i + 1);
@@ -5733,7 +5732,7 @@ int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int propternary, 
    fprintf(fout, "\nESS*    ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt1, n / Tint[j]);
    fprintf(fout, "\nEff*    ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, 1 / Tint[j]);
 
-   FPN(F0);  FPN(fout);
+   fprintf(fout, "\n\n");
    fflush(fout);
 
    fprintf(fout, "\nCorrelation matrix");
@@ -5984,11 +5983,11 @@ double bound(int nx, double x0[], double p[], double x[], int(*testx)(double x[]
       using testx()
    */
    int i, nd = 0;
-   double factor = 20, by = 1, small = 1e-8;  /* small=(SIZEp>1?1e-7:1e-8) */
+   double factor = 20, by = 1, smallv = 1e-8;  /* small=(SIZEp>1?1e-7:1e-8) */
 
    xtoy(x0, x, nx);
    for (i = 0; i < nx; i++) {
-      x[i] = x0[i] + small*p[i];
+      x[i] = x0[i] + smallv*p[i];
       if ((*testx) (x, nx)) { p[i] = 0.0;  nd++; }
       x[i] = x0[i];
    }
@@ -6190,7 +6189,7 @@ double LineSearch2(double(*fun)(double x[], int n), double *f, double x0[],
       and is not terribly important.
    */
    int ii = 0, maxround = 10, status, i, nsymb = 0;
-   double *x = space, factor = 4, small = 1e-10, smallgapa = 0.2;
+   double *x = space, factor = 4, smallv = 1e-10, smallgapa = 0.2;
    double a0, a1, a2, a3, a4 = -1, a5, a6, f0, f1, f2, f3, f4 = -1, f5, f6;
 
    /* look for bracket (a1, a2, a3) with function values (f1, f2, f3)
@@ -6200,7 +6199,7 @@ double LineSearch2(double(*fun)(double x[], int n), double *f, double x0[],
    if (noisy > 2)
       printf("\n%3d h-m-p %7.4f %6.4f %8.4f ", Iround + 1, step, limit, norm(p, n));
 
-   if (step <= 0 || limit < small || step >= limit) {
+   if (step <= 0 || limit < smallv || step >= limit) {
       if (noisy > 2)
          printf("\nh-m-p:%20.8e%20.8e%20.8e %12.6f\n", step, limit, norm(p, n), *f);
       return (0);
@@ -6210,7 +6209,7 @@ double LineSearch2(double(*fun)(double x[], int n), double *f, double x0[],
    if (f2 > f1) {  /* reduce step length so the algorithm is decreasing */
       for (; ;) {
          step /= factor;
-         if (step < small) return (0);
+         if (step < smallv) return (0);
          a3 = a2;    f3 = f2;
          a2 = a0 + step;  f2 = fun_LineSearch(a2, fun, x0, p, x, n);
          if (f2 <= f1) break;
@@ -6348,12 +6347,12 @@ int Newton(FILE *fout, double *f, double(*fun)(double x[], int n),
    double x0[], double space[], double e, int n)
 {
    int i, j, maxround = 500;
-   double f0 = 1e40, small = 1e-10, h, SIZEp, t, *H, *x, *g, *p, *tv;
+   double f0 = 1e40, smallv = 1e-10, h, SIZEp, t, *H, *x, *g, *p, *tv;
 
    H = space, x = H + n*n;   g = x + n;   p = g + n, tv = p + n;
 
    printf("\n\nIterating by Newton\tnp:%6d\nInitial:", n);
-   FOR(i, n) printf("%8.4f", x0[i]);       FPN(F0);
+   for (i = 0; i < n; i++) printf("%8.4f", x0[i]);   printf("\n");
    if (fout) fprintf(fout, "\n\nNewton\tnp:%6d\n", n);
    if (testx(x0, n)) error2("Newton..invalid initials.");
    FOR(Iround, maxround) {
@@ -6372,13 +6371,13 @@ int Newton(FILE *fout, double *f, double(*fun)(double x[], int n),
 
 #ifdef Safeguard_Newton
       if (SIZEp > 4) {
-         while (t > small) {
+         while (t > smallv) {
             FOR(i, n)  x[i] = x0[i] + t*p[i];
             if ((*f = fun(x, n)) < f0) break;
             else t /= 2;
          }
       }
-      if (t < small) t = min2(h, .5);
+      if (t < smallv) t = min2(h, .5);
 #endif
 
       FOR(i, n)  x[i] = x0[i] + t*p[i];
@@ -6461,7 +6460,7 @@ int ming2(FILE *fout, double *f, double(*fun)(double x[], int n),
    */
    int i, j, i1, i2, it, maxround = 10000, fail = 0, *xmark, *ix, nfree;
    int Ngoodtimes = 2, goodtimes = 0;
-   double small = 1.e-30, sizep0 = 0;     /* small value for checking |w|=0 */
+   double smallv = 1.e-30, sizep0 = 0;     /* small value for checking |w|=0 */
    double f0, *g0, *g, *p, *x0, *y, *s, *z, *H, *C, *tv;
    double w, v, alpha, am, h, maxstep = 8;
 
@@ -6477,9 +6476,9 @@ int ming2(FILE *fout, double *f, double(*fun)(double x[], int n),
       ix[nfree++] = i;
    }
    if (noisy > 2 && nfree < n && n < 50) {
-      FPN(F0);  FOR(j, n) printf(" %9.6f", x[j]);  FPN(F0);
-      FOR(j, n) printf(" %9.5f", xb[j][0]);  FPN(F0);
-      FOR(j, n) printf(" %9.5f", xb[j][1]);  FPN(F0);
+      printf("\n"); FOR(j, n) printf(" %9.6f", x[j]);  printf("\n");
+      FOR(j, n) printf(" %9.5f", xb[j][0]);  printf("\n");
+      FOR(j, n) printf(" %9.5f", xb[j][1]);  printf("\n");
       if (nfree < n && noisy >= 3) printf("warning: ming2, %d paras at boundary.", n - nfree);
    }
 
@@ -6488,7 +6487,7 @@ int ming2(FILE *fout, double *f, double(*fun)(double x[], int n),
    SIZEp = 99;
    if (noisy > 2) {
       printf("\nIterating by ming2\nInitial: fx= %12.6f\nx=", f0);
-      FOR(i, n) printf(" %8.5f", x[i]);   FPN(F0);
+      FOR(i, n) printf(" %8.5f", x[i]);   printf("\n");
    }
 
    if (dfun)  (*dfun) (x0, &f0, g0, n);
@@ -6552,7 +6551,7 @@ int ming2(FILE *fout, double *f, double(*fun)(double x[], int n),
          gradientB(n, x, *f, g, fun, tv, xmark);
       /*
       for(i=0; i<n; i++) fprintf(frst,"%9.5f", x[i]); fprintf(frst, "%6d",AlwaysCenter);
-      for(i=0; i<n; i++) fprintf(frst,"%9.2f", g[i]); FPN(frst);
+      for(i=0; i<n; i++) fprintf(frst,"%9.2f", g[i]); fprintf(frst, "\n");
       */
       /* modify the working set */
       for (i = 0; i < n; i++) {         /* add constraints, reduce H */
@@ -6597,7 +6596,7 @@ int ming2(FILE *fout, double *f, double(*fun)(double x[], int n),
          z[i] = s[i] - v;
          w += y[i] * z[i];
       }
-      if (fabs(w) < small) { identity(H, nfree); fail = 1; continue; }
+      if (fabs(w) < smallv) { identity(H, nfree); fail = 1; continue; }
       FOR(i, nfree)  FOR(j, nfree)  H[i*nfree + j] += z[i] * z[j] / w;
 #elif (defined DFP)
       /* Davidon (1959), Fletcher and Powell (1963). */
@@ -6605,7 +6604,7 @@ int ming2(FILE *fout, double *f, double(*fun)(double x[], int n),
          for (j = 0, z[i] = 0; j < nfree; j++) z[i] += H[i*nfree + j] * y[j];
          w += y[i] * z[i];  v += y[i] * s[i];
       }
-      if (fabs(w) < small || fabs(v) < small) { identity(H, nfree); fail = 1; continue; }
+      if (fabs(w) < smallv || fabs(v) < smallv) { identity(H, nfree); fail = 1; continue; }
       FOR(i, nfree)  FOR(j, nfree)
          H[i*nfree + j] += s[i] * s[j] / v - z[i] * z[j] / w;
 #else /* BFGS */
@@ -6613,7 +6612,7 @@ int ming2(FILE *fout, double *f, double(*fun)(double x[], int n),
          for (j = 0, z[i] = 0.; j < nfree; j++) z[i] += H[i*nfree + j] * y[j];
          w += y[i] * z[i];    v += y[i] * s[i];
       }
-      if (fabs(v) < small) { identity(H, nfree); fail = 1; continue; }
+      if (fabs(v) < smallv) { identity(H, nfree); fail = 1; continue; }
       FOR(i, nfree)  FOR(j, nfree)
          H[i*nfree + j] += ((1 + w / v)*s[i] * s[j] - z[i] * s[j] - s[i] * z[j]) / v;
 #endif
@@ -6621,7 +6620,7 @@ int ming2(FILE *fout, double *f, double(*fun)(double x[], int n),
 
    /* try to remove this after updating LineSearch2() */
    *f = (*fun)(x, n);
-   if (noisy > 2) FPN(F0);
+   if (noisy > 2) printf("\n");
 
    if (Iround == maxround) {
       if (fout) fprintf(fout, "\ncheck convergence!\n");
@@ -6648,7 +6647,7 @@ int ming1(FILE *fout, double *f, double(*fun)(double x[], int n),
       using bound()
    */
    int i, j, maxround = 1000, fail = 0;
-   double small = 1.e-20;     /* small value for checking |w|=0   */
+   double smallv = 1.e-20;     /* small value for checking |w|=0   */
    double f0, *g0, *g, *p, *x, *y, *s, *z, *H, *tv;
    double w, v, t, h;
 
@@ -6660,11 +6659,11 @@ int ming1(FILE *fout, double *f, double(*fun)(double x[], int n),
 
    if (noisy > 2) {
       printf("\n\nIterating by ming1\nInitial: fx= %12.6f\nx=", f0);
-      FOR(i, n) printf("%8.4f", x0[i]);       FPN(F0);
+      for (i = 0; i < n; i++) printf("%8.4f", x0[i]);      printf("\n");
    }
    if (fout) {
       fprintf(fout, "\n\nIterating by ming1\nInitial: fx= %12.6f\nx=", f0);
-      FOR(i, n) fprintf(fout, "%10.6f", x0[i]);
+      for (i = 0; i < n; i++) fprintf(fout, "%10.6f", x0[i]);
    }
    g0 = space;   g = g0 + n;  p = g + n;   x = p + n;
    y = x + n;      s = y + n;   z = s + n;   H = z + n;  tv = H + n*n;
@@ -6722,7 +6721,7 @@ int ming1(FILE *fout, double *f, double(*fun)(double x[], int n),
          z[i] = s[i] - t;
          w += y[i] * z[i];
       }
-      if (fabs(w) < small) { identity(H, n); fail = 1; continue; }
+      if (fabs(w) < smallv) { identity(H, n); fail = 1; continue; }
       FOR(i, n)  FOR(j, n)  H[i*n + j] += z[i] * z[j] / w;
 #elif (defined DFP)
       /* Davidon (1959), Fletcher and Powell (1963). */
@@ -6730,14 +6729,14 @@ int ming1(FILE *fout, double *f, double(*fun)(double x[], int n),
          for (j = 0, z[i] = .0; j < n; j++) z[i] += H[i*n + j] * y[j];
          w += y[i] * z[i];  v += y[i] * s[i];
       }
-      if (fabs(w) < small || fabs(v) < small) { identity(H, n); fail = 1; continue; }
+      if (fabs(w) < smallv || fabs(v) < smallv) { identity(H, n); fail = 1; continue; }
       FOR(i, n)  FOR(j, n)  H[i*n + j] += s[i] * s[j] / v - z[i] * z[j] / w;
 #else
       for (i = 0, w = v = 0.; i < n; i++) {
          for (j = 0, z[i] = 0.; j < n; j++) z[i] += H[i*n + j] * y[j];
          w += y[i] * z[i];    v += y[i] * s[i];
       }
-      if (fabs(v) < small) { identity(H, n); fail = 1; continue; }
+      if (fabs(v) < smallv) { identity(H, n); fail = 1; continue; }
       FOR(i, n)  FOR(j, n)
          H[i*n + j] += ((1 + w / v)*s[i] * s[j] - z[i] * s[j] - s[i] * z[j]) / v;
 #endif

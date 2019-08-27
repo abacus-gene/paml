@@ -106,7 +106,7 @@ double CDFLogis(double x, double m, double s);
 
 struct common_info {
    unsigned char *z[NS];
-   char *spname[NS], seqf[512], outf[512], treef[512], daafile[512], cleandata;
+   char *spname[NS], seqf[2048], outf[2048], treef[2048], daafile[2048], cleandata;
    char oldconP[NNODE];       /* update conP for nodes? to save computation */
    int seqtype, ns, ls, ngene, posG[NGENE + 1], lgene[NGENE], npatt, *pose, readpattern;
    int runmode, clock, verbose, print, codonf, aaDist, model, NSsites;
@@ -132,14 +132,16 @@ struct common_info {
      & eigenQcodon.  Try to remove them? */
    double *pomega, pkappa[5], *ppi;
 }  com;
+
 struct TREEB {
    int  nbranch, nnode, root, branches[NBRANCH][2];
    double lnL;
 }  tree;
+
 struct TREEN {
    int father, nson, sons[MAXNSONS], ibranch, ipop;
-   double branch, age, omega, *conP, label;
-   char *nodeStr, fossil, usefossil;
+   double branch, age, omega, *conP, label, label2;
+   char fossil, usefossil, *name, *annotation;
 }  *nodes, **gnodes, nodes_t[2 * NS - 1];
 
 
@@ -152,7 +154,7 @@ struct SPECIESTREE {
    struct TREESPN {
       char name[LSPNAME + 1], fossil, usefossil;  /* fossil: 0, 1, 2, 3 */
       int father, nson, sons[2];
-      double age, pfossil[7];   /* lower and upper bounds or alpha & beta */
+      double label, age, pfossil[7];   /* lower and upper bounds or alpha & beta */
       double *lnrates;          /* log rates for loci */
    } nodes[2 * NS - 1];
 }  stree;
@@ -245,13 +247,13 @@ double lnLmodel;
 
 int main(int argc, char *argv[])
 {
-   FILE *fseq = NULL, *fpair[6] = {NULL};
+   FILE *fseq = NULL, *fpair[6] = { NULL };
    char pairfs[6][32] = { "2NG.dS","2NG.dN","2NG.t", "2ML.dS","2ML.dN","2ML.t" };
    char ctlf[96] = "codeml.ctl", *pmodel, timestr[64];
    char *seqtypestr[3] = { "CODONML", "AAML", "CODON2AAML" };
    char *Mgenestr[] = { "diff. rate", "separate data", "diff. rate & pi",
                      "diff. rate & k&w", "diff. rate & pi & k&w" };
-   int getdistance = 0, i,j, k, idata, nc, nUVR, cleandata0;
+   int getdistance = 0, i, j, k, idata, nc, nUVR, cleandata0;
    size_t s2;
 
    starttimer();
@@ -521,7 +523,7 @@ int main(int argc, char *argv[])
       else {
          if (com.seqtype == AAseq && com.model == FromCodon0) {
             SetMapAmbiguity(com.seqtype, 1);
-            com.seqtype = CODONseq;  
+            com.seqtype = CODONseq;
             /* com.model = 0; */
             com.cleandata = 0;
             com.ncode = Nsensecodon;
@@ -597,7 +599,7 @@ int main(int argc, char *argv[])
    }  /* for (idata) */
 
    fclose(frst);
-   for (i = 0; i < 6; i++) if(fpair[i]) fclose(fpair[i]);
+   for (i = 0; i < 6; i++) if (fpair[i]) fclose(fpair[i]);
    if (com.ndata > 1 && fseq) fclose(fseq);
    fclose(fout);  fclose(frub);
    if (finitials)  fclose(finitials);
@@ -643,10 +645,11 @@ int Forestry(FILE *fout)
    }
 
    for (itree = 0; ntree == -1 || itree < ntree; itree++, iteration = 1) {
-      if (ReadTreeN(ftree, &haslength, &i, 0, 1)) {
+      if (ReadTreeN(ftree, &haslength, 0, 1)) {
          puts("end of tree file."); break;
       }
-
+      if (com.seqtype == 1 && com.model)
+         ProcessNodeAnnotation(&k);
       printf("\nTREE # %2d\n", itree + 1);
       fprintf(fout, "\n\nTREE # %2d:  ", itree + 1);
       fprintf(flnf, "\n\n%2d\n", itree + 1);
@@ -730,8 +733,8 @@ int Forestry(FILE *fout)
       printf("Out..\nlnL  = %12.6f\n", -lnL);
 
       printf("%d lfun, %d eigenQcodon, %d P(t)\n", NFunCall, NEigenQ, NPMatUVRoot);
-      if (itree == 0)  {
-         lnL0 = lnL;  
+      if (itree == 0) {
+         lnL0 = lnL;
          for (i = 0; i < np - com.ntime; i++)   xcom[i] = x[com.ntime + i];
       }
       else if (!j)
@@ -903,14 +906,12 @@ double *PointOmega(double xcom[], int igene, int inode, int isiteclass)
       com.NSsites and igene.  This sometimes points to com.omega or com.rK[].
       This is called by SetParameters(), DetailOutput(), etc.
 
+      Ziheng Notes: 8 August 2003.
       Difficulties in using this with lfunt() etc.
-
       Trying to remove global variables com.pomega and com.pkappa through
       PointOmega and PointKappa, but was unsuccessful when too many changes were
       made at the same time.  Perhaps look at this later.  Note that some
       variables are passed over the head from lfunt() etc. to eigenQcodon().
-
-      Ziheng Notes: 8 August 2003.
 
    */
    int k = com.nrgene + com.nkappa, backfore;
@@ -1308,7 +1309,7 @@ void DetailOutput(FILE *fout, double x[], double var[])
    if (com.seqtype == CODONseq && com.ngene == 1 && (com.model == 0 || com.model == FromCodon0 || com.NSsites == 0)) {
       tdSdNb = (double*)malloc(tree.nnode * 3 * sizeof(double));
       if (tdSdNb == NULL) error2("oom DetailOutput");
-      if (com.model>=NSbranchB && com.model <= NSbranch3 && com.aaDist != AAClasses) {  /*  branch models */
+      if (com.model >= NSbranchB && com.model <= NSbranch3 && com.aaDist != AAClasses) {  /*  branch models */
          fprintf(fout, "\nw (dN/dS) for branches: ");
          k = com.ntime + com.nrgene + com.nkappa + com.npi;
          for (i = 0; i < com.nOmega - 1; i++)
@@ -1472,13 +1473,13 @@ int getnrate(int firsttime)
          if (com.aaDist) com.nrate++;
          if (!com.fix_omega)  com.nrate++;
          if (com.codonf) {
-            com.codonf = 0;  puts("CodonFreq=0 reset for model=6.");
+            com.codonf = 0;  puts("CodonFreq=0 reset for model=5.");
          }
          break;
       case (FromCodon):
          com.nrate = com.nkappa = (com.hkyREV ? 5 : !com.fix_kappa);
          if (com.aaDist) com.nrate++;
-         if(com.fix_omega) error2("fix_omega = 1?  omega is inestimable!");
+         if (com.fix_omega) error2("fix_omega = 1?  omega is not estimable!");
          com.omega = -1;
          if (com.codonf) {
             com.codonf = 0;  puts("CodonFreq=0 reset for model=6.");
@@ -1531,20 +1532,22 @@ int getnrate(int firsttime)
       /* pi_T, pi_C, pi_A are counted as frequency parameters pi. */
       if (com.codonf == 0)
          com.npi = 0;
-      if (com.codonf == FMutSel0)     /* FMutSel0: pi_TCA plus 20 AA freqs. */
-         com.npi = 3 + (com.npi ? 20 - 1 : 0);
-      else if (com.codonf == FMutSel) /* FMutSel:  pi_TCA plus 60 codon freqs. */
-         com.npi = 3 + (com.npi ? com.ncode - 1 : 0);
-      else if (com.npi) {
-         if (com.codonf == F1x4 || com.codonf == F1x4MG)  com.npi = 3;
-         else if (com.codonf == F3x4 || com.codonf == F3x4MG)  com.npi = 9;
-         else if (com.codonf == Fcodon)                        com.npi = com.ncode - 1;
+      if (firsttime) {
+         if (com.codonf == FMutSel0)     /* FMutSel0: pi_TCA plus 20 AA freqs. */
+            com.npi = 3 + (com.npi ? 20 - 1 : 0);
+         else if (com.codonf == FMutSel) /* FMutSel:  pi_TCA plus 60 codon freqs. */
+            com.npi = 3 + (com.npi ? com.ncode - 1 : 0);
+         else if (com.npi) {
+            if (com.codonf == F1x4 || com.codonf == F1x4MG)       com.npi = 3;
+            else if (com.codonf == F3x4 || com.codonf == F3x4MG)  com.npi = 9;
+            else if (com.codonf == Fcodon)                        com.npi = com.ncode - 1;
+         }
       }
       com.nrate += com.npi;
 
       if (com.aaDist != AAClasses) {
          if (com.fix_kappa > 1) error2("fix_kappa>1, not tested.");  /** ???? */
-         if (com.model > 0 && com.model!=FromCodon0 && (com.alpha || !com.fix_alpha))
+         if (com.model > 0 && com.model != FromCodon0 && (com.alpha || !com.fix_alpha))
             error2("dN/dS ratios among branches not implemented for gamma");
          if (com.model > 0 && com.clock)
             error2("model and clock don't work together");
@@ -1576,8 +1579,8 @@ int getnrate(int firsttime)
             puts("\aGamma codon model: are you sure this is the model you want to use? ");
 
          if (com.aaDist == 0) {
-            if ((!com.fix_omega || (com.Mgene && com.Mgene >= 3)) 
-               && !com.NSsites && (com.model==0 || com.model == FromCodon0))
+            if ((!com.fix_omega || (com.Mgene && com.Mgene >= 3))
+               && !com.NSsites && (com.model == 0 || com.model == FromCodon0))
                com.nrate++;
          }
          else {
@@ -1590,7 +1593,7 @@ int getnrate(int firsttime)
          }
 
          if (com.NSsites) {
-            if (com.NSsites == NSfreqs && com.ncatG != 5)  {
+            if (com.NSsites == NSfreqs && com.ncatG != 5) {
                puts("\nncatG changed to 5."); com.ncatG = 5;
             }
             if (com.model && com.NSsites)
@@ -1602,7 +1605,7 @@ int getnrate(int firsttime)
             case (NSpselection):
             case (NSM2aRel):
                com.ncatG = 3;  break;
-            case (NSbetaw):      
+            case (NSbetaw):
             case (NS02normal):
                if (firsttime) com.ncatG++;  break;
             }
@@ -1846,7 +1849,7 @@ int SetxBound(int np, double xb[][2])
    double alphab[] = { 0.02,49 }, betab[] = { 0.005,99 };
    double rhob[] = { 0.01,0.99 }, pb[] = { .00001,.99999 };
    double wb[] = { 0.0001,999 };
-   double w0b[] = { 0.0001, 0.5 }, w1b[] = { 0.5, 1.5 };  /* clade model D */
+   double w0b[] = { 0.0001, 1.0 }, w1b[] = { 0.01, 1.5 };  /* clade model D */
 
    SetxBoundTimes(xb);
    for (i = com.ntime; i < np; i++) for (j = 0; j < 2; j++) xb[i][j] = rateb[j];
@@ -2067,7 +2070,7 @@ int GetInitialsCodon(double x[])
                      x[k++] = com.pf3x4[j * 4 + i] / (com.pf3x4[j * 4 + 3] + .02*rndu());
          }
          if (com.NSsites == 0 && (com.model == 0 || com.model == FromCodon0)) {
-            if (!com.aaDist)  {
+            if (!com.aaDist) {
                if (!com.fix_omega)    x[k++] = com.omega;
             }
             else if (com.aaDist == AAClasses)
@@ -2101,7 +2104,7 @@ int GetInitialsCodon(double x[])
       }
    }
 
-   if (com.model>=NSbranchB && com.model <= NSbranch3) {  /* branch models */
+   if (com.model >= NSbranchB && com.model <= NSbranch3) {  /* branch models */
       if (com.model == NSbranchB) {
          com.nbtype = tree.nbranch;
          for (i = 0; i < tree.nbranch; i++)
@@ -2128,7 +2131,7 @@ int GetInitialsCodon(double x[])
 
    /* branch-site and clade models
       com.nOmega=2 different w's at a site (three w's in the model: w0,w1,w2) */
-   if (com.model>=NSbranch2 && com.model <= NSbranch3 && com.NSsites) {
+   if (com.model >= NSbranch2 && com.model <= NSbranch3 && com.NSsites) {
       if (com.model == NSbranch2) { /* branch-site models A & B */
          com.ncatG = 4;  K = 3;
          if (com.NSsites == NSdiscrete)
@@ -2730,7 +2733,7 @@ int SetParameters(double x[])
    k = com.ntime + com.nrgene + com.nkappa + com.npi;
 
    if (com.nrate) {
-      if ((com.model==0 || com.model == FromCodon0) && !com.aaDist && !com.fix_omega && !com.NSsites)
+      if ((com.model == 0 || com.model == FromCodon0) && !com.aaDist && !com.fix_omega && !com.NSsites)
          com.omega = x[k];
       if (com.seqtype == AAseq)
          eigenQaa(NULL, Root, U, V, x + com.ntime + com.nrgene);
@@ -2756,7 +2759,7 @@ int SetParameters(double x[])
    */
 
    /* branch models */
-   if (com.seqtype == CODONseq && com.model>=NSbranchB &&  com.model <= NSbranch3 && com.NSsites == 0 && com.aaDist == 0) {
+   if (com.seqtype == CODONseq && com.model >= NSbranchB &&  com.model <= NSbranch3 && com.NSsites == 0 && com.aaDist == 0) {
       for (j = 0; j < tree.nnode; j++) {
          if (j == tree.root) continue;
          if (com.fix_omega && (int)nodes[j].label == com.nOmega - 1)
@@ -3199,7 +3202,7 @@ int eigenQcodon(int mode, double blength, double *S, double *dS, double *dN,
 
    NEigenQ++;
    if (blength >= 0 && (S == NULL || dS == NULL || dN == NULL)) error2("eigenQcodon");
-   memset(Q, 0, n*n*sizeof(double));
+   memset(Q, 0, n*n * sizeof(double));
    for (i = 1; i < n; i++) {
       ic1 = FROM61[i]; from[0] = ic1 / 16; from[1] = (ic1 / 4) % 4; from[2] = ic1 % 4;
       for (j = 0; j < i; j++) {
@@ -3415,16 +3418,16 @@ int eigenQaa(FILE *fout, double Root[], double U[], double V[], double rate[])
 
 int Qcodon2aa(double Qc[], double pic[], double Qaa[], double piaa[])
 {
-/* Qc -> Qaa
+   /* Qc -> Qaa
 
-   This routine constructs the rate matrix for amino acid replacement from
-   the rate matrix for codon substitution, by congregating states in the
-   Markov chain.  Both processes are time reversible, and only the
-   symmetrical part of the rate matrix are constructed.  Codon frequencies
-   pic[] are used.  They are constructed by assigning equal frequencies for
-   synonymous codons in the routine AA2Codonf().
-   Qaa(a_i, a_j) = sum_i sum_j (piC[i]*piC[j]]*Qc[i][j]) / (piAA[i]*piAA[j])
-*/
+      This routine constructs the rate matrix for amino acid replacement from
+      the rate matrix for codon substitution, by congregating states in the
+      Markov chain.  Both processes are time reversible, and only the
+      symmetrical part of the rate matrix are constructed.  Codon frequencies
+      pic[] are used.  They are constructed by assigning equal frequencies for
+      synonymous codons in the routine AA2Codonf().
+      Qaa(a_i, a_j) = sum_i sum_j (piC[i]*piC[j]]*Qc[i][j]) / (piAA[i]*piAA[j])
+   */
    int i, j, aai, aaj, nc = Nsensecodon, naa = 20;
    double ti, tij;
 
@@ -3851,7 +3854,7 @@ int AA2Codonf(double faa[20], double fcodon[])
    */
    int ic, iaa, i, NCsyn[20];
 
-   for (iaa = 0; iaa < 20; iaa++) 
+   for (iaa = 0; iaa < 20; iaa++)
       NCsyn[iaa] = 0;
    for (ic = 0; ic < 64; ic++) {
       iaa = GeneticCode[com.icode][ic];
@@ -5003,9 +5006,9 @@ int PairwiseAA(FILE *fout, FILE*f2AA)
 
 char GetAASiteSpecies(int species, int sitepatt)
 {
-/* this returns the amino acid encoded by the codon at sitepatt in species.
-   Returns '*' if more than two amino acids or '-' if codon is --- or ***.
-*/
+   /* this returns the amino acid encoded by the codon at sitepatt in species.
+      Returns '*' if more than two amino acids or '-' if codon is --- or ***.
+   */
    int n = com.ncode, c, naa, k;
    char aa = 0, newaa = 0;
 
@@ -5156,7 +5159,6 @@ int lfunNSsites_rate(FILE* frst, double x[], int np)
    int  ncolors = 5;  /* continuous = 0 uses the specified colors */
    char sitelabel[96], *colors[5] = { "darkblue", "lightblue", "purple", "pinkred", "red" };
    char *colorvalues[5] = { "[2,2,120]", "[133,57,240]", "[186,60,200]", "[200,60,160]", "[250,5,5]" };
-
 
    if (com.nparK) error2("lfunNSsites_rate to be done for HMM.");
 
@@ -6302,10 +6304,10 @@ int lfunNSsites_M2M8(FILE* frst, double x[], int np)
 
    printf("\nBEBing (dim = %d).  This may take several minutes.", dim);
 
-   if (com.NSsites == 8)  {
+   if (com.NSsites == 8) {
       paras[0] = "p0"; paras[1] = "p"; paras[2] = "q"; paras[3] = "ws";
    }
-   else if (!M2a)   {
+   else if (!M2a) {
       paras[0] = "p0"; paras[1] = "p1";  paras[2] = "w2";
    }
    else {
@@ -6722,8 +6724,8 @@ int lfunNSsites_ACD(FILE* frst, double x[], int np)
       8 March 2016, added BEB for clade model D.  deleted ncatG=2 for D so that ncatG=3 for A C D.
    */
    int n1d = 10, debug = 0, site = 0;
-   double w0b[] = { 0.0, 0.5 };  /* bounds for w0 */
-   double w1b[] = { 0.5, 1.5 };  /* bounds for w1 (for model D only) */
+   double w0b[] = { 0.0, 1.0 };  /* bounds for w0 */
+   double w1b[] = { 0.01, 1.5 }; /* bounds for w1 (for model D only) */
    double wsb[] = { 1, 11 };     /* bounds for w2 in model A */
    double w2b[] = { 0, 3 };      /* bounds for w2 w3 w4... in clade models C & D */
    enum ModelsACD { mA, mC, mD };

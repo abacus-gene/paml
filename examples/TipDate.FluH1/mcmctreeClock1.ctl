@@ -1,4 +1,4 @@
-          seed = -1357
+          seed = 1357
       seqfile = H1.txt
 *      seqfile = ../H1.CP123.txt
      treefile = H1.tre
@@ -7,7 +7,7 @@
        seqtype = 0  * 0: nucleotides; 1:codons; 2:AAs
          noisy = 3
 
-       usedata = 0 in.BV.HKYG5  * 0: no data; 1:seq like; 2:use in.BV; 3: out.BV
+       usedata = 2 in.BV.HKYG5  * 0: no data; 1:seq like; 2:use in.BV; 3: out.BV
 
          ndata = 1   * 
          clock = 1   * 1: global clock; 2: independent rates; 3: correlated rates

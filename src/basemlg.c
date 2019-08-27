@@ -40,7 +40,7 @@ int lfunG_d (double x[], double *lnL, double dl[], int np);
 int lfunG_dd (double x[], double *lnL, double dl[], double ddl[], int np);
 
 struct CommonInfo {
-   unsigned char *z[NS], *spname[NS], seqf[96],outf[96],treef[96];
+   unsigned char *z[NS], *spname[NS], seqf[2048],outf[2048],treef[2048];
    int  seqtype, ns, ls, ngene, posG[NGENE+1],lgene[NGENE],*pose,npatt, readpattern;
    int  clock,fix_alpha,fix_kappa,fix_rgene,Malpha,print,verbose;
    int  model, runmode, cleandata, ndata;
@@ -58,8 +58,8 @@ struct TREEB {
 
 struct TREEN {
    int father, nson, sons[MAXNSONS], ibranch;
-   double branch, age, label, *conP;
-   char *nodeStr, fossil;
+   double branch, age, label, label2, *conP;
+   char *annotation, fossil;
 }  nodes[2*NS-1];
 
 static int nR=4, CijkIs0[64];
@@ -83,7 +83,7 @@ int main (int argc, char *argv[])
 {
    FILE *fout, *fseq=NULL, *fpair[6];
    char pairfs[1][32]={"2base.t"};
-   char ctlf[96]="baseml.ctl";
+   char ctlf[2048]="baseml.ctl";
    double  space[50000];
 
    noisy=2;  com.cleandata=1;  /* works with clean data only */
@@ -158,7 +158,7 @@ int Forestry (FILE *fout, double space[])
       fprintf(frub,"\n\nTREE # %2d", itree+1);
       fprintf(frate,"\nTREE # %2d\n", itree+1);
 
-      if(ReadTreeN(ftree,&haslength,&i,0,1))
+      if (ReadTreeN(ftree, &haslength, 0, 1))
            { puts("err or end of tree file."); break; }
 
       com.ntime = com.clock ? tree.nnode-com.ns: tree.nbranch;

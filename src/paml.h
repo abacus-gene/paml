@@ -13,6 +13,7 @@
 #include <limits.h>
 #include <float.h>
 #include <time.h>
+#include <assert.h>
 
 #define square(a) ((a)*(a))
 #define FOR(i,n) for(i=0; i<n; i++)
@@ -138,7 +139,7 @@ int f_mono_di (FILE *fout, char z[], int ls, int iring, double fb1[], double fb2
 int PickExtreme (FILE *fout, char z[], int ls, int iring, int lfrag, int ffrag[]);
 
 int print1seq (FILE*fout, unsigned char *z, int ls, int pose[]);
-void printSeqs(FILE *fout, int *pose, char keep[], int format);
+void printSeqs(FILE *fout, unsigned char *z[], unsigned char *spnames[], int ns, int ls, int npatt, double fpatt[], int *pose, char keep[], int format);
 int printPatterns(FILE *fout);
 void printSeqsMgenes (void);
 int printsma (FILE*fout, char*spname[], unsigned char*z[], int ns, int l, int lline, int gap, int seqtype, 
@@ -150,10 +151,8 @@ double SeqDivergence (double x[], int model, double alpha, double *kapa);
 int symtest (double freq[], int n, int nobs, double space[], double *chisym, 
     double* chihom);
 int dSdNNG1986(char *z1, char *z2, int lc, int icode, int transfed, double *dS, double *dN, double *Ssites, double *Nsites);
-int difcodonNG(char codon1[], char codon2[], double *SynSite,double *AsynSite, 
-    double *SynDif, double *AsynDif, int transfed, int icode);
-int difcodonLWL85 (char codon1[], char codon2[], double sites[3], double sdiff[3], 
-                   double vdiff[3], int transfed, int icode);
+int difcodonNG(char codon1[], char codon2[], double *SynSite,double *AsynSite, double *SynDif, double *AsynDif, int transfed, int icode);
+int difcodonLWL85 (char codon1[], char codon2[], double sites[3], double sdiff[3], double vdiff[3], int transfed, int icode);
 int testTransP (double P[], int n);
 double testDetailedBalance (double P[], double pi[], int n);
 void pijJC69 (double pij[2], double t);
@@ -163,12 +162,10 @@ int PMatTN93 (double P[], double a1t, double a2t, double bt, double pi[]);
 int PMatUVRoot (double P[],double t,int n,double U[],double V[],double Root[]);
 int PMatCijk (double PMat[], double t);
 int PMatQRev(double P[], double pi[], double t, int n, double space[]);
-int EvolveHKY85 (char source[], char target[], int ls, double t, 
-    double rates[], double pi[], double kapa, int isHKY85);
+int EvolveHKY85 (char source[], char target[], int ls, double t, double rates[], double pi[], double kapa, int isHKY85);
 double DistanceIJ (int is, int js, int model, double alpha, double *kappa);
 int DistanceMatNuc (FILE *fout, FILE*f2base, int model, double alpha);
-int EigenQGTRbase (FILE* fout, double kappa[], double pi[], 
-                   int *nR, double Root[], double Cijk[]);
+int EigenQGTRbase (FILE* fout, double kappa[], double pi[], int *nR, double Root[], double Cijk[]);
 int  DistanceMatNG86 (FILE *fout, FILE*fds, FILE*fdn, FILE*dt, double alpha);
 int  setmark_61_64 (void);
 
@@ -236,12 +233,11 @@ int eigenRealSym(double A[], int n, double Root[], double work[]);
 
 int MeanVar (double x[], int n, double *mean, double *var);
 int variance (double x[], int n, int nx, double mx[], double vx[]);
-int correl (double x[], double y[], int n, double *mx, double *my,
-            double *vxx, double *vxy, double *vyy, double *r);
+int correl (double x[], double y[], int n, double *mx, double *my, double *vxx, double *vxy, double *vyy, double *r);
 int comparefloat  (const void *a, const void *b);
 int comparedouble (const void *a, const void *b);
-double Eff_IntegratedCorrelationTime (double x[], int n, double *mx, double *varx, double *rho1);
-double Eff_IntegratedCorrelationTime2(double x[], int n, int nbatch, double *mx, double *varx);
+double Eff_IntegratedCorrelationTime (double x[], int n, double *mx, double *vx, double *rho1);
+double Eff_IntegratedCorrelationTime2(double x[], int n, int nbatch, double *mx, double *vx);
 
 int HPDinterval(double x[], int n, double HPD[2], double alpha);
 int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int propternary, int SkipColumns);
@@ -249,12 +245,9 @@ int DescriptiveStatisticsSimple (FILE *fout, char infile[], int SkipColumns);
 int splitline(char line[], int nfields, int fields[]);
 int scanfile (FILE*fin, int *nrecords, int *nx, int *HasHeader, char line[], int ifields[]);
 
-double bound (int nx, double x0[], double p[], double x[],
-    int (*testx) (double x[], int nx));
-int gradient (int n, double x[], double f0, double g[], 
-    double (* fun)(double x[],int n), double space[], int Central);
-int Hessian (int nx, double x[], double f, double g[], double H[],
-    double (*fun)(double x[], int n), double space[]);
+double bound (int nx, double x0[], double p[], double x[], int (*testx) (double x[], int nx));
+int gradient (int n, double x[], double f0, double g[], double (* fun)(double x[],int n), double space[], int Central);
+int Hessian (int nx, double x[], double f, double g[], double H[], double (*fun)(double x[], int n), double space[]);
 int HessianSKT2004 (double xmle[], double lnLm, double g[], double H[]);
 
 int H_end (double x0[], double x1[], double f0, double f1, double e1, double e2, int n);
@@ -263,7 +256,6 @@ double LineSearch2 (double(*fun)(double x[],int n), double *f, double x0[],
     double p[], double h, double limit, double e, double space[], int n);
 
 void xtoFreq(double x[], double freq[], int n);
-
 
 int SetxBound (int np, double xb[][2]);
 int ming1 (FILE *fout, double *f, double (* fun)(double x[], int n),
@@ -288,19 +280,19 @@ int nls2 (FILE *fout, double *sx, double * x0, int nx,
     int (*testx) (double x[], int nx),
     int ny, double e);
 
-int ResetFinetuneSteps(FILE *fout, double Pjump[], double finetune[], int nsteps);
+int ResetStepLengths(FILE *fout, double Pjump[], double finetune[], int nsteps);
 
 /* tree structure functions in treesub.c */
 void NodeToBranch (void);
 void BranchToNode (void);
 void ClearNode (int inode);
-int ReadTreeN (FILE *ftree, int *haslength, int *haslabel, int copyname, int popline);
+int ReadTreeN (FILE *ftree, int *haslength, int copyname, int popline);
 int ReadTreeB (FILE *ftree, int popline);
 int OutTreeN (FILE *fout, int spnames, int printopt);
 int OutTreeB (FILE *fout);
 int DeRoot (void);
 int GetSubTreeN (int keep[], int space[]);
-void printtree (int timebranches);
+void PrintTree (int timebranches);
 void PointconPnodes (void);
 int SetBranch (double x[]);
 int DistanceMat (FILE *fout, int ischeme, double alfa, double *kapa);
@@ -317,8 +309,7 @@ int PopEmptyLines (FILE* fseq, int lline, char line[]);
 int hasbase (char *str);
 int blankline (char *str);
 
-void BranchLengthBD(int rooted, double birth, double death, double sample, 
-     double mut);
+void BranchLengthBD(int rooted, double birth, double death, double sample, double mut);
 int RandomLHistory (int rooted, double space[]);
 
 void Tree2Partition (char partition[]);
@@ -359,8 +350,7 @@ int GetSubSeqs(int nsnew);
 
 /* functions for evolving sequences */
 int GenerateSeq (void);
-int Rates4Sites (double rates[],double alfa,int ncatG,int ls, int cdf,
-    double space[]);
+int Rates4Sites (double rates[],double alfa,int ncatG,int ls, int cdf, double space[]);
 void Evolve (int inode);
 void EvolveJC (int inode);
 
@@ -396,8 +386,6 @@ enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrNodeStr=8, PrAge=16, PrOmega=32} Out
 
 #define PAML_RELEASE      0
 
-#define FullSeqNames      0   /* 1: numbers at the beginning of sequence name are part of name */
-
-#define pamlVerStr "paml version 4.9h, March 2018"
+#define pamlVerStr "paml version 4.9i, September 2018"
 
 #endif
