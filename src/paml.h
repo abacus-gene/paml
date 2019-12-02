@@ -19,6 +19,14 @@
 #define FOR(i,n) for(i=0; i<n; i++)
 #define FPN(file) fputc('\n', file)
 #define F0 stdout
+#if !defined(MAX)
+#define MAX(a,b)                            (((a) > (b)) ? (a) : (b))
+#endif
+#if !defined(MIN)
+#define MIN(a,b)                            (((a) < (b)) ? (a) : (b))
+#endif
+#define SQUARE(a)                           ((a)*(a))
+
 #define min2(a,b) ((a)<(b)?(a):(b))
 #define max2(a,b) ((a)>(b)?(a):(b))
 #define swap2(a,b,y) { y=a; a=b; b=y; }
@@ -386,6 +394,6 @@ enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrNodeStr=8, PrAge=16, PrOmega=32} Out
 
 #define PAML_RELEASE      0
 
-#define pamlVerStr "paml version 4.9i, September 2018"
+#define pamlVerStr "paml version 4.9j, October 2019"
 
 #endif

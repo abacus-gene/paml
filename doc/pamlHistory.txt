@@ -8,7 +8,32 @@ discussion site
 https://groups.google.com/forum/#!forum/pamlsoftware.
 
 
-Version 4.9i, February 2019
+
+Version 4.9j, October 2019
+
+(*) mcmctree, initial values have ages that are too old, exceeding max
+bounds.  In theory bounds in mcmctree are always soft so that the node
+ages will move to the area of posterior mode when burnin is long
+enough.  In practice the poor starting values are problematic and
+requires long burn-in.  I have rewritten the code for generating
+initial values to respect the min and max bounds specified in the
+fossil calibrations.
+
+(*) codeml, clade labels in the tree file.  A bug introduced in 4.9i
+caused the clade labels ($) to be ignored.  This affects the branch,
+branch-site and clade models.  If your tree has branch labels (#) only
+and no clade models, everything will be fine.  If you have used the
+clade label ($) in the tree with or without the branch label (#),
+either the program will abort or the results will be incorrect.  The
+clade label ($) is supposed to label all branches in the clade as well
+as the branch itself, but all clade labels in the tree are ignored in
+4.9i.  Earlier versions are correct.
+
+Thanks to Yonghua Wu for pointing out the bug.
+
+
+
+Version 4.9i, March 2019
 
 (*) mcmctree: I have added an option (duplication = 1) for dating a
 tree with both speciations and gene duplications, so that some nodes

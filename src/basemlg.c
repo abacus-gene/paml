@@ -248,7 +248,7 @@ int SetBranch (double x[])
 int testx (double x[], int np)
 {
    int i,k;
-   double tb[]={1e-5,4}, rgeneb[]={.01,20}, kappab[]={0,80}, alphab[]={.01,99};
+   double tb[]={1e-5,99}, rgeneb[]={.01,20}, kappab[]={0,80}, alphab[]={.01,999};
 
    if (SetBranch(x)) return (-1);
    FOR (i,com.ntime)   if (x[i]<tb[0] || x[i]>tb[1])   return (-1);
@@ -266,8 +266,8 @@ int SetxBound (int np, double xb[][2])
 /* sets lower and upper bounds for variables during iteration
 */
    int i,j, k=com.ntime+com.nrgene+com.nrate;
-   double tb[]={.4e-5, 20}, rgeneb[]={1e-4,99}, rateb[]={1e-5,999};
-   double alphab[]={0.005, 99}, pb[2]={1e-5,1-1e-5};
+   double tb[]={.4e-5, 99}, rgeneb[]={1e-4,99}, rateb[]={1e-5,999};
+   double alphab[]={0.005, 999}, pb[2]={1e-5,1-1e-5};
 
    if(com.clock) {
       xb[0][0]=tb[0];  xb[0][1]=tb[1];

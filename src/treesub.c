@@ -936,7 +936,7 @@ int ReadSeq(FILE *fout, FILE *fseq, int cleandata, int locus)
 
 
       /***** GIBBON, 2017.10.8 **/
-      //return(0);
+      /* return(0); */
 
       if (!com.readpattern) {
          PatternWeight();
@@ -2907,9 +2907,9 @@ int GetTreeFileType(FILE *ftree, int *ntree, int *pauptree, int shortform)
 int PopPaupTree(FILE *ftree);
 int PopPaupTree(FILE *ftree)
 {
-   /* This reads out the string in front of the tree in the nexus format,
-    typically "tree PAUP_1 = [&U]" with "[&U]" optional
-    */
+/* This reads out the string in front of the tree in the nexus format,
+   typically "tree PAUP_1 = [&U]" with "[&U]" optional
+*/
    int ch;
 
    for (; ;) {
@@ -2927,12 +2927,12 @@ int PopPaupTree(FILE *ftree)
 
 void DownTreeCladeLabel(int inode, int label)
 {
-   /* This goes down the tree to change $ labels (stored in nodes[].label2) into
-      # labels (stored in nodes[].label).  To deal with nested clade labels,
-      branches within a clade are labeled by negative numbers initially, and
-      converted to positive labels at the end of the algorithm.
-      nodes[].label and nodes[].label2 are initialized to -1 before this routine is called.
-   */
+/* This goes down the tree to change $ labels (stored in nodes[].label2) into
+   # labels (stored in nodes[].label).  To deal with nested clade labels,
+   branches within a clade are labeled by negative numbers initially, and
+   converted to positive labels at the end of the algorithm.
+   nodes[].label and nodes[].label2 are initialized to -1 before this routine is called.
+*/
    int i;
 
    if (nodes[inode].label2 != -1)
@@ -3130,7 +3130,7 @@ int ReadTreeN(FILE *ftree, int *haslength, int copyname, int popline)
       else {     /* label or annotation (node can be tip or internal node) */
          if (strchr(quote[0], ch)) {
             k = ReadUntil(ftree, line, quote[1], lline);
-            ch = fgetc(ftree);   /* pop off '"  */
+            ch = fgetc(ftree);   /* pop off ' "  */
          }
          else {
             ungetc(ch, ftree);
@@ -3140,8 +3140,10 @@ int ReadTreeN(FILE *ftree, int *haslength, int copyname, int popline)
          if (nodes[inode].annotation == NULL) error2("oom annotation");
          strcpy(nodes[inode].annotation, line);
          /* This line is used in MCcoal.  ProcessNodeAnnotation is used to process node annotation elsewhere. */
-         if (line[0] == '#')
+         if (line[0] == '#')        /* branch labels used in baseml and codeml */
             sscanf(line + 1, "%lf", &nodes[inode].label);
+         else if (line[0] == '$')   /* clade labels used to label branches in baseml and codeml */
+            sscanf(line + 1, "%lf", &nodes[inode].label2);
       }
    }   /* for( ; ; ) */
 
@@ -3195,9 +3197,15 @@ int OutSubTreeN(FILE *fout, int inode, int spnames, int printopt)
    }
    if ((printopt & PrNodeNum) && nodes[inode].nson)
       fprintf(fout, " %d ", inode + 1);
+
+#if (defined BPP)
+   if ((printopt & PrNodeStr) && inode < com.ns && nodes[inode].label > 0)
+      fprintf(fout, " [&theta=%.6f]", nodes[inode].label);
+#else
    if ((printopt & PrLabel) && nodes[inode].label > 0)
       fprintf(fout, " #%.6f", nodes[inode].label);
    /* fprintf(fout, " [&label=%.6f]", nodes[inode].label); */
+#endif
 
    if ((printopt & PrAge) && nodes[inode].age)
       fprintf(fout, " @%.6f", nodes[inode].age);
@@ -8491,7 +8499,7 @@ int ProcessNodeAnnotation(int *haslabel)
    */
    int s = stree.nspecies, i, j, k, nfossiltype = 7;
    int *nodelabel, nmirror, mismatch;
-   char braces[] = "{}", *pch;
+   char *pch, *pch2, *braces="({";
    double tailL = 0.025, tailR = 0.025, p_LOWERBOUND = 0.1, c_LOWERBOUND = 1.0;
 
    nodelabel = (int*)malloc(s * sizeof(int));
@@ -8542,7 +8550,11 @@ int ProcessNodeAnnotation(int *haslabel)
 
          stree.nfossil++;
          stree.nodes[i].fossil = j;
-         pch = strchr(pch, braces[0]) + 1;
+         pch2 = strchr(pch, braces[0]);
+         if (pch2 == NULL) pch2 = strchr(pch, braces[1]);
+         if (pch2 == NULL)
+           error2("did not find left brace");
+         pch = pch2 + 1;
 
          switch (j) {
          case (LOWER_F):
@@ -8688,7 +8700,8 @@ int ProcessNodeAnnotation(int *haslabel)
    for (i = 0, com.nbtype = 0; i < tree.nnode; i++) {
       if (i == tree.root) continue;
       j = (int)nodes[i].label;
-      if (j + 1 > com.nbtype)  com.nbtype = j + 1;
+      if (j + 1 > com.nbtype) 
+         com.nbtype = j + 1;
       if (j<0 || j>tree.nbranch - 1)
          error2("branch label in the tree (note labels start from 0 and are consecutive)");
    }
@@ -8948,13 +8961,17 @@ void copySptree(void)
 
 void printStree(void)
 {
-   int i, j, k;
+   int i, j, k, maxlname=10;
+
+   for (i = 0; i < stree.nspecies; i++)
+      if ((k = (int)strlen(stree.nodes[i].name)) > maxlname) 
+         maxlname = k;
 
    printf("\n************\nSpecies tree\nns = %d  nnode = %d", stree.nspecies, stree.nnode);
-   printf("\n%7s%7s  %-16s %8s %8s%16s\n", "father", "node", "name", "time", "sons", "fossil");
+   printf("\n%7s%7s  %-*s %9s %8s%16s\n", "father", "node", maxlname+2, "name", "time", "sons", "fossil");
    for (i = 0; i < stree.nnode; i++) {
-      printf("%7d%7d  %-20s %7.5f",
-         stree.nodes[i].father + 1, i + 1, stree.nodes[i].name, stree.nodes[i].age);
+      printf("%7d%7d  %-*s %8.5f",
+         stree.nodes[i].father + 1, i + 1, maxlname+6, stree.nodes[i].name, stree.nodes[i].age);
       if (stree.nodes[i].nson)
          printf("  (%2d %2d)", stree.nodes[i].sons[0] + 1, stree.nodes[i].sons[1] + 1);
 

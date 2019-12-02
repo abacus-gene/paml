@@ -1756,7 +1756,8 @@ double rndLaplace(void) {
 
 double rndt2(void)
 {
-   /* Standard Student's t_2 variate, with d.f. = 2.  t2 has mean 0 and variance infinity. */
+   /* Standard Student's t_2 variate, with d.f. = 2.  t2 has mean 0 and variance infinity. 
+   */
    double u, t2;
 
    u = 2 * rndu() - 1;
@@ -1772,9 +1773,9 @@ double rndt4(void)
       This has variance 1, and is the standard t4 variate divided by sqrt(2).
       The standard t4 variate has variance 2.
    */
-   double u, v, w, c2, r2, t4, sqrt2 = 0.707106781;
+   double u, v, w, c2, r2, t4, sqrt2 = 0.7071067811865475244;
 
-   for (; ; ) {
+   for ( ; ; ) {
       u = 2 * rndu() - 1;
       v = 2 * rndu() - 1;
       w = u*u + v*v;
@@ -4525,7 +4526,7 @@ double Binomial(double n, int k, double *scale)
    /* calculates (n choose k), where n is any real number, and k is integer.
       If(*scale!=0) the result should be c+exp(*scale).
    */
-   double c = 1, i, large = 1e99;
+   double c = 1, i, large = 1e200;
 
    *scale = 0;
    if ((int)k != k)
@@ -5676,12 +5677,12 @@ int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int propternary, 
       for (j = 0; j < p; j++)
          fscanf(fin, "%lf", &data[j*n + i]);
    fclose(fin);
-
+/*
    if(p>1) {
       printf("\nGreat offer!  I can smooth a few 2-D densities for free.  How many do you want? ");
       scanf("%d", &nf2d);
    }
-   
+*/   
    if (nf2d > MAXNF2D) error2("I don't want to do that many!");
    for (i = 0; i < nf2d; i++) {
       printf("pair #%d (e.g., type  1 3  to use variables #1 and #3)? ", i + 1);
@@ -5734,6 +5735,8 @@ int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int propternary, 
 
    fprintf(fout, "\n\n");
    fflush(fout);
+
+return(0);
 
    fprintf(fout, "\nCorrelation matrix");
    for (j = SkipColumns; j < p; j++) {

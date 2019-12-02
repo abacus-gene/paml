@@ -272,7 +272,7 @@ int main(int argc, char *argv[])
       if ((k = stree.nodes[i].fossil) == 0) continue;
       printf("Node %3d: %3s ( ", i + 1, fossils[k]);
       for (j = 0; j < npfossils[k]; j++) {
-         printf("%6.4f", stree.nodes[i].pfossil[j + (k == UPPER_F)]);
+         printf("%7.4f", stree.nodes[i].pfossil[j + (k == UPPER_F)]);
          printf("%s", (j == npfossils[k] - 1 ? " )\n" : ", "));
       }
    }
@@ -1038,7 +1038,7 @@ int GetOptions(char *ctlf)
 {
    int  transform0 = ARCSIN_B; /* default transform: SQRT_B, LOG_B, ARCSIN_B */
    int  iopt, i, j, nopt = 31, lline = 4096;
-   char line[4096], *pline, *peq, opt[33], *comment = "*#";
+   char line[4096], *pline, opt[33], *comment = "*#";
    char *optstr[] = { "seed", "seqfile","treefile", "outfile", "mcmcfile", "BayesFactorBeta",
         "seqtype", "aaRatefile", "icode", "noisy", "usedata", "ndata", "duplication", "model", "clock",
         "TipDate", "RootAge", "fossilerror", "alpha", "ncatG", "cleandata",
@@ -1175,8 +1175,6 @@ int GetOptions(char *ctlf)
 
    return(0);
 }
-
-
 
 
 double lnPDFInfinitesitesClock(double t1, double FixedDs[])
@@ -1597,128 +1595,213 @@ double Infinitesites(FILE *fout)
 
 int GetInitialsTimes(void)
 {
-/* This sets calibration node ages and root age first, and then populates other node ages, by
-   a break-stick strategy.
-   It ensures that each node age is younger than its parent's age, but does not check 
-   the consistency of ages against the fossil constraints.  The use of soft bounds means that 
-   any ages are possible, even if the chain may start from a poor place.
-   In the case of shared/mirrored node ages due to gene duplication, it is not so clear whether 
-   conflicts may still arise.
-*/
-   int s = stree.nspecies, i, j, k, k1, ir, ncorrections, driver;
-   int maxdepth = 0, from, to, depth;
-   double *p, a, b, d, *r, agefrom, ageto;
+   /* This sets ages for nodes with bounds first.  Then it goes through a loop looking for nodes 
+      with the largest min calibration, and another loop looking for the longest path, each 
+      case populating node ages on the path until reaching an ancestral node with assigned age or 
+      with max bound.
+      In the case of shared/mirrored node ages due to gene duplication, conflicts may still arise,
+      so that a loop of corrections is used.
+
+      stree.duplication:
+      stree.nodes[i].label = 0:  usual node, which may and may not have calibration.
+      stree.nodes[j].label =-1:  node i is the driver node, whose age is shared by other nodes.
+                                 It may and may not have calibration.
+      stree.nodes[j].label = i:  node j shares the age of node i, and doesn't have calibration.
+      */
+   int s = stree.nspecies, s21 = s * 2 - 1, root = stree.root;
+   int i, j, k, k1, ir, ncorrections, driver, from, to, depth, maxdepth;
+   double *p, a, b, d, tbpath[2], *tmin, *tmax, *r;
+   char *pptable, *flag;
+   int debug = 1;
 
    if (com.TipDate && stree.nodes[stree.root].fossil != BOUND_F)
       error2("\nTipDate model requires bounds on the root age..\n");
 
-   /* set up ages of calibration nodes */
-   for (i = s; i < s * 2 - 1; i++)  stree.nodes[i].age = -1;   
-   for (i = s; i < s*2-1; i++) {
-      if (stree.nodes[i].fossil == 0) continue;
-      p = stree.nodes[i].pfossil;
+   /* set up pop-pop table of ancestor-descendent relationships. */
+   pptable = (char*)malloc(s21*(s21 + 1) * sizeof(char));
+   if (pptable == NULL) error2("oom pptable");
+   flag = pptable + s21*s21;
+   memset(pptable, 0, s21*(s21 + 1) * sizeof(char));
+   tmin = (double*)malloc(s21 * 2 * sizeof(double));
+   if (tmin == NULL) error2("oom tmin");
+   memset(tmin, 0, s21 * 2 * sizeof(double));
+   tmax = tmin + s21;
+   r = (double*)malloc(s * sizeof(double));
+   if (r == NULL) error2("oom r");
 
-      switch(stree.nodes[i].fossil) {
-      case (LOWER_F):  stree.nodes[i].age = p[0] * (1.05 + 0.1*rndu());               break;
-      case (UPPER_F):  stree.nodes[i].age = p[1] * (0.6 + 0.4*rndu());                break;
-      case (BOUND_F):  stree.nodes[i].age = p[0] + (p[1] - p[0])*(0.2 + rndu()*1.6);  break;
-      case (GAMMA_F):  stree.nodes[i].age = p[0] / p[1] * (0.7 + rndu()*0.6);         break;
-      case (SKEWN_F): case(SKEWT_F): 
-         d = p[2] / sqrt(1 + p[2] * p[2]);
-         a = p[0] + p[1] * d*sqrt(2 / Pi);
-         stree.nodes[i].age = a * (0.6 + 0.4*rndu());
-         break;
-      case (S2N_F): 
-         d = p[3] / sqrt(1 + p[3] * p[3]);
-         a = (p[1] + p[2] * d*sqrt(2 / Pi));   /* mean of SN 1 */
-         d = p[6] / sqrt(1 + p[6] * p[6]);
-         b = (p[4] + p[5] * d*sqrt(2 / Pi));   /* mean of SN 2 */
-         stree.nodes[i].age = (p[0] * a + b) * (0.6 + 0.4*rndu());
-         break;
+   for (i = 0; i < s21; i++) pptable[i*s21 + i] = pptable[i*s21 + root] = (char)1;
+   for (i = 0; i < s21; i++) {
+      for (j = i; j != root; j = stree.nodes[j].father)
+         pptable[i*s21 + j] = (char)1;
+   }
+   for (i = s; i < s21; i++) {
+      if (stree.nodes[i].label != -1) continue;    /* -1 means driver */
+      for (j = s; j < s21; j++) {
+         if (stree.nodes[j].label == i) /* if j mirrors i, ancestors of j are also ancestors of i. */
+            for (k = j; k != root && pptable[i*s21 + k] == 0; k = stree.nodes[k].father) {
+               pptable[i*s21 + k] = (char)1;
+            }
       }
-
-      /* copy nodes[i].age to all mirrored nodes */
-      driver = (stree.nodes[i].label >= s ? stree.nodes[i].label : (stree.nodes[i].label == -1 ? i : 0));
-      if (driver) {
-         for (k = s; k < s * 2 - 1; k++) {
-            if (k!=i && (k==driver || stree.nodes[k].label == driver))
-               stree.nodes[k].age = stree.nodes[i].age;
+      /* if j mirrors i, copy ancestors of i to j */
+      for (j = s; j < s21; j++) {
+         if (stree.nodes[j].label == i)
+            memcpy(pptable + j*s21 + s, pptable + i*s21 + s, (s - 1) * sizeof(char));
+      }
+   }
+   if (debug && s<20) {
+      printf("\n\nSetting up initial node ages...\npop-pop table:\n     ");
+      for (j = 0; j < s21; j++) printf(" %2d", j);
+      for (i = 0; i < s21; i++) {
+         printf("\n%2d:  ", i);
+         for (j = 0; j < s21; j++) printf(" %2d", pptable[i*s21 + j]);
+         if (i >= s) {
+            printf(" %3s ", (stree.nodes[i].fossil ? fossils[stree.nodes[i].fossil] : ""));
+            printf("  label = %2d, ", stree.nodes[i].label);
+            if (stree.nodes[i].label == -1)      printf("driver");
+            else if (stree.nodes[i].label > 0)   printf("mirror");
          }
       }
    }
 
-   /* check for consistency among calibration and mirrored nodes, and correct if needed. */
-   for (ir = 0; ir < 100; ir++) {
-      ncorrections = 0;
-      for (i = 0; i < s * 2 - 1; i++) {
-         if (stree.nodes[i].age == -1) continue;
-         /* j is calibration node ancestral to i. */
-         for (j = stree.nodes[i].father; j != -1; j = stree.nodes[j].father) 
-            if (stree.nodes[j].age > 0) break;
-         if (j != -1 && stree.nodes[j].age < stree.nodes[i].age) {
-            stree.nodes[j].age = stree.nodes[i].age * (1.001 + 0.01*rndu());
-            ncorrections++;
-            /* copy nodes[j].age to all mirrored nodes */
-            driver = (stree.nodes[j].label >= s ? stree.nodes[j].label : (stree.nodes[j].label == -1 ? j : 0));
-            if (driver) {
-               for (k = s; k < s * 2 - 1; k++) {
-                  if (k != j && (k == driver || stree.nodes[k].label == driver))
-                     stree.nodes[k].age = stree.nodes[j].age;
-               }
+   /* retrieve tmin & rmax from calibrations */
+   for (i = s; i < s21; i++) stree.nodes[i].age = -1;
+   for (i = s; i < s21; i++) {
+      if (stree.nodes[i].fossil == 0)  continue;
+      p = stree.nodes[i].pfossil;
+
+      switch (stree.nodes[i].fossil) {
+      case (LOWER_F):  tmin[i] = p[0];                  break;
+      case (UPPER_F):  tmax[i] = p[1];                  break;
+      case (BOUND_F):  tmin[i] = p[0]; tmax[i] = p[1];  break;
+      case (GAMMA_F):
+         tmin[i] = QuantileGamma(0.025, p[0], p[1]); tmax[i] = QuantileGamma(0.975, p[0], p[1]);
+         break;
+      case (SKEWN_F):
+      case (SKEWT_F):
+      case (S2N_F):
+         error2("implement SkewN, Skewt, S2N now");
+      }
+   }
+   for (i = s; i < s21; i++) {
+      for (j = s; j < s21; j++)
+         if (j != i && pptable[i*s21 + j] && tmax[j] > 0 && tmin[i] > tmax[j]) {
+            printf("\n\ndaughter node %3d minimun age %9.4f \nmother node %3d max age %9.4f\n", i + 1, tmin[i], j + 1, tmax[j]);
+            error2("strange calibration?");
+         }
+   }
+   for (i = s; i < s21; i++) {
+      if (tmin[i])   /* remove duplicated min bounds for ancestors of i */
+         for (j = s; j < s21; j++)
+            if (j != i && pptable[i*s21 + j] && tmin[j] <= tmin[i])
+               tmin[j] = 0;
+      if (tmax[i])   /* remove duplicated max bounds for descendents of i */
+         for (j = s; j < s21; j++) {
+            if (j != i && pptable[j*s21 + i] && tmax[j] >= tmax[i])
+               tmax[j] = 0;
+         }
+   }
+   if (debug) {
+      printf("\n\nbounds on nodes after removing duplicated min and max bounds");
+      for (i = s; i < s21; i++) {
+         if(tmin[i] || tmax[i]) 
+            printf("\n%2d:  (%8.4f, %8.4f)", i+1, tmin[i], tmax[i]);
+      }
+   }
+   /* generate ages for bounded nodes if possible. */
+   for (i = s; i < s21; i++) {
+      if (tmin[i] && tmax[i])
+         stree.nodes[i].age = tmin[i] + (tmax[i] - tmin[i])*rndu();
+   }
+   if (tmax[root] == 0) error2("we need a maximum-age bound on root??");
+
+   /* look for largest unused tmin, and assign ages on path from node to ancestor with age or with tmax. */
+   for (ir = 0; ir < s; ir++) {
+      tbpath[0] = 0;
+      for (i = s; i < s21; i++) {  /* find max tmin and store in tbpath[0]. */
+         if (stree.nodes[i].age == -1 && tbpath[0] < tmin[i]) {
+            tbpath[0] = tmin[i];  from = i;
+         }
+      }
+      if (tbpath[0] == 0) break;
+      maxdepth = 1;
+      for (j = stree.nodes[from].father; j != -1; j = stree.nodes[j].father, maxdepth++) {
+         if (stree.nodes[j].age > 0) 
+            break;
+         else if (tmax[j] > 0) {
+            maxdepth++;
+            break;
+         }
+      }
+      to = j;
+      tbpath[1] = (stree.nodes[to].age > 0 ? stree.nodes[to].age : tmax[to]);
+
+      for (j = 0; j < maxdepth; j++) r[j] = rndu();
+      if (maxdepth>1) qsort(r, (size_t)maxdepth, sizeof(double), comparedouble);
+      for (j = from, k = 0; k<maxdepth; j = stree.nodes[j].father, k++) {
+         stree.nodes[j].age = tbpath[0] + (tbpath[1] - tbpath[0])*r[k];
+         driver = (stree.nodes[j].label >= s ? stree.nodes[j].label : (stree.nodes[j].label == -1 ? j : 0));
+         if (driver) {
+            for (k1 = s; k1 < s21; k1++) {
+               if (k1 != j && (k1 == driver || stree.nodes[k1].label == driver))
+                  stree.nodes[k1].age = stree.nodes[j].age;
             }
          }
       }
-      if (ncorrections == 0) break;
+      printf("\n*** min-age round %2d: from nodes %3d (%9.5f) to %3d, %3d nodes ", ir+1, from+1, stree.nodes[from].age, to+1, maxdepth);
+      if(debug && s<200) printStree();
    }
-   if (ir == 100)
-      puts("i did 100 rounds, but we need more!");
 
-   /* look for the deepest path from a node to its ancestor, and assign ages to all nodes inbetween. */
-   r = (double*)malloc(s*sizeof(double));
-   if (r == NULL) error2("oom r");
-
-   for (ir = 0; ir < s * 2 - 1; ir++) {
-      for (i = 0, maxdepth = 0; i < s * 2 - 1; i++) {
-         if (stree.nodes[i].age == -1) continue;
-         depth = 0;
-         for (j = stree.nodes[i].father; j != -1; j = stree.nodes[j].father) {
-            if (stree.nodes[j].age > 0) break;
-            depth++;
+   /* look for longest path, and assign ages on path from node to ancestor with age or with tmax. */
+   for (ir = 0; ir < s; ir++) {
+      maxdepth = 0;
+      for (i = s; i < s21; i++) {
+         if (stree.nodes[i].age > 0) continue;
+         for (j = stree.nodes[i].father, depth = 1; j != -1; j = stree.nodes[j].father, depth++) {
+            if (stree.nodes[j].age > 0) 
+               break;
+            else if (tmax[j] > 0) {
+               depth++;
+               break;
+            }
          }
          if (maxdepth < depth) {
             maxdepth = depth;  from = i;  to = j;
          }
       }
       if (maxdepth == 0) break;  /* all ages are assigned. */
+      int *sons = stree.nodes[from].sons;
+      tbpath[0] = max2(stree.nodes[sons[0]].age, stree.nodes[sons[1]].age);
+      tbpath[1] = (stree.nodes[to].age > 0 ? stree.nodes[to].age : tmax[to]);
+
       for (j = 0; j < maxdepth; j++) r[j] = rndu();
-      qsort(r, (size_t)maxdepth, sizeof(double), comparedouble);
-      agefrom = stree.nodes[from].age;
-      ageto = stree.nodes[to].age;
-      for (j = stree.nodes[from].father, k = 0; j != to; j = stree.nodes[j].father, k++) {
-         stree.nodes[j].age = agefrom + (ageto - agefrom)*r[k];
+      if(maxdepth>1) qsort(r, (size_t)maxdepth, sizeof(double), comparedouble);
+      for (j = from, k = 0; k<maxdepth; j = stree.nodes[j].father, k++) {
+         stree.nodes[j].age = tbpath[0] + (tbpath[1] - tbpath[0])*r[k];
          driver = (stree.nodes[j].label >= s ? stree.nodes[j].label : (stree.nodes[j].label == -1 ? j : 0));
          if (driver) {
-            for (k1 = s; k1 < s * 2 - 1; k1++) {
+            for (k1 = s; k1 < s21; k1++) {
                if (k1 != j && (k1 == driver || stree.nodes[k1].label == driver))
                   stree.nodes[k1].age = stree.nodes[j].age;
             }
          }
       }
+      printf("\n*** longest-path round %2d: from nodes %3d (%9.5f) to %3d, %3d nodes ", ir + 1, from + 1, stree.nodes[from].age, to + 1, maxdepth);
+      if (debug && s<200) printStree();
    }
-
 
    /* check for consistency for all nodes, and correct if needed. */
    for (ir = 0; ir < 100; ir++) {
       ncorrections = 0;
-      for (i = 0; i < s * 2 - 1; i++) {
+      for (i = 0; i < s21; i++) {
          j = stree.nodes[i].father;
          if (j == -1 || stree.nodes[i].age < stree.nodes[j].age) continue;
+         printf("\n*** correction round %2d nodes %2d & %2d, ages %9.5f %9.5f", ir+1, i+1, j+1, stree.nodes[i].age, stree.nodes[j].age);
          ncorrections++;
          stree.nodes[j].age = stree.nodes[i].age * (1.001 + 0.01*rndu());
          /* copy nodes[j].age to all mirrored nodes */
          driver = (stree.nodes[j].label >= s ? stree.nodes[j].label : (stree.nodes[j].label == -1 ? j : 0));
          if (driver) {
-            for (k = s; k < s * 2 - 1; k++) {
+            for (k = s; k < s21; k++) {
                if (k != j && (k == driver || stree.nodes[k].label == driver))
                   stree.nodes[k].age = stree.nodes[j].age;
             }
@@ -1726,10 +1809,8 @@ int GetInitialsTimes(void)
       }
       if (ncorrections == 0) break;
    }
-   if (ir == 100)
-      puts("i did 100 rounds, but we need more!");
 
-   free(r);
+   free(pptable);  free(tmin);  free(r);
    return (0);
 }
 
@@ -2464,9 +2545,6 @@ double lnptC(void)
       lnpt += lnptCalibrationDensity(t, fossil, p);
    }
 
-   if (nfossil != stree.nfossil)
-      error2("nfossil...");
-
    return(lnpt);
 }
 
@@ -3060,7 +3138,7 @@ int UpdateParaRates(double *lnL, double steplength[], char accept[], double spac
    if (mcmc.saveconP) FOR(j, stree.nspecies * 2 - 1) com.oldconP[j] = 0;
    for (ip = 0; ip < np; ip++) {  /* mu (rgene) and sigma2 for each locus and for overall */
       if (ip == 0) { para = data.rgene;  gD = data.rgenepara; } /* rgene (mu) */
-      else { para = data.sigma2; gD = data.sigma2para; } /* sigma2 */
+      else         { para = data.sigma2; gD = data.sigma2para; } /* sigma2 */
 
       for (locus = 0; locus < g1; locus++) {
          e = steplength[ip*g1 + locus];
@@ -3454,7 +3532,7 @@ int mixingTipDate(double *lnL, double steplength, char *accept)
    lnacceptance = lnc = steplength*rndSymmetrical();
    c = exp(lnc);
    stree.nodes[stree.root].age = minages[0] + (stree.nodes[stree.root].age - minages[0]) * c;
-   for (j = s; j < s*s-1; j++) {
+   for (j = s; j < s*2-1; j++) {
       if (j == stree.root) continue;
       jj = j - s;
       tz = stree.nodes[j].age;
@@ -3813,14 +3891,14 @@ int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[], int nbin)
       }
    }
 
-   printf("\n\nPosterior mean (95%% Equal-tail CI) (95%% HPD CI) HPD-CI-width\n\n");
+   printf("\n\nPosterior means (95%% Equal-tail CI) (95%% HPD CI) HPD-CI-width\n\n");
    for (j = SkipC1; j < p; j++) {
       printf("%-10s ", varstr[j]);
-      printf("%10.4f (%6.4f, %6.4f) (%6.4f, %6.4f) %6.4f", mean[j], x025[j], x975[j], xHPD025[j], xHPD975[j], xHPD975[j] - xHPD025[j]);
+      printf("%10.4f (%7.4f, %7.4f) (%7.4f, %7.4f) %7.4f", mean[j], x025[j], x975[j], xHPD025[j], xHPD975[j], xHPD975[j] - xHPD025[j]);
       if (j < SkipC1 + stree.nspecies - 1) {
          printf("  (Jnode %2d)", 2 * stree.nspecies - 1 - 1 - j + SkipC1);
          if (com.TipDate)
-            printf(" time: %6.2f (%5.2f, %5.2f)", com.TipDate - mean[j] * com.TipDate_TimeUnit,
+            printf(" time: %7.3f (%6.3f, %6.3f)", com.TipDate - mean[j] * com.TipDate_TimeUnit,
                com.TipDate - x975[j] * com.TipDate_TimeUnit, com.TipDate - x025[j] * com.TipDate_TimeUnit);
       }
       printf("\n");
@@ -3832,11 +3910,11 @@ int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[], int nbin)
       fprintf(fout, "\n\nPosterior mean (95%% Equal-tail CI) (95%% HPD CI) HPD-CI-width\n\n");
       for (j = SkipC1; j < p; j++) {
          fprintf(fout, "%-10s ", varstr[j]);
-         fprintf(fout, "%10.4f (%6.4f, %6.4f) (%6.4f, %6.4f) %6.4f", mean[j], x025[j], x975[j], xHPD025[j], xHPD975[j], xHPD975[j] - xHPD025[j]);
+         fprintf(fout, "%10.4f (%7.4f, %7.4f) (%7.4f, %7.4f) %7.4f", mean[j], x025[j], x975[j], xHPD025[j], xHPD975[j], xHPD975[j] - xHPD025[j]);
          if (j < SkipC1 + stree.nspecies - 1) {
             fprintf(fout, " (Jnode %2d)", 2 * stree.nspecies - 1 - 1 - j + SkipC1);
             if (com.TipDate)
-               fprintf(fout, " time: %6.2f (%5.2f, %5.2f)", com.TipDate - mean[j] * com.TipDate_TimeUnit,
+               fprintf(fout, " time: %7.3f (%6.3f, %6.3f)", com.TipDate - mean[j] * com.TipDate_TimeUnit,
                   com.TipDate - x975[j] * com.TipDate_TimeUnit, com.TipDate - x025[j] * com.TipDate_TimeUnit);
          }
          fprintf(fout, "\n");
@@ -3872,7 +3950,7 @@ int MCMC(FILE* fout)
    printf("\n%d burnin, sampled every %d, %d samples\n",
       mcmc.burnin, mcmc.sampfreq, mcmc.nsample);
    if (mcmc.usedata) puts("Approximating posterior");
-   else             puts("Approximating prior");
+   else              puts("Approximating prior");
 
    printf("(Settings: cleandata=%d  print=%d  saveconP=%d)\n",
       com.cleandata, mcmc.print, mcmc.saveconP);
@@ -3882,9 +3960,10 @@ int MCMC(FILE* fout)
    for (j = 0; j < mcmc.nsteplength; j++)
       mcmc.steplength[j] = 0.001 + 0.1*rndu();
 
+   /*
    printf("\nsteplength values: ");
    matout2(F0, mcmc.steplength, 1, mcmc.nsteplength, 9, 5);
-
+   */
    printStree();
 
    x = (double*)malloc(com.np * 2 * sizeof(double));
