@@ -3017,7 +3017,7 @@ int ReadTreeN(FILE *ftree, int *haslength, int copyname, int popline)
 {
    int cnode, cfather = -1;  /* current node and father */
    int inode = 0;  /* node number that will have the next branch length */
-   int cladeLabels = 0, i, j, k, level = 0, isname, ch = ' ', tip = 0;
+   int cladeLabels = 0, i, k, level = 0, isname, ch = ' ', tip = 0;
    /* delimiters for names & labels (labels if not in quotes) */
    char check[NS], delimitersN[] = "(),:;#[", delimitersL[] = "(),:;", quote[2][4] = { "\"\'[", "\"\']" };
    int lline = 32000, namelabel;  /* namelabel = 0 for name 1 for label */
@@ -3144,6 +3144,16 @@ int ReadTreeN(FILE *ftree, int *haslength, int copyname, int popline)
             sscanf(line + 1, "%lf", &nodes[inode].label);
          else if (line[0] == '$')   /* clade labels used to label branches in baseml and codeml */
             sscanf(line + 1, "%lf", &nodes[inode].label2);
+
+         else if (line[0] == '@' || line[0] == '=') {
+            sscanf(line + 1, "%lf", &nodes[inode].age);
+#if (defined(BASEML) || defined(CODEML))
+            if (com.clock) nodes[inode].fossil = 1;
+#if (defined(CODEML))
+            nodes[inode].omega = 0;
+#endif
+#endif
+         }
       }
    }   /* for( ; ; ) */
 

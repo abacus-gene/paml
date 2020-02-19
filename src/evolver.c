@@ -47,14 +47,30 @@ struct CommonInfo {
    double *siterates;   /* rates for gamma or omega for site or branch-site models */
    double *omegaBS, *QfactorBS;     /* omega IDs for branch-site models */
 }  com;
+
+
 struct TREEB {
    int nbranch, nnode, root, branches[NBRANCH][2];
-}  tree;
+}  tree ;
+
+#if(1)
 struct TREEN {
    int father, nson, sons[MAXNSONS], ibranch;
    double branch, age, omega, label, label2, *conP;
    char *annotation, fossil;
 }  *nodes;
+#else
+struct NODE {
+   int father, nson, sons[2], ibranch;
+   double branch, age, omega, label, label2, *conP;
+   char *annotation, fossil;
+};
+
+struct TREE {
+   struct NODE *nodes;
+   int root;
+};
+#endif
 
 extern char BASEs[];
 extern int GeneticCode[][64], noisy;
@@ -77,7 +93,7 @@ int between_f_and_x(void);
 void LabelClades(FILE *fout);
 
 char *MCctlf0[] = { "MCbase.dat","MCcodon.dat","MCaa.dat" };
-char *seqf[] = { "mc.paml", "mc.paml", "mc.nex", "mc.nex" };
+char *seqf[] = { "mc.txt", "mc.txt", "mc.nex", "mc.nex" };
 
 enum { JC69, K80, F81, F84, HKY85, T92, TN93, REV } BaseModels;
 char *basemodels[] = { "JC69","K80","F81","F84","HKY85","T92","TN93","REV" };
@@ -782,16 +798,17 @@ void Evolve(int inode)
 
 void Simulate(char *ctlf)
 {
-   /* simulate nr data sets of nucleotide, codon, or AA sequences.
-      ls: number of nucleotides, codons, or AAs in each sequence.
-      All 64 codons are used for codon sequences.
-      When com.alpha or com.ncatG>1, sites are randomized after sequences are
-      generated.
-      space[com.ls] is used to hold site marks.
-      format:  0: paml sites; 1: paml patterns; 2: paup nex; 3: paup JC69 format
-    */
+/* simulate nr data sets of nucleotide, codon, or AA sequences.
+   ls: number of nucleotides, codons, or AAs in each sequence.
+   All 64 codons are used for codon sequences.
+   When com.alpha or com.ncatG>1, sites are randomized after sequences are
+   generated.
+   space[com.ls] is used to hold site marks.
+   format:  0: paml sites; 1: paml patterns; 2: paup nex; 3: paup JC69 format
+*/
    char *ancf = "ancestral.txt", *siteIDf = "siterates.txt";
-   FILE *fin, *fseq, *ftree = NULL, *fanc = NULL, *fsiteID = NULL;
+   char *aaf = "mc.aa.txt", *c12f="mc.codon12.txt";
+   FILE *fin, *fseq, *ftree = NULL, *fanc = NULL, *faa=NULL, *fc12=NULL, *fsiteID = NULL;
    char *paupstart = "paupstart", *paupblock = "paupblock", *paupend = "paupend";
    char line[32000];
    int lline = 32000, i, j, k, ir, n, nr, fixtree = 1, sspace = 10000, rooted = 1;
@@ -810,7 +827,11 @@ void Simulate(char *ctlf)
    fgets(line, lline, fin);
    printf("\nSimulated data will go into %s.\n", seqf[format]);
    if (format == 2) printf("%s, %s, & %s will be appended if existent.\n", paupstart, paupblock, paupend);
-
+   if (com.seqtype == 1) {
+      printf("translated aa sequences will go into %s.\n", aaf);
+      faa = (FILE*)gfopen(aaf, "w");
+      fc12 = (FILE*)gfopen(c12f, "w");
+   }
    fscanf(fin, "%d", &i);
    fgets(line, lline, fin);
    SetSeed(i, 1);
@@ -968,7 +989,7 @@ void Simulate(char *ctlf)
    matout2(F0, com.pi, com.ncode / 4, 4, 9, 6);
    if (com.seqtype == CODONseq) {
       fscanf(fin, "%d", &com.icode);   fgets(line, lline, fin);
-      printf("genetic code = %d\n", com.icode);
+      printf("genetic code: %d\n", com.icode);
       for (k = 0; k < com.ncode; k++)
          if (GeneticCode[com.icode][k] == -1 && com.pi[k])
             error2("stop codons should have frequency 0?");
@@ -1112,6 +1133,30 @@ void Simulate(char *ctlf)
          fprintf(fseq, "end;\n\n");
       }
       if (format == 2 || format == 3) appendfile(fseq, paupblock);
+      /* print translated protein sequences, and codonpositions 1 & 2 */
+      if (com.seqtype == 1 && faa) {
+         fprintf(faa, "%6d %6d\n", com.ns, com.ls);
+         for (j = 0; j < com.ns; j++) {
+            fprintf(faa, "\n%-10s  ", com.spname[j]);
+            for (h = 0; h < com.ls; h++) {
+               int iaa = GeneticCode[com.icode][com.z[j][h]];
+               fprintf(faa, "%c", AAs[iaa]);
+               if((h+1)%10 == 0)  fprintf(faa, " ");
+            }
+         }
+         fprintf(faa, "\n\n");
+
+         fprintf(fc12, "%6d %6d\n", com.ns, com.ls*2);
+         for (j = 0; j < com.ns; j++) {
+            fprintf(fc12, "\n%-10s  ", com.spname[j]);
+            for (h = 0; h < com.ls; h++) {
+               int ic = com.z[j][h];
+               fprintf(fc12, "%c%c", CODONs[ic][0], CODONs[ic][1]);
+               if ((h + 1) % 5 == 0)  fprintf(fc12, " "); 
+            }
+         }
+         fprintf(fc12, "\n\n");
+      }
 
       /* print ancestral seqs, rates for sites. */
       if (format != 1 && format != 3) {  /* don't print ancestors if site patterns are printed. */
@@ -1119,8 +1164,7 @@ void Simulate(char *ctlf)
          fprintf(fanc, "[replicate %d]\n", ir + 1);
 
          if (!fixtree) {
-            if (format < 2)
-            {
+            if (format < 2)  {
                OutTreeN(fanc, 1, 1); FPN(fanc); FPN(fanc);
             }
          }
@@ -1163,12 +1207,14 @@ void Simulate(char *ctlf)
             }
          }
       }
-
       printf("\rdid data set %d %s", ir + 1, (com.ls > 100000 || nr < 100 ? "\n" : ""));
    }   /* for (ir) */
    if (format == 2 || format == 3) appendfile(fseq, paupend);
 
-   fclose(fseq);  if (!fixtree) fclose(fanc);
+   fclose(fseq);  
+   if (!fixtree) fclose(fanc);
+   if (faa) fclose(faa);
+   if (fc12) fclose(fc12);
    if (com.alpha || com.NSsites) fclose(fsiteID);
    for (j = 0; j < com.ns * 2 - 1; j++) free(com.z[j]);
    free(space);

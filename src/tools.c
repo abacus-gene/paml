@@ -1877,6 +1877,9 @@ double rndbeta(double p, double q)
    double gamma1, gamma2;
    gamma1 = rndgamma(p);
    gamma2 = rndgamma(q);
+   if (gamma1 < 1e-300 || gamma2 < 1e-300) {
+      printf("inside rndbeta(): gamma1 = %20.16e  gamma2 = %20.16e\n", gamma1, gamma2);
+   }
    return gamma1 / (gamma1 + gamma2);
 }
 

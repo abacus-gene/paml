@@ -21,6 +21,7 @@
 
 #include "paml.h"
 
+
 #define NS            500
 #define NBRANCH      (NS*2-2)
 #define NNODE        (NS*2-1)
@@ -90,10 +91,11 @@ int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[], int nbin);
 
 struct CommonInfo {
    unsigned char *z[NS];
-   char *spname[NS], seqf[2048], outf[2048], treef[2048], daafile[2048], mcmcf[2048], inBVf[2048];
+   char *spname[NS];
+   char seqf[2048], outf[2048], treef[2048], daafile[2048], mcmcf[2048], inBVf[2048], checkpointf[2048];
    char oldconP[NNODE];       /* update conP for node? (0 yes; 1 no) */
    int seqtype, ns, ls, ngene, posG[2], lgene[3], *pose, npatt, readpattern;
-   int np, ncode, ntime, nrate, nrgene, nalpha, npi, ncatG, print, verbose;
+   int np, ncode, ntime, nrate, nrgene, nalpha, npi, ncatG, print, verbose, checkpoint;
    int cleandata, ndata;
    int model, clock, fix_kappa, fix_alpha, fix_rgene, Mgene;
    int method, icode, codonf, aaDist, NSsites;
@@ -109,6 +111,21 @@ struct CommonInfo {
    double *nodeScaleF;       /* nScaleF[npatt] for scale factors */
 }  com;
 
+#if(0)
+
+struct NODE { /* ipop is node number in species tree */
+   int father, nson, sons[2], ibranch, ipop;
+   double branch, age, label, label2, *conP;
+   char fossil, *name, *annotation;
+};
+
+struct TREE {
+   int  ns, rooted, root;            /* number of tips and root index */
+   struct NODE *nodes;
+} tree;
+
+#else
+
 struct TREEB {
    int  nbranch, nnode, root, branches[NBRANCH][2];
 }  tree;
@@ -117,16 +134,17 @@ struct TREEN { /* ipop is node number in species tree */
    double branch, age, label, label2, *conP;
    char fossil, *name, *annotation;
 }  *nodes, **gnodes, nodes_t[2 * NS - 1];
-
 /* nodes_t[] is working space.  nodes is a pointer and moves around.
-   gnodes[] holds the gene trees, subtrees constructed from the master species
-   tree.  Each locus has a full set of rates (rates) for all branches on the
-   master tree, held in stree.nodes[].rates.  Branch lengths in the gene
-   tree are calculated by using those rates and the divergence times.
+gnodes[] holds the gene trees, subtrees constructed from the master species
+tree.  Each locus has a full set of rates (rates) for all branches on the
+master tree, held in stree.nodes[].rates.  Branch lengths in the gene
+tree are calculated by using those rates and the divergence times.
 
-   gnodes[][].label in the gene tree is used to store branch lengths estimated
-   under no clock when mcmc.usedata=2 (normal approximation to likelihood).
+gnodes[][].label in the gene tree is used to store branch lengths estimated
+under no clock when mcmc.usedata=2 (normal approximation to likelihood).
 */
+
+#endif
 
 
 struct SPECIESTREE {
@@ -428,6 +446,86 @@ void FreeMem(void)
       free(com.fhK);
 
    free(mcmc.steplength);
+}
+
+
+int SaveMCMCstate(char *filename, int ir, double lnpR, double lnL)
+{
+/* This saves stree, the gene trees, and the MCMC step lengths.
+*/
+   FILE *f = (FILE*)fopen(filename, "wb");
+   int i,j, s = stree.nspecies, g = data.ngene, g1 = g + (data.rgeneprior == 1);
+   double *tmp = (double*)malloc((s*2-1)*sizeof(double));
+
+   printf("\nSaving MCMC state to file %s...\n", filename);
+   if (f == NULL) error2("file open error");
+   if (tmp == NULL) error2("oom in SaveMCMCState()");
+   fwrite(&ir, sizeof(int), 1, f);
+   for (i = 0; i < s - 1; i++) tmp[i] = stree.nodes[s + i].age;
+   fwrite(tmp, (s - 1) * sizeof(double), 1, f);
+   if (com.clock > 1)  /* rates for clock2 & clock3 */
+      fwrite(stree.nodes[0].rates, (s * 2 - 1)*g*sizeof(double), 1, f);
+   for (i = 0; i < g; i++) {
+      for (j = 0; j < data.ns[i] - 1; j++)
+         tmp[j] = gnodes[i][data.ns[i]+j].age;
+      fwrite(tmp, (data.ns[i] - 1)*sizeof(double), 1, f);
+   }
+   
+   fwrite(data.rgene, g1*sizeof(double), 1, f);
+   if (com.clock > 1)
+      fwrite(data.sigma2, g1*sizeof(double), 1, f);
+   if (mcmc.usedata == 1 && !com.fix_kappa)
+      fwrite(data.kappa, g*sizeof(double), 1, f);
+   if (mcmc.usedata == 1 && !com.fix_alpha)
+      fwrite(data.alpha, g*sizeof(double), 1, f);
+
+   fwrite(mcmc.steplength, mcmc.nsteplength * sizeof(double), 1, f);
+   fwrite(&lnpR, sizeof(double), 1, f);
+   fwrite(&lnL, sizeof(double), 1, f);
+   fclose(f);
+   free(tmp);
+   printf("lnpR = %.6f lnL = %.6f\n", lnpR, lnL);
+   return(0);
+}
+
+int ReadMCMCstate(char *filename)
+{
+/* This reads the MCMC state saved earlier.
+*/
+   FILE *f = (FILE*)fopen(filename, "rb");
+   int ir, i, j, s = stree.nspecies, g = data.ngene, g1 = g + (data.rgeneprior == 1);
+   double lnpR = 0, lnL = 0, *tmp = (double*)malloc((s * 2 - 1) * sizeof(double));
+
+   printf("\nReading MCMC state from %s...\n", filename);
+   if (f == NULL) error2("file open error");
+   if (tmp == NULL) error2("oom in ReadMCMCState()");
+   fread(&ir, sizeof(int), 1, f);
+   fread(tmp, (s-1)* sizeof(double), 1, f);
+   for (i = 0; i < s - 1; i++) stree.nodes[s + i].age = tmp[i];
+   if (com.clock > 1)  /* rates for clock2 & clock3 */
+      fread(stree.nodes[0].rates, (s * 2 - 1)*g * sizeof(double), 1, f);
+   for (i = 0; i < g; i++) {
+      fread(tmp, (data.ns[i] - 1) * sizeof(double), 1, f);
+      for (j = 0; j < data.ns[i] - 1; j++)
+         gnodes[i][data.ns[i] + j].age = tmp[j];
+   }
+
+   fread(data.rgene, g1 * sizeof(double), 1, f);
+   if (com.clock > 1)
+      fread(data.sigma2, g1 * sizeof(double), 1, f);
+   if (mcmc.usedata == 1 && !com.fix_kappa)
+      fread(data.kappa, g * sizeof(double), 1, f);
+   if (mcmc.usedata == 1 && !com.fix_alpha)
+      fread(data.alpha, g * sizeof(double), 1, f);
+
+   fread(mcmc.steplength, mcmc.nsteplength*sizeof(double), 1, f);
+   fread(&lnpR, sizeof(double), 1, f);
+   fread(&lnL, sizeof(double), 1, f);
+   fclose(f);
+   free(tmp);
+   printf("lnpR = %.6f lnL = %.6f\n", lnpR, lnL);
+
+   return(0);
 }
 
 
@@ -1037,9 +1135,9 @@ int GenerateBlengthGH(char infile[])
 int GetOptions(char *ctlf)
 {
    int  transform0 = ARCSIN_B; /* default transform: SQRT_B, LOG_B, ARCSIN_B */
-   int  iopt, i, j, nopt = 31, lline = 4096;
+   int  iopt, i, j, nopt = 32, lline = 4096;
    char line[4096], *pline, opt[33], *comment = "*#";
-   char *optstr[] = { "seed", "seqfile","treefile", "outfile", "mcmcfile", "BayesFactorBeta",
+   char *optstr[] = { "seed", "seqfile","treefile", "outfile", "mcmcfile", "checkpoint", "BayesFactorBeta",
         "seqtype", "aaRatefile", "icode", "noisy", "usedata", "ndata", "duplication", "model", "clock",
         "TipDate", "RootAge", "fossilerror", "alpha", "ncatG", "cleandata",
         "BDparas", "kappa_gamma", "alpha_gamma",
@@ -1050,6 +1148,7 @@ int GetOptions(char *ctlf)
 
    data.rgeneprior = 0;  /* default rate prior is gamma-Dirichlet. */
    data.transform = transform0;
+   strcpy(com.checkpointf, "mcmctree.ckpt");
    if (fctl) {
       if (noisy) printf("\nReading options from %s..\n", ctlf);
       for (;;) {
@@ -1073,27 +1172,28 @@ int GetOptions(char *ctlf)
                   case (2): sscanf(pline + 1, "%s", com.treef);   break;
                   case (3): sscanf(pline + 1, "%s", com.outf);    break;
                   case (4): sscanf(pline + 1, "%s", com.mcmcf);   break;
-                  case (5): sscanf(pline + 1, "%lf", &BFbeta);    break; /* beta for marginal likelihood */
-                  case (6): com.seqtype = (int)t;    break;
-                  case (7): sscanf(pline + 2, "%s", com.daafile);  break;
-                  case (8): com.icode = (int)t;      break;
-                  case (9): noisy = (int)t;          break;
-                  case (10):
+                  case (5): sscanf(pline + 1, "%d", &com.checkpoint); break;
+                  case (6): sscanf(pline + 1, "%lf", &BFbeta);    break; /* beta for marginal likelihood */
+                  case (7): com.seqtype = (int)t;    break;
+                  case (8): sscanf(pline + 2, "%s", com.daafile);  break;
+                  case (9): com.icode = (int)t;      break;
+                  case (10): noisy = (int)t;          break;
+                  case (11):
                      j = sscanf(pline + 1, "%d %s%d", &mcmc.usedata, com.inBVf, &data.transform);
                      if (mcmc.usedata == 2)
                         if (strchr(com.inBVf, '*')) { strcpy(com.inBVf, "in.BV"); data.transform = transform0; }
                         else if (j == 2)              data.transform = transform0;
                         break;
-                  case (11): com.ndata = (int)t;           break;
-                  case (12): stree.duplication = (int)t;   break;
-                  case (13): com.model = (int)t;           break;
-                  case (14): com.clock = (int)t;           break;
-                  case (15):
+                  case (12): com.ndata = (int)t;           break;
+                  case (13): stree.duplication = (int)t;   break;
+                  case (14): com.model = (int)t;           break;
+                  case (15): com.clock = (int)t;           break;
+                  case (16):
                      sscanf(pline + 2, "%lf%lf", &com.TipDate, &com.TipDate_TimeUnit);
                      if (com.TipDate && com.TipDate_TimeUnit == 0) error2("should set com.TipDate_TimeUnit");
                      data.transform = SQRT_B;  /* SQRT_B, LOG_B, ARCSIN_B */
                      break;
-                  case (16):
+                  case (17):
                      stree.RootAge[2] = stree.RootAge[3] = 0.025;  /* default tail probs */
                      if ((strchr(line, '>') || strchr(line, '<')) && (strstr(line, "U(") || strstr(line, "B(")))
                         error2("don't mix < U B on the RootAge line");
@@ -1108,35 +1208,35 @@ int GetOptions(char *ctlf)
                      else if ((pline = strstr(line, "B(")))
                         sscanf(pline + 2, "%lf,%lf,%lf,%lf", &stree.RootAge[0], &stree.RootAge[1], &stree.RootAge[2], &stree.RootAge[3]);
                      break;
-                  case (17):
+                  case (18):
                      data.pfossilerror[0] = 0.0;
                      data.pfossilerror[2] = 1;  /* default: minimum 2 good fossils */
                      sscanf(pline + 1, "%lf%lf%lf", data.pfossilerror, data.pfossilerror + 1, data.pfossilerror + 2);
                      break;
-                  case (18): com.alpha = t;           break;
-                  case (19): com.ncatG = (int)t;      break;
-                  case (20): com.cleandata = (int)t;  break;
-                  case (21):
+                  case (19): com.alpha = t;           break;
+                  case (20): com.ncatG = (int)t;      break;
+                  case (21): com.cleandata = (int)t;  break;
+                  case (22):
                      sscanf(pline + 1, "%lf%lf%lf%lf", &data.BDS[0], &data.BDS[1], &data.BDS[2], &data.BDS[3]);
                      break;
-                  case (22):
-                     sscanf(pline + 1, "%lf%lf", data.kappagamma, data.kappagamma + 1); break;
                   case (23):
-                     sscanf(pline + 1, "%lf%lf", data.alphagamma, data.alphagamma + 1); break;
+                     sscanf(pline + 1, "%lf%lf", data.kappagamma, data.kappagamma + 1); break;
                   case (24):
+                     sscanf(pline + 1, "%lf%lf", data.alphagamma, data.alphagamma + 1); break;
+                  case (25):
                      sscanf(pline + 1, "%lf%lf%lf%d", &data.rgenepara[0], &data.rgenepara[1], &data.rgenepara[2], &data.rgeneprior);
                      if (data.rgenepara[2] <= 0)  data.rgenepara[2] = 1;
                      if (data.rgeneprior < 0)     data.rgeneprior = 0;
                      break;
-                  case (25):
+                  case (26):
                      sscanf(pline + 1, "%lf%lf%lf", data.sigma2para, data.sigma2para + 1, data.sigma2para + 2);
                      if (data.sigma2para[2] <= 0) data.sigma2para[2] = 1;
                      break;
-                  case (26): mcmc.print = (int)t;     break;
-                  case (27): mcmc.burnin = (int)t;    break;
-                  case (28): mcmc.sampfreq = (int)t;  break;
-                  case (29): mcmc.nsample = (int)t;   break;
-                  case (30):
+                  case (27): mcmc.print = (int)t;     break;
+                  case (28): mcmc.burnin = (int)t;    break;
+                  case (29): mcmc.sampfreq = (int)t;  break;
+                  case (30): mcmc.nsample = (int)t;   break;
+                  case (31):
                      puts("finetune is deprecated now.");
                      break;
                      sscanf(pline + 1, "%d:%lf%lf%lf%lf%lf%lf", &j, eps, eps + 1, eps + 2, eps + 3, eps + 4, eps + 5);
@@ -1145,8 +1245,7 @@ int GetOptions(char *ctlf)
                   break;
                }
             }
-            if (iopt == nopt)
-            {
+            if (iopt == nopt) {
                printf("\noption %s in %s\n", opt, ctlf);  exit(-1);
             }
       }
@@ -1595,10 +1694,12 @@ double Infinitesites(FILE *fout)
 
 int GetInitialsTimes(void)
 {
-   /* This sets ages for nodes with bounds first.  Then it goes through a loop looking for nodes 
-      with the largest min calibration, and another loop looking for the longest path, each 
-      case populating node ages on the path until reaching an ancestral node with assigned age or 
-      with max bound.
+   /* This checks the calibrations for consistency as follows: 
+      If i is descendent to j, and tmin[i]>tmax[j], an error is printed out.
+      This sets ages for nodes with bounds first.  
+      It then goes through a loop looking for nodes with the largest min calibration, and 
+      another loop looking for the longest path, each case assigning node ages on the path until 
+      reaching an ancestral node with either an assigned age or max bound.
       In the case of shared/mirrored node ages due to gene duplication, conflicts may still arise,
       so that a loop of corrections is used.
 
@@ -1612,7 +1713,7 @@ int GetInitialsTimes(void)
    int i, j, k, k1, ir, ncorrections, driver, from, to, depth, maxdepth;
    double *p, a, b, d, tbpath[2], *tmin, *tmax, *r;
    char *pptable, *flag;
-   int debug = 1;
+   int debug = 0;
 
    if (com.TipDate && stree.nodes[stree.root].fossil != BOUND_F)
       error2("\nTipDate model requires bounds on the root age..\n");
@@ -1663,7 +1764,7 @@ int GetInitialsTimes(void)
       }
    }
 
-   /* retrieve tmin & rmax from calibrations */
+   /* retrieve tmin & rmax from calibrations.  These are guestimates for gamma, SN, ST, S2N */
    for (i = s; i < s21; i++) stree.nodes[i].age = -1;
    for (i = s; i < s21; i++) {
       if (stree.nodes[i].fossil == 0)  continue;
@@ -1677,10 +1778,19 @@ int GetInitialsTimes(void)
          tmin[i] = QuantileGamma(0.025, p[0], p[1]); tmax[i] = QuantileGamma(0.975, p[0], p[1]);
          break;
       case (SKEWN_F):
+         tmin[i] = p[0] - 1.5*p[1];  tmax[i] = p[0] + 1.5*p[1];
+         break;
       case (SKEWT_F):
+         tmin[i] = p[0] - 1.5*p[1];  tmax[i] = p[0] + 1.5*p[1];
+         break;
       case (S2N_F):
-         error2("implement SkewN, Skewt, S2N now");
+         a = p[0] * p[1] + (1 - p[0])*p[4];
+         b = p[0] * p[2] + (1 - p[0])*p[5];
+         tmin[i] = a - 1.5*b;  tmax[i] = a + 1.5*b;
+         break;
       }
+      if (tmin[i] < 0)      tmin[i] = 0;
+      if (tmax[i] > OldAge) tmax[i] = OldAge/10;
    }
    for (i = s; i < s21; i++) {
       for (j = s; j < s21; j++)
@@ -1712,8 +1822,11 @@ int GetInitialsTimes(void)
       if (tmin[i] && tmax[i])
          stree.nodes[i].age = tmin[i] + (tmax[i] - tmin[i])*rndu();
    }
-   if (tmax[root] == 0) error2("we need a maximum-age bound on root??");
-
+   if (tmax[root] == 0) {
+      if(stree.RootAge[1]>0) tmax[root] = stree.RootAge[1];
+      else 
+         error2("we need a maximum-age bound on root or RootAge?");
+   }
    /* look for largest unused tmin, and assign ages on path from node to ancestor with age or with tmax. */
    for (ir = 0; ir < s; ir++) {
       tbpath[0] = 0;
@@ -1785,8 +1898,10 @@ int GetInitialsTimes(void)
             }
          }
       }
-      printf("\n*** longest-path round %2d: from nodes %3d (%9.5f) to %3d, %3d nodes ", ir + 1, from + 1, stree.nodes[from].age, to + 1, maxdepth);
-      if (debug && s<200) printStree();
+      if (debug && s < 200) {
+         printf("\n*** longest-path round %2d: from nodes %3d (%9.5f) to %3d, %3d nodes ", ir + 1, from + 1, stree.nodes[from].age, to + 1, maxdepth);
+         printStree();
+      }
    }
 
    /* check for consistency for all nodes, and correct if needed. */
@@ -1795,7 +1910,8 @@ int GetInitialsTimes(void)
       for (i = 0; i < s21; i++) {
          j = stree.nodes[i].father;
          if (j == -1 || stree.nodes[i].age < stree.nodes[j].age) continue;
-         printf("\n*** correction round %2d nodes %2d & %2d, ages %9.5f %9.5f", ir+1, i+1, j+1, stree.nodes[i].age, stree.nodes[j].age);
+         if(debug) 
+            printf("\n*** correction round %2d nodes %2d & %2d, ages %9.5f %9.5f", ir+1, i+1, j+1, stree.nodes[i].age, stree.nodes[j].age);
          ncorrections++;
          stree.nodes[j].age = stree.nodes[i].age * (1.001 + 0.01*rndu());
          /* copy nodes[j].age to all mirrored nodes */
@@ -3993,6 +4109,12 @@ int MCMC(FILE* fout)
          printf("\tsigma2 ~ Cond iid(%.4f, %.4f, %.4f)\n", data.sigma2para[0], data.sigma2para[1], data.sigma2para[2]);
    }
 
+   if (com.checkpoint == 2) {
+      ReadMCMCstate(com.checkpointf);
+      mcmc.burnin = 0;
+      printf("\nInitial parameters, np = %d.\nSptree & Genetrees read from %s.\n", com.np, com.checkpointf);
+   }
+
    /* calculates prior for times and likelihood for each locus */
    if (data.pfossilerror[0])
       SetupPriorTimesFossilErrors();
@@ -4078,7 +4200,8 @@ int MCMC(FILE* fout)
          if (mcmc.usedata) printf(" %4.1f", mlnL);
       }
 
-      if (mcmc.sampfreq*mcmc.nsample > 20 && (ir + 1) % (mcmc.sampfreq*mcmc.nsample / 20) == 0) {
+      k = mcmc.sampfreq*mcmc.nsample;
+      if (k > 20 && (ir+1) % (k/20) == 0) {
          testlnL = 1;
          if (fabs(lnL - lnpData(data.lnpDi)) > 0.001) {
             printf("\n%12.6f = %12.6f?  Resetting lnL\n", lnL, lnpData(data.lnpDi));
@@ -4088,6 +4211,8 @@ int MCMC(FILE* fout)
          testlnL = 0;
          if (mcmc.print) fflush(fmcmc);
          printf(" %s\n", printtime(timestr));
+         if (com.checkpoint == 1 && ir >= 0 && (ir + 1) % (k / 10) == 0) /* save MCMC state */
+            SaveMCMCstate(com.checkpointf, ir, data.lnpR, lnL);
       }
    }  /* for(ir) */
 
