@@ -394,6 +394,6 @@ enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrNodeStr=8, PrAge=16, PrOmega=32} Out
 
 #define PAML_RELEASE      0
 
-#define pamlVerStr "paml version 4.9j, October 2019"
+#define pamlVerStr "paml version 4.9j, February 2020"
 
 #endif

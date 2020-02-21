@@ -8608,6 +8608,7 @@ int ProcessNodeAnnotation(int *haslabel)
       stree.nodes[i].usefossil = 1;
       nodes[i].branch = 0;
       free(nodes[i].annotation);
+      nodes[i].annotation = NULL;
    }
 
    /* With duplication dating, fossil calibrations are copied to the main node, while mirrored nodes

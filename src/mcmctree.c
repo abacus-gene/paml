@@ -87,7 +87,7 @@ int mixingTipDate(double *lnL, double steplength, char *accept);
 int mixingCladeStretch(double *lnL, double steplength, char *accept);
 int UpdatePFossilErrors(double steplength, char *accept);
 int getPfossilerr(double postEFossil[], double nround);
-int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[], int nbin);
+int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[]);
 
 struct CommonInfo {
    unsigned char *z[NS];
@@ -303,7 +303,7 @@ int main(int argc, char *argv[])
       fputs("\nSpecies tree for FigTree.", fout);
       copySptree();
       FPN(fout); OutTreeN(fout, 1, PrNodeNum); FPN(fout);
-      DescriptiveStatisticsSimpleMCMCTREE(fout, com.mcmcf, 1);
+      DescriptiveStatisticsSimpleMCMCTREE(fout, com.mcmcf);
    }
    else
       MCMC(fout);
@@ -1686,7 +1686,7 @@ double Infinitesites(FILE *fout)
    }
    free(FixedDs);
 
-   DescriptiveStatisticsSimpleMCMCTREE(fout, com.mcmcf, 1);
+   DescriptiveStatisticsSimpleMCMCTREE(fout, com.mcmcf);
 
    exit(0);
 }
@@ -3900,7 +3900,7 @@ int UpdatePFossilErrors(double steplength, char *accept)
 }
 
 
-int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[], int nbin)
+int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[])
 {
    FILE *fin = gfopen(infile, "r"), *fFigTree;
    char timestr[32], FigTreef[96] = "FigTree.tre";
@@ -3971,10 +3971,11 @@ int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[], int nbin)
          }
       }
    }
+
    for (j = stree.nspecies; j < stree.nnode; j++) {
-      nodes[j].annotation = (char*)malloc(32 * sizeof(char));
+      nodes[j].annotation = (char*)malloc(64 * sizeof(char));
       jj = SkipC1 + j - stree.nspecies;
-      sprintf(nodes[j].annotation, "[&95%%HPD={%.6g, %.6g}]", xHPD025[jj], xHPD975[jj]);
+      sprintf(nodes[j].annotation, "[&95%%HPD={%.6g, %.6g}]\0", xHPD025[jj], xHPD975[jj]);
    }
    FPN(fout);
    OutTreeN(fout, 1, PrBranch | PrLabel | PrNodeStr); FPN(fout); /* prints ages & CIs */
@@ -4042,8 +4043,10 @@ int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[], int nbin)
    }
 
    free(dat); free(mean); free(line);
-   for (j = stree.nspecies; j < stree.nnode; j++)
+   for (j = stree.nspecies; j < stree.nnode; j++) {
       free(nodes[j].annotation);
+      nodes[j].annotation = NULL;
+   }
    return(0);
 }
 
@@ -4237,7 +4240,7 @@ int MCMC(FILE* fout)
    FPN(fout); OutTreeN(fout, 1, 1); FPN(fout);
 
    if (mcmc.print)
-      DescriptiveStatisticsSimpleMCMCTREE(fout, com.mcmcf, 1);
+      DescriptiveStatisticsSimpleMCMCTREE(fout, com.mcmcf);
    if (data.pfossilerror[0]) {
       free(data.CcomFossilErr);
       printf("\nPosterior probabilities that each fossil is in error.\n");
