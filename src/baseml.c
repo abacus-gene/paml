@@ -61,7 +61,7 @@ struct CommonInfo {
    int clock, model, getSE, runmode, print, verbose, ndata, bootstrap;
    int icode, coding, method;
    int nbtype;
-   double *fpatt, kappa, alpha, rho, rgene[NGENE], pi[4], piG[NGENE][4], TipDate, TipDate_TimeUnit;
+   double *fpatt, kappa, alpha, rho, rgene[NGENE], pi[4], piG[NGENE][4];
    double freqK[NCATG], rK[NCATG], MK[NCATG*NCATG];
    double *blengths0;
    double(*plfun)(double x[], int np), *conP, *fhK, *space;
@@ -88,6 +88,12 @@ struct TREEN {
 /* for stree.nodes[].fossil: lower, upper, bounds, gamma, inverse-gamma */
 enum { LOWER_F = 1, UPPER_F, BOUND_F } FOSSIL_FLAGS;
 char *fossils[] = { " ", "L", "U", "B" };
+
+
+struct TIPDATE {
+   int flag, ymd;
+   double timeunit, youngest;
+}  tipdate;
 
 struct SPECIESTREE {
    int nbranch, nnode, root, nspecies, nfossil;
@@ -568,7 +574,7 @@ int Forestry(FILE *fout)
       if (AbsoluteRate) {
          fprintf(fout, "\nNote: mutation rate is not applied to tree length.  Tree has ages, for TreeView & FigTree\n");
          for (i = 0; i < tree.nnode; i++)
-            nodes[i].branch *= com.TipDate_TimeUnit;
+            nodes[i].branch *= tipdate.timeunit;
       }
 
       if (!AbsoluteRate) {
@@ -582,8 +588,8 @@ int Forestry(FILE *fout)
          FPN(fout); OutTreeN(fout, 1, PrNodeNum); FPN(fout);
       }
 
-      if (com.TipDate) {  /* scale back the ages in nodes[].branch */
-         for (i = 0; i < tree.nnode; i++)  nodes[i].branch /= com.TipDate_TimeUnit;
+      if (tipdate.flag) {  /* scale back the ages in nodes[].branch */
+         for (i = 0; i < tree.nnode; i++)  nodes[i].branch /= tipdate.timeunit;
       }
       if (com.np - com.ntime || com.clock)
          DetailOutput(fout, x, H);
@@ -927,7 +933,7 @@ int GetOptions(char *ctlf)
                case (7): com.method = (int)t;      break;
                case (8): com.clock = (int)t;       break;
                case (9):
-                  sscanf(pline + 1, "%lf%lf", &com.TipDate, &com.TipDate_TimeUnit);
+                  sscanf(pline + 1, "%d%lf", &tipdate.flag, &tipdate.timeunit);
                   break;
                case (10): com.fix_rgene = (int)t;   break;
                case (11): com.Mgene = (int)t;       break;

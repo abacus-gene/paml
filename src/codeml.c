@@ -115,7 +115,7 @@ struct common_info {
    int fix_rgene, fix_kappa, fix_omega, fix_alpha, fix_rho, nparK, fix_blength, getSE;
    int np, ntime, nrgene, nkappa, npi, nrate, nalpha, ncatG, hkyREV;
    size_t sconP, sspace;
-   double *fpatt, *space, kappa, omega, alpha, rho, rgene[NGENE], TipDate, TipDate_TimeUnit;
+   double *fpatt, *space, kappa, omega, alpha, rho, rgene[NGENE];
    double pi[NCODE], piG[NGENE][64], fb61[64];
    double f3x4[NGENE][12], *pf3x4, piAA[20];
    double freqK[NCATG], rK[NCATG], MK[NCATG*NCATG], daa[20 * 20], *conP, *fhK;
@@ -148,6 +148,11 @@ struct TREEN {
 /* for stree.nodes[].fossil: lower, upper, bounds, gamma, inverse-gamma */
 enum { LOWER_F = 1, UPPER_F, BOUND_F } FOSSIL_FLAGS;
 char *fossils[] = { " ", "L", "U", "B" };
+
+struct TIPDATE {
+   int flag, ymd;
+   double timeunit, youngest;
+}  tipdate;
 
 struct SPECIESTREE {
    int nbranch, nnode, root, nspecies, nfossil;
@@ -1695,7 +1700,7 @@ int GetOptions(char *ctlf)
                case (7): com.method = (int)t;      break;
                case (8): com.clock = (int)t;       break;
                case (9):
-                  sscanf(pline + 1, "%lf%lf", &com.TipDate, &com.TipDate_TimeUnit);
+                  sscanf(pline + 1, "%d%lf", &tipdate.flag, &tipdate.timeunit);
                   break;
                case (10): com.getSE = (int)t;       break;
                case (11): com.print = (int)t;       break;

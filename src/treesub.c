@@ -2124,10 +2124,16 @@ int DistanceMatNuc(FILE *fout, FILE*f2base, int model, double alpha)
          t = DistanceIJ(is, js, model, alpha, &kappat);
          if (t < 0) { t = bigD; status = -1; }
          SeqDistance[is*(is - 1) / 2 + js] = t;
-         if (f2base) fprintf(f2base, " %7.4f", t);
-         if (fout) fprintf(fout, "%8.4f", t);
+         if (f2base) fprintf(f2base, " %8.6f", t);
+
+         /****** Ziheng to change this back *******/
+#if(1)
+         if (fout) fprintf(fout, " %6.3f", t*com.ls);
+#elif
+         if (fout) fprintf(fout, " %9.6f", com.ls);
+#endif
          if (fout && (model == K80 || model >= F84))
-            fprintf(fout, "(%7.4f)", kappat);
+            fprintf(fout, " (%7.4f)", kappat);
       }
       if (f2base) FPN(f2base);
    }
@@ -3037,7 +3043,7 @@ int ReadTreeN(FILE *ftree, int *haslength, int copyname, int popline)
    for (i = 0; i < 2 * com.ns - 1; i++) {
       nodes[i].father = nodes[i].ibranch = -1;
       nodes[i].nson = 0;  nodes[i].label = nodes[i].label2 = -1;  nodes[i].branch = 0;
-      nodes[i].age = 0;  /* For TipDate models this is set later for each tree. */
+      nodes[i].age = 0;     /* For TipDate models this is set later for each tree. */
       nodes[i].annotation = NULL;
 #if (defined(BASEML) || defined(CODEML))
       nodes[i].fossil = 0;
@@ -3492,7 +3498,7 @@ int SetxInitials(int np, double x[], double xb[][2])
    }
    for (i = 0; i < com.np; i++) {
       if (x[i] < xb[i][0]) x[i] = xb[i][0] * 1.2;
-      if (x[i] > xb[i][1]) x[i] = xb[i][1] * .8;
+      if (x[i] > xb[i][1]) x[i] = xb[i][1] * 0.8;
    }
    return(0);
 }
@@ -3500,59 +3506,75 @@ int SetxInitials(int np, double x[], double xb[][2])
 
 #if(defined(BASEML) || defined(CODEML) || defined(MCMCTREE))
 
-int GetTipDate(double *TipDate, double *TipDate_TimeUnit)
+int GetTipDate(void)
 {
    /* This scans species/sequence names to collect the sampling dates.  The last field of
       the name contains the date.
       Divergence times are rescaled by using TipDate_TimeUnit.
    */
    int i, j, indate, ndates = 0;
-   double young = -1, old = -1;
-   char *p;
+   double young = -1, old = -1;  /* sample dates are between young and old */
+   char *p, delimitor[20] = "_^";
+   struct tm sampletime = { 0 };    /* number of seconds from 1970-01-01 */
+   int ymd=0, year, month, day;  /* yyyy-mm-dd, example: 2020-02-10 */
 
-   *TipDate = 0;
-   for (i = 0, ndates = 0; i < stree.nspecies; i++) {
-      stree.nodes[i].age = 0;
-      j = (int)strlen(stree.nodes[i].name);
-      for (indate = 0, p = stree.nodes[i].name + j - 1; j >= 0; j--, p--) {
-         if (isdigit(*p) || *p == '.') indate = 1;
+   tipdate.youngest = 0;
+   for (i = 0, ndates = 0; i < com.ns; i++) {
+      nodes[i].age = 0;
+      j = (int)strlen(com.spname[i]);
+      for (indate = 0, p = com.spname[i] + j - 1; j >= 0; j--, p--) {
+         if (isdigit(*p) || *p == '.' || *p=='-') indate = 1;
          else if (indate)
             break;
       }
-      sscanf(p + 1, "%lf", &stree.nodes[i].age);
-      if (stree.nodes[i].age <= 0)
+      if (strchr(p, '-')) {
+         if (sscanf(p + 1, "%d-%d-%d", &year, &month, &day) == EOF) {
+            printf("sequence name: %s\n", com.spname[i]);
+            error2("date format wrong for tipdate analysis?");
+         }
+         tipdate.ymd = 1;
+         sampletime.tm_year = year - 1900;
+         sampletime.tm_mon = (month>0 ? month - 1 : 0);
+         sampletime.tm_mday = (day > 0 ? day : 15);           /* mid of month if day is missing */
+         nodes[i].age = mktime(&sampletime) / (24 * 3600.0);  /* days since 1970-01-01 */
+      }
+      else 
+         sscanf(p + 1, "%lf", &nodes[i].age);
+      if (nodes[i].age <= 0)
          error2("Tip date <= 0: somehow i am using positive numbers only for tip date");
       else
          ndates++;
 
       if (i == 0)
-         young = old = stree.nodes[i].age;
+         young = old = nodes[i].age;
       else {
-         old = min2(old, stree.nodes[i].age);
-         young = max2(young, stree.nodes[i].age);
+         old = min2(old, nodes[i].age);
+         young = max2(young, nodes[i].age);
       }
    }
    if (ndates == 0) {
-      if (*TipDate_TimeUnit == -1) *TipDate_TimeUnit = 1;
+      if (tipdate.timeunit == -1) tipdate.timeunit = 1;
       return(0);
    }
-   if (ndates != stree.nspecies)
-      printf("TipDate model requires date for each sequence.");
+   if (ndates != com.ns)
+      printf("TipDate model requires sampling date for each sequence.");
 
-   *TipDate = young;
-   if (*TipDate_TimeUnit <= 0)
-      *TipDate_TimeUnit = (young - old)*2.5;
+   // if (ymd) *TipDate = 2;  /* flag to change time back to yyyy-mm-dd */
+   tipdate.youngest = young;
+   if (tipdate.timeunit <= 0)
+      tipdate.timeunit = (young - old)*2.5;
    if (young - old < 1e-100)
       error2("TipDate: all sequences are of the same age?");
-   for (i = 0; i < stree.nspecies * 2 - 1; i++) {
-      if (i < stree.nspecies || stree.nodes[i].fossil) {
-         stree.nodes[i].age = (young - stree.nodes[i].age) / *TipDate_TimeUnit;
-         if (stree.nodes[i].age < 1e-100) stree.nodes[i].age = 0;
+   for (i = 0; i < com.ns * 2 - 1; i++) {
+      if (i < com.ns || nodes[i].fossil) {
+         nodes[i].age = (young - nodes[i].age) / tipdate.timeunit;
+         if (nodes[i].age < 1e-100) nodes[i].age = 0;
       }
    }
 
-   if (noisy) printf("\nTipDate model\nDate range: (%.2f, %.2f) => (0, %.2f). TimeUnit = %.2f.\n",
-      young, old, (young - old) / *TipDate_TimeUnit, *TipDate_TimeUnit);
+   if (noisy) 
+      printf("\nTipDate model\nDate range: (%.6f, %.6f) => (0, %.6f). TimeUnit = %.6f.\n",
+         young, old, (young - old) / tipdate.timeunit, tipdate.timeunit);
 
    return(0);
 }
@@ -3576,8 +3598,8 @@ static int innode_time = 0;
 
 /* Ziheng Yang, 25 January 2003
  The following routines deal with clock and local clock models, including
- Andrew Rambaut's TipDate models (Rambaut 2000 Bioinformatics 16:395-399;
- Yoder & Yang 2000 Mol Biol Evol 17:1081-1090; Yang & Yoder 2003 Syst Biol).
+ the TipDate model (Rambaut 2000 Bioinformatics 16:395-399; Yoder & Yang 2000 
+ Mol Biol Evol 17:1081-1090; Yang & Yoder 2003 Syst Biol).
  The tree is rooted.  The routine SetAge assumes that ancestral nodes are
  arranged in the increasing order and so works only if the input tree uses
  the parenthesis notation and not the branch notation.  The option of known
@@ -3586,21 +3608,19 @@ static int innode_time = 0;
  The flag AbsoluteRate=1 if(TipDate || NFossils).  This could be removed
  as the flags TipDate and NFossils are sufficient.
  clock = 1: global clock, deals with TipDate with no or many fossils,
- ignores branch rates (#) in tree if any.
- = 2: local clock models, as above, but requires branch rates #
- in tree.
- = 3: as 2, but requires Mgene and option G in sequence file.
+            ignores branch rates (#) in tree if any.
+       = 2: local clock models, as above, but requires branch rates # in tree.
+       = 3: as 2, but requires Mgene and option G in sequence file.
 
  Order of variables in x[]: divergence times, rates for branches, rgene, ...
- In the following ngene=4, com.nbtype=3, with r_ij to be the rate
- of gene i and branch class j.
+ In the following ngene=4, com.nbtype=3, with r_ij to be the rate of gene i and branch class j.
 
  clock=1 or 2:
- [times, r00(if absolute) r01 r02  rgene1 rgene2 rgene3]
- NOTE: rgene[] has relative rates
+       [times, r00(if absolute) r01 r02  rgene1 rgene2 rgene3]
+       NOTE: rgene[] has relative rates
  clock=3:
- [times, r00(if absolute) r01 r02  r11 r12  r21 r22 r31 r32 rgene1 rgene2 rgene3]
- NOTE: rgene1=r10, rgene2=r20, rgene3=r30
+       [times, r00(if absolute) r01 r02  r11 r12  r21 r22 r31 r32 rgene1 rgene2 rgene3]
+       NOTE: rgene1=r10, rgene2=r20, rgene3=r30
 
  If(nodes[tree.root].fossil==0) x[0] has absolute time for the root.
  Otherwise x[0] has proportional ages.
@@ -3810,10 +3830,10 @@ int GetInitialsTimes(double x[])
    if (NFossils && maxage > 10)
       error2("Change time unit so that fossil dates fall in (0.00001, 10).");
 
-   if (com.TipDate)
-      GetTipDate(&com.TipDate, &com.TipDate_TimeUnit);
+   if (tipdate.flag)
+      GetTipDate();
 
-   AbsoluteRate = (com.TipDate || NFossils);
+   AbsoluteRate = (tipdate.flag || NFossils);
    if (com.clock >= 5 && AbsoluteRate == 0)
       error2("needs fossil calibrations");
 
@@ -3846,8 +3866,8 @@ int OutputTimesRates(FILE *fout, double x[], double var[])
    /* SetBranch() has been called before calling this, so that [].age is up
     to date.
     */
-   int i, j, k = AbsoluteRate + tree.nnode - com.ns - NFossils, jeffnode;
-   double scale = (com.TipDate ? com.TipDate_TimeUnit : 1);
+   int i, j, k = AbsoluteRate + tree.nnode - com.ns - NFossils;
+   double scale = (tipdate.flag ? tipdate.timeunit : 1);
 
    /* rates */
    if (AbsoluteRate && com.clock < 5) {
@@ -3871,17 +3891,22 @@ int OutputTimesRates(FILE *fout, double x[], double var[])
          for (k = tree.nnode - com.ns; k < com.ntime; k++) fprintf(fout, " %8.5f", x[k]);
       }
 
-
    /* times */
    if (AbsoluteRate) {
-      fputs("\nNodes and Times\n", fout);
-      fputs("(JeffNode is for Thorne's multidivtime.  ML analysis uses ingroup data only.)\n\n", fout);
+      fputs("\nNodes and Times\n\n", fout);
    }
-   if (com.TipDate) { /* DANGER! SE not printed if(TipDate && NFossil). */
+   if (tipdate.flag) { /* DANGER! SE not printed if(TipDate && NFossil). */
+      struct tm *sampletime; /* yyyy-mm-dd, example: 2020-02-10 */
+      time_t seconds = 0;    /* seconds since 1970 */
       for (i = 0, k = 0; i < tree.nnode; i++, FPN(fout)) {
-         jeffnode = (i < com.ns ? i : tree.nnode - 1 + com.ns - i);
-         fprintf(fout, "Node %3d (Jeffnode %3d) Time %7.2f ", i + 1, jeffnode,
-            com.TipDate - nodes[i].age*scale);
+         fprintf(fout, "Node %3d Time %7.2f ", i + 1, tipdate.youngest - nodes[i].age*scale);
+         if (tipdate.ymd) {  /* original sequence names have yyyy-mm-dd format */
+            nodes[i].age = (tipdate.youngest - nodes[i].age * tipdate.timeunit);
+            seconds = (int)(nodes[i].age* 24 * 3600);
+            sampletime = gmtime(&seconds); 
+            fprintf(fout, " (%04d-%02d-%02d)", sampletime->tm_year+1900, sampletime->tm_mon+1, sampletime->tm_mday);
+            if (i < com.ns) fprintf(fout, "  %-20s", com.spname[i]);
+         }
          if (com.getSE && i >= com.ns && !nodes[i].fossil) {
             fprintf(fout, " +- %6.2f", sqrt(var[k*com.np + k])*scale);
             k++;
@@ -3890,9 +3915,7 @@ int OutputTimesRates(FILE *fout, double x[], double var[])
    }
    else if (AbsoluteRate) {
       for (i = com.ns, k = 0; i < tree.nnode; i++, FPN(fout)) {
-         jeffnode = tree.nnode - 1 + com.ns - i;
-         fprintf(fout, "Node %3d (Jeffnode %3d) Time %9.5f", i + 1, tree.nnode - 1 + com.ns - i,
-            nodes[i].age);
+         fprintf(fout, "Node %3d Time %9.5f", i + 1, nodes[i].age);
          if (com.getSE && i >= com.ns && !nodes[i].fossil) {
             fprintf(fout, " +- %7.5f", sqrt(var[k*com.np + k]));
             if (fabs(nodes[i].age - x[k]) > 1e-5) error2("node order wrong.");
@@ -3900,16 +3923,16 @@ int OutputTimesRates(FILE *fout, double x[], double var[])
          }
       }
    }
-
    return(0);
 }
+
 
 int SetxBoundTimes(double xb[][2])
 {
    /* This sets bounds for times (or branch lengths) and branch rates
     */
    int i = -1, j, k;
-   double tb[] = { 4e-6,50 }, rateb[] = { 1e-4,99 }, pb[] = { .000001, .999999 };
+   double tb[] = { 4e-6,50 }, rateb[] = { 1e-5, 999 }, pb[] = { .000001, .999999 };
 
    if (com.fix_blength == 3) {
       xb[0][0] = 1e-4;
@@ -7605,9 +7628,9 @@ int fx_r(double x[], int np)
 
 double lfun(double x[], int np)
 {
-   /* likelihood function for models of one rate for all sites including
-    Mgene models.
-    */
+/* likelihood function for models of one rate for all sites including
+   Mgene models.
+*/
    int  h, i, k, ig, FPE = 0;
    double lnL = 0, fh;
 
@@ -7632,6 +7655,7 @@ double lfun(double x[], int np)
                printf("lfun: h=%4d  fh=%9.6e\nData: ", h + 1, fh);
                print1site(F0, h);
                FPN(F0);
+               matout(F0, x, 1, com.np);
             }
             fh = 1e-80;
          }
@@ -8785,7 +8809,7 @@ int ReadTreeSeqs(FILE *fout)
 
    /***** (((A1 , B1) '#1 B(0.1,0.3)', (A2 , B2) #1), C ) 'B(0.9, 1.1)';  *****/
 #if (defined MCMCTREE)
-   if (!com.TipDate)
+   if (!tipdate.flag)
       ProcessNodeAnnotation(&i);
 #else
    ProcessNodeAnnotation(&i);
@@ -8868,8 +8892,8 @@ int ReadTreeSeqs(FILE *fout)
    SetMapAmbiguity(com.seqtype, 0);
 
 #if(defined (MCMCTREE))
-   if (com.TipDate)
-      GetTipDate(&com.TipDate, &com.TipDate_TimeUnit);
+   if (tipdate.flag)
+      GetTipDate();
 #endif
 
    return(0);

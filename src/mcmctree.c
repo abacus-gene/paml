@@ -99,7 +99,7 @@ struct CommonInfo {
    int cleandata, ndata;
    int model, clock, fix_kappa, fix_alpha, fix_rgene, Mgene;
    int method, icode, codonf, aaDist, NSsites;
-   double *fpatt, kappa, alpha, TipDate, TipDate_TimeUnit;
+   double *fpatt, kappa, alpha;
    double rgene[NGENE], piG[NGENE][NCODE];  /* not used */
    double(*plfun)(double x[], int np), freqK[NCATG], rK[NCATG], *conP, *fhK;
    double pi[NCODE];
@@ -145,6 +145,11 @@ under no clock when mcmc.usedata=2 (normal approximation to likelihood).
 */
 
 #endif
+
+struct TIPDATE {
+   int flag, ymd;
+   double timeunit, youngest;
+}  tipdate;
 
 
 struct SPECIESTREE {
@@ -284,7 +289,7 @@ int main(int argc, char *argv[])
       for (i = 0; i < 4; i++)
          stree.nodes[stree.root].pfossil[i] = stree.RootAge[i];
    }
-   if (com.TipDate_TimeUnit == 0)
+   if (tipdate.timeunit == 0)
       printf("\nFossil calibration information used.\n");
    for (i = stree.nspecies; i < stree.nspecies * 2 - 1; i++) {
       if ((k = stree.nodes[i].fossil) == 0) continue;
@@ -1189,8 +1194,8 @@ int GetOptions(char *ctlf)
                   case (14): com.model = (int)t;           break;
                   case (15): com.clock = (int)t;           break;
                   case (16):
-                     sscanf(pline + 2, "%lf%lf", &com.TipDate, &com.TipDate_TimeUnit);
-                     if (com.TipDate && com.TipDate_TimeUnit == 0) error2("should set com.TipDate_TimeUnit");
+                     sscanf(pline + 2, "%d%lf", &tipdate.flag, &tipdate.timeunit);
+                     if (tipdate.flag && tipdate.timeunit == 0) error2("should set tipdate.timeunit");
                      data.transform = SQRT_B;  /* SQRT_B, LOG_B, ARCSIN_B */
                      break;
                   case (17):
@@ -1715,7 +1720,7 @@ int GetInitialsTimes(void)
    char *pptable, *flag;
    int debug = 0;
 
-   if (com.TipDate && stree.nodes[stree.root].fossil != BOUND_F)
+   if (tipdate.flag && stree.nodes[stree.root].fossil != BOUND_F)
       error2("\nTipDate model requires bounds on the root age..\n");
 
    /* set up pop-pop table of ancestor-descendent relationships. */
@@ -2197,7 +2202,7 @@ double lnpriorTimesTipDate_Approach2(void)
    if (rho == 0) {
       m = stree.nspecies;  n = 0;
    }
-   else if (com.TipDate) {
+   else if (tipdate.flag) {
       for (i = 0, m = 0; i < stree.nspecies; i++)
          m += (stree.nodes[i].age > 0);
       n = stree.nspecies - m;
@@ -2878,7 +2883,7 @@ double lnpriorTimes(void)
    double lnpt = 0, scaleF = -1e300, y;
    int debug = 0;
 
-   if (stree.nfossil == 0 || com.TipDate) {
+   if (stree.nfossil == 0 || tipdate.flag) {
       if (1)        lnpt = lnpriorTimesBDS_Approach1();
       else if (0)   lnpt = lnpriorTimesTipDate_Approach2();
       else if (0)   lnpt = lnpriorTimesTipDateEquation6Stadler2010();
@@ -3746,7 +3751,7 @@ int mixing(double *lnL, double steplength, char *accept)
    ndivide = (changemu ? g : 0);
 
    if (steplength <= 0) error2("steplength = 0 in mixing");
-   if (com.TipDate)
+   if (tipdate.flag)
       return mixingTipDate(lnL, steplength, accept);
    /*
       else if(com.clock==2 || com.clock==3)
@@ -3987,10 +3992,10 @@ int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[])
    OutTreeN(fFigTree, 1, PrBranch | PrLabel | PrNodeStr);
    fprintf(fFigTree, "\n\nEND;\n");
 
-   if (com.TipDate) {
+   if (tipdate.flag) {
       printf("\nThe FigTree tree is in FigTree.tre");
       fprintf(fFigTree, "\n[Note for FigTree: Under Time Scale, set Offset = %.1f, Scale factor = -%.1f\n",
-         com.TipDate, com.TipDate_TimeUnit);
+         tipdate.youngest, tipdate.timeunit);
       fprintf(fFigTree, "Untick Scale Bar, & tick Tip Labels, Node Bars, Scale Axis, Reverse Axis, Show Grid.]\n");
    }
    fclose(fFigTree);
@@ -4014,9 +4019,9 @@ int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[])
       printf("%10.4f (%7.4f, %7.4f) (%7.4f, %7.4f) %7.4f", mean[j], x025[j], x975[j], xHPD025[j], xHPD975[j], xHPD975[j] - xHPD025[j]);
       if (j < SkipC1 + stree.nspecies - 1) {
          printf("  (Jnode %2d)", 2 * stree.nspecies - 1 - 1 - j + SkipC1);
-         if (com.TipDate)
-            printf(" time: %7.3f (%6.3f, %6.3f)", com.TipDate - mean[j] * com.TipDate_TimeUnit,
-               com.TipDate - x975[j] * com.TipDate_TimeUnit, com.TipDate - x025[j] * com.TipDate_TimeUnit);
+         if (tipdate.flag)
+            printf(" time: %7.3f (%6.3f, %6.3f)", tipdate.youngest - mean[j] * tipdate.timeunit,
+               tipdate.youngest - x975[j] * tipdate.timeunit, tipdate.youngest - x025[j] * tipdate.timeunit);
       }
       printf("\n");
    }
@@ -4030,9 +4035,9 @@ int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[])
          fprintf(fout, "%10.4f (%7.4f, %7.4f) (%7.4f, %7.4f) %7.4f", mean[j], x025[j], x975[j], xHPD025[j], xHPD975[j], xHPD975[j] - xHPD025[j]);
          if (j < SkipC1 + stree.nspecies - 1) {
             fprintf(fout, " (Jnode %2d)", 2 * stree.nspecies - 1 - 1 - j + SkipC1);
-            if (com.TipDate)
-               fprintf(fout, " time: %7.3f (%6.3f, %6.3f)", com.TipDate - mean[j] * com.TipDate_TimeUnit,
-                  com.TipDate - x975[j] * com.TipDate_TimeUnit, com.TipDate - x025[j] * com.TipDate_TimeUnit);
+            if (tipdate.flag)
+               fprintf(fout, " time: %7.3f (%6.3f, %6.3f)", tipdate.youngest - mean[j] * tipdate.timeunit,
+                  tipdate.youngest - x975[j] * tipdate.timeunit, tipdate.youngest - x025[j] * tipdate.timeunit);
          }
          fprintf(fout, "\n");
       }
