@@ -59,6 +59,7 @@ double reflect(double x, double a, double b);
 #define rndexp(mean) (-(mean)*log(rndu()))
 double rnduM0V1 (void);
 double rndNormal(void);
+int rndNp(double x[], int n, int p, double mx[], double vx[], int isvroot);
 int rndBinomial(int n, double p);
 double rndBox(void);
 double rndAirplane(void);
@@ -146,13 +147,13 @@ int RemoveIndel(void);
 int f_mono_di (FILE *fout, char z[], int ls, int iring, double fb1[], double fb2[], double CondP[]);
 int PickExtreme (FILE *fout, char z[], int ls, int iring, int lfrag, int ffrag[]);
 
-int print1seq (FILE*fout, unsigned char *z, int ls, int pose[]);
-void printSeqs(FILE *fout, unsigned char *z[], unsigned char *spnames[], int ns, int ls, int npatt, double fpatt[], int *pose, char keep[], int format);
+int print1seq (FILE*fout, char *z, int ls, int pose[]);
+void printSeqs(FILE *fout, char *z[], char *spnames[], int ns, int ls, int npatt, double fpatt[], int *pose, char keep[], int format);
 int printPatterns(FILE *fout);
 void printSeqsMgenes (void);
-int printsma (FILE*fout, char*spname[], unsigned char*z[], int ns, int l, int lline, int gap, int seqtype, 
+int printsma (FILE*fout, char*spname[], char*z[], int ns, int l, int lline, int gap, int seqtype, 
     int transformed, int simple, int pose[]);
-int printsmaCodon (FILE *fout, unsigned char * z[], int ns, int ls, int lline, int simple);
+int printsmaCodon (FILE *fout, char * z[], int ns, int ls, int lline, int simple);
 int zztox ( int n31, int l, char z1[], char z2[], double *x );
 int testXMat (double x[]);
 double SeqDivergence (double x[], int model, double alpha, double *kapa);
@@ -372,14 +373,12 @@ void copySptree(void);
 void printSptree(void);
 
 
-enum {BASEseq=0, CODONseq, AAseq, CODON2AAseq, BINARYseq, BASE5seq} SeqTypes;
-
-enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrNodeStr=8, PrAge=16, PrOmega=32} OutTreeOptions;
+extern int BASEseq, CODONseq, AAseq, CODON2AAseq, BINARYseq, BASE5seq;
+extern int PrBranch, PrNodeNum, PrLabel, PrNodeStr, PrAge, PrOmega;
 
 
 /* use mean (0; default) for discrete gamma instead of median (1) */
 #define DGammaUseMedian 0
-
 
 #define FAST_RANDOM_NUMBER
 
@@ -394,6 +393,6 @@ enum {PrBranch=1, PrNodeNum=2, PrLabel=4, PrNodeStr=8, PrAge=16, PrOmega=32} Out
 
 #define PAML_RELEASE      0
 
-#define pamlVerStr "paml version 4.9j, February 2020"
+#define pamlVerStr "paml version 4.9j, October 2019"
 
 #endif

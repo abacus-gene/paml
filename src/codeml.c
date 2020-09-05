@@ -259,10 +259,9 @@ int main(int argc, char *argv[])
    char *Mgenestr[] = { "diff. rate", "separate data", "diff. rate & pi",
                      "diff. rate & k&w", "diff. rate & pi & k&w" };
    int getdistance = 0, i, j, k, idata, nc, nUVR, cleandata0;
-   size_t s2;
+   size_t s2=0;
 
    starttimer();
-
    /*
    printf("KGaussLegendreRule? ");
    scanf("%d", &KGaussLegendreRule);

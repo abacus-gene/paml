@@ -40,7 +40,7 @@ int lfunG_d (double x[], double *lnL, double dl[], int np);
 int lfunG_dd (double x[], double *lnL, double dl[], double ddl[], int np);
 
 struct CommonInfo {
-   unsigned char *z[NS], *spname[NS], seqf[2048],outf[2048],treef[2048];
+   char *z[NS], *spname[NS], seqf[2048],outf[2048],treef[2048];
    int  seqtype, ns, ls, ngene, posG[NGENE+1],lgene[NGENE],*pose,npatt, readpattern;
    int  clock,fix_alpha,fix_kappa,fix_rgene,Malpha,print,verbose;
    int  model, runmode, cleandata, ndata;

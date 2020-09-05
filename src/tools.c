@@ -11,6 +11,8 @@
 /************************
              sequences
 *************************/
+int BASEseq = 0, CODONseq = 1, AAseq = 2, CODON2AAseq = 3, BINARYseq = 4, BASE5seq = 5;
+int PrBranch = 1, PrNodeNum = 2, PrLabel = 4, PrNodeStr = 8, PrAge = 16, PrOmega = 32;
 
 char BASEs[] = "TCAGUYRMKSWHBVD-N?";
 char *EquateBASE[] = { "T","C","A","G", "T", "TC","AG","CA","TG","CG","TA",
@@ -1014,7 +1016,7 @@ int printaSeq(FILE *fout, char z[], int ls, int lline, int gap)
    return (0);
 }
 
-int printsma(FILE*fout, char*spname[], unsigned char*z[], int ns, int l, int lline, int gap, int seqtype,
+int printsma(FILE*fout, char*spname[], char*z[], int ns, int l, int lline, int gap, int seqtype,
    int transformed, int simple, int pose[])
 {
    /* print multiple aligned sequences.
@@ -1564,10 +1566,60 @@ double rndNormal(void)
 }
 
 
+int rndNp(double x[], int n, int p, double mx[], double vx[], int isvroot)
+{
+   /* This returns n samples from p-variate normal N_p(mu, v).
+      x[n*p]: n rows, each row having p variables.
+      if isvroot == 1: vx[] has the square root of var[].  otherwise we generate the cholesky L.
+   */
+   int ir, i, j, k;
+   double* L, * z, u, v, s;
+
+   k = isvroot ? p : p * (1 + p);
+   if ((z = malloc(k * sizeof(double))) == NULL) error2("error rndNp");
+
+   if (isvroot)
+      L = vx;
+   else {
+      L = z + p;
+      CholeskyDecomp(vx, p, L);
+      //matout(F0, L, p, p);
+   }
+
+   for (ir = 0; ir < n; ir++) {
+      for (j = 0; j < p; ) {
+         /* generate a pair of N(0,1) variates: u, v. */
+         for (; ;) {
+            u = 2 * rndu() - 1;
+            v = 2 * rndu() - 1;
+            s = u * u + v * v;
+            if (s > 0 && s < 1) break;
+         }
+         s = sqrt(-2 * log(s) / s);
+         z[j++] = u * s;
+         if (j < n - 1)
+            z[j++] = v * s;
+      }
+      //printf("\bi=%d ", ir + 1);
+      //matout2(F0, z, 1, p, 16, 9);
+
+      //matby(L, z, x + ir * p, p, p, 1);
+      //matout2(F0, x + ir * p, 1, p, 16, 9);
+
+      for (i = 0; i < p; i++) {
+         for (j = 0, s = mx[i]; j <= i; j++)
+            s += L[i * p + j] * z[j];
+         x[ir * p + i] = s;
+      }
+      // matout2(F0, x + ir * p, 1, p, 16, 9);
+   }
+   free(z);
+   return 0;
+}
 int rndBinomial(int n, double p)
 {
-   /* This may be too slow when n is large.
-   */
+/* This may be too slow when n is large.
+*/
    int i, x = 0;
 
    for (i = 0; i < n; i++)
@@ -4842,9 +4894,8 @@ int matsqrt(double A[], int n, double work[])
 
 int CholeskyDecomp(double A[], int n, double L[])
 {
-   /* A=LL', where A is symmetrical and positive-definite, and L is
-      lower-diagonal
-      only A[i*n+j] (j>=i) are used.
+   /* A=LL', where A is symmetrical and positive-definite, and L is lower-diagonal
+      Only A[i*n+j], j >= i, are used.
    */
    int i, j, k;
    double t;
@@ -5203,9 +5254,7 @@ int EigenTridagQLImplicit(double d[], double e[], int n, double z[])
 
 
 
-
-
-int MeanVar(double x[], int n, double *m, double *v)
+int MeanVar(double x[], int n, double* m, double* v)
 {
    int i;
 
@@ -5216,23 +5265,40 @@ int MeanVar(double x[], int n, double *m, double *v)
    return(0);
 }
 
-int variance(double x[], int n, int p, double m[], double v[])
+int MeanVar2(double x[], int n, double* m, double* v)
 {
-   /* x[p][n], m[p], v[p][p]
+   /*  Welford's online algorithm.
+   */
+   int i;
+   double mold;
+
+   *m = *v = 0;
+   for (i = 0; i < n; i++) {
+      mold = *m;
+      *m += (x[i] - *m) / (i + 1.0);
+      *v += (x[i] - mold)*(x[i] - *m);
+   }
+   if (n > 1) *v /= (n - 1.);
+   return(0);
+}
+
+int variance(double x[], int n, int p, double mx[], double vx[])
+{
+   /* x[p][n], mx[p], vx[p][p]
    */
    int i, j, k;
 
    for (i = 0; i < p; i++) {
-      for (k = 0, m[i] = 0; k < n; k++)  m[i] += x[i*n + k];
-      m[i] /= n;
+      for (k = 0, mx[i] = 0; k < n; k++)  mx[i] += x[i * n + k];
+      mx[i] /= n;
    }
-   for (i = 0; i < p*p; i++)
-      v[i] = 0;
+   for (i = 0; i < p * p; i++)
+      vx[i] = 0;
    for (i = 0; i < p; i++)
       for (j = i; j < p; j++) {
          for (k = 0; k < n; k++)
-            v[i*p + j] += (x[i*n + k] - m[i]) * (x[j*n + k] - m[j]);
-         v[j*p + i] = (v[i*p + j] /= (n - 1.));
+            vx[i * p + j] += (x[i * n + k] - mx[i]) * (x[j * n + k] - mx[j]);
+         vx[j * p + i] = (vx[i * p + j] /= (n - 1.));
       }
    return(0);
 }
@@ -5257,7 +5323,7 @@ int correl(double x[], double y[], int n, double *mx, double *my, double *vxx, d
    *vyy /= (n - 1.0);
    *vxy /= (n - 1.0);
    if (*vxx > 0.0 && *vyy > 0.0)  *r = *vxy / sqrt(*vxx * *vyy);
-   else                       *r = -9;
+   else                           *r = -9;
    return(0);
 }
 

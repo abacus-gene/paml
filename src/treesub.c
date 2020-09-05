@@ -70,7 +70,7 @@ int PatternWeightSimple(void)
    int lpatt = com.ns*n31 + 1;
    int *p2s;  /* point patterns to sites in zt */
    char timestr[36];
-   unsigned char *p, *zt;
+   char *p, *zt;
    double nc = (com.seqtype == 1 ? 64 : com.ncode) + !com.cleandata + 1;
    int debug = 0;
 
@@ -89,7 +89,7 @@ int PatternWeightSimple(void)
    for (j = 0; j < com.ns; j++)
       for (h = 0; h < com.ls; h++)
          for (k = 0; k < n31; k++)
-            zt[h*lpatt + j*n31 + k] = (unsigned char)(com.z[j][h*n31 + k] + 1);
+            zt[h*lpatt + j*n31 + k] = (char)(com.z[j][h*n31 + k] + 1);
 
    com.npatt = l = u = ip = 0;
    for (h = 0; h < com.ls; h++) {
@@ -149,17 +149,17 @@ int PatternWeightSimple(void)
       if (com.pose) com.pose[h] = ip;
    }     /* for (h)  */
    for (j = 0; j < com.ns; j++) {
-      com.z[j] = p = (unsigned char*)realloc(com.z[j], com.npatt * sizeof(unsigned char));
+      com.z[j] = p = (char*)realloc(com.z[j], com.npatt * sizeof(char));
       for (ip = 0; ip < com.npatt; ip++)
          for (k = 0; k < n31; k++)
-            *p++ = (unsigned char)(zt[p2s[ip] * lpatt + j*n31 + k] - 1);
+            *p++ = (char)(zt[p2s[ip] * lpatt + j*n31 + k] - 1);
    }
    free(p2s);  free(zt);
 
    return (0);
 }
 
-int ConvertSiteJC69like(unsigned char *z[], int ns, int h, unsigned char zh[])
+int ConvertSiteJC69like(char *z[], int ns, int h, char zh[])
 {
    /* This converts a site (or pattern) of nucleotides or amino acids for JC69-like models.
       Sequence alignments in com.z[] are already encoded into 0, 1, ...
@@ -240,7 +240,7 @@ int PatternWeightJC69like(void)
    int *p2s;  /* point patterns to sites in zt */
    int *pose0 = NULL;
    char timestr[36];
-   unsigned char *p, *zt;
+   char *p, *zt;
    double *fpatt0;
    int debug = 0;
 
@@ -327,9 +327,9 @@ int PatternWeightJC69like(void)
    if (noisy > 2) printf("\n");
 
    for (j = 0; j < com.ns; j++) {
-      com.z[j] = (unsigned char*)realloc(com.z[j], com.npatt * sizeof(unsigned char));
+      com.z[j] = (char*)realloc(com.z[j], com.npatt * sizeof(char));
       for (ip = 0, p = com.z[j]; ip < com.npatt; ip++)
-         *p++ = (unsigned char)(zt[p2s[ip] * lpatt + j] - 1);
+         *p++ = (char)(zt[p2s[ip] * lpatt + j] - 1);
    }
    free(p2s);  free(zt);  free(fpatt0);
    if (pose0) free(pose0);
@@ -533,7 +533,7 @@ int ReadSeq(FILE *fout, FILE *fseq, int cleandata, int locus)
       if (com.spname[j]) free(com.spname[j]);
       com.spname[j] = (char*)malloc((lspname + 1) * sizeof(char));
       for (i = 0; i < lspname + 1; i++) com.spname[j][i] = 0;
-      if ((com.z[j] = (unsigned char*)realloc(com.z[j], com.ls * sizeof(unsigned char))) == NULL)
+      if ((com.z[j] = (char*)realloc(com.z[j], com.ls * sizeof(char))) == NULL)
          error2("oom z");
    }
    com.rgene[0] = 1;   com.ngene = 1;
@@ -1111,7 +1111,7 @@ void EncodeSeqs(void)
    */
    int n = com.ncode, nA, is, h, i, j, k, ic, indel = 0, ch, b[3];
    char *pch = ((com.seqtype == 0 || com.seqtype == 1) ? BASEs : (com.seqtype == 2 ? AAs : BINs));
-   unsigned char c[4] = "", str[4] = "   ";
+   char c[4] = "", str[4] = "   ";
 
    if (com.seqtype != 1) {
       for (is = 0; is < com.ns; is++) {
@@ -1161,9 +1161,9 @@ void EncodeSeqs(void)
                   error2("too many ambiguity codons in the data.  Contact author");
                strcpy(CODONs[nA - 1], c);
             }
-            com.z[j][h] = (unsigned char)k;
+            com.z[j][h] = (char)k;
          }
-         com.z[j] = (unsigned char*)realloc(com.z[j], com.npatt);
+         com.z[j] = (char*)realloc(com.z[j], com.npatt);
       }
       if (nA > n) {
          printf("%d ambiguous codons are seen in the data:\n", nA - n);
@@ -1340,7 +1340,7 @@ void AllPatterns(FILE* fout)
       sprintf(com.spname[j], "%c ", 'a' + j);
    }
    for (j = 0; j < com.ns; j++)
-      if ((com.z[j] = (unsigned char*)malloc(com.npatt * sizeof(char))) == NULL)
+      if ((com.z[j] = (char*)malloc(com.npatt * sizeof(char))) == NULL)
          error2("oom in AllPatterns");
    for (h = 0; h < com.npatt; h++) {
       for (j = 0, it = h; j < com.ns; j++) {
@@ -1387,7 +1387,7 @@ int PatternWeight(void)
    int lpatt = com.ns*n31 + 1;   /* extra 0 used for easy debugging, can be voided */
    int *p2s;  /* point patterns to sites in zt */
    char timestr[36];
-   unsigned char *p, *zt;
+   char *p, *zt;
    double nc = (com.seqtype == 1 ? 64 : com.ncode) + !com.cleandata + 1;
    int debug = 0;
 
@@ -1407,7 +1407,7 @@ int PatternWeight(void)
    for (j = 0; j < com.ns; j++)
       for (h = 0; h < com.ls; h++)
          for (k = 0; k < n31; k++)
-            zt[h*lpatt + j*n31 + k] = (unsigned char)(com.z[j][h*n31 + k] + 1);
+            zt[h*lpatt + j*n31 + k] = (char)(com.z[j][h*n31 + k] + 1);
 
    for (ig = 0; ig < com.ngene; ig++) com.lgene[ig] = 0;
    for (ig = 0, com.npatt = 0; ig < com.ngene; ig++) {
@@ -1491,10 +1491,10 @@ int PatternWeight(void)
       puts("\nCheck option G in data file?\n");
 
    for (j = 0; j < com.ns; j++) {
-      com.z[j] = (unsigned char*)realloc(com.z[j], com.npatt*n31 * sizeof(unsigned char));
+      com.z[j] = (char*)realloc(com.z[j], com.npatt*n31 * sizeof(char));
       for (ip = 0, p = com.z[j]; ip < com.npatt; ip++)
          for (k = 0; k < n31; k++)
-            *p++ = (unsigned char)(zt[p2s[ip] * lpatt + j*n31 + k] - 1);
+            *p++ = (char)(zt[p2s[ip] * lpatt + j*n31 + k] - 1);
    }
    memcpy(com.pose, poset, com.ls * sizeof(int));
    free(poset);  free(p2s);  free(zt);
@@ -1858,7 +1858,7 @@ int Site2Pattern(FILE *fout)
 
 
 
-int print1seq(FILE*fout, unsigned char *z, int ls, int pose[])
+int print1seq(FILE*fout, char *z, int ls, int pose[])
 {
    /* This prints out one sequence, and the sequences are encoded.
     z[] contains patterns if (pose!=NULL)
@@ -1881,7 +1881,7 @@ int print1seq(FILE*fout, unsigned char *z, int ls, int pose[])
    return(0);
 }
 
-void printSeqs(FILE *fout, unsigned char *z[], unsigned char *spnames[], int ns, int ls, int npatt, double fpatt[], int *pose, char keep[], int format)
+void printSeqs(FILE *fout, char *z[], char *spnames[], int ns, int ls, int npatt, double fpatt[], int *pose, char keep[], int format)
 {
    /* Print sequences into fout, using paml (format=0 or 1) or NEXUS (format=2)
       formats.
@@ -2268,7 +2268,7 @@ int printfcode(FILE *fout, double fb61[], double space[])
 }
 
 
-int printsmaCodon(FILE *fout, unsigned char * z[], int ns, int ls, int lline, int simple)
+int printsmaCodon(FILE *fout, char * z[], int ns, int ls, int lline, int simple)
 {
    /* print, in blocks, multiple aligned and transformed codon sequences.
     indels removed.
@@ -3026,7 +3026,7 @@ int ReadTreeN(FILE *ftree, int *haslength, int copyname, int popline)
    int cladeLabels = 0, i, k, level = 0, isname, ch = ' ', tip = 0;
    /* delimiters for names & labels (labels if not in quotes) */
    char check[NS], delimitersN[] = "(),:;#[", delimitersL[] = "(),:;", quote[2][4] = { "\"\'[", "\"\']" };
-   int lline = 32000, namelabel;  /* namelabel = 0 for name 1 for label */
+   int lline = 32000, namelabel=-1;  /* namelabel = 0 for name 1 for label */
    char line[32000], *pch;
    char debug = 0;
 
@@ -3111,7 +3111,8 @@ int ReadTreeN(FILE *ftree, int *haslength, int copyname, int popline)
                for (i = 0; i < com.ns; i++)
                   if (!strcmp(line, com.spname[i])) break;
                if ((cnode = i) == com.ns) {
-                  printf("\nSpecies %s?\n", line); exit(-1);
+                  printf("\nError: species %s in tree file not found in the sequence alignment file.\n", line);
+                  exit(-1);
                }
             }
             else {
@@ -3124,7 +3125,6 @@ int ReadTreeN(FILE *ftree, int *haslength, int copyname, int popline)
          nodes[cnode].father = cfather;
          if (nodes[cfather].nson >= MAXNSONS)
             error2("too many daughter nodes, raise MAXNSONS");
-
          nodes[cfather].sons[nodes[cfather].nson++] = cnode;
          tree.branches[tree.nbranch][0] = cfather;
          tree.branches[tree.nbranch][1] = cnode;
@@ -3418,9 +3418,9 @@ int GetSubTreeN(int keep[], int space[])
          error2("keep[] not right in GetSubTreeN");
 
       if ((branch0 = (double*)malloc(nnode0 * sizeof(double))) == NULL) error2("oom#");
-      FOR(i, nnode0) branch0[i] = nodes[i].branch;
-      FOR(i, nnode0) newnodeNO[i] = -1;
-      FOR(i, com.ns) if (keep[i]) newnodeNO[i] = keep[i] - 1;
+      for (i = 0; i < nnode0; i++) branch0[i] = nodes[i].branch;
+      for (i = 0; i < nnode0; i++) newnodeNO[i] = -1;
+      for (i = 0; i < com.ns; i++) if (keep[i]) newnodeNO[i] = keep[i] - 1;
 
       newnodeNO[tree.root] = k = nsnew;
       tree.root = k++;

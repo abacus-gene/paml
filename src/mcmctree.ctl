@@ -1,6 +1,6 @@
           seed = -1
-       seqfile = DatingSoftBound/mtCDNApri123.txt
-      treefile = DatingSoftBound/mtCDNApri.trees
+       seqfile = ../examples/DatingSoftBound/mtCDNApri123.txt
+      treefile = ../examples/DatingSoftBound/mtCDNApri.trees
        outfile = out
 
          ndata = 3
@@ -25,7 +25,7 @@
       finetune = 1: 0.1  0.1  0.1  0.01 .5  * auto (0 or 1) : times, musigma2, rates, mixing, paras, FossilErr
 
          print = 1
-        burnin = 8000
+        burnin = 20000
       sampfreq = 2
        nsample = 200000
 

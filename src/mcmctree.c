@@ -3415,7 +3415,7 @@ double lnpriorRates(void)
          for (i = 0; i < 2; i++) sons[i] = stree.nodes[inode].sons[i];
          t = stree.nodes[inode].age;
          if (inode == stree.root) tA = 0;
-         else                   tA = (stree.nodes[dad].age - t) / 2;
+         else                     tA = (stree.nodes[dad].age - t) / 2;
          t1 = (t - stree.nodes[sons[0]].age) / 2;
          t2 = (t - stree.nodes[sons[1]].age) / 2;
          detT = t1*t2 + tA*(t1 + t2);

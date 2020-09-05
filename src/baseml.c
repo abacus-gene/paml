@@ -1,11 +1,11 @@
 /* baseml.c
-     Maximum likelihood parameter estimation e aligned DNA (RNA) sequences,
-                 combined with phylogenetic tree estimation.
-                    Copyright, Ziheng YANG, July 1992 onwards
+   Maximum likelihood parameter estimation e aligned DNA (RNA) sequences,
+   combined with phylogenetic tree estimation.
+   Copyright, Ziheng YANG, July 1992 onwards
 
-                  cc -o baseml -fast baseml.c tools.c -lm
-                  cl -O2 baseml.c tools.c
-                          baseml <ControlFileName>
+   cc -o baseml -fast baseml.c tools.c -lm
+   cl -O2 baseml.c tools.c
+   baseml <ControlFileName>
 */
 
 #include "paml.h"
@@ -51,7 +51,7 @@ int GroupDistances();
 
 
 struct CommonInfo {
-   unsigned char *z[NS];
+   char *z[NS];
    char *spname[NS], seqf[2048], outf[2048], treef[2048], cleandata;
    char oldconP[NNODE];  /* update conP for nodes to save computation (0 yes; 1 no) */
    int seqtype, ns, ls, ngene, posG[NGENE + 1], lgene[NGENE], *pose, npatt, readpattern;

@@ -9,7 +9,21 @@ https://groups.google.com/forum/#!forum/pamlsoftware.
 
 
 
-Version 4.9j, October 2019
+Version 4.9j, February 2020 
+
+(*) baseml and codeml, clock dating.  When clock=1 and some internal
+nodes are fixed at certain ages (by using the symbol "@" or "="),
+baseml and codeml rescale the estimated relative node ages (measured
+in expected numbers of substitutions per site) into absolute node
+ages.  In such cases there should be a block of output including
+"Substitution rate is per time unit" and the absolute node ages below
+"Detailed output identifying parameters".  
+In versions 4.9i, this output is missing.  Versions 4.9h and earlier
+seem to be correct.  This bug is reported at the google group for
+paml.  I have now fixed this and added the printout.  Note that this
+way of clock dating assumes that the node ages specified in the tree
+are known without errors or uncertainties and does not accommodate
+uncertainties in fossil calibrations.
 
 (*) mcmctree, initial values have ages that are too old, exceeding max
 bounds.  In theory bounds in mcmctree are always soft so that the node

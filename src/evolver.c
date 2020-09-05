@@ -755,28 +755,25 @@ void Evolve(int inode)
          if (h == 0 || (com.siterates && com.siterates[h] != com.siterates[h - 1])) {
             rw = (com.siterates ? com.siterates[h] : 1);
 
-            switch (com.seqtype) {
-            case (BASEseq):
-               if (com.model <= TN93)
-                  PMatTN93(PMat, t*Qfactor*rw*Qrates[0], t*Qfactor*rw*Qrates[1], t*Qfactor*rw, com.pi);
-               else if (com.model == REV)
-                  PMatUVRoot(PMat, t*rw, com.ncode, U, V, Root);
-               break;
-
-            case (CODONseq): /* Watch out for NSsites model */
-               if (com.model || com.NSsites) { /* no need to update UVRoot if M0 */
-                  if (com.model && com.NSsites == 0) /* branch */
-                     rw = nodes[ison].omega;  /* should be equal to com.rK[nodes[].label] */
-
-                  EigenQcodon(0, com.kappa, rw, com.pi, Root, U, V, PMat);
-               }
-               PMatUVRoot(PMat, t, com.ncode, U, V, Root);
-               break;
-
-            case (AAseq):
-               PMatUVRoot(PMat, t*rw, com.ncode, U, V, Root);
-               break;
+            if (com.seqtype == BASEseq) {
+              if (com.model <= TN93)
+                PMatTN93(PMat, t * Qfactor * rw * Qrates[0], t * Qfactor * rw * Qrates[1], t * Qfactor * rw, com.pi);
+              else if (com.model == REV)
+                PMatUVRoot(PMat, t * rw, com.ncode, U, V, Root);
             }
+            else if (com.seqtype == CODONseq) { /* Watch out for NSsites model */
+              if (com.model || com.NSsites) { /* no need to update UVRoot if M0 */
+                if (com.model && com.NSsites == 0) /* branch */
+                  rw = nodes[ison].omega;  /* should be equal to com.rK[nodes[].label] */
+
+                EigenQcodon(0, com.kappa, rw, com.pi, Root, U, V, PMat);
+              }
+              PMatUVRoot(PMat, t, com.ncode, U, V, Root);
+            }
+            else if (com.seqtype == AAseq) {
+               PMatUVRoot(PMat, t*rw, com.ncode, U, V, Root);
+            }
+
             for (i = 0; i < n; i++)
                for (j = 1; j < n; j++)
                   PMat[i*n + j] += PMat[i*n + j - 1];
