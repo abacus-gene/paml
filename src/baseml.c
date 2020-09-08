@@ -302,7 +302,7 @@ int main (int argc, char *argv[])
       printf("\n%9zu bytes for conP\n", com.sconP);
       printf("%9zu bytes for fhK\n%9zu bytes for space\n", s2, com.sspace);
 
-      /* FOR(i,com.ns*2-1) xtoy(com.pi,nodes[i].pi, 4);  check this? */
+      /* for(i=0; i<com.ns*2-1; i++) xtoy(com.pi,nodes[i].pi, 4);  check this? */
 
       if (getdistance)
          DistanceMatNuc(fout, fpair[0], com.model, com.alpha);
@@ -362,7 +362,7 @@ int main (int argc, char *argv[])
             if (keep[j] == 0) continue;
             fprintf(ftmp, "%-40s  ", com.spname[j]);
             print1seq(ftmp, com.z[j], com.ls, com.pose);
-            FPN(ftmp);
+            fprintf(ftmp, "\n");
          }
          fclose(ftmp);
          return(0);
@@ -377,12 +377,14 @@ int main (int argc, char *argv[])
       else if (com.runmode == 3) StepwiseAddition(fout, com.space);
       else if (com.runmode >= 4) Perturbation(fout, (com.runmode == 4), com.space);
 
-      FPN(frst);  if ((idata + 1) % 10 == 0) fflush(frst);
+      fprintf(frst, "\n"); 
+      if ((idata + 1) % 10 == 0) fflush(frst);
       if (com.ndata > 1 && com.runmode) {
          fprintf(frst1, "\t");
          OutTreeN(frst1, 1, 0);
       }
-      FPN(frst1); fflush(frst1);
+      fprintf(frst1, "\n"); 
+      fflush(frst1);
       free(nodes);
       if (com.fix_blength == 3)  free(com.blengths0);
 
@@ -407,7 +409,7 @@ void PrintBestTree(FILE *fout, FILE *ftree, int btree);
 int Forestry(FILE *fout)
 {
    static int ages = 0;
-   int status = 0, inbasemlg = 0, i, j = 0, itree = 0, ntree, np, np0, iteration = 1;
+   int status = 0, inbasemlg = 0, i, j = 0, itree = 0, ntree, np, iteration = 1;
    int pauptree = 0, btree = 0, haslength;
    double x[NP], xcom[NP - NBRANCH], lnL, lnL0 = 0, lnLbest = 0, e = 1e-7, nchange = -1;
    double xb[NP][2], tl = 0, *g = NULL, *H = NULL;
@@ -446,7 +448,7 @@ int Forestry(FILE *fout)
             else if (com.fix_blength == 1)
                puts("\nBranch lengths in tree used as initials.");
             if (com.fix_blength == 1) {
-               FOR(i, tree.nnode)
+               for (i = 0; i < tree.nnode; i++)
                   if ((x[nodes[i].ibranch] = nodes[i].branch) < 0)
                      x[nodes[i].ibranch] = 1e-5;
             }
@@ -479,7 +481,6 @@ int Forestry(FILE *fout)
             error2("oom space");
       }
 
-      if (itree) { np0 = np; }
       if (itree && !finitials && (com.nhomo == 0 || com.nhomo == 2))
          for (i = 0; i < np - com.ntime; i++) x[com.ntime + i] = max2(xcom[i], 0.001);
 
@@ -488,7 +489,10 @@ int Forestry(FILE *fout)
       lnL = com.plfun(x, np);
       if (noisy) {
          printf("\nntime & nrate & np:%6d%6d%6d\n", com.ntime, com.nrate, com.np);
-         if (noisy > 2 && com.ns < 50) { OutTreeB(F0); FPN(F0); matout(F0, x, 1, np); }
+         if (noisy > 2 && com.ns < 50) { 
+            OutTreeB(F0); printf("\n");
+            matout(F0, x, 1, np); 
+         }
          printf("\nlnL0 = %12.6f\n", -lnL);
       }
 
@@ -515,7 +519,9 @@ int Forestry(FILE *fout)
       if (noisy) printf("Out...\nlnL  = %12.6f\n", -lnL);
       fprintf(fout, "\nlnL(ntime:%3d  np:%3d): %13.6f %+12.6f\n",
          com.ntime, np, -lnL, -lnL + lnL0);
-      if (com.fix_blength < 2) { OutTreeB(fout);  FPN(fout); }
+      if (com.fix_blength < 2) { 
+         OutTreeB(fout);  fprintf(fout, "\n");
+      }
       if (LASTROUND == 0) {
          LASTROUND = 1;
          if ((com.npi && com.model != T92) || com.nparK >= 2) TransformxBack(x);
@@ -527,7 +533,8 @@ int Forestry(FILE *fout)
       }
       for (i = 0; i < np; i++)
          fprintf(fout, " %8.6f", x[i]);
-      FPN(fout); fflush(fout);
+      fprintf(fout, "\n"); 
+      fflush(fout);
       if (inbasemlg) matout(finbasemlg, x, 1, np);
 
       /*
@@ -550,12 +557,16 @@ int Forestry(FILE *fout)
             OutTreeN(frst2, 1, 1);  fprintf(frst2, "\n\n");
             for (i = 0; i < com.ntime; i++)
                if (x[i] > 0.0004 && fabs(g[i]) < 0.005) g[i] = 0;
-            for (i = 0; i < com.ntime; i++) fprintf(frst2, " %9.6f", x[i]);  fprintf(frst2, "\n\n");
-            for (i = 0; i < com.ntime; i++) fprintf(frst2, " %9.6f", g[i]);  fprintf(frst2, "\n\n");
+            for (i = 0; i < com.ntime; i++) fprintf(frst2, " %9.6f", x[i]);
+            fprintf(frst2, "\n\n");
+            for (i = 0; i < com.ntime; i++) fprintf(frst2, " %9.6f", g[i]);
+            fprintf(frst2, "\n\n");
             fprintf(frst2, "\nHessian\n\n");
-            for (i = 0; i < com.ntime; i++, FPN(frst2))
+            for (i = 0; i < com.ntime; i++) {
                for (j = 0; j < com.ntime; j++)
-                  fprintf(frst2, " %10.4g", H[i*np + j]);
+                  fprintf(frst2, " %10.4g", H[i * np + j]);
+               fprintf(frst2, "\n");
+            }
             fflush(frst2);
          }
          for (i = 0; i < np*np; i++)  H[i] *= -1;
@@ -563,7 +574,7 @@ int Forestry(FILE *fout)
          fprintf(fout, "SEs for parameters:\n");
          for (i = 0; i < np; i++)
             fprintf(fout, " %8.6f", (H[i*np + i] > 0. ? sqrt(H[i*np + i]) : -1));
-         FPN(fout);
+         fprintf(fout, "\n");
       }
 
       /* if(com.clock) SetBranch(x); */
@@ -582,10 +593,13 @@ int Forestry(FILE *fout)
             if (i != tree.root) tl += nodes[i].branch;
          fprintf(fout, "\ntree length = %9.5f%s\n", tl, (com.ngene > 1 ? " (1st gene)" : ""));
       }
-      FPN(fout); OutTreeN(fout, 1, 0); FPN(fout);
-      FPN(fout); OutTreeN(fout, 1, 1); FPN(fout);
+      fprintf(fout, "\n"); 
+      OutTreeN(fout, 1, 0); fprintf(fout, "\n\n");
+      OutTreeN(fout, 1, 1); fprintf(fout, "\n");
       if (com.clock) {
-         FPN(fout); OutTreeN(fout, 1, PrNodeNum); FPN(fout);
+         fprintf(fout, "\n"); 
+         OutTreeN(fout, 1, PrNodeNum); 
+         fprintf(fout, "\n");
       }
 
       if (tipdate.flag) {  /* scale back the ages in nodes[].branch */
@@ -594,7 +608,8 @@ int Forestry(FILE *fout)
       if (com.np - com.ntime || com.clock)
          DetailOutput(fout, x, H);
       if (status) {
-         printf("convergence?\n");  fprintf(fout, "check convergence..\n");
+         printf("convergence?\n");
+         fprintf(fout, "check convergence..\n");
       }
       if (itree == 0)
          for (i = 0; i < np - com.ntime; i++) xcom[i] = x[com.ntime + i];
@@ -607,9 +622,11 @@ int Forestry(FILE *fout)
 
       if (com.coding && com.Mgene != 1 && !AbsoluteRate) {
          fputs("\nTree with branch lengths for codon models:\n", fout);
-         FOR(i, tree.nnode) nodes[i].branch *= (1 + com.rgene[1] + com.rgene[2]);
-         FPN(fout); OutTreeN(fout, 1, 1); FPN(fout);
-         FOR(i, tree.nnode) nodes[i].branch /= (1 + com.rgene[1] + com.rgene[2]);
+         for (i = 0; i < tree.nnode; i++)
+            nodes[i].branch *= (1 + com.rgene[1] + com.rgene[2]);
+         fprintf(fout, "\n"); OutTreeN(fout, 1, 1); fprintf(fout, "\n");
+         for (i = 0; i < tree.nnode; i++)
+            nodes[i].branch /= (1 + com.rgene[1] + com.rgene[2]);
       }
 
       com.print -= 9;  com.plfun(x, np);  com.print += 9;
@@ -628,7 +645,8 @@ int Forestry(FILE *fout)
       fprintf(frst1, "\t%d\t", btree + 1);
       PrintBestTree(frst1, ftree, btree);
    }
-   if (finbasemlg) fclose(finbasemlg);   if (frate) fclose(frate);
+   if (finbasemlg) fclose(finbasemlg);
+   if (frate) fclose(frate);
    fclose(ftree);
 
    if (ntree == -1)  ntree = itree;
@@ -681,7 +699,7 @@ void DetailOutput(FILE *fout, double x[], double var[])
 {
    int n = com.ncode, i, j, k = com.ntime, nkappa[] = { 0, 1, 0, 1, 1, 1, 2, 5, 11 };
    int n31pi = (com.model == T92 ? 1 : 3);
-   double Qfactor, *p = com.pi, t = 0, k1, k2, S, V, Y = p[0] + p[1], R = p[2] + p[3];
+   double *p = com.pi, t = 0, k1, k2, S, V, Y = p[0] + p[1], R = p[2] + p[3];
    int inode, a;
    double *Qrate = x + com.ntime + com.nrgene, *AncientFreqs = NULL;
    double EXij[NCODE*NCODE] = { 0 }, *Q = PMat, p0[NCODE], c[NCODE], ya;
@@ -694,13 +712,13 @@ void DetailOutput(FILE *fout, double x[], double var[])
       fprintf(fout, "\nrates for %d genes:%6.0f", com.ngene, 1.);
       for (i = 0; i < com.nrgene; i++)
          fprintf(fout, " %8.5f", x[k++]);
-      FPN(fout);
+      fprintf(fout, "\n");
    }
 
    if (com.nhomo == 1) {
       if (com.nrate) fprintf(fout, "rate (kappa or abcde) under %s:", models[com.model]);
-      for (i = 0; i < com.nrate; i++) fprintf(fout, " %8.5f", x[k++]);  FPN(fout);
-      fprintf(fout, "Base frequencies:\n");
+      for (i = 0; i < com.nrate; i++) fprintf(fout, " %8.5f", x[k++]);
+      fprintf(fout, "\nBase frequencies:\n");
       for (j = 0; j < n; j++) fprintf(fout, " %8.5f", com.pi[j]);
       k += n31pi;
    }
@@ -718,7 +736,7 @@ void DetailOutput(FILE *fout, double x[], double var[])
          OldDistributions(tree.root, AncientFreqs);
       }
       fputs("\n\n(frequency parameters for branches)  [frequencies at nodes] (see Yang & Roberts 1995 fig 1)\n", fout);
-      for (i = 0; i < tree.nnode; i++, FPN(fout)) {
+      for (i = 0; i < tree.nnode; i++) {
          fprintf(fout, "Node #%2d  (", i + 1);
          for (j = 0; j < 4; j++) fprintf(fout, " %8.6f ", nodes[i].pi[j]);
          fprintf(fout, ")");
@@ -727,6 +745,7 @@ void DetailOutput(FILE *fout, double x[], double var[])
             for (j = 0; j < 4; j++) fprintf(fout, " %8.6f", AncientFreqs[i * 4 + j]);
             fprintf(fout, " GC = %5.3f ]", AncientFreqs[i * 4 + 1] + AncientFreqs[i * 4 + 3]);
          }
+         fprintf(fout, "\n");
       }
       fprintf(fout, "\nNote: node %d is root.\n", tree.root + 1);
       k += com.npi*n31pi;
@@ -734,7 +753,7 @@ void DetailOutput(FILE *fout, double x[], double var[])
       /* print expected numbers of changes along branches */
       if (com.alpha == 0) {
          fprintf(fout, "\n\nExpected numbers of nucleotide changes on branches\n\n");
-         for (inode = 0; inode < tree.nnode; inode++, FPN(fout)) {
+         for (inode = 0; inode < tree.nnode; inode++) {
             if (inode == tree.root) continue;
             t = nodes[inode].branch;
             xtoy(AncientFreqs + nodes[inode].father*n, p0, n);
@@ -767,12 +786,14 @@ void DetailOutput(FILE *fout, double x[], double var[])
             fprintf(fout, "\npi source: "); for (j = 0; j < n; j++) fprintf(fout, " %9.6f ", p0[j]);
             fprintf(fout, "\npi model : "); for (j = 0; j < n; j++) fprintf(fout, " %9.6f ", nodes[inode].pi[j]);
             fprintf(fout, "\nExij\n");
-            for (i = 0; i < n; i++, FPN(fout)) {
+            for (i = 0; i < n; i++) {
                for (j = 0; j < n; j++)  fprintf(fout, " %9.6f", EXij[i*n + j]);
                fprintf(fout, "  ");
                for (j = 0; j < n; j++)  fprintf(fout, " %8.1f", EXij[i*n + j] * com.ls);
+               fprintf(fout, "\n");
             }
             /* matout(fout, c, 1, n);  */
+            fprintf(fout, "\n");
          }
       }
 
@@ -789,7 +810,7 @@ void DetailOutput(FILE *fout, double x[], double var[])
             else                   k1 = k2 = x[k + i];
             S = 2 * p[0] * p[1] * k1 + 2 * p[2] * p[3] * k2;
             V = 2 * Y*R;
-            Qfactor = 1 / (S + V);
+            /* Qfactor = 1 / (S + V); */
             /* t=(com.clock ? nodes[tree.branches[i][1]].branch : x[i]); */
             t = nodes[tree.branches[i][1]].branch;
             fprintf(fout, "%2d..%-2d %9.5f %8.5f %9.5f %8.5f\n",
@@ -804,7 +825,8 @@ void DetailOutput(FILE *fout, double x[], double var[])
             p = (com.Mgene == 3 ? com.pi : com.piG[i]);
             Qrate = (com.Mgene == 2 ? x + k : x + k + i*nkappa[com.model]);
             if (com.model <= TN93)
-               FOR(j, nkappa[com.model]) fprintf(fout, " %8.5f", Qrate[j]);
+               for (j = 0; j < nkappa[com.model]; j++)
+                  fprintf(fout, " %8.5f", Qrate[j]);
             else if (com.model == REV || com.model == REVu)
                /* output Q matrix, no eigen calculation */
                eigenQREVbase(fout, Q, Qrate, p, &nR, Root, Cijk);
@@ -813,10 +835,13 @@ void DetailOutput(FILE *fout, double x[], double var[])
          else              k += nkappa[com.model];
       }
       else {
-         if (com.model < REV) FOR(i, com.nrate) fprintf(fout, " %8.5f", x[k++]);
-         else k += com.nrate;
+         if (com.model < REV)
+            for (i = 0; i < com.nrate; i++)
+               fprintf(fout, " %8.5f", x[k++]);
+         else
+            k += com.nrate;
       }
-      FPN(fout);
+      fprintf(fout, "\n");
    }
 
    if (com.Mgene < 2) {
@@ -831,26 +856,28 @@ void DetailOutput(FILE *fout, double x[], double var[])
          fprintf(fout, "\nalpha (gamma, K=%d) = %8.5f", com.ncatG, (com.alpha = x[k++]));
       if (com.nalpha > 1)
          DiscreteGamma(com.freqK, com.rK, com.alpha, com.alpha, com.ncatG, DGammaUseMedian);
-      fprintf(fout, "\nrate: "); FOR(i, com.ncatG) fprintf(fout, " %8.5f", com.rK[i]);
-      fprintf(fout, "\nfreq: "); FOR(i, com.ncatG) fprintf(fout, " %8.5f", com.freqK[i]);
-      FPN(fout);
+      fprintf(fout, "\nrate: "); for (i = 0; i < com.ncatG; i++) fprintf(fout, " %8.5f", com.rK[i]);
+      fprintf(fout, "\nfreq: "); for (i = 0; i < com.ncatG; i++) fprintf(fout, " %8.5f", com.freqK[i]);
+      fprintf(fout, "\n");
    }
    if (!com.fix_rho) {
       fprintf(fout, "rho for the auto-discrete-gamma model: %9.5f", x[k]);
-      FPN(fout);
+      fprintf(fout, "\n");
    }
    if (com.nparK >= 1 && com.nalpha <= 1) {
       fprintf(fout, "\nrate:");  for (i = 0; i<com.ncatG; i++) fprintf(fout, " %8.5f", com.rK[i]);
       fprintf(fout, "\nfreq:");  for (i = 0; i<com.ncatG; i++) fprintf(fout, " %8.5f", com.freqK[i]);
-      FPN(fout);
+      fprintf(fout, "\n");
    }
    if (com.rho || (com.nparK >= 3 && com.nalpha <= 1)) {
       fprintf(fout, "transition probabilities between rate categories:\n");
-      for (i = 0; i < com.ncatG; i++, FPN(fout))  
-         for(j=0; j<com.ncatG; j++)
-            fprintf(fout, " %8.5f", com.MK[i*com.ncatG + j]);
+      for (i = 0; i < com.ncatG; i++) {
+         for (j = 0; j < com.ncatG; j++)
+            fprintf(fout, " %8.5f", com.MK[i * com.ncatG + j]);
+         fprintf(fout, "\n");
+      }
    }
-   FPN(fout);
+   fprintf(fout, "\n");
 }
 
 int GetStepMatrix(char*line)
@@ -886,23 +913,26 @@ int GetStepMatrix(char*line)
       }
       printf("rate %d: %d pairs\n", i + 1, k);
    }
-   for (i = 0; i < n; i++, FPN(F0))  for (j = 0; j < n; j++)
-      printf("%3d", StepMatrix[i*n + j]);
+   for (i = 0; i < n; i++) {
+      for (j = 0; j < n; j++)
+         printf("%3d", StepMatrix[i * n + j]);
+      printf("\n");
+   }
 
    return(0);
 }
 
-int GetOptions(char *ctlf)
+int GetOptions(char* ctlf)
 {
    int iopt, i, j, nopt = 31, lline = 4096;
-   char line[4096], *pline, opt[32], *comment = "*#";
-   char *optstr[] = { "seqfile","outfile","treefile","noisy", "cleandata",
+   char line[4096], * pline, opt[32], * comment = "*#";
+   char* optstr[] = { "seqfile","outfile","treefile","noisy", "cleandata",
         "verbose","runmode", "method", "clock", "TipDate", "fix_rgene","Mgene", "nhomo",
         "getSE","RateAncestor", "model","fix_kappa","kappa",
         "fix_alpha","alpha","Malpha","ncatG", "fix_rho","rho",
         "nparK", "ndata", "bootstrap", "Small_Diff","icode", "fix_blength", "seqtype" };
    double t;
-   FILE *fctl;
+   FILE* fctl;
    int ng = -1, markgenes[NGENE];
 
    com.nalpha = 0;
@@ -910,86 +940,91 @@ int GetOptions(char *ctlf)
    if (noisy) printf("Reading options from %s..\n", ctlf);
    for (; ; ) {
       if (fgets(line, lline, fctl) == NULL) break;
-      for (i = 0, t = 0, pline = line; i < lline&&line[i]; i++)
-         if (isalnum(line[i])) { t = 1; break; }
-         else if (strchr(comment, line[i])) break;
-         if (t == 0) continue;
-         sscanf(line, "%s%*s%lf", opt, &t);
-         if ((pline = strstr(line, "=")) == NULL)
-            error2("option file.");
+      for (i = 0, t = 0, pline = line; i < lline && line[i]; i++) {
+         if (isalnum(line[i])) {
+            t = 1; break;
+         }
+         else if (strchr(comment, line[i]))
+            break;
+      }
+      if (t == 0) continue;
+      sscanf(line, "%s%*s%lf", opt, &t);
+      if ((pline = strstr(line, "=")) == NULL)
+         error2("option file.");
 
-         for (iopt = 0; iopt < nopt; iopt++) {
-            if (strncmp(opt, optstr[iopt], 8) == 0) {
-               if (noisy >= 9)
-                  printf("\n%3d %15s | %-20s %6.2f", iopt + 1, optstr[iopt], opt, t);
-               switch (iopt) {
-               case (0): sscanf(pline + 1, "%s", com.seqf);    break;
-               case (1): sscanf(pline + 1, "%s", com.outf);    break;
-               case (2): sscanf(pline + 1, "%s", com.treef);    break;
-               case (3): noisy = (int)t;           break;
-               case (4): com.cleandata = (char)t;  break;
-               case (5): com.verbose = (int)t;     break;
-               case (6): com.runmode = (int)t;     break;
-               case (7): com.method = (int)t;      break;
-               case (8): com.clock = (int)t;       break;
-               case (9):
-                  sscanf(pline + 1, "%d%lf", &tipdate.flag, &tipdate.timeunit);
-                  break;
-               case (10): com.fix_rgene = (int)t;   break;
-               case (11): com.Mgene = (int)t;       break;
-               case (12): com.nhomo = (int)t;       break;
-               case (13): com.getSE = (int)t;       break;
-               case (14): com.print = (int)t;       break;
-               case (15): com.model = (int)t;
-                  if (com.model > UNREST) GetStepMatrix(line);  break;
-               case (16): com.fix_kappa = (int)t;   break;
-               case (17):
-                  com.kappa = t;
-                  if (com.fix_kappa && (com.clock == 5 || com.clock == 6)
-                     && com.model != 0 && com.model != 2) {
-                     ng = splitline(++pline, min2(ng, com.ndata), markgenes);
-                     for (j = 0; j < min2(ng, com.ndata); j++)
-                        if (!sscanf(pline + markgenes[j], "%lf", &data.kappa[j])) break;
-                     /*
-                     matout(F0, data.kappa, 1, min2(ng,com.ndata));
-                     */
-                  }
-                  break;
-               case (18): com.fix_alpha = (int)t;   break;
-               case (19):
-                  com.alpha = t;
-                  if (com.fix_alpha && t && (com.clock == 5 || com.clock == 6)) {
-                     ng = splitline(++pline, min2(ng, com.ndata), markgenes);
-                     for (j = 0; j < min2(ng, com.ndata); j++)
-                        if (!sscanf(pline + markgenes[j], "%lf", &data.alpha[j])) break;
-                     /*
-                     matout(F0, data.alpha, 1, min2(ng,com.ndata));
-                     */
-                  }
-                  break;
-               case (20): com.nalpha = (int)t;      break;
-               case (21): com.ncatG = (int)t;       break;
-               case (22): com.fix_rho = (int)t;     break;
-               case (23): com.rho = t;              break;
-               case (24): com.nparK = (int)t;       break;
-               case (25): com.ndata = (int)t;       break;
-               case (26): com.bootstrap = (int)t;   break;
-               case (27): Small_Diff = t;           break;
-               case (28): com.icode = (int)t; com.coding = 1; break;
-               case (29): com.fix_blength = (int)t; break;
-               case (30):
-                  com.seqtype = (int)t;
-                  if (com.seqtype == 2)      com.ncode = 2;
-                  else if (com.seqtype == 5) com.ncode = 5;
-                  break;
+      for (iopt = 0; iopt < nopt; iopt++) {
+         if (strncmp(opt, optstr[iopt], 8) == 0) {
+            if (noisy >= 9)
+               printf("\n%3d %15s | %-20s %6.2f", iopt + 1, optstr[iopt], opt, t);
+            switch (iopt) {
+            case (0): sscanf(pline + 1, "%s", com.seqf);    break;
+            case (1): sscanf(pline + 1, "%s", com.outf);    break;
+            case (2): sscanf(pline + 1, "%s", com.treef);    break;
+            case (3): noisy = (int)t;           break;
+            case (4): com.cleandata = (char)t;  break;
+            case (5): com.verbose = (int)t;     break;
+            case (6): com.runmode = (int)t;     break;
+            case (7): com.method = (int)t;      break;
+            case (8): com.clock = (int)t;       break;
+            case (9):
+               sscanf(pline + 1, "%d%lf", &tipdate.flag, &tipdate.timeunit);
+               break;
+            case (10): com.fix_rgene = (int)t;   break;
+            case (11): com.Mgene = (int)t;       break;
+            case (12): com.nhomo = (int)t;       break;
+            case (13): com.getSE = (int)t;       break;
+            case (14): com.print = (int)t;       break;
+            case (15): com.model = (int)t;
+               if (com.model > UNREST) GetStepMatrix(line);
+               break;
+            case (16): com.fix_kappa = (int)t;   break;
+            case (17):
+               com.kappa = t;
+               if (com.fix_kappa && (com.clock == 5 || com.clock == 6)
+                  && com.model != 0 && com.model != 2) {
+                  ng = splitline(++pline, min2(ng, com.ndata), markgenes);
+                  for (j = 0; j < min2(ng, com.ndata); j++)
+                     if (!sscanf(pline + markgenes[j], "%lf", &data.kappa[j])) break;
+                  /*
+                  matout(F0, data.kappa, 1, min2(ng,com.ndata));
+                  */
                }
                break;
+            case (18): com.fix_alpha = (int)t;   break;
+            case (19):
+               com.alpha = t;
+               if (com.fix_alpha && t && (com.clock == 5 || com.clock == 6)) {
+                  ng = splitline(++pline, min2(ng, com.ndata), markgenes);
+                  for (j = 0; j < min2(ng, com.ndata); j++)
+                     if (!sscanf(pline + markgenes[j], "%lf", &data.alpha[j])) break;
+                  /*
+                  matout(F0, data.alpha, 1, min2(ng,com.ndata));
+                  */
+               }
+               break;
+            case (20): com.nalpha = (int)t;      break;
+            case (21): com.ncatG = (int)t;       break;
+            case (22): com.fix_rho = (int)t;     break;
+            case (23): com.rho = t;              break;
+            case (24): com.nparK = (int)t;       break;
+            case (25): com.ndata = (int)t;       break;
+            case (26): com.bootstrap = (int)t;   break;
+            case (27): Small_Diff = t;           break;
+            case (28): com.icode = (int)t; com.coding = 1; break;
+            case (29): com.fix_blength = (int)t; break;
+            case (30):
+               com.seqtype = (int)t;
+               if (com.seqtype == 2)      com.ncode = 2;
+               else if (com.seqtype == 5) com.ncode = 5;
+               break;
             }
+            break;
          }
-         if (iopt == nopt)
-         {
-            printf("\noption %s in %s not recognised\n", opt, ctlf); exit(-1);
-         }
+      }
+      if (iopt == nopt) {
+         printf("\noption %s in %s not recognised\n", opt, ctlf); 
+         exit(-1);
+      }
    }
    fclose(fctl);
 
@@ -1332,7 +1367,7 @@ int SetParameters(double x[])
          else            xtoy(x + k, com.MK + i*K, K - 1);
          com.MK[i*K + K - 1] = 1 - sum(com.MK + i*K, K - 1);
       }
-      FOR(j, K) {
+      for (j = 0; j < K; j++) {
          for (i = 0, com.MK[(K - 1)*K + j] = 1; i < K - 1; i++)
             com.MK[(K - 1)*K + j] -= com.MK[i*K + j];
          if (com.MK[(K - 1)*K + j] < 0)
@@ -1387,7 +1422,7 @@ int SetxBound(int np, double xb[][2])
    /* sets lower and upper bounds for variables during iteration
    */
    int i, j, k = 0, nf = 0, n31pi = (com.model == T92 ? 1 : 3);
-   double tb[] = { .4e-6, 9999 }, tb0 = .4e-6, rgeneb[] = { 1e-4, 999 }, rateb[] = { 1e-5, 999 };
+   double rateb[] = { 1e-5, 999 }, rgeneb[] = { 1e-4, 999 };
    double alphab[] = { .005, 999 }, rhob[] = { -0.2, 0.99 }, pb[] = { .00001, .99999 };
    double fb[] = { -19,9 }; /* transformed freqs.*/
 
@@ -1404,8 +1439,11 @@ int SetxBound(int np, double xb[][2])
       xb[k][0] = (com.model == T92 ? pb[0] : fb[0]);
       xb[k++][1] = (com.model == T92 ? pb[1] : fb[1]);
    }
-   for (i = 0; i < com.nalpha; i++, k++)  FOR(j, 2) xb[k][j] = alphab[j];
-   if (!com.fix_rho)   FOR(j, 2) xb[np - 1][j] = rhob[j];
+   for (i = 0; i < com.nalpha; i++, k++)  
+      for (j = 0; j < 2; j++) 
+         xb[k][j] = alphab[j];
+   if (!com.fix_rho)   
+      for (j = 0; j < 2; j++) xb[np - 1][j] = rhob[j];
    if (com.nparK) {
       for (i = 0; i < com.ncatG - 1; i++) { xb[k][0] = rateb[0]; xb[k++][1] = rateb[1]; }
       if (com.nparK == 2) nf = com.ncatG - 1;
@@ -1415,8 +1453,10 @@ int SetxBound(int np, double xb[][2])
    }
    if (noisy > 2 && np < 50) {
       printf("\nBounds (np=%d):\n", np);
-      for (i = 0; i < np; i++) printf(" %10.6f", xb[i][0]);  FPN(F0);
-      for (i = 0; i < np; i++) printf(" %10.6f", xb[i][1]);  FPN(F0);
+      for (i = 0; i < np; i++) printf(" %10.6f", xb[i][0]);
+      printf("\n");
+      for (i = 0; i < np; i++) printf(" %10.6f", xb[i][1]);
+      printf("\n");
    }
    return(0);
 }
@@ -1428,7 +1468,7 @@ int testx(double x[], int np)
    int i;
    double tb[] = { .4e-6, 99 };
 
-   FOR(i, com.ntime)
+   for (i = 0; i < com.ntime; i++)
       if (x[i]<tb[0] || x[i]>tb[1])
          return (-1);
    return (0);
@@ -1473,8 +1513,8 @@ int ConditionalPNode(int inode, int igene, double x[])
       else if (nodes[ison].nson < 1 && !com.cleandata) {  /* tip & unclean */
          for (h = pos0; h < pos1; h++)
             for (j = 0; j < n; j++) {
-               for (k = 0, t = 0; k < nChara[com.z[ison][h]]; k++)
-                  t += PMat[j*n + CharaMap[com.z[ison][h]][k]];
+               for (k = 0, t = 0; k < nChara[(int)com.z[ison][h]]; k++)
+                  t += PMat[j*n + CharaMap[(int)com.z[ison][h]][k]];
                nodes[inode].conP[h*n + j] *= t;
             }
       }
@@ -1522,10 +1562,10 @@ int CollapsSite(FILE *fout, int nsep, int ns, int *ncat, int SiteCat[])
    *ncat = 5 + (1 << (ns - 1)) - 1 + nsep * 11;
    if (fout) fprintf(fout, "\n# cat:%5d  # sep:%5d\n\n", *ncat, nsep);
 
-   FOR(h, 1 << 2 * ns) {
+   for (h = 0; h < (1 << 2 * ns); h++) {
       for (j = 0, it = h; j < ns; b[ns - 1 - j] = it % 4, it /= 4, j++);
       for (j = 1, ndiff = 0; j < ns; j++) {
-         FOR(k, j) if (b[j] == b[k]) break;
+         for (k = 0; k < j; k++) if (b[j] == b[k]) break;
          if (k == j) ndiff++;
       }
       switch (ndiff) {
@@ -1549,9 +1589,9 @@ int CollapsSite(FILE *fout, int nsep, int ns, int *ncat, int SiteCat[])
          break;
       }
       if (fout) {
-         FOR(j, ns) fprintf(fout, "%1c", BASEs[b[j]]);
+         for (j = 0; j < ns; k++) fprintf(fout, "%1c", BASEs[b[j]]);
          fprintf(fout, "%5d    ", SiteCat[h]);
-         if (h % 4 == 3) FPN(fout);
+         if (h % 4 == 3) fprintf(fout, "\n");
       }
    }
    return (0);
@@ -1566,7 +1606,7 @@ int GetPexpML(double x[], int ncat, int SiteCat[], double pexp[])
    if (com.ngene > 1 || com.nhomo || com.alpha || com.nparK || com.model > REV)
       error2("Pexp()");
    SetParameters(x);
-   FOR(j, tree.nbranch)
+   for(j=0; j<tree.nbranch; j++)
       PMatCijk(Pt[j], nodes[tree.branches[j][1]].branch);
 
    for (h = 0; h < (1 << 2 * com.ns); h++) {
@@ -1603,7 +1643,7 @@ int TestModel(FILE *fout, double x[], int nsep, double space[])
    nobs = pexp + ncat;
    zero(pexp, 2 * ncat);
    /* nobs */
-   FOR(h, com.npatt) {
+   for (h = 0; h < com.npatt; h++) {
       for (j = 0, it = 0; j < com.ns; j++) it = it * 4 + (com.z[j][h] - 1);
       nobs[SiteCat[it]] += com.fpatt[h];
    }
@@ -1636,7 +1676,6 @@ int OldDistributions(int inode, double AncientFreqs[])
       AncientFreqs[tree.nnode*4]
    */
    int i, n = 4;
-   double kappa = com.kappa;
 
    if (com.alpha || com.model > REV) {
       puts("OldDistributions() does not run when alpha > 0 or model >= TN93");

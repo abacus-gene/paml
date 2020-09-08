@@ -2,6 +2,7 @@
    using bpp and mcmctree.
 
    cc -o BFdriver -O3 BFdriver.c tools.c -lm
+   cl -Ox BFdriver.c tools.c
 
    BFdriver <controlfilename> <npoints> <scriptname.sh>
    BFdriver mcmctree.ctl 16 tmp.sh

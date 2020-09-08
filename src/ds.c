@@ -1,14 +1,14 @@
 /* descriptive statistics
 
-   cc -o ds -O2 ds.c tools.c -lm
-   cl -O2 -Ot ds.c tools.c
-
+   cc -o ds -O3 ds.c tools.c -lm
+   cl -Ox -W3 -D_CRT_SECURE_NO_WARNINGS ds.c tools.c
+   ds in.txt
 */
 #include "paml.h"
 
-int DescriptiveStatisticsSimpleMCMCTREE (FILE *fout, char infile[], int nbin);
+int DescriptiveStatistics(FILE* fout, char infile[], int nbin, int propternary, int SkipColumns);
 
-void main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
    FILE *fp;
    char infile[96]="in.txt", outfile[96]="out.txt";
@@ -19,5 +19,6 @@ void main(int argc, char *argv[])
    fp = (FILE*)gfopen(outfile,"w");
    puts("results go into out.txt");
    starttimer();
-   DescriptiveStatisticsSimple(fp, infile, 100, 1);
+   DescriptiveStatistics(fp, infile, 100, 0, 1);
+   exit(0);
 }

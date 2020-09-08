@@ -1,27 +1,47 @@
-PRGS =  baseml codeml basemlg mcmctree pamp evolver yn00 chi2 
+PRGS =  baseml basemlg codeml evolver pamp yn00 chi2
 CC = cl # cc, gcc, cl
-#CFLAGS = -Ox -W3 -D_CRT_SECURE_NO_WARNINGS
-CFLAGS = -Ox -W3 -D_CRT_SECURE_NO_WARNINGS
+CFLAGS =  -Ox -W3 -D_CRT_SECURE_NO_WARNINGS
 
 DEFINE = #
 LIBS = #-lm -lM
 
 all : $(PRGS)
  
-baseml : baseml.c  tools.c treesub.c treespace.c paml.h 
-  $(CC) $(CFLAGS) baseml.c tools.c $(LIBS)
-basemlg : basemlg.c  tools.c treesub.c treespace.c paml.h 
-  $(CC) $(CFLAGS) basemlg.c tools.c $(LIBS)
-codeml : codeml.c  tools.c treesub.c treespace.c paml.h 
-  $(CC) $(CFLAGS) codeml.c tools.c $(LIBS)
-evolver : evolver.c  tools.c treesub.c treespace.c paml.h 
-  $(CC) $(CFLAGS) evolver.c tools.c $(LIBS)
-mcmctree : mcmctree.c  tools.c treesub.c treespace.c paml.h 
-  $(CC) $(CFLAGS) mcmctree.c tools.c $(LIBS)
+baseml : baseml.obj tools.obj
+  $(CC) $(CFLAGS) baseml.obj tools.obj $(LIBS)
+basemlg : basemlg.obj tools.obj
+  $(CC) $(CFLAGS) basemlg.obj tools.obj $(LIBS)
+codeml : codeml.obj tools.obj
+  $(CC) $(CFLAGS) codeml.obj tools.obj $(LIBS)
+evolver : evolver.obj tools.obj
+  $(CC) $(CFLAGS) evolver.obj tools.obj $(LIBS)
+mcmctree : mcmctree.obj tools.obj
+  $(CC) $(CFLAGS) mcmctree.obj tools.obj $(LIBS)
   $(CC) $(CFLAGS) -Feinfinitesites.exe -D INFINITESITES mcmctree.c tools.c $(LIBS)
-pamp : pamp.c  tools.c treesub.c treespace.c paml.h 
-  $(CC) $(CFLAGS) pamp.c tools.c $(LIBS)
-yn00 : yn00.c tools.c
-  $(CC) $(CFLAGS) yn00.c tools.c $(LIBS)
+pamp : pamp.obj tools.obj 
+  $(CC) $(CFLAGS) pamp.obj tools.obj $(LIBS)
+yn00 : yn00.obj tools.obj
+  $(CC) $(CFLAGS) yn00.obj tools.obj $(LIBS)
 chi2 : chi2.c
   $(CC) $(CFLAGS) chi2.c $(LIBS)
+
+
+tools.obj : paml.h tools.c
+  $(CC) $(CFLAGS) -c tools.c
+baseml.obj : paml.h baseml.c treesub.c treespace.c
+  $(CC) $(CFLAGS) -c baseml.c
+basemlg.obj : paml.h basemlg.c treesub.c
+  $(CC) $(CFLAGS) -c basemlg.c
+codeml.obj : paml.h codeml.c treesub.c treespace.c
+  $(CC) $(CFLAGS) -c codeml.c
+evolver.obj: evolver.c treesub.c treespace.c
+  $(CC) $(CFLAGS) -c evolver.c
+mcmctree.obj : paml.h mcmctree.c treesub.c treespace.c
+  $(CC) $(CFLAGS) -c mcmctree.c
+pamp.obj : paml.h pamp.c treesub.c treespace.c
+  $(CC) $(CFLAGS) -c pamp.c
+yn00.obj : paml.h yn00.c 
+  $(CC) $(CFLAGS) -c yn00.c 
+
+clean :
+	-del *.obj baseml.exe basemlg.exe codeml.exe evolver.exe pamp.exe yn00.exe chi2.exe

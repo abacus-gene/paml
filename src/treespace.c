@@ -57,8 +57,10 @@ int GetTreeI(int itree, int ns, int rooted)
    else            for (i = 0; i < nM; i++) { Ib[i] = itree / M[i]; itree %= M[i]; }
    /*
       if (noisy>3) {
-         FOR (i, nM) printf ("%5d ", M[i]);   FPN (F0);
-         FOR (i, nM) printf ("%5d ", Ib[i]);  FPN (F0);
+         for(i=0; i < nM; i++) printf ("%5d ", M[i]);
+         printf("\n");
+         for(i=0; i < nM; i++) printf ("%5d ", Ib[i]);
+         printf("\n");
       }
    */
    MakeTreeIb(ns, Ib, rooted);
@@ -148,7 +150,7 @@ int ListTrees(FILE* fout, int ns, int rooted)
       }
       if (finish) break;
    }
-   FPN(fout);
+   fprintf(fout, "\n");
 
    return (0);
 }
@@ -324,7 +326,8 @@ int GetLHistoryI(int iLH)
 
    tree.nnode = com.ns * 2 - 1;
    for (i = 0; i < tree.nnode; i++) {
-      nodes[i].father = nodes[i].nson = -1;  FOR(k, com.ns) nodes[i].sons[k] = -1;
+      nodes[i].father = nodes[i].nson = -1;  
+      for (k = 0; k < com.ns; k++)  nodes[i].sons[k] = -1;
    }
    for (i = 0, inode = com.ns; i < com.ns; i++) nodea[i] = i;
    for (i = com.ns, it = iLH; i >= 2; i--) {
@@ -353,17 +356,22 @@ int GetIofLHistory(void)
       node d corresponds to time 2*ns-2-d; tree.root=ns*2-2;
       t0=1 > t1 > t2 > ... > t[ns-2]
    */
-   int index, i, j, k[NS + 1], inode, nnode, nodea[NS], s[2];
+   int index, i, j, k[NS + 1], inode, nnode, nodea[NS], s[2] = {0}, t;
 
    if (nodes[tree.root].nson != 2 || tree.nnode != com.ns * 2 - 1
       || tree.root != com.ns * 2 - 2)  error2("IofLH");
    for (i = 0; i < com.ns; i++) nodea[i] = i;
    for (inode = nnode = com.ns, index = 0; inode < com.ns * 2 - 1; inode++, nnode--) {
-      FOR(i, 2) FOR(j, nnode)
-         if (nodes[inode].sons[i] == nodea[j]) { s[i] = j; break; }
-      k[nnode] = max2(s[0], s[1]); s[0] = min2(s[0], s[1]); s[1] = k[nnode];
+      for (i = 0; i < 2; i++) 
+         for(j=0; j< nnode; j++)
+            if (nodes[inode].sons[i] == nodea[j]) 
+               { s[i] = j; break; }
+      t = max2(s[0], s[1]);
+      s[0] = min2(s[0], s[1]);
+      s[1] = t;
       k[nnode] = s[1] * (s[1] - 1) / 2 + s[0];
-      nodea[s[0]] = inode; nodea[s[1]] = nodea[nnode - 1];
+      nodea[s[0]] = inode;
+      nodea[s[1]] = nodea[nnode - 1];
    }
    for (nnode = 2, index = 0; nnode <= com.ns; nnode++)
       index = nnode*(nnode - 1) / 2 * index + k[nnode];
@@ -386,13 +394,16 @@ int ReorderNodes(char LHistory[])
       tree.root = com.ns * 2 - 2;
       /*      printf("\nRoot changed to %d in ReorderNodes..\n", com.ns*2-2+1); */
    }
-   FOR(i, tree.nbranch) FOR(j, 2)
-      if (tree.branches[i][j] >= com.ns)
-         FOR(k, com.ns - 1)
-         if (tree.branches[i][j] == LHistory[k])
-         {
-            tree.branches[i][j] = com.ns * 2 - 2 - k;  break;
-         }
+   for (i = 0; i < tree.nbranch; i++) {
+      for (j = 0; j < 2; j++) {
+         if (tree.branches[i][j] >= com.ns)
+            for (k = 0; k < com.ns - 1; k++)
+               if (tree.branches[i][j] == LHistory[k]) {
+                  tree.branches[i][j] = com.ns * 2 - 2 - k;
+                  break;
+               }
+      }
+   }
    BranchToNode();
 
    return (0);

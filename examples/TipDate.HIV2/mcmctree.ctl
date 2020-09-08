@@ -5,7 +5,7 @@
         outfile = out
 
        seqtype = 0  * 0: nucleotides; 1:codons; 2:AAs
-       usedata = 0 in.BV.HKYG5  * 0: no data; 1:seq like; 2:use in.BV; 3: out.BV
+       usedata = 2 in.BV.HKYG5  * 0: no data; 1:seq like; 2:use in.BV; 3: out.BV
 
          ndata = 1   * 3 for mt2G3P and 6 for 4G6P
          clock = 1    * 1: global clock; 2: independent rates; 3: correlated rates
@@ -33,5 +33,5 @@
 
          print = 1
         burnin = 20000
-      sampfreq = 2
-       nsample = 100000
+      sampfreq = 10
+       nsample = 500000

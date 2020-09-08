@@ -26,8 +26,8 @@ double IncompleteGamma (double x, double alpha, double ln_gamma_alpha);
 
 int main(int argc, char*argv[])
 {
-   int i,j, n=20, ndf=200, nprob=8, option=0, df;
-   double chi2, d=1.0/n, prob[]={.005, .025, .1, .5, .90, .95, .99, .999};
+   int i,j, ndf=200, nprob=8, df;
+   double chi2, prob[]={.005, .025, .1, .5, .90, .95, .99, .999};
 
    if (argc!=2 && argc!=3) {
       printf ("\n\nChi-square critical values\n");
@@ -101,7 +101,7 @@ double CDFNormal (double x)
       Computer J. 12: 197-198.
 */
     int invers=0;
-    double p, limit=10, t=1.28, y=x*x/2;
+    double p, limit=10, y=x*x/2;
 
     if (x<0) {  invers=1;  x*=-1; }
     if (x>limit)  return (invers?0:1);

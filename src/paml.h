@@ -16,8 +16,6 @@
 #include <assert.h>
 
 #define square(a) ((a)*(a))
-#define FOR(i,n) for(i=0; i<n; i++)
-#define FPN(file) fputc('\n', file)
 #define F0 stdout
 #if !defined(MAX)
 #define MAX(a,b)                            (((a) > (b)) ? (a) : (b))
@@ -25,7 +23,6 @@
 #if !defined(MIN)
 #define MIN(a,b)                            (((a) < (b)) ? (a) : (b))
 #endif
-#define SQUARE(a)                           ((a)*(a))
 
 #define min2(a,b) ((a)<(b)?(a):(b))
 #define max2(a,b) ((a)>(b)?(a):(b))
@@ -393,6 +390,6 @@ extern int PrBranch, PrNodeNum, PrLabel, PrNodeStr, PrAge, PrOmega;
 
 #define PAML_RELEASE      0
 
-#define pamlVerStr "paml version 4.9j, October 2019"
+#define pamlVerStr "paml version 4.10.0, September 2020"
 
 #endif

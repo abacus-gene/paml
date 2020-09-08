@@ -207,7 +207,7 @@ int f_mono_di(FILE *fout, char *z, int ls, int iring,
    if (iring) fb2[(*s - 1) * 4 + z[0] - 1] += t2;
    for (i = 0; i < 4; i++)  for (j = 0; j < 4; j++) CondP[i * 4 + j] = fb2[i * 4 + j] / fb1[i];
    fprintf(fout, "\nmono-\n");
-   FOR(i, 4) fprintf(fout, "%12.4f", fb1[i]);
+   for (i = 0; i < 4; i++)  fprintf(fout, "%12.4f", fb1[i]);
    fprintf(fout, "\n\ndi-  & conditional P\n");
    for (i = 0; i < 4; i++) {
       for (j = 0; j < 4; j++) fprintf(fout, "%9.4f%7.4f  ", fb2[i * 4 + j], CondP[i * 4 + j]);
@@ -230,11 +230,11 @@ int PickExtreme(FILE *fout, char *z, int ls, int iring, int lfrag, int *ffrag)
    f_mono_di(fout, z, ls, iring, fb1, fb2, p_2);
    if (iring) {
       error2("change PickExtreme()");
-      FOR(i, lfrag - 1)  z[ls + i] = z[i];       /* dangerous */
+      for (i = 0; i < lfrag - 1; i++)  z[ls + i] = z[i];
       z[ls + i] = (char)0;
    }
    printf("\ncounting %d tuple frequencies", lfrag);
-   FOR(i, n) ffrag[i] = 0;
+   for (i = 0; i < n; i++) ffrag[i] = 0;
    for (i = 0; i < lvirt; i++, pz++) {
       for (j = 0, isf = 0; j < lfrag; j++)  isf = isf * 4 + (int)pz[j] - 1;
       ffrag[isf] ++;
@@ -253,7 +253,7 @@ int PickExtreme(FILE *fout, char *z, int ls, int iring, int lfrag, int *ffrag)
       u2 = ((double)ffrag[i] - ne2) / sqrt(ne2);
       if (fabs(u1) > ualpha /* && fabs(u2)>ualpha */) {
          fprintf(fout, "\n");
-         FOR(j, lfrag) fprintf(fout, "%1c", BASEs[ib[j]]);
+         for (i = 0; i < lfrag; i++) fprintf(fout, "%1c", BASEs[ib[j]]);
          fprintf(fout, "%6d %8.1f%7.2f %8.1f%7.2f ", ffrag[i], ne1, u1, ne2, u2);
          if (u1 < -ualpha && u2 < -ualpha)     fprintf(fout, " %c", '-');
          else if (u1 > ualpha && u2 > ualpha)  fprintf(fout, " %c", '+');
@@ -296,7 +296,7 @@ int testXMat(double x[])
    /* test whether X matrix is acceptable (0) or not (-1) */
    int it = 0, i, j;
    double t;
-   for (i = 0, t = 0; i < 4; i++) FOR(j, 4) {
+   for (i = 0, t = 0; i < 4; i++) for (j = 0; j < 4; j++) {
       if (x[i * 4 + j] < 0 || x[i * 4 + j]>1)  it = -1;
       t += x[i * 4 + j];
    }
@@ -502,12 +502,12 @@ double testDetailedBalance(double P[], double pi[], int n)
    /* this calculates maxdiff for the detailed balance check.  maxdiff should be close
       to 0 if the detailed balance condition holds.
    */
-   int i, j, status = 0;
-   double smallv = 1e-10, maxdiff = 0, d;
+   int i, j;
+   double maxdiff = 0, d;
 
    for (i = 0; i < n; i++) {
       for (j = 0; j < n; j++) {
-         d = fabs(pi[i] * P[i*n + j] - pi[j] * P[j*n + i]);
+         d = fabs(pi[i] * P[i * n + j] - pi[j] * P[j * n + i]);
          if (d > maxdiff) maxdiff = d;
       }
    }
@@ -673,7 +673,7 @@ int EvolveHKY85(char source[], char target[], int ls, double t,
    else { a1t = 1 + kappa / Y; a2t = 1 + kappa / R; }
    bt = t / (2 * (pi[0] * pi[1] * a1t + pi[2] * pi[3] * a2t) + 2 * Y*R);
    a1t *= bt;   a2t *= bt;
-   FOR(h, ls) {
+   for (h = 0; h < ls; h++) {
       if (h == 0 || (rates && rates[h] != rates[h - 1])) {
          r = (rates ? rates[h] : 1);
          PMatTN93(TransP, a1t*r, a2t*r, bt*r, pi);
@@ -699,7 +699,8 @@ int Rates4Sites(double rates[], double alpha, int ncatG, int ls, int cdf, double
    double *rK = space, *freqK = space + K, *Falias = space + 2 * K;
 
    if (alpha == 0) {
-      if (rates) FOR(h, ls) rates[h] = 1;
+     if (rates)
+       for (h = 0; h < ls; h++) rates[h] = 1;
    }
    else {
       if (K > 1) {
@@ -833,9 +834,11 @@ int printcu(FILE *fout, double fcodon[], int icode)
    int it, i, j, k, iaa;
    double faa[21], fb3x4[3 * 5]; /* chi34, Ic, lc, */
    char *word = "|-", aa3[4] = "   ", codon[4] = "   ", ss3[4][4], *noodle;
+/*
    static double aawt[] = { 89.1, 174.2, 132.1, 133.1, 121.2, 146.2,
          147.1,  75.1, 155.2, 131.2, 131.2, 146.2, 149.2, 165.2, 115.1,
          105.1, 119.1, 204.2, 181.2, 117.1 };
+*/
 
    if (fcodon) { zero(faa, 21);  zero(fb3x4, 12); }
    else     wc = 0;
@@ -1028,10 +1031,8 @@ int printsma(FILE*fout, char*spname[], char*z[], int ns, int l, int lline, int g
    int igroup, ngroup, lt, h, hp, i, b, b0 = -1, igap, lspname = 30, lseqlen = 7;
    char indel = '-', ambi = '?', equal = '.';
    char *pch = (seqtype <= 1 ? BASEs : (seqtype == 2 ? AAs : BINs));
-   char codon[4] = "   ";
 
    if (l == 0) return(1);
-   codon[0] = -1;  /* to avoid warning */
    if (gap == 0) gap = lline + 1;
    ngroup = (l - 1) / lline + 1;
    fprintf(fout, "\n");
@@ -4438,76 +4439,80 @@ int ScatterPlot(int n, int nseries, int yLorR[], double x[], double y[],
       Use ForE=1 for floating format
       yLorR[nseries] specifies which y axis (L or R) to use, if nseries>1.
    */
-   char *chart, ch, *fmt[2] = { "%*.*e ", "%*.*f " }, symbol[] = "*~^@", overlap = '&';
+   char* chart, ch, * fmt[2] = { "%*.*e ", "%*.*f " }, symbol[] = "*~^@", overlap = '&';
    int i, j, is, iy, ny = 1, ncolr = ncol + 3, irow = 0, icol = 0, w = 10, wd = 2;
    double large = 1e32, xmin, xmax, xgap, ymin[2], ymax[2], ygap[2];
 
-   for (i = 1, xmin = xmax = x[0]; i < n; i++)
-   {
-      if (xmin > x[i]) xmin = x[i]; if (xmax < x[i]) xmax = x[i];
+   for (i = 1, xmin = xmax = x[0]; i < n; i++)  {
+      if (xmin > x[i]) xmin = x[i];
+      if (xmax < x[i]) xmax = x[i];
    }
    for (i = 0; i < 2; i++) { ymin[i] = large; ymax[i] = -large; }
-   for (j = 0; j < (nseries > 1)*nseries; j++)
-      if (yLorR[j] == 1) ny = 2;
-      else if (yLorR[j] != 0) printf("err: y axis %d", yLorR[j]);
-      for (j = 0; j < nseries; j++) {
-         for (i = 0, iy = (nseries == 1 ? 0 : yLorR[j]); i < n; i++) {
-            if (ymin[iy] > y[j*n + i])  ymin[iy] = y[j*n + i];
-            if (ymax[iy] < y[j*n + i])  ymax[iy] = y[j*n + i];
-         }
+   for (j = 0; j < (nseries > 1 ? nseries : 0); j++) {
+      if (yLorR[j] == 1)
+         ny = 2;
+      else if (yLorR[j] != 0) 
+         printf("err: y axis %d", yLorR[j]);
+   }
+   for (j = 0; j < nseries; j++) {
+      for (i = 0, iy = (nseries == 1 ? 0 : yLorR[j]); i < n; i++) {
+         if (ymin[iy] > y[j * n + i])  ymin[iy] = y[j * n + i];
+         if (ymax[iy] < y[j * n + i])  ymax[iy] = y[j * n + i];
       }
-      if (xmin == xmax) { puts("no variation in x?"); }
-      xgap = (xmax - xmin) / ncol;
-      for (iy = 0; iy < ny; iy++) ygap[iy] = (ymax[iy] - ymin[iy]) / nrow;
+   }
+   if (xmin == xmax) { puts("no variation in x?"); }
+   xgap = (xmax - xmin) / ncol;
+   for (iy = 0; iy < ny; iy++) ygap[iy] = (ymax[iy] - ymin[iy]) / nrow;
 
-      printf("\n%10s", "legend: ");
-      for (is = 0; is < nseries; is++) printf("%2c", symbol[is]);
-      printf("\n%10s", "y axies: ");
-      if (ny == 2)  for (is = 0; is < nseries; is++) printf("%2d", yLorR[is]);
+   printf("\n%10s", "legend: ");
+   for (is = 0; is < nseries; is++) printf("%2c", symbol[is]);
+   printf("\n%10s", "y axies: ");
+   if (ny == 2)  for (is = 0; is < nseries; is++) printf("%2d", yLorR[is]);
 
-      printf("\nx   : (%10.2e, %10.2e)", xmin, xmax);
-      printf("\ny[1]: (%10.2e, %10.2e)\n", ymin[0], ymax[0]);
-      if (ny == 2) printf("y[2]: (%10.2e, %10.2e)  \n", ymin[1], ymax[1]);
+   printf("\nx   : (%10.2e, %10.2e)", xmin, xmax);
+   printf("\ny[1]: (%10.2e, %10.2e)\n", ymin[0], ymax[0]);
+   if (ny == 2) printf("y[2]: (%10.2e, %10.2e)  \n", ymin[1], ymax[1]);
 
-      chart = (char*)malloc((nrow + 1)*ncolr * sizeof(char));
-      for (i = 0; i < nrow + 1; i++) {
-         for (j = 1; j < ncol; j++) chart[i*ncolr + j] = ' ';
-         if (i % 5 == 0) chart[i*ncolr + 0] = chart[i*ncolr + j++] = '+';
-         else        chart[i*ncolr + 0] = chart[i*ncolr + j++] = '|';
-         chart[i*ncolr + j] = '\0';
-         if (i == 0 || i == nrow)
-            FOR(j, ncol + 1) chart[i*ncolr + j] = (char)(j % 10 == 0 ? '+' : '-');
+   chart = (char*)malloc((nrow + 1) * ncolr * sizeof(char));
+   for (i = 0; i < nrow + 1; i++) {
+      for (j = 1; j < ncol; j++) chart[i * ncolr + j] = ' ';
+      if (i % 5 == 0) chart[i * ncolr + 0] = chart[i * ncolr + j++] = '+';
+      else        chart[i * ncolr + 0] = chart[i * ncolr + j++] = '|';
+      chart[i * ncolr + j] = '\0';
+      if (i == 0 || i == nrow)
+         for (j = 0; j < ncol + 1; j++)
+            chart[i * ncolr + j] = (char)(j % 10 == 0 ? '+' : '-');
+   }
+
+   for (is = 0; is < nseries; is++) {
+      for (i = 0, iy = (nseries == 1 ? 0 : yLorR[is]); i < n; i++) {
+         for (j = 0; j < ncol + 1; j++) if (x[i] <= xmin + (j + 0.5) * xgap) { icol = j; break; }
+         for (j = 0; j < nrow + 1; j++)
+            if (y[is * n + i] <= ymin[iy] + (j + 0.5) * ygap[iy]) { irow = nrow - j; break; }
+
+         /*
+                  chart[irow*ncolr+icol]=symbol[is];
+         */
+         if ((ch = chart[irow * ncolr + icol]) == ' ' || ch == '-' || ch == '+')
+            chart[irow * ncolr + icol] = symbol[is];
+         else
+            chart[irow * ncolr + icol] = overlap;
+
       }
-
-      for (is = 0; is < nseries; is++) {
-         for (i = 0, iy = (nseries == 1 ? 0 : yLorR[is]); i < n; i++) {
-            for (j = 0; j < ncol + 1; j++) if (x[i] <= xmin + (j + 0.5)*xgap) { icol = j; break; }
-            for (j = 0; j < nrow + 1; j++)
-               if (y[is*n + i] <= ymin[iy] + (j + 0.5)*ygap[iy]) { irow = nrow - j; break; }
-
-            /*
-                     chart[irow*ncolr+icol]=symbol[is];
-            */
-            if ((ch = chart[irow*ncolr + icol]) == ' ' || ch == '-' || ch == '+')
-               chart[irow*ncolr + icol] = symbol[is];
-            else
-               chart[irow*ncolr + icol] = overlap;
-
-         }
-      }
+   }
+   printf("\n");
+   for (i = 0; i < nrow + 1; i++) {
+      if (i % 5 == 0) printf(fmt[ForE], w - 1, wd, ymin[0] + (nrow - i) * ygap[0]);
+      else        printf("%*s", w, "");
+      printf("%s", chart + i * ncolr);
+      if (ny == 2 && i % 5 == 0) printf(fmt[ForE], w - 1, wd, ymin[1] + (nrow - i) * ygap[1]);
       printf("\n");
-      for (i = 0; i < nrow + 1; i++) {
-         if (i % 5 == 0) printf(fmt[ForE], w - 1, wd, ymin[0] + (nrow - i)*ygap[0]);
-         else        printf("%*s", w, "");
-         printf("%s", chart + i*ncolr);
-         if (ny == 2 && i % 5 == 0) printf(fmt[ForE], w - 1, wd, ymin[1] + (nrow - i)*ygap[1]);
-         printf("\n");
-      }
-      printf("%*s", w - 6, "");
-      for (j = 0; j < ncol + 1; j++) if (j % 10 == 0) printf(fmt[ForE], 10 - 1, wd, xmin + j*xgap);
-      printf("\n%*s\n", ncol / 2 + 1 + w, "x");
-      free(chart);
-      return(0);
+   }
+   printf("%*s", w - 6, "");
+   for (j = 0; j < ncol + 1; j++) if (j % 10 == 0) printf(fmt[ForE], 10 - 1, wd, xmin + j * xgap);
+   printf("\n%*s\n", ncol / 2 + 1 + w, "x");
+   free(chart);
+   return(0);
 }
 
 void rainbowRGB(double temperature, int *R, int *G, int *B)
@@ -4731,7 +4736,7 @@ int mattransp1(double x[], int n)
 {
    int i, j;
    double t;
-   FOR(i, n)  for (j = 0; j < i; j++)
+   for(i=0; i<n; i++)  for (j = 0; j < i; j++) 
       if (i != j) { t = x[i*n + j];  x[i*n + j] = x[j*n + i];   x[j*n + i] = t; }
    return (0);
 }
@@ -4742,7 +4747,7 @@ int mattransp2(double x[], double y[], int n, int m)
    */
    int i, j;
 
-   FOR(i, n)  FOR(j, m)  y[j*n + i] = x[i*m + j];
+   for (i = 0; i < n; i++) for (j = 0; j < m; j++)  y[j * n + i] = x[i * m + j];
    return (0);
 }
 
@@ -4781,7 +4786,7 @@ int matinv(double x[], int n, int m, double space[])
       for (j = 0; j < n; j++) {
          if (j == i) continue;
          t1 = t*x[j*m + i];
-         FOR(k, m)  x[j*m + k] -= t1*x[i*m + k];
+         for (k = 0; k < m; k++)  x[j * m + k] -= t1 * x[i * m + k];
          x[j*m + i] = -t1;
       }
       for (j = 0; j < m; j++)   x[i*m + j] *= t;
@@ -4880,14 +4885,15 @@ int matsqrt(double A[], int n, double work[])
    HouseholderRealSym(U, n, Root, V);
    status = EigenTridagQLImplicit(Root, V, n, U);
    mattransp2(U, V, n, n);
-   for (i = 0; i < n; i++)
+   for (i = 0; i < n; i++) {
       if (Root[i] < 0) error2("negative root in matsqrt?");
       else          Root[i] = sqrt(Root[i]);
-      for (i = 0; i < n; i++) for (j = 0; j < n; j++)
-         U[i*n + j] *= Root[j];
-      matby(U, V, A, n, n, n);
+   }
+   for (i = 0; i < n; i++) for (j = 0; j < n; j++)
+      U[i * n + j] *= Root[j];
+   matby(U, V, A, n, n, n);
 
-      return(status);
+   return(status);
 }
 
 
@@ -5188,7 +5194,9 @@ int EigenTridagQLImplicit(double d[], double e[], int n, double z[])
    int m, j, iter, niter = 30, status = 0, i, k;
    double s, r, p, g, f, dd, c, b, aa, bb;
 
-   for (i = 1; i < n; i++) e[i - 1] = e[i];  e[n - 1] = 0;
+   for (i = 1; i < n; i++)
+      e[i - 1] = e[i];
+   e[n - 1] = 0;
    for (j = 0; j < n; j++) {
       iter = 0;
       do {
@@ -5619,7 +5627,6 @@ int HPDinterval(double x[], int n, double HPD[2], double alpha)
    */
    int jL0 = (int)(n*alpha / 2), jU0 = (int)(n*(1 - alpha / 2)), jL, jU, jLb = jL0;
    double w0 = x[jU0] - x[jL0], w = w0;
-   int debug = 0;
 
    HPD[0] = x[jL0];
    HPD[1] = x[jU0];
@@ -5714,7 +5721,7 @@ int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int propternary, 
       (p.77 in B.W. Silverman 1986).
    */
    FILE *fin = gfopen(infile, "r");
-   int  n, p, i, j, k, jj, kk, nrho = 200;
+   int  n, p, i, j, k, jj, kk;
    char *fmt = " %9.6f", *fmt1 = " %9.1f", timestr[32];
    double *data, *x, *mean, *median, *minx, *maxx, *x005, *x995, *x025, *x975, *xHPD025, *xHPD975, *var;
    double *Tint, tmp[2], d, rho1;
@@ -5937,7 +5944,7 @@ int Hessian(int n, double x[], double f0, double g[], double H[],
             g[i] = (fpp - fmm) / (h[i] * 4);
          }
          else {
-            x1[i] += 2 * h[i];                     fpm = (*fun)(x1, n);  /* (+hi, -hj) */
+            x1[i] += 2 * h[i];                       fpm = (*fun)(x1, n);  /* (+hi, -hj) */
             x1[i] -= 2 * h[i];   x1[j] += 2 * h[j];  fmp = (*fun)(x1, n);  /* (-hi, +hj) */
             H[i*n + j] = H[j*n + i] = (fpp + fmm - fpm - fmp) / (4 * h[i] * h[j]);
          }
@@ -5960,13 +5967,13 @@ int jacobi_gradient(double x[], double J[],
    int i, j;
    double *x0 = space, *x1 = space + nx, *y0 = x1 + nx, *y1 = y0 + ny, eh0 = 1.0e-4, eh;
 
-   FOR(i, nx) {
-      FOR(j, nx)  x0[j] = x1[j] = x[j];
+   for (i = 0; i < nx; i++) {
+     for (j = 0; j < nx; j++)  x0[j] = x1[j] = x[j];
       eh = (x[i] == 0.0) ? eh0 : fabs(x[i])*eh0;
       x0[i] -= eh; x1[i] += eh;
       (*fun) (x0, y0, nx, ny);
       (*fun) (x1, y1, nx, ny);
-      FOR(j, ny) J[j*nx + i] = (y1[j] - y0[j]) / (eh*2.0);
+      for (j = 0; j < ny; j++) J[j * nx + i] = (y1[j] - y0[j]) / (eh * 2.0);
    }
    return(0);
 }
@@ -6003,7 +6010,7 @@ int nls2(FILE *fout, double *sx, double * x0, int nx,
       if (ii == 0) {
          for (j = 0, t = 0; j < ny*n; j++)
             t += J[j] * J[j];
-         v = sqrt(t) / (double)(ny*n);     /*  v = 0.0;  */
+         v = sqrt(t) / ((double)ny*n);     /*  v = 0.0;  */
       }
 
       for (i = 0; i < n; i++) {
@@ -6032,7 +6039,7 @@ int nls2(FILE *fout, double *sx, double * x0, int nx,
 
       if (fout) {
          fprintf(fout, "\n%4d  %10.6f", ii + 1, s);
-         /* FOR(i,n) fprintf(fout,"%8.4f",x[i]); */
+         /* for(i=0; i<n; i++) fprintf(fout,"%8.4f",x[i]); */
       }
       if (s0 < s) increase = 1;
       if (H_end(x0, x, s0, s, e, e, n)) break;
@@ -6239,7 +6246,9 @@ double fun_LineSearch(double t, double(*fun)(double x[], int n),
 double fun_LineSearch(double t, double(*fun)(double x[], int n),
    double x0[], double p[], double x[], int n)
 {
-   int i;   FOR(i, n) x[i] = x0[i] + t*p[i];   return((*fun)(x, n));
+   int i;
+   for (i = 0; i < n; i++) x[i] = x0[i] + t*p[i];
+   return((*fun)(x, n));
 }
 
 
@@ -6336,7 +6345,7 @@ double LineSearch2(double(*fun)(double x[], int n), double *f, double x0[],
 
          for (a5 = a1; a5 <= a3; a5 += (a3 - a1) / 20) {
             printf("\t%.6e ", a5);
-            if (n < 5) FOR(i, n) printf("\t%.6f", x0[i] + a5*p[i]);
+            if (n < 5) for (i = 0; i < n; i++)  printf("\t%.6f", x0[i] + a5*p[i]);
             printf("\t%.6f\n", fun_LineSearch(a5, fun, x0, p, x, n));
          }
          puts("Linesearch2 a4: multiple optima?");
@@ -6424,10 +6433,11 @@ int Newton(FILE *fout, double *f, double(*fun)(double x[], int n),
    H = space, x = H + n*n;   g = x + n;   p = g + n, tv = p + n;
 
    printf("\n\nIterating by Newton\tnp:%6d\nInitial:", n);
-   for (i = 0; i < n; i++) printf("%8.4f", x0[i]);   printf("\n");
+   for (i = 0; i < n; i++) printf("%8.4f", x0[i]);
+   printf("\n");
    if (fout) fprintf(fout, "\n\nNewton\tnp:%6d\n", n);
    if (testx(x0, n)) error2("Newton..invalid initials.");
-   FOR(Iround, maxround) {
+   for (Iround = 0; Iround < maxround; Iround++) {
       if (ddfun)
          (*ddfun) (x0, f, g, H, n);
       else {
@@ -6435,7 +6445,8 @@ int Newton(FILE *fout, double *f, double(*fun)(double x[], int n),
          Hessian(n, x0, *f, g, H, fun, tv);
       }
       matinv(H, n, n, tv);
-      FOR(i, n) for (j = 0, p[i] = 0; j < n; j++)  p[i] -= H[i*n + j] * g[j];
+      for (i = 0; i < n; i++) for (j = 0, p[i] = 0; j < n; j++)
+        p[i] -= H[i * n + j] * g[j];
 
       h = bound(n, x0, p, tv, testx);
       t = min2(h, 1);
@@ -6444,7 +6455,7 @@ int Newton(FILE *fout, double *f, double(*fun)(double x[], int n),
 #ifdef Safeguard_Newton
       if (SIZEp > 4) {
          while (t > smallv) {
-            FOR(i, n)  x[i] = x0[i] + t*p[i];
+           for (i = 0; i < n; i++)  x[i] = x0[i] + t * p[i];
             if ((*f = fun(x, n)) < f0) break;
             else t /= 2;
          }
@@ -6452,14 +6463,14 @@ int Newton(FILE *fout, double *f, double(*fun)(double x[], int n),
       if (t < smallv) t = min2(h, .5);
 #endif
 
-      FOR(i, n)  x[i] = x0[i] + t*p[i];
+      for (i = 0; i < n; i++)  x[i] = x0[i] + t * p[i];
       if (noisy > 2) {
          printf("\n%3d h:%7.4f %12.6f  x", Iround + 1, SIZEp, *f);
-         FOR(i, n) printf("%7.4f  ", x0[i]);
+         for (i = 0; i < n; i++) printf("%7.4f  ", x0[i]);
       }
       if (fout) {
          fprintf(fout, "\n%3d h:%7.4f%12.6f  x", Iround + 1, SIZEp, *f);
-         FOR(i, n) fprintf(fout, "%7.4f  ", x0[i]);
+         for (i = 0; i < n; i++) fprintf(fout, "%7.4f  ", x0[i]);
          fflush(fout);
       }
       if ((h = norm(x0, n)) < e)  h = 1;
@@ -6548,9 +6559,11 @@ int ming2(FILE *fout, double *f, double(*fun)(double x[], int n),
       ix[nfree++] = i;
    }
    if (noisy > 2 && nfree < n && n < 50) {
-      printf("\n"); FOR(j, n) printf(" %9.6f", x[j]);  printf("\n");
-      FOR(j, n) printf(" %9.5f", xb[j][0]);  printf("\n");
-      FOR(j, n) printf(" %9.5f", xb[j][1]);  printf("\n");
+      printf("\n"); for (j = 0; j < n; j++) printf(" %9.6f", x[j]);  printf("\n");
+      for (j = 0; j < n; j++) printf(" %9.5f", xb[j][0]);
+      printf("\n");
+      for (j = 0; j < n; j++) printf(" %9.5f", xb[j][1]);
+      printf("\n");
       if (nfree < n && noisy >= 3) printf("warning: ming2, %d paras at boundary.", n - nfree);
    }
 
@@ -6559,7 +6572,8 @@ int ming2(FILE *fout, double *f, double(*fun)(double x[], int n),
    SIZEp = 99;
    if (noisy > 2) {
       printf("\nIterating by ming2\nInitial: fx= %12.6f\nx=", f0);
-      FOR(i, n) printf(" %8.5f", x[i]);   printf("\n");
+      for (i = 0; i < n; i++) printf(" %8.5f", x[i]);
+      printf("\n");
    }
 
    if (dfun)  (*dfun) (x0, &f0, g0, n);
@@ -6569,11 +6583,11 @@ int ming2(FILE *fout, double *f, double(*fun)(double x[], int n),
    for (Iround = 0; Iround < maxround; Iround++) {
       if (fout) {
          fprintf(fout, "\n%3d %7.4f %13.6f  x: ", Iround, sizep0, f0);
-         FOR(i, n) fprintf(fout, "%8.5f  ", x0[i]);
+         for (i = 0; i < n; i++) fprintf(fout, "%8.5f  ", x0[i]);
          fflush(fout);
       }
 
-      for (i = 0, zero(p, n); i < nfree; i++)  FOR(j, nfree)
+      for (i = 0, zero(p, n); i < nfree; i++)  for(j=0; j<nfree; j++)
          p[ix[i]] -= H[i*nfree + j] * g0[ix[j]];
       sizep0 = SIZEp;
       SIZEp = norm(p, n);      /* check this */
@@ -6603,12 +6617,14 @@ int ming2(FILE *fout, double *f, double(*fun)(double x[], int n),
          }
          else
          {
-            if (noisy > 2) printf(".. ");  identity(H, nfree); fail = 1;
+            if (noisy > 2) printf(".. ");
+            identity(H, nfree);
+            fail = 1;
          }
       }
       else {
          fail = 0;
-         FOR(i, n)  x[i] = x0[i] + alpha*p[i];
+         for (i = 0; i < n; i++)  x[i] = x0[i] + alpha*p[i];
          w = min2(2, e * 1000); if (e<1e-4 && e>1e-6) w = 0.01;
 
          if (Iround == 0 || SIZEp < sizep0 || (SIZEp < .001 && sizep0 < .001)) goodtimes++;
@@ -6634,7 +6650,7 @@ int ming2(FILE *fout, double *f, double(*fun)(double x[], int n),
          xtoy(H, C, nfree*nfree);
          for (it = 0; it < nfree; it++) if (ix[it] == i) break;
          for (i1 = it; i1 < nfree - 1; i1++) ix[i1] = ix[i1 + 1];
-         for (i1 = 0, nfree--; i1 < nfree; i1++) FOR(i2, nfree)
+         for (i1 = 0, nfree--; i1 < nfree; i1++) for (i2 = 0; i2 < nfree; i2++)
             H[i1*nfree + i2] = C[(i1 + (i1 >= it))*(nfree + 1) + i2 + (i2 >= it)];
       }
       for (i = 0, it = 0, w = 0; i < n; i++) {  /* delete a constraint, enlarge H */
@@ -6643,21 +6659,22 @@ int ming2(FILE *fout, double *f, double(*fun)(double x[], int n),
       }
       if (w > 10 * SIZEp / nfree) {          /* *** */
          xtoy(H, C, nfree*nfree);
-         FOR(i1, nfree) FOR(i2, nfree) H[i1*(nfree + 1) + i2] = C[i1*nfree + i2];
-         FOR(i1, nfree + 1) H[i1*(nfree + 1) + nfree] = H[nfree*(nfree + 1) + i1] = 0;
+         for (i1 = 0; i1 < nfree; i1++) for (i2 = 0; i2 < nfree; i2++) 
+           H[i1 * (nfree + 1) + i2] = C[i1 * nfree + i2];
+         for (i1 = 0; i1 < nfree; i1++) H[i1*(nfree + 1) + nfree] = H[nfree*(nfree + 1) + i1] = 0;
          H[(nfree + 1)*(nfree + 1) - 1] = 1;
          xmark[it] = 0;   ix[nfree++] = it;
       }
 
       if (noisy > 2) {
          printf(" | %d/%d", n - nfree, n);
-         /* FOR (i,n)  if (xmark[i]) printf ("%4d", i+1); */
+         /* for (i = 0; i < n; i++)  if (xmark[i]) printf ("%4d", i+1); */
       }
       for (i = 0, f0 = *f; i < nfree; i++)
       {
          y[i] = g[ix[i]] - g0[ix[i]];  s[i] = x[ix[i]] - x0[ix[i]];
       }
-      FOR(i, n) { g0[i] = g[i]; x0[i] = x[i]; }
+      for (i = 0; i < n; i++) { g0[i] = g[i]; x0[i] = x[i]; }
 
 
       /* renewal of H varies with different algorithms   */
@@ -6669,7 +6686,7 @@ int ming2(FILE *fout, double *f, double(*fun)(double x[], int n),
          w += y[i] * z[i];
       }
       if (fabs(w) < smallv) { identity(H, nfree); fail = 1; continue; }
-      FOR(i, nfree)  FOR(j, nfree)  H[i*nfree + j] += z[i] * z[j] / w;
+      for (i = 0; i < nfree; i++)  for (j = 0; j < n; j++)  H[i*nfree + j] += z[i] * z[j] / w;
 #elif (defined DFP)
       /* Davidon (1959), Fletcher and Powell (1963). */
       for (i = 0, w = v = 0.; i < nfree; i++) {
@@ -6677,7 +6694,7 @@ int ming2(FILE *fout, double *f, double(*fun)(double x[], int n),
          w += y[i] * z[i];  v += y[i] * s[i];
       }
       if (fabs(w) < smallv || fabs(v) < smallv) { identity(H, nfree); fail = 1; continue; }
-      FOR(i, nfree)  FOR(j, nfree)
+      for (i = 0; i < nfree; i++) for (j = 0; j < nfree; j++)
          H[i*nfree + j] += s[i] * s[j] / v - z[i] * z[j] / w;
 #else /* BFGS */
       for (i = 0, w = v = 0.; i < nfree; i++) {
@@ -6685,7 +6702,7 @@ int ming2(FILE *fout, double *f, double(*fun)(double x[], int n),
          w += y[i] * z[i];    v += y[i] * s[i];
       }
       if (fabs(v) < smallv) { identity(H, nfree); fail = 1; continue; }
-      FOR(i, nfree)  FOR(j, nfree)
+      for (i = 0; i < nfree; i++) for (j = 0; j < nfree; j++)
          H[i*nfree + j] += ((1 + w / v)*s[i] * s[j] - z[i] * s[j] - s[i] * z[j]) / v;
 #endif
    }    /* for (Iround,maxround)  */
@@ -6731,7 +6748,8 @@ int ming1(FILE *fout, double *f, double(*fun)(double x[], int n),
 
    if (noisy > 2) {
       printf("\n\nIterating by ming1\nInitial: fx= %12.6f\nx=", f0);
-      for (i = 0; i < n; i++) printf("%8.4f", x0[i]);      printf("\n");
+      for (i = 0; i < n; i++) printf("%8.4f", x0[i]); 
+      printf("\n");
    }
    if (fout) {
       fprintf(fout, "\n\nIterating by ming1\nInitial: fx= %12.6f\nx=", f0);
@@ -6743,8 +6761,8 @@ int ming1(FILE *fout, double *f, double(*fun)(double x[], int n),
    else       gradient(n, x0, f0, g0, fun, tv, AlwaysCenter);
 
    SIZEp = 0;  xtoy(x0, x, n);  xtoy(g0, g, n);  identity(H, n);
-   FOR(Iround, maxround) {
-      FOR(i, n) for (j = 0, p[i] = 0.; j < n; j++)  p[i] -= H[i*n + j] * g[j];
+   for (Iround = 0; Iround < maxround; Iround++) {
+     for (i = 0; i < n; i++) for (j = 0, p[i] = 0.; j < n; j++)  p[i] -= H[i*n + j] * g[j];
       t = bound(n, x0, p, tv, testx);
 
       if (Iround == 0)  h = fabs(2 * f0*.01 / innerp(g, p, n));
@@ -6765,11 +6783,11 @@ int ming1(FILE *fout, double *f, double(*fun)(double x[], int n),
       }
       else {
          fail = 0;
-         FOR(i, n)  x[i] = x0[i] + t*p[i];
+         for (i = 0; i < n; i++) x[i] = x0[i] + t*p[i];
 
          if (fout) {
             fprintf(fout, "\n%3d %7.4f%14.6f  x", Iround + 1, SIZEp, *f);
-            FOR(i, n) fprintf(fout, "%8.5f  ", x[i]);
+            for (i = 0; i < n; i++) fprintf(fout, "%8.5f  ", x[i]);
             fflush(fout);
          }
          if (SIZEp < 0.001 && H_end(x0, x, f0, *f, e, e, n))
@@ -6794,7 +6812,7 @@ int ming1(FILE *fout, double *f, double(*fun)(double x[], int n),
          w += y[i] * z[i];
       }
       if (fabs(w) < smallv) { identity(H, n); fail = 1; continue; }
-      FOR(i, n)  FOR(j, n)  H[i*n + j] += z[i] * z[j] / w;
+      for (i = 0; i < n; i++) for (j = 0; j < n; j++)  H[i*n + j] += z[i] * z[j] / w;
 #elif (defined DFP)
       /* Davidon (1959), Fletcher and Powell (1963). */
       for (i = 0, w = v = 0.; i < n; i++) {
@@ -6802,14 +6820,14 @@ int ming1(FILE *fout, double *f, double(*fun)(double x[], int n),
          w += y[i] * z[i];  v += y[i] * s[i];
       }
       if (fabs(w) < smallv || fabs(v) < smallv) { identity(H, n); fail = 1; continue; }
-      FOR(i, n)  FOR(j, n)  H[i*n + j] += s[i] * s[j] / v - z[i] * z[j] / w;
+      for (i = 0; i < n; i++) for (j = 0; j < n; j++)  H[i*n + j] += s[i] * s[j] / v - z[i] * z[j] / w;
 #else
       for (i = 0, w = v = 0.; i < n; i++) {
          for (j = 0, z[i] = 0.; j < n; j++) z[i] += H[i*n + j] * y[j];
          w += y[i] * z[i];    v += y[i] * s[i];
       }
       if (fabs(v) < smallv) { identity(H, n); fail = 1; continue; }
-      FOR(i, n)  FOR(j, n)
+      for (i = 0; i < n; i++) for (j = 0; j < n; j++)
          H[i*n + j] += ((1 + w / v)*s[i] * s[j] - z[i] * s[j] - s[i] * z[j]) / v;
 #endif
 
