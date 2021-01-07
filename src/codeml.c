@@ -19,7 +19,7 @@
 #define NS            5000
 #define NBRANCH       (NS*2 - 2)
 #define NNODE         (NS*2 - 1)
-#define MAXNSONS      100
+#define MAXNSONS      32
 #define NGENE         2000
 #define LSPNAME       96
 #define NCODE         64
@@ -288,7 +288,7 @@ int main(int argc, char *argv[])
       mergeSeqs(frst);  exit(0);
       Ina();
    */
-   SetSeed(-1, 0);
+   SetSeed(1, 0);
 
 #if (DSDN_MC || DSDN_MC_SITES)
    SimulateData2s61();
@@ -5049,7 +5049,8 @@ int PairwiseAA(FILE *fout, FILE*f2AA)
          xb[0] = SeqDistance[is*(is - 1) / 2 + js];  x = xb[0] * 1.5;  step = xb[0];
          LineSearch(lfun2AA, &lnL, &x, xb, step, 1e-7);
          fprintf(f2AA, " %7.4f", x); fprintf(fout, " %7.4f", x);
-         if (com.getSE);
+         if (com.getSE)
+            ;
       }  /* for (js) */
       printf("\n");
       fprintf(fout, "\n");
@@ -6568,10 +6569,14 @@ int lfunNSsites_M2M8(FILE* frst, double x[], int np)
       fprintf(fout, "\n");
    }
    if (ternary) {
+
+fout = stdout;
+
       fprintf(fout, "\nPosterior for p0-p1 (see the ternary graph) (YWN2015, fig. 1)\n\n");
       for (k = 0; k < n1d*n1d; k++) {
          fprintf(fout, " %5.3f", postp0p1[k]);
-         if (fabs(square((int)sqrt(k + 1.)) - (k + 1)) < 1e-5) 
+         /* if k+1 is a perfect square, print newline.  See figure 1 in Yang et al. 2005. */
+         if (abs(square((int)sqrt(k + 1.)) - (k + 1)) < 1e-5) 
             fprintf(fout, "\n");
       }
       fprintf(fout, "\nsum of density on p0-p1 = %10.6f\n", sum(postp0p1, n1d*n1d));
@@ -6580,6 +6585,9 @@ int lfunNSsites_M2M8(FILE* frst, double x[], int np)
    BayesEB = 0;
    free(meanw);  free(lnfXs);  free(pclassM);  free(lnprior);
    if (ternary) free(postp0p1);
+
+exit(0);
+
    return(0);
 }
 
@@ -6988,7 +6996,8 @@ int lfunNSsites_ACD(FILE* frst, double x[], int np)
    fprintf(fout, "\nPosterior for p0-p1 (see the ternary graph) (YWN2015, fig. 1)\n\n");
    for (k = 0; k < n1d*n1d; k++) {
       fprintf(fout, " %5.3f", postp0p1[k]);
-      if (fabs(square((int)sqrt(k + 1.)) - (k + 1)) < 1e-5) 
+      /* if k+1 is a perfect square, print newline.  See figure 1 in Yang et al. 2005. */
+      if (abs(square((int)sqrt(k + 1.)) - (k + 1)) < 1e-5)
          fprintf(fout, "\n");
    }
    fprintf(fout, "\nsum of density on p0-p1 = %10.6f\n", sum(postp0p1, n1d*n1d));

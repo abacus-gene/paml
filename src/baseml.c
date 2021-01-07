@@ -13,7 +13,7 @@
 #define NS            7000
 #define NBRANCH       (NS*2-2)
 #define NNODE         (NS*2-1)
-#define MAXNSONS      200
+#define MAXNSONS      64
 #define NGENE         500
 #define LSPNAME       96
 #define NCODE         5

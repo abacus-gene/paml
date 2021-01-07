@@ -2137,13 +2137,7 @@ int DistanceMatNuc(FILE *fout, FILE*f2base, int model, double alpha)
          if (t < 0) { t = bigD; status = -1; }
          SeqDistance[is*(is - 1) / 2 + js] = t;
          if (f2base) fprintf(f2base, " %8.6f", t);
-
-         /****** Ziheng to change this back *******/
-#if(1)
-         if (fout) fprintf(fout, " %6.3f", t*com.ls);
-#elif
-         if (fout) fprintf(fout, " %9.6f", com.ls);
-#endif
+         if (fout) fprintf(fout, " %9.6f", t);
          if (fout && (model == K80 || model >= F84))
             fprintf(fout, " (%7.4f)", kappat);
       }
@@ -3072,12 +3066,14 @@ int ReadTreeN(FILE *ftree, int *haslength, int copyname, int popline)
    }
    if (PopPaupTree(ftree) == -1) return(-1);
 
-   for (; ; ) {
+   for ( ; ; ) {
       ch = fgetc(ftree);
       if (ch == EOF) return(-1);
       else if (ch == ';') {
-         if (level != 0) error2("; in treefile");
-         else            break;
+         if (level != 0)
+            error2("; in treefile");
+         else
+            break;
       }
       else if (ch == ',') namelabel = 0;
       else if (!isgraph(ch))
@@ -3112,7 +3108,8 @@ int ReadTreeN(FILE *ftree, int *haslength, int copyname, int popline)
          fscanf(ftree, "%lf", &nodes[inode].branch);
       }
       else if (namelabel == 0) { /* read species name or number for tip */
-         if (level <= 0) error2("expecting ; in the tree file");
+         if (level <= 0) 
+            error2("expecting ; when reading the tree");
          ungetc(ch, ftree);
          ReadUntil(ftree, line, delimitersN, lline);
          isname = IsNameNumber(line);
@@ -3131,9 +3128,8 @@ int ReadTreeN(FILE *ftree, int *haslength, int copyname, int popline)
                }
             }
             else {
-               if (tip > com.ns - 1) {
+               if (tip > com.ns - 1)
                   error2("error in tree: too many species in tree");
-               }
                strcpy(com.spname[cnode = tip++], line);
             }
          }
@@ -6840,6 +6836,7 @@ void UpPassPPSG2000(int inode, int igene, double x[])
       printf("\r\tUp pass for gene %d node %d.", igene + 1, inode + 1);
 }
 
+
 void DownPassPPSG2000OneSite(int h, int inode, int inodestate, int ipath)
 {
    /* this puts the state in ancState1site[nintern], using
@@ -6853,10 +6850,11 @@ void DownPassPPSG2000OneSite(int h, int inode, int inodestate, int ipath)
       ison = nodes[inode].sons[i];
       if (nodes[ison].nson > 1) {
          ibest = (ipath & (3 << (2 * i))) >> (2 * i);
+         assert(ibest >= 0);
+
          ancState1site[ison - com.ns] = sonstate =
             charNode[ibest][(ison - com.ns)*com.npatt*n + h*n + inodestate];
-         DownPassPPSG2000OneSite(h, ison, sonstate,
-            icharNode[ibest][(ison - com.ns)*com.npatt*n + h*n + inodestate]);
+         DownPassPPSG2000OneSite(h, ison, sonstate, icharNode[ibest][(ison - com.ns)*com.npatt*n + h*n + inodestate]);
       }
    }
 }

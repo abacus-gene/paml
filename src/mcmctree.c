@@ -104,7 +104,7 @@ struct CommonInfo {
    double pi[NCODE];
    int curconP;                       /* curconP = 0 or 1 */
    size_t sconP;
-   double *conPin[2], space[100000];  /* change space[] to dynamic memory? */
+   double *conPin[2], space[1000000];  /* change space[] to dynamic memory? */
    int conPSiteClass, NnodeScale;
    char *nodeScale;          /* nScale[ns-1] for interior nodes */
    double *nodeScaleF;       /* nScaleF[npatt] for scale factors */
@@ -1272,8 +1272,10 @@ int GetOptions(char *ctlf)
    else
       if (noisy) error2("\nno ctl file...");
 
-   if (com.ndata > NGENE) error2("raise NGENE?");
-   else if (com.ndata <= 0) com.ndata = 1;
+   if (com.ndata > NGENE)
+      error2("raise NGENE?");
+   else if (com.ndata <= 0)
+      com.ndata = 1;
    if (mcmc.usedata == 2) {
       com.model = 0;  com.fix_kappa = com.fix_alpha = 1; com.alpha = 0;
       if (com.seqtype == 1) com.ncode = 61;
@@ -1314,8 +1316,8 @@ double lnPDFInfinitesitesClock(double t1, double FixedDs[])
    data.rgene[0] = summu = prodmu = FixedDs[0] / t1;
    for (i = 1; i < g; i++) {
       data.rgene[i] = FixedDs[s - 1 + i - 1] / t1;
-      summu += data.rgene[j];
-      prodmu *= data.rgene[j];
+      summu += data.rgene[i];
+      prodmu *= data.rgene[i];
    }
    lnp += (gD[0] - gD[2] * g)*log(summu) - gD[1] / g*summu + (gD[2] - 1)*log(prodmu); /* f(mu_i) */
 
@@ -1337,7 +1339,7 @@ double InfinitesitesClock(double *FixedDs)
    double tmean, t025, t975, tL, tU;
    char timestr[32];
 
-   matout2(F0, FixedDs, 1, s - 1 + g - 1, 9, 5);
+   matout2(stdout, FixedDs, 1, s - 1 + g - 1, 9, 5);
    printf("\nRunning MCMC to get %d samples for t0 (root age)\n", mcmc.nsample);
    t = stree.nodes[stree.root].age;
    lnp = lnPDFInfinitesitesClock(t, FixedDs);
@@ -3784,8 +3786,9 @@ int mixing(double *lnL, double steplength, char *accept)
    if (changemu) {
       for (j = 0; j < g; j++) data.rgene[j] /= c;
       if (data.rgeneprior == 0) {    /* gamma-dirichlet: eq 5 in dos reis et al. (2014) */
-         for (j = 0, summunew = 0; j < g; j++) summunew += data.rgene[j];
-         summuold *= c;
+         for (j = 0, summunew = 0; j < g; j++)
+            summunew += data.rgene[j];
+         summuold = summunew * c;
          lnacceptance += (gD[0] - gD[2] * g)*log(summunew / summuold) - gD[1] / g*(summunew - summuold) + (gD[2] - 1)*g*(-lnc);
       }
       else {  /* conditional iid prior */
@@ -4178,7 +4181,7 @@ int MCMC(FILE* fout)
          if (fabs(lnL - lnpData(data.lnpDi)) > 0.001) {
             printf("\n%12.6f = %12.6f?  Resetting lnL\n", lnL, lnpData(data.lnpDi));
             lnL = lnpData(data.lnpDi);
-            exit(-1);
+            /* exit(-1); */
          }
          testlnL = 0;
       }
