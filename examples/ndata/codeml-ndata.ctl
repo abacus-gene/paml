@@ -1,22 +1,22 @@
-      seqfile = stewart.aa * sequence data filename
-     treefile = stewart.trees      * tree structure file name
+      seqfile = 4s-mc.txt * sequence data filename
+     treefile = 4s-mc.trees      * tree structure file name
       outfile = mlc           * main result file name
 
-        noisy = 9  * 0,1,2,3,9: how much rubbish on the screen
-      verbose = 1  * 0: concise; 1: detailed, 2: too much
+        noisy = 3  * 0,1,2,3,9: how much rubbish on the screen
+      verbose = 0  * 0: concise; 1: detailed, 2: too much
       runmode = 0  * 0: user tree;  1: semi-automatic;  2: automatic
                    * 3: StepwiseAddition; (4,5):PerturbationNNI; -2: pairwise
 
-      seqtype = 2  * 1:codons; 2:AAs; 3:codons-->AAs
+      seqtype = 1  * 1:codons; 2:AAs; 3:codons-->AAs
     CodonFreq = 2  * 0:1/61 each, 1:F1X4, 2:F3X4, 3:codon table
 
-*        ndata = 10
+        ndata = 3
         clock = 0  * 0:no clock, 1:clock; 2:local clock; 3:CombinedAnalysis
        aaDist = 0  * 0:equal, +:geometric; -:linear, 1-6:G1974,Miyata,c,p,v,a
-   aaRatefile = ../dat/jones.dat  * only used for aa seqs with model=empirical(_F)
+   aaRatefile = dat/jones.dat  * only used for aa seqs with model=empirical(_F)
                    * dayhoff.dat, jones.dat, wag.dat, mtmam.dat, or your own
 
-        model = 2
+        model = 0
                    * models for codons:
                        * 0:one, 1:b, 2:2 or more dN/dS ratios for branches
                    * models for AAs or codon-translated AAs:

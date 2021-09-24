@@ -1182,6 +1182,7 @@ void error2(char * message)
    exit(-1);
 }
 
+
 int zero(double x[], int n)
 {
    int i; for (i = 0; i < n; i++) x[i] = 0; return (0);
@@ -1209,17 +1210,17 @@ int abyx(double a, double x[], int n)
 
 int axtoy(double a, double x[], double y[], int n)
 {
-   int i; for (i = 0; i < n; y[i] = a*x[i], i++) {}  return(0);
+   int i; for (i = 0; i < n; y[i] = a * x[i], i++) {}  return(0);
 }
 
 int axbytoz(double a, double x[], double b, double y[], double z[], int n)
 {
-   int i; for (i = 0; i < n; i++)   z[i] = a*x[i] + b*y[i];  return (0);
+   int i; for (i = 0; i < n; i++)   z[i] = a * x[i] + b * y[i];  return (0);
 }
 
 int identity(double x[], int n)
 {
-   int i, j;  for (i = 0; i < n; i++) { for (j = 0; j < n; j++)   x[i*n + j] = 0;  x[i*n + i] = 1; }  return (0);
+   int i, j;  for (i = 0; i < n; i++) { for (j = 0; j < n; j++)   x[i * n + j] = 0;  x[i * n + i] = 1; }  return (0);
 }
 
 double distance(double x[], double y[], int n)
@@ -1238,7 +1239,6 @@ double norm(double x[], int n)
 {
    int i; double t = 0;  for (i = 0; i < n; i++)  t += x[i] * x[i];  return sqrt(t);
 }
-
 
 int Add2Ptree(int counts[3], double Ptree[3])
 {
@@ -1463,7 +1463,6 @@ double reflect(double x, double a, double b)
    }
 
    /* If x lands on boundary after reflection, sample a point at random in the interval. */
-   smallv = (b - a)*1e-9;
    while (x - a < smallv || b - x < smallv)  
       x = a + (b - a)*rndu();
 
@@ -1872,7 +1871,7 @@ int rndpoisson(double m)
    else {
       if (m != oldm) {
          oldm = m;  sq = sqrt(2 * m);  alm = log(m);
-         g = m*alm - LnGamma(m + 1);
+         g = m*alm - lgamma(m + 1);
       }
       do {
          do {
@@ -1880,7 +1879,7 @@ int rndpoisson(double m)
             em = sq*y + m;
          } while (em < 0);
          em = floor(em);
-         t = 0.9*(1 + y*y)*exp(em*alm - LnGamma(em + 1) - g);
+         t = 0.9*(1 + y*y)*exp(em*alm - lgamma(em + 1) - g);
       } while (rndu() > t);
    }
    return ((int)em);
@@ -2209,7 +2208,7 @@ double PDFt(double x, double loc, double scale, double df, double lnConst)
    double z = (x - loc) / scale, lnpdf = lnConst;
 
    if (lnpdf == 0) {
-      lnpdf = LnGamma((df + 1) / 2) - LnGamma(df / 2) - 0.5*log(Pi*df);
+      lnpdf = lgamma((df + 1) / 2) - lgamma(df / 2) - 0.5*log(Pi*df);
    }
    lnpdf -= (df + 1) / 2 * log(1 + z*z / df);
    return exp(lnpdf) / scale;
@@ -2223,7 +2222,7 @@ double CDFt(double x, double loc, double scale, double df, double lnbeta)
    double lnghalf = 0.57236494292470008707;  /* log{G(1/2)} = log{sqrt(Pi)} */
 
    if (lnbeta == 0) {
-      lnbeta = LnGamma(df / 2) + lnghalf - LnGamma((df + 1) / 2);
+      lnbeta = lgamma(df / 2) + lnghalf - lgamma((df + 1) / 2);
    }
    cdf = CDFBeta(df / (df + z*z), df / 2, 0.5, lnbeta);
 
@@ -2238,8 +2237,8 @@ double PDFSkewT(double x, double loc, double scale, double shape, double df)
    double lnghalf = 0.57236494292470008707;    /* log{G(1/2)} = log{sqrt(Pi)} */
    double lngv, lngv1, lnConst_pdft, lnbeta_cdft;
 
-   lngv = LnGamma(df / 2);
-   lngv1 = LnGamma((df + 1) / 2);
+   lngv = lgamma(df / 2);
+   lngv1 = lgamma((df + 1) / 2);
    lnConst_pdft = lngv1 - lngv - 0.5*log(Pi*df);
    lnbeta_cdft = lngv1 + lnghalf - lngv - log(df / 2);  /* log{ B((df+1)/2, 1/2) }  */
 
@@ -2336,7 +2335,7 @@ double lnStirlingS2(int n, int k)
    return(lnS);
 }
 
-
+#if(0)  /* use lgamma() */
 double LnGamma(double x)
 {
    /* returns ln(gamma(x)) for x>0, accurate to 10 decimal places.
@@ -2353,10 +2352,10 @@ double LnGamma(double x)
    else {
       if (x <= 0) {
          printf("LnGamma(%.6f) not implemented", x);
-         if ((int)x - x == 0) { puts("lnGamma undefined"); return(-1); }
+         if ((int)x - x == 0) error2("LnGamma undefined"); 
          for (fneg = 1; x < 0; x++) fneg /= x;
          if (fneg < 0)
-            error2("strange!! check lngamma");
+            error2("strange!! check LnGamma");
          fneg = log(fneg);
       }
       if (x < 7) {
@@ -2373,18 +2372,33 @@ double LnGamma(double x)
    }
    return  lng;
 }
+#endif
 
-double PDFGamma(double x, double alpha, double beta)
+
+double PDFGamma(double x, double a, double b)
 {
-   /* gamma density: mean=alpha/beta; var=alpha/beta^2
+   /* gamma density: mean=a/b; var=a/b^2
    */
-   if (x <= 0 || alpha <= 0 || beta <= 0) {
-      printf("x=%.6f a=%.6f b=%.6f", x, alpha, beta);
-      error2("x a b outside range in PDFGamma()");
+   if (x <= 0 || a <= 0 || b <= 0) {
+      printf("x=%.6f a=%.6f b=%.6f", x, a, b);
+      error2("x a b outside range in logPDFGamma()");
    }
-   if (alpha > 100)
+   if (a > 100)
       error2("large alpha in PDFGamma()");
-   return pow(beta*x, alpha) / x * exp(-beta*x - LnGamma(alpha));
+   return pow(b * x, a) / x * exp(-b * x - lgamma(a));
+}
+
+double logPDFGamma(double x, double a, double b)
+{
+   /* gamma density: mean=a/b; var=a/b^2
+   */
+   if (x <= 0 || a <= 0 || b <= 0) {
+      printf("x=%.6f a=%.6f b=%.6f", x, a, b);
+      error2("x a b outside range in logPDFGamma()");
+   }
+   if (a> 100)
+      error2("large alpha in PDFGamma()");
+   return a * log(b) - lgamma(a) + (a - 1) * log(x) - b * x;
 }
 
 double logPriorRatioGamma(double xnew, double x, double a, double b)
@@ -2407,7 +2421,7 @@ double PDFinvGamma(double x, double alpha, double beta)
    }
    if (alpha > 100)
       error2("large alpha in PDF_IGamma()");
-   return pow(beta / x, alpha) / x * exp(-beta / x - LnGamma(alpha));
+   return pow(beta / x, alpha) / x * exp(-beta / x - lgamma(alpha));
 }
 
 
@@ -2489,7 +2503,7 @@ double QuantileChi2(double prob, double v)
    if (p > 1 - smallv) return(9999);
    if (v <= 0)         return (-1);
 
-   g = LnGamma(v / 2);
+   g = lgamma(v / 2);
    xx = v / 2;   c = xx - 1;
    if (v >= -1.24*log(p)) goto l1;
 
@@ -2584,7 +2598,7 @@ int DiscreteGamma(double freqK[], double rK[], double alpha, double beta, int K,
       for (i = 0; i < K; i++) rK[i] *= mean*K / t;   /* rescale so that the mean is alpha/beta. */
    }
    else {            /* mean */
-      lnga1 = LnGamma(alpha + 1);
+      lnga1 = lgamma(alpha + 1);
       for (i = 0; i < K - 1; i++) /* cutting points, Eq. 9 */
          freqK[i] = QuantileGamma((i + 1.0) / K, alpha, beta);
       for (i = 0; i < K - 1; i++) /* Eq. 10 */
@@ -2938,7 +2952,7 @@ double probBinomial(int n, int k, double p)
       else                 C *= pow(p, (double)k)*pow((1 - p), (double)(n - k));
    }
    else {
-      C = exp((LnGamma(n + 1.) - LnGamma(k + 1.) - LnGamma(n - k + 1.)) / n);
+      C = exp((lgamma(n + 1.) - lgamma(k + 1.) - lgamma(n - k + 1.)) / n);
       C = pow(p*C, (double)k) * pow((1 - p)*C, (double)(n - k));
    }
    return C;
@@ -2965,19 +2979,43 @@ double probBetaBinomial(int n, int k, double p, double q)
 }
 
 
+double logPriorRatioBeta(double xnew, double x, double p, double q)
+{
+   /* This calculates the log of prior ratio when x has a beta prior beta(x; p, q) with mean p/(p+q)
+      and x is updated to xnew.
+   */
+   return (p - 1) * log(xnew / x) + (q - 1) * log((1 - xnew) / (1 - x));
+}
+
+
 double PDFBeta(double x, double p, double q)
 {
-   /* Returns pdf of beta(p,q)
+   /* Returns pdf of beta(x; p,q)
    */
    double y, smallv = 1e-20;
 
    if (x < smallv || x>1 - smallv)
       error2("bad x in PDFbeta");
 
-   y = (p - 1)*log(x) + (q - 1)*log(1 - x);
-   y -= LnGamma(p) + LnGamma(q) - LnGamma(p + q);
+   y = (p - 1) * log(x) + (q - 1) * log(1 - x);
+   y -= lgamma(p) + lgamma(q) - lgamma(p + q);
 
    return(exp(y));
+}
+
+double logPDFBeta(double x, double p, double q)
+{
+   /* Returns log pdf of beta(x; p,q)
+   */
+   double y, smallv = 1e-20;
+
+   if (x < smallv || x>1 - smallv)
+      error2("bad x in logPDFbeta");
+
+   y = (p - 1) * log(x) + (q - 1) * log(1 - x);
+   y -= lgamma(p) + lgamma(q) - lgamma(p + q);
+
+   return(y);
 }
 
 double CDFBeta(double x, double pin, double qin, double lnbeta)
@@ -3040,7 +3078,7 @@ double CDFBeta(double x, double pin, double qin, double lnbeta)
       if (ps == 0)
          ps = 1;
 
-      xb = LnGamma(ps) + LnGamma(p) - LnGamma(ps + p);
+      xb = lgamma(ps) + lgamma(p) - lgamma(ps + p);
       xb = p * log(y) - xb - log(p);
 
       ans = 0;
@@ -6840,3 +6878,37 @@ int ming1(FILE *fout, double *f, double(*fun)(double x[], int n),
    return(0);
 }
 
+#ifdef _MSC_VER
+int vasprintf(char** strp, const char* fmt, va_list ap)
+{
+   int len = _vscprintf(fmt, ap);
+   if (len == -1) return -1;
+
+   size_t size = (size_t)len + 1;
+
+   char* str = (char*)malloc(size);
+   if (!str) return -1;
+
+   int r = vsprintf_s(str, len + 1, fmt, ap);
+   if (r == -1)
+   {
+      free(str);
+      return -1;
+   }
+
+   *strp = str;
+   return r;
+}
+
+#if(0)
+int xasprintf(char** strp, const char* fmt, ...)
+{
+   va_list ap;
+   va_start(ap, fmt);
+   int r = vasprintf(strp, fmt, ap);
+   va_end(ap);
+   return r;
+}
+#endif
+
+#endif

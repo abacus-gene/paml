@@ -35,7 +35,7 @@ extern int noisy, NFunCall, NEigenQ, NPMatUVRoot, *ancestor, GeneticCode[][64];
 extern double *SeqDistance;
 extern double SS, NN, Sd, Nd; /* kostas, SS=# of syn. sites, NN=# of non-syn. sites, Sd=# of syn. subs., Nd=# of non-syn. subs. as defined in DistanceMatNG86 in treesub.c */
 
-int  Forestry(FILE *fout);
+int  Forestry(FILE* fout, FILE* ftree);
 int  GetMemPUVR(int nc, int nUVR);
 int  sortwM3(double x[]);
 void DetailOutput(FILE *fout, double x[], double var[]);
@@ -252,7 +252,7 @@ double lnLmodel;
 
 int main(int argc, char *argv[])
 {
-   FILE *fseq = NULL, *fpair[6] = { NULL };
+   FILE* fseq = NULL, * ftree = NULL, * fpair[6] = { NULL };
    char pairfs[6][32] = { "2NG.dS","2NG.dN","2NG.t", "2ML.dS","2ML.dN","2ML.t" };
    char ctlf[96] = "codeml.ctl", *pmodel, timestr[64];
    char *seqtypestr[3] = { "CODONML", "AAML", "CODON2AAML" };
@@ -331,8 +331,12 @@ int main(int argc, char *argv[])
 
    GetMemPUVR(nc, nUVR);
 
-   if ((fseq = fopen(com.seqf, "r")) == NULL || com.seqf[0] == '\0') {
+   if (com.seqf[0] == '\0' || (fseq = fopen(com.seqf, "r")) == NULL) {
       printf("\n\nSequence file %s not found!\n", com.seqf);
+      exit(-1);
+   }
+   if ((ftree = fopen(com.treef, "r")) == NULL) {
+      printf("\ntree file %s not found.\n", com.treef);
       exit(-1);
    }
 
@@ -383,6 +387,7 @@ int main(int argc, char *argv[])
       if (com.ngene > 1 && (com.fix_blength == 2 || com.fix_blength == 3))
          error2("fix_blength = 2 or 3 does not work for partitioned data or Mgene models");
       if (com.fix_blength == 3) {
+         printf("\nRelative branch lengths in tree fixed; estimating a scale factor.\n");
          if ((com.blengths0 = (double*)malloc((com.ns * 2 - 2) * sizeof(double))) == NULL)
             error2("oom blengths0");
       }
@@ -579,15 +584,15 @@ int main(int argc, char *argv[])
                fprintf(frub, "\n\nModel %d: %s", com.NSsites, NSsitesmodels[com.NSsites]);
                if (com.NSsites) fprintf(fout, " (%d categories)", com.ncatG);
                fprintf(fout, "\n");
-               Forestry(fout);
+               Forestry(fout, ftree);
 
                printf("\nTime used: %s\n", printtime(timestr));
                fprintf(fout, "\nTime used: %s\n", printtime(timestr));
             }
          }
          else {
-            if (com.Mgene == 1)        MultipleGenes(fout, fpair, com.space);
-            else if (com.runmode == 0) Forestry(fout);
+            if (com.Mgene == 1)        MultipleGenes(fout, ftree, fpair, com.space);
+            else if (com.runmode == 0) Forestry(fout, ftree);
             else if (com.runmode == 3) StepwiseAddition(fout, com.space);
             else if (com.runmode >= 4) Perturbation(fout, (com.runmode == 4), com.space);
             else                       StarDecomposition(fout, com.space);
@@ -605,6 +610,7 @@ int main(int argc, char *argv[])
    fclose(frst);
    for (i = 0; i < 6; i++) if (fpair[i]) fclose(fpair[i]);
    if (com.ndata > 1 && fseq) fclose(fseq);
+   if (ftree) fclose(ftree);
    fclose(fout);  fclose(frub);
    if (finitials)  fclose(finitials);
    FreeMemPUVR();
@@ -619,19 +625,15 @@ int main(int argc, char *argv[])
         { alpha(for NSsites) !! alpha, rho || rK[], fK[] || rK[], MK[] }
 */
 
-int Forestry(FILE *fout)
+int Forestry(FILE* fout, FILE* ftree)
 {
    static int ages = 0;
-   FILE *ftree, *frate = NULL;
-   int  status = 0, i, j = 0, k, itree, ntree, np, iteration = 1;
+   FILE *frate = NULL;
+   int  status = 0, i, j = 0, k, itree, ntree=1, np, iteration = 1;
    int pauptree = 0, haslength;
    double x[NP], xb[NP][2], xcom[NP - NBRANCH], lnL = 0, lnL0 = 0, e = 1e-8, tl = 0, nchange = -1;
    double *g = NULL, *H = NULL;
 
-   if ((ftree = fopen(com.treef, "r")) == NULL) {
-      printf("\ntree file %s not found.\n", com.treef);
-      exit(-1);
-   }
    GetTreeFileType(ftree, &ntree, &pauptree, 0);
    if (com.alpha)
       frate = (FILE*)gfopen(ratef, "w");
@@ -875,7 +877,6 @@ int Forestry(FILE *fout)
       fflush(fout);  fflush(flnf);  fflush(frst);  fflush(frst1);
    }     /* for(itree) */
 
-   fclose(ftree);
    if (frate) fclose(frate);
    if (com.aaDist && com.aaDist < 10 && com.aaDist != AAClasses
       && (com.seqtype == CODONseq || com.model == FromCodon0 || com.model == FromCodon))
@@ -2826,7 +2827,7 @@ int DiscreteNSsites(double par[])
 
    if (com.NSsites == NSbeta || com.NSsites == NSbetaw) {
       off = (com.NSsites == NSbetaw);  /* par[0] is proportion for beta for M8 */
-      lnbeta = LnGamma(par[off]) + LnGamma(par[off + 1]) - LnGamma(par[off] + par[off + 1]);
+      lnbeta = lgamma(par[off]) + lgamma(par[off + 1]) - lgamma(par[off] + par[off + 1]);
       for (j = 0; j < K; j++) {
          p = (j*2. + 1) / (2.*K);
          com.rK[j] = QuantileBeta(p, par[off], par[off + 1], lnbeta);
@@ -4792,8 +4793,8 @@ double logistic_transformation(double point, double logmean, double stdlogpar)
 double logprior(double t, double w, double par[])
 {  /*This function returns the log prior function of time and omega(dN/dS)
    par vector contains the shape & scale parameters for time for omega.*/
-   double logtprior = -par[1] * t + (par[0] - 1) * log(t) + par[0] * log(par[1]) - LnGamma(par[0]);
-   double logwprior = -par[3] * w + (par[2] - 1) * log(w) + par[2] * log(par[3]) - LnGamma(par[2]);
+   double logtprior = -par[1] * t + (par[0] - 1) * log(t) + par[0] * log(par[1]) - lgamma(par[0]);
+   double logwprior = -par[3] * w + (par[2] - 1) * log(w) + par[2] * log(par[3]) - lgamma(par[2]);
    return logtprior + logwprior;
 }
 
@@ -5986,7 +5987,7 @@ int SlidingWindow(FILE*fout, FILE* fpair[], double space[])
          printf("sites %3d -- %3d  (%d) npatt:%4d w=%.4f\n", wstart + 1, wstart + wlen, ls0, com.npatt, com.omega);
       fprintf(fout, "\nsites %3d -- %3d  %4d", wstart + 1, wstart + wlen, com.npatt);
 
-      /* Forestry(fout); */
+      /* Forestry(fout, ftree); */
    }
    fprintf(frst1, " %2d", positive);
    printf("     %2d", positive);

@@ -238,7 +238,7 @@ double lfunAlpha_Sullivan(double x)
       if (NSiteChange[k] == 0) continue;
       t = -a * log(1 + MuChange / a);
       if (k)
-         t += LnGamma(k + a) - LnGamma(k + 1.) - LnGamma(a)
+         t += lgamma(k + a) - lgamma(k + 1.) - lgamma(a)
          + k * log(MuChange / a / (1 + MuChange / a));
       lnL += NSiteChange[k] * t;
    }

@@ -26,7 +26,7 @@
 extern int noisy, NFunCall, NEigenQ, NPMatUVRoot, *ancestor, GeneticCode[][64];
 extern double Small_Diff, *SeqDistance;
 
-int Forestry(FILE *fout);
+int Forestry(FILE *fout, FILE* ftree);
 void DetailOutput(FILE *fout, double x[], double var[]);
 int GetOptions(char *ctlf);
 int GetInitials(double x[], int *fromfile);
@@ -139,7 +139,7 @@ int N_PMatUVRoot = 0;
 
 int main (int argc, char *argv[])
 {
-   FILE *fout, *fseq = NULL, *fpair[6];
+   FILE* fout, * fseq = NULL, * ftree = NULL, * fpair[6];
    char pairfs[1][32] = { "2base.t" };
    char rstf[2048] = "rst", ctlf[2048] = "baseml.ctl", timestr[64];
    char *Mgenestr[] = { "diff. rate", "separate data", "diff. rate & pi",
@@ -190,8 +190,12 @@ int main (int argc, char *argv[])
    if (com.clock == 5 || com.clock == 6)
       DatingHeteroData(fout);
 
-   if ((fseq = fopen(com.seqf, "r")) == NULL) {
+   if (com.seqf[0] == '\0' || (fseq = fopen(com.seqf, "r")) == NULL) {
       printf("\n\nSequence file %s not found!\n", com.seqf);
+      exit(-1);
+   }
+   if ((ftree = fopen(com.treef, "r")) == NULL) {
+      printf("\ntree file %s not found.\n", com.treef);
       exit(-1);
    }
 
@@ -207,6 +211,7 @@ int main (int argc, char *argv[])
       if (com.ngene > 1 && (com.fix_blength == 2 || com.fix_blength == 3))
          error2("fix_blength = 2 or 3 does not work for partitioned data or Mgene models");
       if (com.fix_blength == 3) {
+         printf("\nRelative branch lengths in tree fixed; estimating a scale factor.\n");
          if ((com.blengths0 = (double*)malloc((com.ns * 2 - 2) * sizeof(double))) == NULL)
             error2("oom blengths0");
       }
@@ -267,7 +272,6 @@ int main (int argc, char *argv[])
       if (com.Mgene == 3)
          for (i = 0; i < com.ngene; i++)
             xtoy(com.pi, com.piG[i], com.ncode);
-
       if (com.model == JC69 && com.ngene <= 1 && !com.readpattern && !com.print) {
          PatternWeightJC69like();
          if (fout) {
@@ -289,7 +293,6 @@ int main (int argc, char *argv[])
             fprintf(fout, "\n");
          }
       }
-
       com.sconP = (com.ns - 1)*com.ncode*(size_t)com.npatt * sizeof(double);
       if ((com.conP = (double*)realloc(com.conP, com.sconP)) == NULL)
          error2("oom conP");
@@ -371,8 +374,8 @@ int main (int argc, char *argv[])
 
 #endif
 
-      if (com.Mgene == 1)        MultipleGenes(fout, fpair, com.space);
-      else if (com.runmode == 0) Forestry(fout);
+      if (com.Mgene == 1)        MultipleGenes(fout, ftree, fpair, com.space);
+      else if (com.runmode == 0) Forestry(fout, ftree);
       else if (com.runmode == 2) fprintf(frst, "%2d", StarDecomposition(fout, com.space));
       else if (com.runmode == 3) StepwiseAddition(fout, com.space);
       else if (com.runmode >= 4) Perturbation(fout, (com.runmode == 4), com.space);
@@ -391,6 +394,7 @@ int main (int argc, char *argv[])
       printf("\nTime used: %s\n", printtime(timestr));
    }   /* for(idata) */
    if (com.ndata > 1 && fseq) fclose(fseq);
+   if (ftree) fclose(ftree);
    free(com.space);
    fclose(fout);  fclose(frst);   fclose(fpair[0]);
    if (finitials) { fclose(finitials);  finitials = NULL; }
@@ -403,10 +407,9 @@ int main (int argc, char *argv[])
         { alpha, rho || rK[], fK[] || rK[], MK[] }
 */
 
-FILE *ftree;
 void PrintBestTree(FILE *fout, FILE *ftree, int btree);
 
-int Forestry(FILE *fout)
+int Forestry(FILE *fout, FILE *ftree)
 {
    static int ages = 0;
    int status = 0, inbasemlg = 0, i, j = 0, itree = 0, ntree, np, iteration = 1;
@@ -415,7 +418,6 @@ int Forestry(FILE *fout)
    double xb[NP][2], tl = 0, *g = NULL, *H = NULL;
    FILE *finbasemlg = NULL, *frate = NULL;
 
-   ftree = gfopen(com.treef, "r");
    GetTreeFileType(ftree, &ntree, &pauptree, 0);
    if (com.alpha)
       frate = gfopen(ratef, "w");
@@ -647,7 +649,6 @@ int Forestry(FILE *fout)
    }
    if (finbasemlg) fclose(finbasemlg);
    if (frate) fclose(frate);
-   fclose(ftree);
 
    if (ntree == -1)  ntree = itree;
    if (ntree > 1) { rewind(flnf);  rell(flnf, fout, ntree); }

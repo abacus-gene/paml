@@ -1,4 +1,4 @@
-PRGS =  baseml basemlg codeml evolver pamp yn00 chi2
+PRGS =  baseml basemlg codeml evolver mcmctree pamp yn00 chi2
 CC = cl # cc, gcc, cl
 CFLAGS =  -Ox -W3 -D_CRT_SECURE_NO_WARNINGS
 
@@ -44,4 +44,4 @@ yn00.obj : paml.h yn00.c
   $(CC) $(CFLAGS) -c yn00.c 
 
 clean :
-	-del *.obj baseml.exe basemlg.exe codeml.exe evolver.exe pamp.exe yn00.exe chi2.exe
+	-del *.obj baseml.exe basemlg.exe codeml.exe mcmctree.exe evolver.exe pamp.exe yn00.exe chi2.exe

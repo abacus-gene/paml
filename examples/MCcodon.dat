@@ -1,6 +1,6 @@
-0          * 0,1:seqs or patters in paml format (mc.paml); 2:paup format (mc.nex)
+0          * 0,1:seqs or patters in paml format (mc.txt); 2:paup format (mc.nex)
 13147       * random number seed (odd number)
-4 10000 10   * <# seqs>  <# codons>  <# replicates>
+4 500 10   * <# seqs>  <# codons>  <# replicates>
 
 1.5         * <tree length; see note below; use -1 if tree below has absolute branch lengths>
 ((1 :0.1, 2 :0.2) :0.12, 3 :0.3, 4 :0.4);

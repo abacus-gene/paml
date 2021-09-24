@@ -1,6 +1,5 @@
-
-      seqfile = ../examples/abglobin.nuc
-     treefile = ../examples/abglobin.trees
+      seqfile = 4s-mc.txt * sequence data filename
+     treefile = 4s-mc.trees      * tree structure file name
       outfile = mlb       * main result file
 
         noisy = 3   * 0,1,2,3: how much rubbish on the screen
@@ -8,14 +7,14 @@
       runmode = 0   * 0: user tree;  1: semi-automatic;  2: automatic
                     * 3: StepwiseAddition; (4,5):PerturbationNNI
 
-        model = 7 * 0 : JC69, 1:K80, 2:F81, 3:F84, 4:HKY85, 5:T92, 6:TN93, 7:REV, 8:UNREST, 9:REVu; 10:UNRESTu * REV = GTR
+        model = 4 * 0 : JC69, 1:K80, 2:F81, 3:F84, 4:HKY85, 5:T92, 6:TN93, 7:REV, 8:UNREST, 9:REVu; 10:UNRESTu * REV = GTR
 *       model = 10 [0] /* JC69 */
 *       model = 10 [1 (TC CT AG GA)] /* K80 */
 *       model = 10 [11 (TA) (TG) (CT) (CA) (CG) (AT) (AC) (AG) (GT) (GC) (GA) ] /* UNREST */
 *       model = 10 [5 (AC CA) (AG GA) (AT TA) (CG GC) (CT TC)] /* SYM */
 *       model = 9 [2 (TA TG CA CG) (AG)] /* TN93 */
 
-*        ndata = 0
+        ndata = 3
         Mgene = 0   * 0:rates, 1:separate; 2:diff pi, 3:diff kapa, 4:all diff
 
         clock = 0   * 0:no clock, 1:clock; 2:local clock; 3:CombinedAnalysis

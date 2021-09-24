@@ -88,11 +88,14 @@ int AutodGamma (double Mmat[], double freqK[], double rK[], double *rho1, double
 double QuantileChi2 (double prob, double v);
 #define QuantileGamma(prob,alpha,beta) QuantileChi2(prob,2.0*(alpha))/(2.0*(beta))
 double  PDFGamma(double x, double alpha, double beta);
-#define CDFGamma(x,alpha,beta) IncompleteGamma((beta)*(x),alpha,LnGamma(alpha))
+double logPDFGamma(double x, double alpha, double beta);
+#define CDFGamma(x,alpha,beta) IncompleteGamma((beta)*(x),alpha,lgamma(alpha))
 double logPriorRatioGamma(double xnew, double xold, double a, double b);
 double  PDFinvGamma(double x, double alpha, double beta);
 #define CDFinvGamma(x,alpha,beta) (1-CDFGamma(1/(x),alpha,beta))
 #define CDFChi2(x,v) CDFGamma(x,(v)/2.0,0.5)
+double logPriorRatioBeta(double xnew, double x, double p, double q);
+double logPDFBeta(double x, double p, double q);
 double PDFBeta(double x, double p, double q);
 double CDFBeta(double x, double p, double q, double lnbeta);
 double QuantileBeta(double prob, double p, double q, double lnbeta);
@@ -116,7 +119,7 @@ double logPDFSkewN(double x, double loc, double scale, double shape);
 int StirlingS2(int n, int k);
 double lnStirlingS2(int n, int k);
 double LnGamma(double alpha);
-#define LnBeta(p,q) (LnGamma(p) + LnGamma(q) - LnGamma(p+q))
+#define LnBeta(p,q) (lgamma(p) + lgamma(q) - lgamma(p+q))
 double DFGamma(double x, double alpha, double beta);
 double IncompleteGamma (double x, double alpha, double ln_gamma_alpha);
 #define CDFBinormal(h,k,r)  LBinormal(-(h),-(k),r)   /* CDF for bivariate normal */
@@ -178,7 +181,7 @@ int  setmark_61_64 (void);
 int BootstrapSeq (char* seqfilename);
 int rell(FILE*flnf, FILE*fout, int ntree);
 int print1site (FILE*fout, int h);
-int MultipleGenes (FILE* fout, FILE*fpair[], double space[]);
+int MultipleGenes (FILE* fout, FILE* ftree, FILE*fpair[], double space[]);
 int lfunRates (FILE* fout, double x[], int np);
 int AncestralSeqs (FILE *fout, double x[]);
 void ListAncestSeq(FILE *fout, char *zanc);

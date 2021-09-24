@@ -1280,7 +1280,13 @@ int GetOptions(char *ctlf)
       com.model = 0;  com.fix_kappa = com.fix_alpha = 1; com.alpha = 0;
       if (com.seqtype == 1) com.ncode = 61;
    }
-   if (com.seqtype == 2)
+   if (com.seqtype == 1) {
+      if (mcmc.usedata == 3) 
+         error2("you can run codeml outside mcmctree to implement codon models to work with mcmctree");
+      else 
+         error2("use seqtype = 0?");
+   }
+   else if (com.seqtype == 2)
       com.ncode = 20;
 
    if (com.alpha == 0) { com.fix_alpha = 1; com.nalpha = 0; }
@@ -2475,7 +2481,7 @@ double lnptNCgiventC(void)
       }
    }
    else {                   /* beta kernel */
-      lnbeta = LnGamma(p) + LnGamma(q) - LnGamma(p + q);
+      lnbeta = lgamma(p) + lgamma(q) - lgamma(p + q);
       for (j = 1, lnpt = 0; j < n1; j++) {
          k = stree.nspecies + j;
          if (!stree.nodes[k].usefossil)   /* non-calibration node age */
@@ -2529,7 +2535,7 @@ double lnptNCgiventC(void)
       }
       if (k > 0) {
          if (cdf <= cdfprev) error2("cdf diff<0 in lnptNCgiventC");
-         lnpt += LnGamma(k + 1.0) - k*log(cdf - cdfprev);
+         lnpt += lgamma(k + 1.0) - k*log(cdf - cdfprev);
       }
       rankprev = ranktc[i];
       cdfprev = cdf;
@@ -2606,7 +2612,7 @@ double lnptCalibrationDensity(double t, int fossil, double p[7])
       }
       break;
    case (GAMMA_F):
-      lnpt = a*log(b) - b*t + (a - 1)*log(t) - LnGamma(a);
+      lnpt = a*log(b) - b*t + (a - 1)*log(t) - lgamma(a);
       break;
    case (SKEWN_F):
       lnpt = logPDFSkewN(t, p[0], p[1], p[2]);
@@ -3406,7 +3412,7 @@ double lnpriorRates(void)
       for (locus = 0; locus < g; locus++) {
          a = data.rgene[locus] * data.rgene[locus] / data.sigma2[locus];
          b = data.rgene[locus] / data.sigma2[locus];
-         lnpR += (a*log(b) - LnGamma(a)) * (2 * s - 2);
+         lnpR += (a*log(b) - lgamma(a)) * (2 * s - 2);
          for (inode = 0; inode < stree.nnode; inode++) {
             if (inode == stree.root) continue;
             r = stree.nodes[inode].rates[locus];
