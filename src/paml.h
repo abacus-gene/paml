@@ -29,9 +29,6 @@
 #define swap2(a,b,y) { y=a; a=b; b=y; }
 #define Pi  3.1415926535897932384626433832795
 
-#define beep putchar('\a')
-#define spaceming2(n) ((n)*((n)*2+9+2)*sizeof(double))
-
 int ReadSeq (FILE *fout, FILE *fseq, int cleandata, int locus);
 int ScanFastaFile(FILE *f, int *ns, int *ls, int *aligned);
 void EncodeSeqs (void);

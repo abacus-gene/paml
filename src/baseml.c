@@ -19,6 +19,8 @@
 #define NCODE         5
 #define NCATG         100
 
+#define spaceming2(n) ((n)*((n)*2+9+2)*sizeof(double))
+
 #define NP            (NBRANCH+NGENE+11)
 /*
 #define NP            (NBRANCH+3*NNODE+NGENE+11+NCATG*NCATG-1)

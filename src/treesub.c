@@ -258,7 +258,7 @@ int PatternWeightJC69like(void)
    if (p2s == NULL || zt == NULL || fpatt0 == NULL)  error2("oom p2s or zt or fpatt0");
    memset(zt, 0, npatt0 * lpatt * sizeof(char));
    memmove(fpatt0, com.fpatt, npatt0 * sizeof(double));
-   if (com.pose) {
+   if (com.pose && com.ls > npatt0) {
       if ((pose0 = (int*)malloc(com.ls * sizeof(int))) == NULL)  error2("oom pose0");
       memmove(pose0, com.pose, com.ls * sizeof(int));
    }
@@ -317,8 +317,12 @@ int PatternWeightJC69like(void)
       }
       com.fpatt[ip] += fpatt0[h];
       if (com.pose) {
-         for (j = 0; j < com.ls; j++)
-            if (pose0[j] == h) com.pose[j] = ip;
+         if (com.ls < npatt0)
+            com.pose[h] = ip;
+         else
+            for (j = 0; j < com.ls; j++)
+               if (pose0[j] == h)  /* In original alignment, site j has old pattern h. */
+                  com.pose[j] = ip;
       }
       if (noisy > 2 && ((h + 1) % 10000 == 0 || h + 1 == npatt0))
          printf("\rCollecting fpatt[] & pose[], %6d patterns at %6d / %6d sites (%.1f%%), %s",
@@ -1086,9 +1090,11 @@ int printPatterns(FILE* fout)
    }
    fprintf(fout, "\n");
 
-   if (com.seqtype == 1 && com.cleandata) {
+   if (com.seqtype == 1) {
       ; /* nothing is printed out for yn00, as the coding is different. */
 #if(defined CODEML || defined YN00)
+      if (!com.cleandata)
+         printf("check that the printed alignments are correct for codon sequences with ambiguities...");
       printsmaCodon(fout, com.z, com.ns, com.npatt, com.npatt, 1);
 #endif
    }
@@ -2897,10 +2903,11 @@ int GetTreeFileType(FILE* ftree, int* ntree, int* pauptree, int shortform)
       else              error2("Number of sequences different in tree and seq files.");
    }
    else if (k == 1) { *ntree = i; return(0); }           /* phylip & molphy style */
-   while (ch != '(' && !isalnum(ch) && ch != EOF)  ch = fgetc(ftree);  /* treeview style */
-   if (ch == '(') { 
-      ungetc(ch, ftree);
-      return(0); 
+   while (ch != '(' && !isalnum(ch) && ch != EOF)
+      ch = fgetc(ftree);  /* treeview style */
+   if (ch == '(') {
+      *ntree = -1;  ungetc(ch, ftree);
+      return(0);
    }
 
    puts("\n# seqs in tree file does not match.  Read as the nexus format.");
@@ -3114,7 +3121,7 @@ int ReadTreeN(FILE* ftree, int* haslength, int copyname, int popline)
       }
       else if (namelabel == 0) { /* read species name or number for tip */
          if (level <= 0)
-            error2("expecting ; when reading the tree");
+            error2("expecting ; in the tree file");
          ungetc(ch, ftree);
          ReadUntil(ftree, line, delimitersN, lline);
          isname = IsNameNumber(line);
@@ -5175,13 +5182,13 @@ int MultipleGenes(FILE* fout, FILE* ftree, FILE* fpair[], double space[])
       if (com.runmode == 0)  Forestry(fout, ftree);
 #ifdef CODEML
       else if (com.runmode == -2) {
-         if (com.seqtype == CODONseq) 
+         if (com.seqtype == CODONseq)
             PairwiseCodon(fout, fpair[3], fpair[4], fpair[5], space);
          else
             PairwiseAA(fout, fpair[0]);
       }
 #endif
-      else  
+      else
          StepwiseAddition(fout, space);
 
       for (j = 0; j < com.ns; j++) com.z[j] -= posG0[ig] * nb;
@@ -5479,14 +5486,19 @@ int UpPass(int inode)
          UpPass(nodes[inode].sons[i]);
 
    for (i = 0; i < n; i++) K[i] = 0;
-   for (i = 0; i < nodes[inode].nson; i++)
-      for (j = 0; j < n; j++)
-         if (chMarkU[nodes[inode].sons[i] * n + j]) K[j]++;
+   for (i = 0; i < nodes[inode].nson; i++) {
+      for (j = 0; j < n; j++) {
+         if (chMarkU[nodes[inode].sons[i] * n + j])
+            K[j]++;
+      }
+   }
    for (i = 0, maxK = 0; i < n; i++)
       if (K[i] > maxK) maxK = K[i];
    for (i = 0; i < n; i++) {
-      if (K[i] == maxK)           chMarkU[inode * n + i] = 1;
-      else if (K[i] == maxK - 1)  chMarkL[inode * n + i] = 1;
+      if (K[i] == maxK) 
+         chMarkU[inode * n + i] = 1;
+      else if (K[i] == maxK - 1)
+         chMarkL[inode * n + i] = 1;
    }
    Nsteps[inode] = nodes[inode].nson - maxK;
    for (i = 0; i < nodes[inode].nson; i++)
@@ -5502,7 +5514,8 @@ int DownPass(int inode)
    for (i = 0; i < nodes[inode].nson; i++) {
       ison = nodes[inode].sons[i];
       for (j = 0; j < n; j++)
-         if (chMark[inode * n + j] > chMarkU[ison * n + j]) break;
+         if (chMark[inode * n + j] > chMarkU[ison * n + j])
+            break;
       if (j == n)
          for (j = 0; j < n; j++)
             chMark[ison * n + j] = chMark[inode * n + j];
@@ -5536,15 +5549,18 @@ int DownStatesOneNode(int ison, int father)
 
    if ((in = ison - com.ns) < 0) return (0);
    if (chMarkU[ison * n + chi]) {
-      NCharaCur[in] = 1;   CharaCur[in * n + 0] = chi;
+      NCharaCur[in] = 1;
+      CharaCur[in * n + 0] = chi;
    }
    else if (chMarkL[ison * n + chi]) {
       for (j = 0, NCharaCur[in] = 0; j < n; j++)
-         if (chMarkU[ison * n + j] || j == chi) CharaCur[in * n + NCharaCur[in]++] = (char)j;
+         if (chMarkU[ison * n + j] || j == chi)
+            CharaCur[in * n + NCharaCur[in]++] = (char)j;
    }
    else {
       for (j = 0, NCharaCur[in] = 0; j < n; j++)
-         if (chMarkU[ison * n + j]) CharaCur[in * n + NCharaCur[in]++] = (char)j;
+         if (chMarkU[ison * n + j])
+            CharaCur[in * n + NCharaCur[in]++] = (char)j;
    }
    PATHWay[in] = CharaCur[in * n + (ICharaCur[in] = 0)];
 
@@ -5569,17 +5585,21 @@ int InteriorStatesMP(int job, int h, int* nchange, char NChara[NS - 1],
    Nsteps = (int*)space;            chMark = (char*)(Nsteps + tree.nnode);
    chMarkU = chMark + tree.nnode * n;   chMarkL = chMarkU + tree.nnode * n;
    for (i = 0; i < tree.nnode; i++) Nsteps[i] = 0;
-   for (i = 0; i < 3 * tree.nnode; i++) chMark[i] = 0;
+   for (i = 0; i < 3 * n * tree.nnode; i++) chMark[i] = 0;
    for (i = 0; i < com.ns; i++)
       chMark[i * n + com.z[i][h]] = chMarkU[i * n + com.z[i][h]] = 1;
    UpPass(tree.root);
    *nchange = Nsteps[tree.root];
    if (job == 0) return (0);
-   for (i = 0; i < n; i++) chMark[tree.root * n + i] = chMarkU[tree.root * n + i];
+   for (i = 0; i < n; i++) 
+      chMark[tree.root * n + i] = chMarkU[tree.root * n + i];
    DownPass(tree.root);
-   for (i = 0; i < tree.nnode - com.ns; i++)
-      for (j = 0, NChara[i] = 0; j < n; j++)
-         if (chMark[(i + com.ns) * n + j])  Chara[i * n + NChara[i]++] = (char)j;
+   for (i = 0; i < tree.nnode - com.ns; i++) {
+      for (j = 0, NChara[i] = 0; j < n; j++) {
+         if (chMark[(i + com.ns) * n + j])
+            Chara[i * n + NChara[i]++] = (char)j;
+      }
+   }
    return (0);
 }
 
@@ -6859,11 +6879,11 @@ void DownPassPPSG2000OneSite(int h, int inode, int inodestate, int ipath)
       ison = nodes[inode].sons[i];
       if (nodes[ison].nson > 1) {
          ibest = (ipath & (3 << (2 * i))) >> (2 * i);
-         assert(ibest >= 0);
 
          ancState1site[ison - com.ns] = sonstate =
             charNode[ibest][(ison - com.ns) * com.npatt * n + h * n + inodestate];
-         DownPassPPSG2000OneSite(h, ison, sonstate, icharNode[ibest][(ison - com.ns) * com.npatt * n + h * n + inodestate]);
+         DownPassPPSG2000OneSite(h, ison, sonstate,
+            icharNode[ibest][(ison - com.ns) * com.npatt * n + h * n + inodestate]);
       }
    }
 }
@@ -9141,7 +9161,9 @@ int GetMemPUVR(int nc, int nUVR)
 
    PMat = (double*)malloc((nc * nc + nUVR * nc * nc * 2 + nUVR * nc) * sizeof(double));
    if (PMat == NULL) error2("oom getting P&U&V&Root");
-   U = _UU[0] = PMat + nc * nc;  V = _VV[0] = _UU[0] + nc * nc; Root = _Root[0] = _VV[0] + nc * nc;
+   U = _UU[0] = PMat + nc * nc;
+   V = _VV[0] = _UU[0] + nc * nc;
+   Root = _Root[0] = _VV[0] + nc * nc;
    for (i = 1; i < nUVR; i++) {
       _UU[i] = _UU[i - 1] + nc * nc * 2 + nc; _VV[i] = _VV[i - 1] + nc * nc * 2 + nc;
       _Root[i] = _Root[i - 1] + nc * nc * 2 + nc;

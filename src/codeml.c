@@ -25,6 +25,7 @@
 #define NCODE         64
 #define NCATG         40
 #define NBTYPE        8
+#define spaceming2(n) ((n)*((n)*2+9+2)*sizeof(double))
 
 #define NP            (NBRANCH*2 + NGENE - 1 + 2 + NCODE + 2)
 /*

@@ -348,7 +348,7 @@ int PatternMP(FILE *fout, double Ft[])
    double *Q, *pi, *Root, *U, *V, *branch, *space, *T1, t;
 
    if ((Q = (double*)malloc((n*n * 6 + tree.nbranch) * sizeof(double))) == NULL)
-      error2("PathwayMP: oom");
+      error2("PatternMP: oom");
    pi = Q + n*n; Root = pi + n; U = Root + n; V = U + n*n; branch = V + n*n;
    space = T1 = branch + tree.nbranch;
 
@@ -401,7 +401,6 @@ int PathwayMP1(FILE *fout, int *maxchange, int NSiteChange[],
    int *Ftt = NULL, nchange, nchange0, visit[NS - 1] = { 0 };
    double sumpr, bestpr, pr, *pnode = NULL, *pnsite;
 
-
    fputs("\nList of most parsimonious reconstructions (MPRs) at each site: #MPRs (#changes)\n", fout);
    fputs("and then the most likely reconstruction out of the MPRs and its probability\n", fout);
    if ((pnsite = (double*)malloc((com.ns - 1)*n * sizeof(double))) == NULL)
@@ -411,7 +410,8 @@ int PathwayMP1(FILE *fout, int *maxchange, int NSiteChange[],
    NCharaCur = PATHWay + nid;  ICharaCur = NCharaCur + nid;  CharaCur = ICharaCur + nid;
    if (job == 0) {
       zero(Ft, n*n*(tree.nbranch + 1));
-      if ((Ftt = (int*)malloc(n*n*tree.nbranch * sizeof(int))) == NULL) error2("oom");
+      if ((Ftt = (int*)malloc(n*n*tree.nbranch * sizeof(int))) == NULL)
+         error2("oom");
    }
    else {
       pnode = (double*)malloc((nid*com.npatt + 1)*(sizeof(double) + sizeof(char)));
@@ -421,7 +421,8 @@ int PathwayMP1(FILE *fout, int *maxchange, int NSiteChange[],
          zz[j] = com.z[j];
       if (pnode == NULL) error2("oom");
    }
-   for (j = 0, visit[i = 0] = tree.root - com.ns; j < tree.nbranch; j++)
+   visit[i = 0] = tree.root - com.ns;
+   for (j = 0; j < tree.nbranch; j++)
       if (tree.branches[j][1] >= com.ns)
          visit[++i] = tree.branches[j][1] - com.ns;
 
@@ -442,7 +443,8 @@ int PathwayMP1(FILE *fout, int *maxchange, int NSiteChange[],
             Ftt[j] = 0;
 
       InteriorStatesMP(1, hp, &nchange, NCharaCur, CharaCur, space);
-      ICharaCur[j = tree.root - com.ns] = 0;  PATHWay[j] = CharaCur[j*n + 0];
+      ICharaCur[j = tree.root - com.ns] = 0;
+      PATHWay[j] = CharaCur[j*n + 0];
       for (j = 0; j < nid; j++)
          Equivoc[j] = (NCharaCur[j] > 1);
 
@@ -455,7 +457,8 @@ int PathwayMP1(FILE *fout, int *maxchange, int NSiteChange[],
       DownStates(tree.root);
       for (npath = 0, sumpr = bestpr = 0; ; ) {
          for (j = 0, k = visit[nid - 1]; j < NCharaCur[k]; j++) {
-            PATHWay[k] = CharaCur[k*n + j]; npath++;
+            PATHWay[k] = CharaCur[k*n + j]; 
+            npath++;
             for (i = 0; i < nid; i++)
                nodeb[i + com.ns] = PATHWay[i];
             if (job == 1) {
@@ -517,10 +520,11 @@ int PathwayMP1(FILE *fout, int *maxchange, int NSiteChange[],
          for (j = 0; j < n * n * tree.nbranch; j++)
             Ft[j] += (double)Ftt[j] / npath * com.fpatt[hp];
       else {
-         for (i = 0; j < nid; j++)
+         for (i = 0; i < nid; i++)
             zz[com.ns + i][hp] = bestPath[i];
-         for (i = 0; j < nid; j++)
+         for (i = 0; i < nid; i++) {
             pnode[i * com.npatt + hp] = pnsite[i * n + bestPath[i]] / sumpr;
+         }
          fprintf(fout, " |%4d (%d) | ", npath, nchange);
          if (npath > 1) {
             for (i = 0; i < nid; i++)
@@ -544,11 +548,14 @@ int PathwayMP1(FILE *fout, int *maxchange, int NSiteChange[],
          for (j = 0; j < com.ns; j++)
             fprintf(fout, "%c", pch[(int)com.z[j][hp]]);
          fprintf(fout, ":  ");
-         for (i = 0; i < nid; i++)
-            if (pnode[i * com.npatt + hp] < .99999) break;
-         if (i < nid)  
+         for (i = 0; i < nid; i++) {
+            if (pnode[i * com.npatt + hp] < .99999)
+               break;
+         }
+         if (i < nid) {
             for (j = 0; j < nid; j++)
-               fprintf(fout, "%c (%5.3f) ", pch[(int)zz[j][hp]], pnode[j*com.npatt + hp]);
+               fprintf(fout, "%c (%5.3f) ", pch[(int)zz[j][hp]], pnode[j * com.npatt + hp]);
+         }
       }
       /* Site2Pattern (fout); */
       fprintf(fout, "\n\nlist of extant and reconstructed sequences\n\n");
