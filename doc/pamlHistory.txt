@@ -8,6 +8,51 @@ discussion site
 https://groups.google.com/forum/#!forum/pamlsoftware.
 
 
+paml v4.10.1, December 2021
+
+(*) mcmctree.  We decided to change the default MCMC sliding-window
+algorithm from Bactrian (normal kernel with m = 0.95) to
+BactrianLaplace with m = 0.90.  This change is made at the same time
+in bpp4 and bpp3 as well.  It was noted that Bactrian (m = 0.95) was
+too aggressive when used with reflection.  For example, if 0 < x < 1,
+and the current value is close to 0, after reflection most of the
+newly proposed values are larger than the current value.
+
+(*) mcmctree.  The program is not reading the date information from the
+sequences and print out 0 dates for sampled sequences.   This is now fixed.
+
+A bug caused the mixing step to reject all proposals.  It affects
+mixing but not the posterior results.  Version 4.8a (July 2014) is
+correct, but version 4.9 (March 2015) has this bug and is incorrect.
+The bug was introducted when i added the conditional iid model.  This
+is now fixed.
+
+(*) baseml & codeml.  changed the way the option ndata is handled.  In the
+old versions, all trees are read from the tree file for each dataset.
+Now for each dataset, one block is read from the tree file.  This
+allows the possibility that different datasets have different numbers
+of sequences or species.
+ 
+(*) pamp.  I introduced quite a few bugs in version 4.10.1 when
+editing the pamp.c, which broke the ancestral reconstruction
+algorithms.  The output file then had missing or clearly incorrect
+results.  There are also error messages on the screen like 
+"err:PathwayMP 0 != 4".  
+Versions 4.9j and earlier are correct.  This is now fixed.
+
+
+
+paml v4.10.0, September 2020
+
+Edited code to remove compiler warnings
+
+mcmctree. Changed the calculation of initial values for mcmctree so that the initial ages 
+are not too old.
+
+baseml & codeml.  Fixed a bug which causes the tip-dating analysis in
+baseml and codeml to fail to print out a block of output including
+substitution rate per time unit and absolute age estimates.
+
 
 Version 4.9j, February 2020 
 

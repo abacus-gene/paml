@@ -217,7 +217,7 @@ char *Btransform[] = { "", "square root", "logarithm", "arcsin" };
 int main(int argc, char *argv[])
 {
    char ctlf[2048] = "mcmctree.ctl";
-   int i, j, k = 4;
+   int i, j, k = 6;
    FILE  *fout;
 
 #if(0)

@@ -379,7 +379,7 @@ extern int PrBranch, PrNodeNum, PrLabel, PrNodeStr, PrAge, PrOmega;
 
 #define FAST_RANDOM_NUMBER
 
-#define mBactrian  0.95
+#define mBactrian  0.90
 #define sBactrian  sqrt(1 - mBactrian*mBactrian)
 #define aBox 0.5
 #define bBox (sqrt(12 - 3*aBox*aBox) - aBox) / 2
@@ -390,6 +390,6 @@ extern int PrBranch, PrNodeNum, PrLabel, PrNodeStr, PrAge, PrOmega;
 
 #define PAML_RELEASE      0
 
-#define pamlVerStr "paml version 4.10.0, September 2020"
+#define pamlVerStr "paml version 4.10.3, December 2021"
 
 #endif
