@@ -484,7 +484,7 @@ int ReadMorphology(FILE* fout, FILE* fin, int locus)
 
 #endif
 
-int ReadSeq(FILE* fout, FILE* fseq, int cleandata, int locus)
+int ReadSeq(FILE* fout, FILE* fseq, int cleandata, int locus, int read_seq_only)
 {
    /* read in sequence, translate into protein (CODON2AAseq), and
     This counts ngene but does not initialize lgene[].
@@ -827,6 +827,8 @@ readseq:
    }
    free(line);
 
+   if (read_seq_only) return (0);
+
    /*** delete empty sequences ******************/
 #if(0)
    { int ns1 = com.ns, del[100] = { 0 };
@@ -980,7 +982,6 @@ readseq:
    }
 
    EncodeSeqs();
-
    if (fout) {
       fprintf(fout, "\nPrinting out site pattern counts\n\n");
       printPatterns(fout);
@@ -1090,11 +1091,9 @@ int printPatterns(FILE* fout)
    }
    fprintf(fout, "\n");
 
-   if (com.seqtype == 1) {
+   if (com.seqtype == 1 && com.cleandata) {
       ; /* nothing is printed out for yn00, as the coding is different. */
 #if(defined CODEML || defined YN00)
-      if (!com.cleandata)
-         printf("check that the printed alignments are correct for codon sequences with ambiguities...");
       printsmaCodon(fout, com.z, com.ns, com.npatt, com.npatt, 1);
 #endif
    }
@@ -2372,12 +2371,12 @@ int setmark_61_64(void)
 
 int DistanceMatNG86(FILE* fout, FILE* fds, FILE* fdn, FILE* ft, double alpha)
 {
-   /* Estimation of dS and dN by the method of Nei & Gojobori (1986)
-    This works with both coded (com.cleandata==1) and uncoded data.
-    In the latter case (com.cleandata==0), the method does pairwise delection.
+/* Estimation of dS and dN by the method of Nei & Gojobori (1986)
+   This works with both coded (com.cleandata==1) and uncoded data.
+   In the latter case (com.cleandata==0), the method does pairwise delection.
 
-    alpha for gamma rates is used for dN only.
-    */
+   alpha for gamma rates is used for dN only.
+   */
    char* codon[2];
    int is, js, k, h, wname = 20, status = 0, ndiff, nsd[4];
    double ns, na, nst = -1, nat = -1, S = -1, N = -1, St, Nt, dS, dN, dN_dS, y, bigD = 3, lst;
@@ -2597,6 +2596,8 @@ int SetAncestor()
     */
    int is, js, it, a1, a2;
 
+   PrintTree(0);
+
    for (is = 0; is < com.ns; is++) for (js = 0; js < is; js++) {
       it = is * (is - 1) / 2 + js;
       ancestor[it] = -1;
@@ -2772,9 +2773,10 @@ void BranchToNode(void)
    int i, from, to;
 
    tree.nnode = tree.nbranch + 1;
-   for (i = 0; i < tree.nnode; i++)
-   {
-      nodes[i].father = nodes[i].ibranch = -1;  nodes[i].nson = 0;
+   for (i = 0; i < tree.nnode; i++) {
+      nodes[i].father = nodes[i].ibranch = -1;  
+      nodes[i].nson = 0;
+      /* nodes[i].label = -1; */
    }
    for (i = 0; i < tree.nbranch; i++) {
       from = tree.branches[i][0];
@@ -2911,18 +2913,18 @@ int GetTreeFileType(FILE* ftree, int* ntree, int* pauptree, int shortform)
    }
 
    puts("\n# seqs in tree file does not match.  Read as the nexus format.");
-   for (; ; ) {
+   for ( ; ; ) {
       if (fgets(line, lline, ftree) == NULL) error2("tree err1: EOF");
       strcase(line, 0);
       if (strstr(line, paupstart)) { *pauptree = 1; *ntree = -1; break; }
    }
    if (shortform) return(0);
-   for (; ; ) {
+   for ( ; ; ) {
       if (fgets(line, lline, ftree) == NULL) error2("tree err2: EOF");
       strcase(line, 0);
       if (strstr(line, paupend)) break;
    }
-   for (; ; ) {
+   for ( ; ; ) {
       if ((ch = fgetc(ftree)) == EOF) error2("tree err3: EOF");
       if (ch == paupch) break;
    }
@@ -3027,7 +3029,7 @@ as well as nodes[].NodeStr, and is processed inside mcmctree.
 *haslength is set to 1 (branch lengths), 2 (calibration info) or 3 (both).
 However, the bit for calibrations is set only if the symbols > < exist and not for
 calibrations specified using L, U, G, etc, which will be stored in nodes[].annotation
-and processed using ProcessNodeAnnotation() in mcmctree.
+and processed using ProcessizenodeAnnotation() in mcmctree.
 
 This assumes that com.ns is known.  Names are considered case-sensitive, with trailing spaces ignored.
 
@@ -3198,7 +3200,8 @@ int ReadTreeN(FILE* ftree, int* haslength, int copyname, int popline)
       }
    }
    if (tree.nbranch > 2 * com.ns - 2) {
-      printf("nbranch %d", tree.nbranch); puts("too many branches in tree?");
+      printf("nbranch %d", tree.nbranch); 
+      error2("too many branches in tree?");
    }
    if (tree.nnode != tree.nbranch + 1) {
       printf("\nnnode%6d != nbranch%6d + 1\n", tree.nnode, tree.nbranch);
@@ -3240,6 +3243,9 @@ int OutSubTreeN(FILE* fout, int inode, int spnames, int printopt)
 #if (defined BPP)
    if ((printopt & PrNodeStr) && inode < com.ns && nodes[inode].label > 0)
       fprintf(fout, " [&theta=%.6f]", nodes[inode].label);
+#elif (defined CODEML || defined BASEML)
+   if ((printopt & PrLabel) && nodes[inode].label > 0)
+      fprintf(fout, " #%.0f", nodes[inode].label);
 #else
    if ((printopt & PrLabel) && nodes[inode].label > 0)
       fprintf(fout, " #%.6f", nodes[inode].label);
@@ -3304,27 +3310,27 @@ int DeRoot(void)
 
 int PruneSubTreeN(int inode, int keep[])
 {
-   /* This prunes tips from the tree, using keep[com.ns].  Removed nodes in the
-    big tree has nodes[].father=-1 and nodes[].nson=0.
-    Do not change nodes[inode].nson and nodes[inode].sons[] until after the
-    node's descendent nodes are all processed.  So when a son is deleted,
-    only the father node's nson is changed, but not
-    */
+/* This prunes tips from the tree, using keep[com.ns].  
+   Removed nodes in the big tree has nodes[].father=-1 and nodes[].nson=0.
+   If merged branches have the same label, the label is kept.  Otherwise 
+   the node label is set to -1.
+   The code changes nodes[inode].nson and nodes[inode].sons[] only after 
+   all inode's descendent nodes are processed. 
+   */
    int i, j, ison, father = nodes[inode].father, nson0 = nodes[inode].nson;
 
-   nodes[inode].label = 0;
-   for (i = 0; i < nson0; i++)
+   for (i = 0; i < nson0; i++) {
       PruneSubTreeN(nodes[inode].sons[i], keep);
-
+   }
    /* remove inode because of no descendents.
     Note this does not touch the father node */
-   if (inode < com.ns && keep[inode] == 0)
+   if (inode < com.ns && keep[inode] == 0)  /* inode is tip */
       nodes[inode].father = -1;
-   else if (inode >= com.ns) {
+   else if (inode >= com.ns) {              /* inode is inner node */
       for (i = 0, nodes[inode].nson = 0; i < nson0; i++) {
          ison = nodes[inode].sons[i];
          if (nodes[ison].father != -1)
-            nodes[inode].sons[nodes[inode].nson++] = nodes[inode].sons[i];
+            nodes[inode].sons[nodes[inode].nson++] = ison;
       }
       if (nodes[inode].nson == 0)
          nodes[inode].father = -1;
@@ -3335,10 +3341,10 @@ int PruneSubTreeN(int inode, int keep[])
       ison = nodes[inode].sons[0];
       nodes[ison].father = father;
       nodes[ison].branch += nodes[inode].branch;
-      nodes[ison].label++;  /* records # deleted nodes for branch ison */
+      if (nodes[ison].label != nodes[inode].label)
+         nodes[ison].label = -1;
       for (j = 0; j < nodes[father].nson; j++) {
-         if (nodes[father].sons[j] == inode)
-         {
+         if (nodes[father].sons[j] == inode) {
             nodes[father].sons[j] = ison;  break;
          }
       }
@@ -3358,14 +3364,12 @@ int PruneSubTreeN(int inode, int keep[])
     printf("\nVisiting inode %d\n", inode);
     for(i=0; i<tree.nnode; i++) printf(" %2d", i);
     printf("\n);
-    for(i=0; i<tree.nnode; i++) printf(" %2.0f", nodes[i].label);
-    printf("\n);
     */
    return(0);
 }
 
 
-int GetSubTreeN(int keep[], int space[])
+int GetSubTreeN(int keep[], int newnodeNO[])
 {
    /* This removes some tips to generate the subtree.  Branch lengths are
     preserved by summing them up when some nodes are removed.
@@ -3393,8 +3397,7 @@ int GetSubTreeN(int keep[], int space[])
 
     (B) keep[]={1,0,2,3,4,0,0,5,0} means that a c d e h are kept in the tree, and
     they are renumbered 0 1 2 3 4 and all the internal nodes are renumbered
-    as well to be consecutive.  Note that the positive numbers have to be
-    consecutive natural numbers.
+    as well to be consecutive.  The positive numbers are consecutive natural numbers.
 
     keep[]={5,0,2,1,4,0,0,3,0} means that a c d e h are kept in the tree.
     However, the order of the sequences are changed to d c h e a, so that the
@@ -3403,32 +3406,38 @@ int GetSubTreeN(int keep[], int space[])
     species are odered d c h e a in the sequence data file.
     This option can be used to renumber the tips in the complete tree.
     */
-   int nsnew, i, j, k, nnode0 = tree.nnode, sumnumber = 0, newnodeNO[2 * NS - 1], ison, sib;
-   int unrooted = (nodes[tree.root].nson >= 3);  /* com.clock is not checked here! */
-   double* branch0;
+   int nsnew, i, j, k, nnode0 = tree.nnode, sumnumber = 0, ison, sib;
+   int unrooted; /* tree is rooted is the root in main tree has 2 sons or if nsnew=2.*/
+   struct TREEN* nodestmp;
+   char* spnames0[NS];
    int debug = 0;
 
    if (debug) {
       for (i = 0; i < com.ns; i++)
          printf("%-30s %2d\n", com.spname[i], keep[i]);
    }
+   for (i = 0; i < com.ns; i++)  spnames0[i] = com.spname[i];
+
    for (i = 0, nsnew = 0; i < com.ns; i++)
       if (keep[i]) { nsnew++; sumnumber += keep[i]; }
    if (nsnew < 2)  return(-1);
 
+   unrooted = (nsnew > 2 && nodes[tree.root].nson >= 3);
    /* mark removed nodes in the big tree by father=-1 && nson=0.
-    nodes[].label records the number of nodes collapsed.
+    nodes[].label records the number of nodes collapsed. 
     */
    PruneSubTreeN(tree.root, keep);
    /* If unrooted tree has a bifurcation at the new root, collapse root.  */
    if (unrooted && nodes[tree.root].nson == 2) {
+      /* find ison that is inner node, and merge branches ison and sib */
       ison = nodes[tree.root].sons[i = 0];
       if (nodes[ison].nson == 0)
          ison = nodes[tree.root].sons[i = 1];
       sib = nodes[tree.root].sons[1 - i];
 
       nodes[sib].branch += nodes[ison].branch;
-      nodes[sib].label += nodes[ison].label + 2;
+      if(nodes[sib].label != nodes[ison].label) 
+         nodes[sib].label = -1;
       nodes[sib].father = tree.root = ison;
       nodes[tree.root].father = -1;
       nodes[tree.root].sons[nodes[tree.root].nson++] = sib;  /* sib added as the last child of the new root */
@@ -3438,39 +3447,43 @@ int GetSubTreeN(int keep[], int space[])
 
    for (i = 0, k = 1; i < tree.nnode; i++) if (nodes[i].father != -1) k++;
    tree.nnode = k;
-   NodeToBranch();
 
-   /* to renumber the nodes */
+   nodestmp = (struct TREEN*)malloc(nnode0 * sizeof(struct TREEN));
+   if (nodestmp == NULL) error2("oom GetSubTreeN");
+
    if (sumnumber > nsnew) {
+      /* to renumber the nodes.  k is current node number */
       if (sumnumber != nsnew * (nsnew + 1) / 2)
          error2("keep[] not right in GetSubTreeN");
+      memmove(nodestmp, nodes, nnode0 * sizeof(struct TREEN));
 
-      if ((branch0 = (double*)malloc(nnode0 * sizeof(double))) == NULL) error2("oom#");
-      for (i = 0; i < nnode0; i++) branch0[i] = nodes[i].branch;
       for (i = 0; i < nnode0; i++) newnodeNO[i] = -1;
       for (i = 0; i < com.ns; i++) if (keep[i]) newnodeNO[i] = keep[i] - 1;
-
       newnodeNO[tree.root] = k = nsnew;
       tree.root = k++;
-      for (; i < nnode0; i++) {
-         if (nodes[i].father == -1) continue;
-         for (j = 0; j < tree.nbranch; j++)
-            if (i == tree.branches[j][1]) break;
-         if (j == tree.nbranch)
-            error2("strange here");
-         newnodeNO[i] = k++;
-      }
-      for (j = 0; j < tree.nbranch; j++)  for (i = 0; i < 2; i++)
-         tree.branches[j][i] = newnodeNO[tree.branches[j][i]];
-      BranchToNode();
+      for (; i < nnode0; i++)
+         if (nodes[i].father > -1) newnodeNO[i] = k++;
+     
+      /* construct nodes using newnodeNO: old node i becomes new node k */
       for (i = 0; i < nnode0; i++) {
-         if (newnodeNO[i] > -1)
-            nodes[newnodeNO[i]].branch = branch0[i];
+         k = newnodeNO[i];  /* k < i? */
+         if (k == -1) continue;
+         nodes[k].father = (nodestmp[i].father > 0 ? newnodeNO[nodestmp[i].father] : -1);
+         nodes[k].nson = nodestmp[i].nson;
+         for(j=0; j<nodes[k].nson; j++)
+            nodes[k].sons[j] = newnodeNO[ nodestmp[i].sons[j] ];
+         nodes[k].branch = nodestmp[i].branch;
+         nodes[k].label = nodestmp[i].label;
+         nodes[k].annotation = nodestmp[i].annotation;
+         nodes[k].age = nodestmp[i].age;
+         nodes[k].name = nodestmp[i].name;
+         com.spname[k] = spnames0[i];
+         nodes[k].ibranch = -1;
       }
-      free(branch0);
+      if (debug) OutTreeN(stdout, 1, PrLabel);
    }
 
-   if (space) memmove(space, newnodeNO, (com.ns * 2 - 1) * sizeof(int));
+   free(nodestmp);
    return (0);
 }
 
@@ -4237,15 +4250,15 @@ int GetNSfromTreeFile(FILE* ftree, int* ns, int* ntree)
    return(0);
 }
 
-void CladeSupport(FILE* fout, char treef[], int getSnames, char mastertreef[], int pick1tree)
+void CladeSupport(FILE* fout, char treef[], int getSnames, char maintreef[], int pick1tree)
 {
    /* This reads all bootstrap or Bayesian trees from treef to identify the best trees
     (trees with the highest posterior probabilities), and to construct the majority-rule
     consensus tree.  The set of the best trees constitute the 95% or 99% credibility set
     of trees.
     A tree (ptree) is represented by its splits, ordered lexicographically, and concatenated.
-    It can also read a master tree file and goes through master trees and attach support
-    values on splits on each master tree.
+    It can also read a main tree file and goes through main trees and attach support
+    values on splits on each main tree.
     split1 if for one tree, and split50 is for the majority-rule consensus tree.
     */
    int i, j, k, i1, ntreeM, ntree, itreeM, sizetree, found, lline = 1024;
@@ -4422,8 +4435,8 @@ void CladeSupport(FILE* fout, char treef[], int getSnames, char mastertreef[], i
    fprintf(fout, "\n(C) Majority-rule consensus tree\n");
    OutTreeN(fout, 1, PrLabel);        fprintf(fout, "\n");
 
-   /* Probabilities of trees in the master tree file */
-   if (mastertreef) fM = fopen(mastertreef, "r");
+   /* Probabilities of trees in the main tree file */
+   if (maintreef) fM = fopen(maintreef, "r");
    if (fM == NULL) {
       fM = fopen("besttree", "w+");
       fprintf(fM, "%6d  %6d\n\n", com.ns, 1);
@@ -4433,7 +4446,7 @@ void CladeSupport(FILE* fout, char treef[], int getSnames, char mastertreef[], i
    }
 
    fscanf(fM, "%d%d", &i, &ntreeM);
-   if (i != s || ntreeM < 1) error2("<ns> <ntree> on the first line in master tree.");
+   if (i != s || ntreeM < 1) error2("<ns> <ntree> on the first line in main tree.");
 
    splitM = (char*)malloc(ntreeM * (s - 2) * lsplit * sizeof(char));
    Psame = (double*)malloc(ntreeM * sizeof(double));
@@ -4443,11 +4456,11 @@ void CladeSupport(FILE* fout, char treef[], int getSnames, char mastertreef[], i
       error2("oom");
    for (itreeM = 0, pM = splitM; itreeM < ntreeM; itreeM++, pM += (s - 2) * lsplit) {
       if (ReadTreeN(fM, &i, 0, 1)) break;
-      if (tree.nnode<s * 2 - 2 || tree.nnode>s * 2 - 1) error2("Master trees have to be binary");
+      if (tree.nnode<s * 2 - 2 || tree.nnode>s * 2 - 1) error2("main trees have to be binary");
       Tree2Partition(pM);
       qsort(pM, tree.nnode - s - 1, lsplit, (int(*)(const void*, const void*))strcmp);
       if (debug) {
-         printf("\nMaster tree %2d: ", itreeM + 1);
+         printf("\nmain tree %2d: ", itreeM + 1);
          OutTreeN(F0, 1, 0);
          for (i = 0; i < tree.nnode - s - 1; i++) printf(" %s", pM + i * lsplit);
       }
@@ -4478,9 +4491,9 @@ void CladeSupport(FILE* fout, char treef[], int getSnames, char mastertreef[], i
       }
    }
 
-   printf("\n(D) Best tree (or trees from the mastertree file) with support values\n");
-   fprintf(fout, "\n(D) Best tree (or trees from the mastertree file) with support values\n");
-   /* read the master trees another round just for printing. */
+   printf("\n(D) Best tree (or trees from the maintree file) with support values\n");
+   fprintf(fout, "\n(D) Best tree (or trees from the maintree file) with support values\n");
+   /* read the main trees another round just for printing. */
    rewind(fM);
    fscanf(fM, "%d%d", &s, &ntreeM);
    for (itreeM = 0; itreeM < ntreeM; itreeM++) {
@@ -6310,7 +6323,6 @@ int AncestralMarginal(FILE* fout, double x[], double fhsiteAnc[], double Sir[])
 
    /* This loop reroots the tree at inode & reconstructs sequence at inode */
    for (inode = com.ns; inode < tree.nnode; inode++) {
-
       PostProbNode(inode, x, fhsiteAnc, Sir, &lnL, pChar1node, zanc, pnode);
       if (noisy) printf("\tNode %3d: lnL = %12.6f\n", inode + 1, -lnL);
 
@@ -7104,7 +7116,6 @@ int AncestralSeqs(FILE* fout, double x[])
 
 int SetNodeScale(int inode);
 int NodeScale(int inode, int pos0, int pos1);
-
 void InitializeNodeScale(void)
 {
    /* This allocates memory to hold scale factors for nodes and also decide on the
@@ -7694,6 +7705,7 @@ int fx_r(double x[], int np)
             if (com.fpatt[h] <= 0 && com.print >= 0) continue;
             for (i = 0, fh = 0; i < com.ncode; i++)
                fh += com.pi[i] * nodes[tree.root].conP[h * com.ncode + i];
+
             if (fh <= 0) {
                if (fh < -1e-10) {
                   matout(F0, x, 1, np);
@@ -8642,15 +8654,15 @@ int ProcessNodeAnnotation(int* haslabel)
 
    nodelabel = (int*)malloc(s * sizeof(int));
    if (nodelabel == NULL) error2("oom");
-   for (i = 0; i < s - 1; i++)  nodelabel[i] = stree.nodes[s + i].label = 0;
+   for (i = 0; i < s - 1; i++)  stree.nodes[s + i].label = nodelabel[i] = 0;
 
    for (i = s; i < s * 2 - 1; i++) {
       if (nodes[i].annotation == NULL)
          continue;
       if ((pch = strchr(nodes[i].annotation, '#'))) {  /* for models for duplicated genes */
          *haslabel = 1;
-         sscanf(pch + 1, "%d", &stree.nodes[i].label);
-         nodelabel[i - s] = stree.nodes[i].label;
+         sscanf(pch + 1, "%lf", &stree.nodes[i].label);
+         nodelabel[i - s] = (int)stree.nodes[i].label;
       }
 
       if (strchr(nodes[i].annotation, '>') && strchr(nodes[i].annotation, '<')) {
@@ -8791,7 +8803,7 @@ int ProcessNodeAnnotation(int* haslabel)
 
       for (i = s; i < s * 2 - 1; i++) printf("%4d", nodelabel[i - s]);
       printf("\n");
-      for (i = s; i < s * 2 - 1; i++) printf("%4d", stree.nodes[i].label);
+      for (i = s; i < s * 2 - 1; i++) printf("%4.0f", stree.nodes[i].label);
       printf("\n");
 
       /* stree.duplication has the number of mirrored nodes, so that s - 1 - stree.duplication is the
@@ -8832,13 +8844,14 @@ int ProcessNodeAnnotation(int* haslabel)
       /* default label is 0. */
       if (nodes[i].label == -1)
          nodes[i].label = 0;
-      else
+      else {
          *haslabel = 1;
-      if (nodes[i].annotation == NULL) continue;
-      if ((pch = strchr(nodes[i].annotation, '#')))
-         sscanf(pch + 1, "%lf", &nodes[i].label);
-      *haslabel = 1;
-      free(nodes[i].annotation);
+         if (nodes[i].annotation == NULL) continue;
+         if ((pch = strchr(nodes[i].annotation, '#')))
+            sscanf(pch + 1, "%lf", &nodes[i].label);
+         free(nodes[i].annotation);
+         nodes[i].annotation = NULL;
+      }
    }
    for (i = 0, com.nbtype = 0; i < tree.nnode; i++) {
       if (i == tree.root) continue;
@@ -8851,12 +8864,6 @@ int ProcessNodeAnnotation(int* haslabel)
    if (com.nbtype > 1)
       printf("\n%d branch types are in tree. Stop if wrong.", com.nbtype);
 
-#if(defined(CODEML))
-   if (com.seqtype == 1 && com.NSsites == 2 && com.model == 3 && com.nbtype > NBTYPE)
-      error2("nbtype too large.  Raise NBTYPE");
-   else if (com.seqtype == 1 && com.NSsites && com.model == 2 && com.nbtype != 2)
-      error2("only two branch types are allowed for branch models.");
-#endif
    return(0);
 }
 #endif
@@ -8865,7 +8872,46 @@ int ProcessNodeAnnotation(int* haslabel)
 /* routines for dating analysis of heterogeneous data */
 #if (defined BASEML || defined CODEML || defined MCMCTREE)
 
-int GenerateGtree(int locus);
+void copy_from_Sptree(struct SPECIESTREE* stree, struct TREEN* nodes);
+void copy_to_Sptree(struct SPECIESTREE* stree, struct TREEN* nodes);
+int ReadMainTree(FILE *ftree, struct SPECIESTREE *stree);
+int GenerateGtree_locus(int locus, int ns, int allocate_gnodes);
+
+int ReadMainTree( FILE*ftree, struct SPECIESTREE *stree)
+{
+/* This reads main species tree into stree, and names into stree->nodes[].name.
+   */
+   int haslength, j;
+
+   if (noisy) puts("\nReading main tree.");
+   fscanf(ftree, "%d%d", &stree->nspecies, &j);
+   if (j!=1) error2("main species tree should have the format: ns ntree");
+   com.ns = stree->nspecies;
+   if (com.ns > NS) error2("raise NS?");
+   else if (com.ns < 2) error2("number of species <2?");
+   /* to read species names into stree->nodes[].name */
+   for (j = 0; j < stree->nspecies; j++)
+      com.spname[j] = stree->nodes[j].name;
+   nodes = nodes_t;
+   ReadTreeN(ftree, &haslength, 1, 1);
+   OutTreeN(F0, 1, 0); printf("\n");
+
+   if (com.clock == 5 || com.clock == 6)
+      for (j = 0; j < tree.nnode; j++)
+         nodes[j].branch = nodes[j].label = 0;
+   for (j = 0; j < tree.nnode; j++)
+      if (nodes[j].label < 0) nodes[j].label = 0;  /* change -1 into 0 */
+
+   /* copy main tree into stree */
+#if(MCMCTREE)
+   if (tree.nnode != 2 * com.ns - 1)
+      error2("check and think about multifurcating trees.");
+#endif
+   copy_to_Sptree(stree, nodes);
+
+   return(0);
+}
+
 
 int ReadTreeSeqs(FILE* fout)
 {
@@ -8873,48 +8919,16 @@ int ReadTreeSeqs(FILE* fout)
       data at each locus.  stree.nodes[].pfossil[] has tL, tU for bounds or alpha and beta
       for the gamma prior.
 
-      This also constructs the gene tree at each locus, by pruning the master species tree.
+      This also constructs the gene tree at each locus, by pruning the main species tree.
    */
    FILE* fseq, * ftree;
-   int haslength, i, j, locus, clean0 = com.cleandata;
+   int i, j, locus, clean0 = com.cleandata;
 
    ftree = gfopen(com.treef, "r");
-
-   /* read master species tree and process fossil calibration info */
-   fscanf(ftree, "%d%d", &stree.nspecies, &i);
-   com.ns = stree.nspecies;
-   if (com.ns > NS) error2("raise NS?");
-   /* to read master species names into stree.nodes[].name */
-   if (noisy) puts("Reading master tree.");
-   for (j = 0; j < stree.nspecies; j++)
-      com.spname[j] = stree.nodes[j].name;
-   nodes = nodes_t;
-
-   ReadTreeN(ftree, &haslength, 1, 1);
-   OutTreeN(F0, 1, 0); printf("\n");
-   /* OutTreeN(F0,1,1); printf("\n"); */
-
-   if (com.clock == 5 || com.clock == 6)
-      for (i = 0; i < tree.nnode; i++)  nodes[i].branch = nodes[i].label = 0;
-   for (i = 0; i < tree.nnode; i++)
-      if (nodes[i].label < 0) nodes[i].label = 0;  /* change -1 into 0 */
-
-   /* copy master tree into stree */
-   if (tree.nnode != 2 * com.ns - 1)
-      error2("check and think about multifurcating trees.");
-   stree.nnode = tree.nnode;  stree.nbranch = tree.nbranch;
-   stree.root = tree.root;    stree.nfossil = 0;
-   for (i = 0; i < stree.nnode; i++) {
-      stree.nodes[i].father = nodes[i].father;
-      stree.nodes[i].nson = nodes[i].nson;
-      stree.nodes[i].label = -1;
-      if (nodes[i].nson != 0 && nodes[i].nson != 2)
-         error2("master tree has to be binary.");
-      for (j = 0; j < stree.nodes[i].nson; j++)
-         stree.nodes[i].sons[j] = nodes[i].sons[j];
-   }
-
-   /***** (((A1 , B1) '#1 B(0.1,0.3)', (A2 , B2) #1), C ) 'B(0.9, 1.1)';  *****/
+   ReadMainTree(ftree, &stree);
+   /* process fossil calibration info 
+     (((A1 , B1) '#1 B(0.1,0.3)', (A2 , B2) #1), C ) 'B(0.9, 1.1)';  
+   */
 #if (defined MCMCTREE)
    if (!tipdate.flag)
       ProcessNodeAnnotation(&i);
@@ -8936,14 +8950,14 @@ int ReadTreeSeqs(FILE* fout)
 
       com.cleandata = (char)clean0;
       for (j = 0; j < stree.nspecies; j++)
-         com.spname[j] = NULL; /* points to nowhere */
+         com.spname[j] = NULL;  /* points to nowhere */
 #if (defined CODEML)
       if (com.seqtype == 1) {
          com.icode = data.icode[locus];
          setmark_61_64();
       }
 #endif
-      ReadSeq(fout, fseq, clean0, locus);               /* allocates com.spname[] */
+      ReadSeq(fout, fseq, clean0, locus, 0);               /* allocates com.spname[] */
 #if (defined CODEML)
       if (com.seqtype == 1) {
          if (com.sspace < max2(com.ngene + 1, com.ns) * (64 + 12 + 4) * sizeof(double)) {
@@ -8988,7 +9002,7 @@ int ReadTreeSeqs(FILE* fout)
          printf("%3d patterns, %s\n", com.npatt, (com.cleandata ? "clean" : "messy"));
       }
 
-      GenerateGtree(locus);      /* free com.spname[] */
+      GenerateGtree_locus(locus, data.ns[locus], 1);    /* free com.spname[] */
    }  /* for(locus) */
    if (noisy) printf("\n");
    for (i = 0, com.cleandata = 1; i < data.ngene; i++)
@@ -9007,22 +9021,46 @@ int ReadTreeSeqs(FILE* fout)
 }
 
 
-int GenerateGtree(int locus)
+int GenerateGtrees(FILE* fout, FILE* fseq, char *treesfilename)
 {
-   /* construct the gene tree at locus by pruning tips in the master species
-    tree.  com.spname[] have names of species at the current locus (probably read
-    from the sequence alignment at the locus).  They are used by the routine to compare
-    with stree.nodes[].name to decide which species to keep for the locus.
-    See GetSubTreeN() for more details.
-    */
-   int ns = data.ns[locus], i, j, keep[NS], newnodeNO[2 * NS - 1];
+   FILE* ftrees = gfopen(treesfilename, "w");
+   int locus, s=stree.nspecies, i;
+
+   for (locus = 0; locus < com.ndata; locus++) {
+      for (i = 0; i < s; i++) com.spname[i] = NULL;
+      ReadSeq(fout, fseq, 0, locus, 1);   /* allocates com.spname[] */
+      GenerateGtree_locus(locus, com.ns, 0);
+      printf("\nlocus %2d: ", locus + 1);
+      OutTreeN(stdout, 1, PrLabel);  printf("\n");
+      fprintf(ftrees, "\n%d  1\n", com.ns);
+      OutTreeN(ftrees, 1, PrLabel);  fprintf(ftrees, "\n");
+   }
+   fclose(ftrees);
+   return (0);
+}
+
+int GenerateGtree_locus(int locus, int ns, int allocate_gnodes)
+{
+/* construct the gene tree at locus in nodes_t.
+   It prunes off tips in the main species tree stree.  
+   com.spname[] have names of species at the current locus (read from the sequence alignment at the locus).  
+   They are used by the routine to compare with stree.nodes[].name to decide which species to keep for 
+   the locus.
+   See GetSubTreeN() for more details.
+   */
+   int nnode0=stree.nnode, i, j, keep[NS], * newnodeNO;
+
+   if (ns > stree.nspecies) 
+      error2("ns in seqfile is > ns in main tree");
+   newnodeNO = (int*)malloc(nnode0 * sizeof(int));
+   if (newnodeNO == NULL) error2("oom GenerateGtree_locus");
 
    for (j = 0; j < stree.nspecies; j++) keep[j] = 0;
    for (i = 0; i < ns; i++) {
       for (j = 0; j < stree.nspecies; j++)
          if (!strcmp(com.spname[i], stree.nodes[j].name)) break;
       if (j == stree.nspecies) {
-         printf("species %s not found in master tree\n", com.spname[i]);
+         printf("species %s not found in main tree\n", com.spname[i]);
          exit(-1);
       }
       if (keep[j]) {
@@ -9033,23 +9071,27 @@ int GenerateGtree(int locus)
       free(com.spname[i]);
    }
 
-   /* copy master species tree and then prune it. */
-   copySptree();
+   /* copy main species tree and then prune it. */
+   nodes = nodes_t;
+   copy_from_Sptree(&stree, nodes);
    GetSubTreeN(keep, newnodeNO);
    com.ns = ns;
+   NodeToBranch();
 
+#if(MCMCTREE)
    for (i = 0; i < stree.nnode; i++)
       if (newnodeNO[i] != -1) nodes[newnodeNO[i]].ipop = i;
    /* printGtree(0);  */
-
-   gnodes[locus] = (struct TREEN*)malloc((ns * 2 - 1) * sizeof(struct TREEN));
-   if (gnodes[locus] == NULL) error2("oom gtree");
-   memcpy(gnodes[locus], nodes, (ns * 2 - 1) * sizeof(struct TREEN));
-   data.root[locus] = tree.root;
-
+   if (allocate_gnodes) {
+      gnodes[locus] = (struct TREEN*)malloc((ns * 2 - 1) * sizeof(struct TREEN));
+      if (gnodes[locus] == NULL) error2("oom gtree");
+      memcpy(gnodes[locus], nodes, (ns * 2 - 1) * sizeof(struct TREEN));
+      data.root[locus] = tree.root;
+   }
+#endif
+   free(newnodeNO);
    return(0);
 }
-
 
 int printGtree(int printBlength)
 {
@@ -9070,41 +9112,69 @@ int printGtree(int printBlength)
    printf("\n");
    OutTreeN(F0, 0, 0); printf("\n");
    OutTreeN(F0, 1, 0); printf("\n");
-   if (printBlength)
-   {
+   if (printBlength) {
       OutTreeN(F0, 1, 1); printf("\n");
    }
    return(0);
 }
 
 
-void copySptree(void)
+void copy_from_Sptree(struct SPECIESTREE *stree, struct TREEN *nodes)
 {
-   /* This copies stree into nodes = nodes_t, for printing or editing
-    */
+/* This copies stree into nodes, tree, & com.spname, for printing or editing
+   */
    int i, j;
 
-   nodes = nodes_t;
-   com.ns = stree.nspecies;   tree.root = stree.root;
-   tree.nnode = stree.nnode;  tree.nbranch = stree.nbranch;
-   for (i = 0; i < stree.nnode; i++) {
+   com.ns = stree->nspecies;   tree.root = stree->root;
+   tree.nnode = stree->nnode;  tree.nbranch = stree->nbranch;
+   for (i = 0; i < stree->nnode; i++) {
       /* this is used by mcmctree */
-      if (i < com.ns) com.spname[i] = stree.nodes[i].name;
-
+      if (i < com.ns)
+         com.spname[i] = stree->nodes[i].name; 
       /* The following may be needed by bpp.  Check carefully. */
       /*
-       if(i<com.ns) strcpy(com.spname[i], stree.nodes[i].name);
+       strcpy(com.spname[i], stree->nodes[i].name);
+
+       com.spname[i] = nodes[i].name = stree->nodes[i].name; 
        */
-      nodes[i].father = stree.nodes[i].father;
-      nodes[i].nson = stree.nodes[i].nson;
+      nodes[i].father = stree->nodes[i].father;
+      nodes[i].nson = stree->nodes[i].nson;
       for (j = 0; j < nodes[i].nson; j++)
-         nodes[i].sons[j] = stree.nodes[i].sons[j];
-      nodes[i].fossil = stree.nodes[i].fossil;
-      nodes[i].age = stree.nodes[i].age;
+         nodes[i].sons[j] = stree->nodes[i].sons[j];
+      nodes[i].fossil = stree->nodes[i].fossil;
+      nodes[i].age = stree->nodes[i].age;
+      nodes[i].label = stree->nodes[i].label;
       if (i != tree.root)
-         nodes[i].branch = stree.nodes[nodes[i].father].age - stree.nodes[i].age;
+         nodes[i].branch = stree->nodes[nodes[i].father].age - stree->nodes[i].age;
    }
 }
+
+
+void copy_to_Sptree(struct SPECIESTREE* stree, struct TREEN* nodes)
+{
+   /* This copies nodes, tree, & com.spname into stree (main stree)  */
+   int i, j;
+
+   stree->nspecies = com.ns;
+   for (j = 0; j < stree->nspecies; j++)
+      strcpy(stree->nodes[j].name, com.spname[j]);
+   stree->nnode = tree.nnode;  stree->nbranch = tree.nbranch;
+   stree->root = tree.root;    stree->nfossil = 0;
+   for (i = 0; i < stree->nnode; i++) {
+      stree->nodes[i].father = nodes[i].father;
+      stree->nodes[i].nson = nodes[i].nson;
+      stree->nodes[i].label = nodes[i].label;
+#if(MCMCTREE)
+      if (nodes[i].nson != 0 && nodes[i].nson != 2)
+         error2("main tree is not binary.");
+#endif
+      for (j = 0; j < stree->nodes[i].nson; j++)
+         stree->nodes[i].sons[j] = nodes[i].sons[j];
+   }
+   for (j = 0; j < stree->nspecies; j++)
+      com.spname[j] = NULL;
+}
+
 
 void printStree(void)
 {
@@ -9136,7 +9206,8 @@ void printStree(void)
 
       printf("\n");
    }
-   copySptree();
+   nodes = nodes_t;
+   copy_from_Sptree(&stree, nodes);
    printf("\n");
    OutTreeN(F0, 0, 0);  printf("\n");
    OutTreeN(F0, 1, 0);  printf("\n");
@@ -9296,11 +9367,11 @@ void GetMemBC(void)
       fhK[] uses shared space for loci.
    */
    int j, locus, nc = (com.seqtype == 1 ? 64 : com.ncode);
-   size_t maxsizeScale = 0, nS, sfhK = 0, s1, snode;
+   size_t maxsizeScale = 0, nS, sfhK = 0, s1, sizenode;
 
    for (locus = 0, com.sconP = 0; locus < data.ngene; locus++) {
-      snode = nc * data.npatt[locus];
-      s1 = snode * (data.ns[locus] - 1) * sizeof(double);
+      sizenode = nc * data.npatt[locus];
+      s1 = sizenode * (data.ns[locus] - 1) * sizeof(double);
       if (com.alpha) {     /* this is for step 1, using method = 1 */
          com.conPSiteClass = 1;
          s1 *= com.ncatG;
@@ -9321,9 +9392,9 @@ void GetMemBC(void)
 
    /* set gnodes[locus][].conP for internal nodes */
    for (locus = 0; locus < data.ngene; locus++) {
-      snode = nc * data.npatt[locus];
+      sizenode = nc * data.npatt[locus];
       for (j = data.ns[locus]; j < data.ns[locus] * 2 - 1; j++)
-         gnodes[locus][j].conP = com.conP + (j - data.ns[locus]) * snode;
+         gnodes[locus][j].conP = com.conP + (j - data.ns[locus]) * sizenode;
    }
    for (locus = 0; locus < data.ngene; locus++) {
       if (!data.cleandata[locus]) {
@@ -9413,7 +9484,8 @@ double lnLfunHeteroData(double x[], int np)
    if (!com.fix_alpha) for (i = 0; i < data.ngene; i++) data.alpha[i] = x[k++];
 
    /* update node ages in species tree */
-   copySptree();
+   nodes = nodes_t;
+   copy_from_Sptree(&stree, nodes);
    SetBranch(x);
    for (i = 0; i < tree.nnode; i++) stree.nodes[i].age = nodes[i].age;
 
@@ -9457,7 +9529,8 @@ double funSS_AHRS(double x[], int np)
    double nu = nu_AHRS, * varb = varb_AHRS;
 
    /* set up node ages in species tree */
-   copySptree();
+   nodes = nodes_t; 
+   copy_from_Sptree(&stree, nodes);
    SetBranch(x);
    for (j = 0; j < tree.nnode; j++)
       stree.nodes[j].age = nodes[j].age;
@@ -9549,7 +9622,7 @@ int GetInitialsClock6Step1(double x[], double xb[][2])
    com.plfun = (com.alpha == 0 ? lfun : lfundG);
    com.conPSiteClass = (com.method && com.plfun == lfundG);
 
-   /*   InitializeNodeScale(); */
+   InitializeNodeScale();
 
    if (com.seqtype == 0)  com.nrate = !com.fix_kappa;
 
@@ -9596,7 +9669,7 @@ int GetInitialsClock56Step3(double x[])
    com.plfun = (com.alpha == 0 ? lfun : lfundG);
    com.conPSiteClass = (com.method && com.plfun == lfundG);
 
-   /*   InitializeNodeScale(); */
+   InitializeNodeScale();
 
    com.np = com.ntime - 1 + (1 + !com.fix_kappa + !com.fix_omega + !com.fix_alpha) * data.ngene;
    if (com.clock == 5)
@@ -9784,7 +9857,8 @@ int AdHocRateSmoothing(FILE* fout, double x[NS * 3], double xb[NS * 3][2], doubl
    fprintf(fout, "\n\nStep 2: Ad hoc rate smoothing to estimate branch rates.\n");
    /* s - 1 - NFossils node ages, (2*s_i - 2) rates for branches at each locus */
    com.clock = 1;
-   copySptree();
+   nodes = nodes_t; 
+   copy_from_Sptree(&stree, nodes);
    GetInitialsTimes(x);
 
    for (locus = 0, com.np = com.ntime - 1; locus < data.ngene; locus++)
@@ -9853,7 +9927,8 @@ int AdHocRateSmoothing(FILE* fout, double x[NS * 3], double xb[NS * 3][2], doubl
    free(varb_AHRS);
 
    fputs("\nEstimated divergence times from ad hoc rate smoothing\n\n", fout);
-   copySptree();
+   nodes = nodes_t; 
+   copy_from_Sptree(&stree, nodes);
    for (i = 0; i < tree.nnode; i++) nodes[i].branch *= 100;
    for (i = com.ns; i < tree.nnode; i++)
       fprintf(fout, "Node %2d   Time %9.5f\n", i + 1, nodes[i].age * 100);
@@ -10004,7 +10079,7 @@ void DatingHeteroData(FILE* fout)
    /* This is for clock and local-clock dating using heterogeneous data from
     multiple loci.  Some species might be missing at some loci.  Thus
     gnodes[locus] stores the gene tree at locus.  Branch lengths in the gene
-    tree are constructed using the divergence times in the master species tree,
+    tree are constructed using the divergence times in the main species tree,
     and the rates for genes and branches.
 
     com.clock = 5: global clock
@@ -10068,7 +10143,8 @@ void DatingHeteroData(FILE* fout)
 
    noisy = 3;
 
-   copySptree();
+   nodes = nodes_t; 
+   copy_from_Sptree(&stree, nodes);
    GetInitialsClock56Step3(x);
    np = com.np;
 
@@ -10096,7 +10172,8 @@ void DatingHeteroData(FILE* fout)
       Hessian(np, x, lnL, com.space, var, lnLfunHeteroData, var + np * np);
       matinv(var, np, np, var + np * np);
    }
-   copySptree();
+   nodes = nodes_t; 
+   copy_from_Sptree(&stree, nodes);
    SetBranch(x);
    fprintf(fout, "\n\nTree:  ");  OutTreeN(fout, 0, 0);
    fprintf(fout, "\nlnL(ntime:%3d  np:%3d):%14.6f\n", com.ntime - 1, np, -lnL);

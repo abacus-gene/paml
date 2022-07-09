@@ -46,7 +46,7 @@ struct TREEB {
 struct TREEN {
    int father, nson, sons[MAXNSONS], ibranch;
    double branch, age, label, label2, *conP;
-   char *annotation, fossil;
+   char * name, *annotation, fossil;
 }  *nodes;
 
 
@@ -67,7 +67,7 @@ int LASTROUND = 0; /* no use for this */
 int main(int argc, char *argv[])
 {
    FILE *ftree, *fout, *fseq;
-   char ctlf[2048] = "pamp.ctl";
+   char ctlf[4096] = "pamp.ctl";
    char *Seqstr[] = { "nucleotide", "", "amino-acid", "Binary" };
    int itree, ntree, i, s3;
    double *space, *Ft;
@@ -75,14 +75,14 @@ int main(int argc, char *argv[])
    com.nhomo = 1;  com.print = 1;
    noisy = 2;  com.ncatG = 8;   com.clock = 0; com.cleandata = 1;
    starttimer();
-   GetOptions(ctlf);
    if (argc > 1) { strcpy(ctlf, argv[1]); printf("\nctlfile set to %s.\n", ctlf); }
+   GetOptions(ctlf);
 
    printf("PAMP in %s\n", pamlVerStr);
    if ((fseq = fopen(com.seqf, "r")) == NULL) error2("seqfile err.");
    if ((fout = fopen(com.outf, "w")) == NULL) error2("outfile creation err.");
    if ((fseq = fopen(com.seqf, "r")) == NULL)  error2("No sequence file!");
-   ReadSeq(NULL, fseq, com.cleandata, 0);
+   ReadSeq(NULL, fseq, com.cleandata, 0, 0);
    SetMapAmbiguity(com.seqtype, 0);
    i = (com.ns * 2 - 1) * sizeof(struct TREEN);
    if ((nodes = (struct TREEN*)malloc(i)) == NULL) error2("oom");

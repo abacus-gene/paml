@@ -59,7 +59,7 @@ struct TREEB {
 struct TREEN {
    int father, nson, sons[MAXNSONS], ibranch;
    double branch, age, label, label2, * conP;
-   char* annotation, fossil;
+   char * name, * annotation, fossil;
 }  nodes[2 * NS - 1];
 
 static int nR = 4, CijkIs0[64];
@@ -83,7 +83,7 @@ int main(int argc, char* argv[])
 {
    FILE* fout, * fseq = NULL, * fpair[6];
    char pairfs[1][32] = { "2base.t" };
-   char ctlf[2048] = "baseml.ctl";
+   char ctlf[4096] = "baseml.ctl";
    double  space[50000];
 
    noisy = 2;  com.cleandata = 1;  /* works with clean data only */
@@ -102,13 +102,13 @@ int main(int argc, char* argv[])
 
    if (argc > 2 && !strcmp(argv[argc - 1], "--stdout-no-buf"))
       setvbuf(stdout, NULL, _IONBF, 0);
-   if (argc > 1) { strncpy(ctlf, argv[1], 95); printf("\nctlfile is %s.\n", ctlf); }
+   if (argc > 1) { strncpy(ctlf, argv[1], 4095); printf("\nctlfile is %s.\n", ctlf); }
    GetOptions(ctlf);
    finitials = fopen("in.basemlg", "r");
 
    if ((fout = fopen(com.outf, "w")) == NULL) error2("outfile creation err.");
    if ((fseq = fopen(com.seqf, "r")) == NULL)  error2("No sequence file!");
-   ReadSeq(NULL, fseq, com.cleandata, 0);
+   ReadSeq(NULL, fseq, com.cleandata, 0, 0);
    if ((fpair[0] = (FILE*)fopen(pairfs[0], "w")) == NULL) error2("2base.t file open error");
 
    fprintf(fout, "BASEMLG %15s %8s + Gamma", com.seqf, models[com.model]);

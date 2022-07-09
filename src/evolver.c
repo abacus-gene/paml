@@ -15,7 +15,7 @@
      evolver 5 MCbase.dat
      evolver 6 MCcodon.dat
      evolver 7 MCaa.dat
-     evolver 9 <TreesFile> <MasterTreeFile>
+     evolver 9 <TreesFile> <MainTreeFile>
 */
 
 /*
@@ -57,7 +57,7 @@ struct TREEB {
 struct TREEN {
    int father, nson, sons[MAXNSONS], ibranch;
    double branch, age, omega, label, label2, * conP;
-   char* annotation, fossil;
+   char * name, * annotation, fossil;
 }  *nodes;
 #else
 struct NODE {
@@ -107,7 +107,7 @@ static double Qfactor = -1, Qrates[5];  /* Qrates[] hold kappa's for nucleotides
 
 int main(int argc, char* argv[])
 {
-   char* MCctlf = NULL, outf[512] = "evolver.out", treefile[512] = "mcmc.txt", mastertreefile[512] = "\0";
+   char* MCctlf = NULL, outf[512] = "evolver.out", treefile[512] = "mcmc.txt", maintreefile[512] = "\0";
    int i, option = -1, ntree = 1, rooted, BD = 0, gotoption = 0, pick1tree = 0;
    double birth = -1, death = -1, sample = -1, mut = -1, * space;
    FILE* fout = gfopen(outf, "w");
@@ -129,7 +129,7 @@ int main(int argc, char* argv[])
       MCctlf = argv[2];
    else if (option == 9) {
       strcpy(treefile, argv[2]);
-      if (argc > 3) strcpy(mastertreefile, argv[3]);
+      if (argc > 3) strcpy(maintreefile, argv[3]);
       if (argc > 4) sscanf(argv[4], "%d", &pick1tree);
    }
 
@@ -163,7 +163,7 @@ int main(int argc, char* argv[])
          printf("\t(6) Simulate codon data sets      (use %s)?\n", MCctlf0[1]);
          printf("\t(7) Simulate amino acid data sets (use %s)?\n", MCctlf0[2]);
          printf("\t(8) Calculate identical bi-partitions between trees?\n");
-         printf("\t(9) Calculate clade support values (evolver 9 treefile mastertreefile <pick1tree>)?\n");
+         printf("\t(9) Calculate clade support values (evolver 9 treefile maintreefile <pick1tree>)?\n");
          printf("\t(11) Label clades?\n");
          printf("\t(0) Quit?\n");
 
@@ -226,7 +226,7 @@ int main(int argc, char* argv[])
          case(8):  TreeDistances(fout);  break;
          case(9):
             printf("tree file names? ");
-            scanf("%s%s", treefile, mastertreefile);
+            scanf("%s%s", treefile, maintreefile);
             break;
          case(10): between_f_and_x();    break;
          case(11): LabelClades(fout);    break;
@@ -241,7 +241,7 @@ int main(int argc, char* argv[])
    }
    else if (option == 9) {
 
-      CladeSupport(fout, treefile, 1, mastertreefile, pick1tree);
+      CladeSupport(fout, treefile, 1, maintreefile, pick1tree);
       /* CladeMrBayesProbabilities("\data\Lakner2008SB/M1510YY03.nex.t"); */
    }
    return(0);
@@ -276,7 +276,7 @@ void LabelClades(FILE* fout)
       whether the remaining seqs form a monophyletic clade.
    */
    FILE* ftree;
-   int unrooted = 1, iclade, sizeclade = -1, mrca = -1, paraphyl, is, imrca, i, j, k, lasts, haslength;
+   int unrooted = 1, iclade, sizeclade = -1, mrca = -1, paraphyl, is, imrca, i, j, k, lasts=-1, haslength;
    char key[96] = "A", treef[64] = "/A/F/flu/HA.all.prankcodon.tre", * p, chosen[NS], * endstr = "end";
    int* anc[NS - 1], loc, bitmask, SI = sizeof(int) * 8;
    int debug;

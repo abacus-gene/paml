@@ -29,8 +29,8 @@
 #define swap2(a,b,y) { y=a; a=b; b=y; }
 #define Pi  3.1415926535897932384626433832795
 
-int ReadSeq (FILE *fout, FILE *fseq, int cleandata, int locus);
-int ScanFastaFile(FILE *f, int *ns, int *ls, int *aligned);
+int ReadSeq (FILE* fout, FILE* fseq, int cleandata, int locus, int read_seq_only);
+int ScanFastaFile (FILE *f, int *ns, int *ls, int *aligned);
 void EncodeSeqs (void);
 void SetMapAmbiguity(int seqtype, int ModelAA2Codon);
 void ReadPatternFreq (FILE* fout, char* fpattf);
@@ -320,7 +320,7 @@ int RandomLHistory (int rooted, double space[]);
 
 void Tree2Partition (char partition[]);
 int Partition2Tree (char splits[], int lsplit, int ns, int nsplit, double label[]);
-void CladeSupport (FILE *fout, char treef[], int getSnames, char mastertreef[], int pick1tree);
+void CladeSupport (FILE *fout, char treef[], int getSnames, char maintreef[], int pick1tree);
 int GetNSfromTreeFile(FILE *ftree, int *ns, int *ntree);
 int NSameBranch (char partition1[],char partition2[], int nib1,int nib2, int IBsame[]);
 
@@ -390,6 +390,6 @@ extern int PrBranch, PrNodeNum, PrLabel, PrNodeStr, PrAge, PrOmega;
 
 #define PAML_RELEASE      0
 
-#define pamlVerStr "paml version 4.10.3, December 2021"
+#define pamlVerStr "paml version 4.10.5, March 2022"
 
 #endif

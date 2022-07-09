@@ -520,9 +520,14 @@ int PMatUVRoot(double P[], double t, int n, double U[], double V[], double Root[
    /* P(t) = U * exp{Root*t} * V
    */
    int i, j, k;
-   double exptm1, uexpt, *pP;
+   double exptm1, uexpt, * pP, smallp = 0;
 
    NPMatUVRoot++;
+   if (t < -0.01) printf("\nt = %.5f in PMatUVRoot", t);
+   if (t < 1e-100) {
+      identity(P, n);
+      return(0);
+   }
    memset(P, 0, n*n * sizeof(double));
    for (k = 0; k < n; k++) {
       for (i = 0, pP = P, exptm1 = expm1(t*Root[k]); i < n; i++)
@@ -530,7 +535,8 @@ int PMatUVRoot(double P[], double t, int n, double U[], double V[], double Root[
             *pP++ += uexpt*V[k*n + j];
    }
    for (i = 0; i < n; i++)  P[i*n+i] ++;
-
+   for (i = 0; i < n * n; i++)
+      if (P[i] < smallp)  P[i] = 0;
 #if (DEBUG>=5)
    if (testTransP(P, n)) {
       printf("\nP(%.6f) err in PMatUVRoot.\n", t);
@@ -1132,7 +1138,7 @@ void strcase(char *str, int direction)
    /* direction = 0: to lower; 1: to upper */
    char *p = str;
    if (direction)  while (*p) { *p = (char)toupper(*p); p++; }
-   else           while (*p) { *p = (char)tolower(*p); p++; }
+   else            while (*p) { *p = (char)tolower(*p); p++; }
 }
 
 

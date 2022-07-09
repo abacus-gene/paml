@@ -55,7 +55,7 @@ int SetPGene(int igene, int _pi, int _UVRoot, int _alpha, double xcom[]);
 int DownSptreeSetTime(int inode);
 void getSinvDetS(double space[]);
 int GetInitials(void);
-int GenerateGtree(int locus);
+int GenerateGtree(int locus, int ns, int allocate_gnodes);
 int printGtree(int printBlength);
 int SetParameters(double x[]);
 int ConditionalPNode(int inode, int igene, double x[]);
@@ -70,7 +70,6 @@ double lnpriorTimesBDS_Approach1(void);
 double lnpriorTimesTipDate(void);
 double lnpriorTimes(void);
 double lnpriorRates(void);
-void copySptree(void);
 void printStree(void);
 double InfinitesitesClock(double *FixedDs);
 double Infinitesites(FILE *fout);
@@ -134,9 +133,9 @@ struct TREEN { /* ipop is node number in species tree */
    char fossil, *name, *annotation;
 }  *nodes, **gnodes, nodes_t[2 * NS - 1];
 /* nodes_t[] is working space.  nodes is a pointer and moves around.
-gnodes[] holds the gene trees, subtrees constructed from the master species
+gnodes[] holds the gene trees, subtrees constructed from the main species
 tree.  Each locus has a full set of rates (rates) for all branches on the
-master tree, held in stree.nodes[].rates.  Branch lengths in the gene
+main tree, held in stree.nodes[].rates.  Branch lengths in the gene
 tree are calculated by using those rates and the divergence times.
 
 gnodes[][].label in the gene tree is used to store branch lengths estimated
@@ -156,8 +155,8 @@ struct SPECIESTREE {
    double RootAge[4];
    struct TREESPN {
       char name[LSPNAME + 1], fossil, usefossil;    /* fossil: 0, 1(L), 2(U), 3(B), 4(G) */
-      int father, nson, sons[2], label;
-      double age, pfossil[7];                       /* parameters in fossil distribution */
+      int father, nson, sons[2];
+      double label, age, pfossil[7];                /* parameters in fossil distribution */
       double *rates;                                /* log rates for loci */
    } nodes[2 * NS - 1];
 }    stree;
@@ -216,7 +215,7 @@ char *Btransform[] = { "", "square root", "logarithm", "arcsin" };
 
 int main(int argc, char *argv[])
 {
-   char ctlf[2048] = "mcmctree.ctl";
+   char ctlf[4096] = "mcmctree.ctl";
    int i, j, k = 6;
    FILE  *fout;
 
@@ -244,7 +243,7 @@ int main(int argc, char *argv[])
    if (argc > 2 && !strcmp(argv[argc - 1], "--stdout-no-buf"))
       setvbuf(stdout, NULL, _IONBF, 0);
    if (argc > 1)
-      strncpy(ctlf, argv[1], 127);
+      strncpy(ctlf, argv[1], 4095);
 
    data.BDS[0] = 1;    data.BDS[1] = 1;  data.BDS[2] = 0;
    strcpy(com.outf, "out");
@@ -304,7 +303,8 @@ int main(int argc, char *argv[])
    if (mcmc.print < 0) {
       mcmc.print *= -1;
       fputs("\nSpecies tree for FigTree.", fout);
-      copySptree();
+      nodes = nodes_t;
+      copy_to_Sptree(&stree, nodes);
       fprintf(fout, "\n"); 
       OutTreeN(fout, 1, PrNodeNum);
       fprintf(fout, "\n");
@@ -1787,7 +1787,7 @@ int GetInitialsTimes(void)
          for (j = 0; j < s21; j++) printf(" %2d", pptable[i*s21 + j]);
          if (i >= s) {
             printf(" %3s ", (stree.nodes[i].fossil ? fossils[(int)stree.nodes[i].fossil] : ""));
-            printf("  label = %2d, ", stree.nodes[i].label);
+            printf("  label = %2.0f, ", stree.nodes[i].label);
             if (stree.nodes[i].label == -1)      printf("driver");
             else if (stree.nodes[i].label > 0)   printf("mirror");
          }
@@ -1824,7 +1824,7 @@ int GetInitialsTimes(void)
    }
    for (i = s; i < s21; i++) {
       for (j = s; j < s21; j++)
-         if (j != i && pptable[i*s21 + j] && tmax[j] > 0 && tmin[i] > tmax[j]) {
+         if (j != i && pptable[i*s21 + j] && tmax[j] > 0 && tmin[i] >= tmax[j]) {
             printf("\n\ndaughter node %3d minimun age %9.4f \nmother node %3d max age %9.4f\n", i + 1, tmin[i], j + 1, tmax[j]);
             error2("strange calibration?");
          }
@@ -1882,7 +1882,7 @@ int GetInitialsTimes(void)
       if (maxdepth>1) qsort(r, (size_t)maxdepth, sizeof(double), comparedouble);
       for (j = from, k = 0; k<maxdepth; j = stree.nodes[j].father, k++) {
          stree.nodes[j].age = tbpath[0] + (tbpath[1] - tbpath[0])*r[k];
-         driver = (stree.nodes[j].label >= s ? stree.nodes[j].label : (stree.nodes[j].label == -1 ? j : 0));
+         driver = (int)(stree.nodes[j].label >= s ? stree.nodes[j].label : (stree.nodes[j].label == -1 ? j : 0));
          if (driver) {
             for (k1 = s; k1 < s21; k1++) {
                if (k1 != j && (k1 == driver || stree.nodes[k1].label == driver))
@@ -1920,7 +1920,7 @@ int GetInitialsTimes(void)
       if(maxdepth>1) qsort(r, (size_t)maxdepth, sizeof(double), comparedouble);
       for (j = from, k = 0; k<maxdepth; j = stree.nodes[j].father, k++) {
          stree.nodes[j].age = tbpath[0] + (tbpath[1] - tbpath[0])*r[k];
-         driver = (stree.nodes[j].label >= s ? stree.nodes[j].label : (stree.nodes[j].label == -1 ? j : 0));
+         driver = (int)(stree.nodes[j].label >= s ? stree.nodes[j].label : (stree.nodes[j].label == -1 ? j : 0));
          if (driver) {
             for (k1 = s; k1 < s21; k1++) {
                if (k1 != j && (k1 == driver || stree.nodes[k1].label == driver))
@@ -1945,7 +1945,7 @@ int GetInitialsTimes(void)
          ncorrections++;
          stree.nodes[j].age = stree.nodes[i].age * (1.001 + 0.01*rndu());
          /* copy nodes[j].age to all mirrored nodes */
-         driver = (stree.nodes[j].label >= s ? stree.nodes[j].label : (stree.nodes[j].label == -1 ? j : 0));
+         driver = (int)(stree.nodes[j].label >= s ? stree.nodes[j].label : (stree.nodes[j].label == -1 ? j : 0));
          if (driver) {
             for (k = s; k < s21; k++) {
                if (k != j && (k == driver || stree.nodes[k].label == driver))
@@ -2896,7 +2896,7 @@ int SetupPriorTimesFossilErrors(void)
 
 double lnpriorTimes(void)
 {
-   /* This calculates the prior density of node times in the master species tree.
+   /* This calculates the prior density of node times in the main species tree.
          Node ages are in stree.nodes[].age.
    */
    int nMinCorrect = (int)data.pfossilerror[2];
@@ -3067,7 +3067,7 @@ int LabelOldCondP(int spnode)
 
 int UpdateTimes(double *lnL, double steplength[], char accept[])
 {
-   /* This updates the node ages in the master species tree stree.nodes[].age,
+   /* This updates the node ages in the main species tree stree.nodes[].age,
       stree.duplication:
       stree.nodes[i].label = 0:  usual node, which may and may not have calibration.
                             -1:  node i is the driver node, whose age is shared by other nodes.
@@ -3186,7 +3186,7 @@ int UpdateTimes(double *lnL, double steplength[], char accept[])
 
 int UpdateTimesClock23(double *lnL, double steplength[], char accept[])
 {
-   /* This updates the node ages in the master species tree stree.nodes[].age,
+   /* This updates the node ages in the main species tree stree.nodes[].age,
       one by one.  It simultaneously changes the rates at the three branches
       around the node so that the branch lengths remain the same, and there is
       no need to update the lnL.  Sliding window on the logarithm of ages.
@@ -4256,8 +4256,11 @@ int MCMC(FILE* fout)
       }
    }  /* for(ir) */
 
-   if (mcmc.print) fclose(fmcmc);
 
+   printf("me is here a\n");
+   if (mcmc.print) fclose(fmcmc);
+   printf("me is here b\n");
+   
    if (BFbeta != 1) printf("\nBFbeta = %8.6f  E_b(lnf(X)) = %9.4f\n", BFbeta, mlnL);
    printf("\nTime used: %s", printtime(timestr));
    fprintf(fout, "\nTime used: %s", printtime(timestr));
@@ -4266,7 +4269,8 @@ int MCMC(FILE* fout)
    for (i = 0; i < com.np; i++)  fprintf(fout, " %9.5f", mx[i]);
    fprintf(fout, "\n");
 
-   copySptree();
+   nodes = nodes_t;
+   copy_from_Sptree(&stree, nodes);
    for (j = 0; j < stree.nspecies - 1; j++)
       nodes[stree.nspecies + j].age = mx[j];
    for (j = 0; j < stree.nnode; j++)
