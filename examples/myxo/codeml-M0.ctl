@@ -17,3 +17,4 @@
         clock = 0          * Clock model
     fix_omega = 0         * Estimate or fix omega
         omega = 0.5        * Initial or fixed omega
+ RateAncestor = 1   * (0,1,2): rates (alpha>0) or ancestral states

@@ -11,8 +11,6 @@
 /************************
              sequences
 *************************/
-int BASEseq = 0, CODONseq = 1, AAseq = 2, CODON2AAseq = 3, BINARYseq = 4, BASE5seq = 5;
-int PrBranch = 1, PrNodeNum = 2, PrLabel = 4, PrNodeStr = 8, PrAge = 16, PrOmega = 32;
 
 char BASEs[] = "TCAGUYRMKSWHBVD-N?";
 char *EquateBASE[] = { "T","C","A","G", "T", "TC","AG","CA","TG","CG","TA",
@@ -268,7 +266,7 @@ int PickExtreme(FILE *fout, char *z, int ls, int iring, int lfrag, int *ffrag)
 
 int zztox(int n31, int l, char *z1, char *z2, double *x)
 {
-   /*   x[n31][4][4]   */
+/* x[n31][4][4] */
    double t = 1. / (double)(l / n31);
    int i, ib[2];
    int il;
@@ -808,7 +806,7 @@ int Codon2AA(char codon[3], char aa[3], int icode, int *iaa)
    }
    else if (naa == 2)  *iaa = 20;
    else             *iaa = iaa0;
-   strncpy(aa, AA3Str + *iaa * 3, 3);
+   memcpy(aa, AA3Str + *iaa * 3, 3*sizeof(char));
 
    return(naa == 1 ? 0 : (naa == 0 ? -1 : 1));
 }
@@ -1478,7 +1476,7 @@ double reflect(double x, double a, double b)
 
 double PjumpOptimum = 0.30; /* this is the optimum for the Bactrian move. */
 
-int ResetStepLengths(FILE *fout, double Pjump[], double finetune[], int nsteps)
+int ResetStepLengths(FILE *fout, double Pjump[], double steps[], int nsteps)
 {
    /* this abjusts the MCMC proposal step lengths, using equation 9 in
       Yang, Z. & Rodríguez, C. E. 2013 Searching for efficient Markov chain Monte Carlo proposal kernels. Proc. Natl .Acad. Sci. U.S.A. 110, 19307–19312.
@@ -1491,44 +1489,44 @@ int ResetStepLengths(FILE *fout, double Pjump[], double finetune[], int nsteps)
       printf("\n(nsteps = %d)\nCurrent Pjump:    ", nsteps);
       for (j = 0; j < nsteps; j++)
          printf(" %8.5f", Pjump[j]);
-      printf("\nCurrent finetune: ");
+      printf("\nCurrent steps: ");
       for (j = 0; j < nsteps; j++)
-         printf(" %8.5f", finetune[j]);
+         printf(" %8.5f", steps[j]);
    }
    if (fout) {
       fprintf(fout, "\nCurrent Pjump:    ");
       for (j = 0; j < nsteps; j++)
          fprintf(fout, " %8.5f", Pjump[j]);
-      fprintf(fout, "\nCurrent finetune: ");
+      fprintf(fout, "\nCurrent steps: ");
       for (j = 0; j < nsteps; j++)
-         fprintf(fout, " %8.5f", finetune[j]);
+         fprintf(fout, " %8.5f", steps[j]);
    }
 
    for (j = 0; j < nsteps; j++) {
       if (Pjump[j] < 0.001) {
-         finetune[j] /= 100;
+         steps[j] /= 100;
          verybadstep = 1;
       }
       else if (Pjump[j] > 0.999) {
-         finetune[j] = min2(maxstep, finetune[j] * 100);
+         steps[j] = min2(maxstep, steps[j] * 100);
          verybadstep = 1;
       }
       else {
-         finetune[j] *= tan(Pi / 2 * Pjump[j]) / tan(Pi / 2 * PjumpOptimum);
-         finetune[j] = min2(maxstep, finetune[j]);
+         steps[j] *= tan(Pi / 2 * Pjump[j]) / tan(Pi / 2 * PjumpOptimum);
+         steps[j] = min2(maxstep, steps[j]);
       }
    }
 
    if (noisy >= 3) {
-      printf("\nNew     finetune: ");
+      printf("\nNew     steps: ");
       for (j = 0; j < nsteps; j++)
-         printf(" %8.5f", finetune[j]);
+         printf(" %8.5f", steps[j]);
       printf("\n\n");
    }
    if (fout) {
-      fprintf(fout, "\nNew     finetune: ");
+      fprintf(fout, "\nNew     steps: ");
       for (j = 0; j < nsteps; j++)
-         fprintf(fout, " %8.5f", finetune[j]);
+         fprintf(fout, " %8.5f", steps[j]);
       fprintf(fout, "\n");
    }
 
@@ -2011,8 +2009,8 @@ int MultiNomialAlias(int n, int ncat, double F[], int L[], int nobs[])
       r = rndu()*ncat;
       k = (int)r;
       r -= k;
-      if (r <= F[k]) nobs[k]++;
-      else        nobs[L[k]]++;
+      if (r > F[k]) k = L[k];
+      nobs[k]++;
    }
    return (0);
 }
@@ -2389,7 +2387,7 @@ double PDFGamma(double x, double a, double b)
       printf("x=%.6f a=%.6f b=%.6f", x, a, b);
       error2("x a b outside range in logPDFGamma()");
    }
-   if (a > 100)
+   if (a > 1000)
       error2("large alpha in PDFGamma()");
    return pow(b * x, a) / x * exp(-b * x - lgamma(a));
 }
@@ -2402,12 +2400,10 @@ double logPDFGamma(double x, double a, double b)
       printf("x=%.6f a=%.6f b=%.6f", x, a, b);
       error2("x a b outside range in logPDFGamma()");
    }
-   if (a> 100)
-      error2("large alpha in PDFGamma()");
    return a * log(b) - lgamma(a) + (a - 1) * log(x) - b * x;
 }
 
-double logPriorRatioGamma(double xnew, double x, double a, double b)
+double logPDFGammaRatio(double xnew, double x, double a, double b)
 {
    /* This calculates the log of prior ratio when x has a gamma prior G(x; a, b) with mean a/b
       and x is updated from xold to xnew.
@@ -5856,7 +5852,7 @@ int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int propternary, 
    fprintf(fout, "\n\n");
    fflush(fout);
 
-return(0);
+   //return(0);
 
    fprintf(fout, "\nCorrelation matrix");
    for (j = SkipColumns; j < p; j++) {
@@ -5865,7 +5861,7 @@ return(0);
          fprintf(fout, " %8.5f", var[k*p + j] / sqrt(var[j*p + j] * var[k*p + k]));
    }
    fprintf(fout, "\n         ");
-   for (j = SkipColumns; j < p; j++) fprintf(fout, "%9s", varstr[j]);
+   for (j = SkipColumns; j < p; j++) fprintf(fout, " %9s", varstr[j]);
 
    fprintf(fout, "\n\nHistograms and 1-D densities\n");
    for (jj = SkipColumns; jj < p; jj++) {

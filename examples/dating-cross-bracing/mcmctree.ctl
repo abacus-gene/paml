@@ -1,6 +1,4 @@
           seed = -1
-*       seqfile = tmp/seqs.phy
-*      treefile = tmp/calibration_tree.txt
        seqfile = mc.txt
       treefile = 6S.trees
       mcmcfile = mcmc.txt
@@ -15,7 +13,7 @@
          model = 0 * 0 : JC69, 1: K80, 2: F81, 3: F84, 4: HKY85
          alpha = 0    * alpha for gamma rates at sites
          ncatG = 5    * No. categories In discrete gamma
-   duplication = 1
+*   duplication = 1
      cleandata = 0    * remove sites With ambiguity data (1:yes, 0:no)?
 
        BDparas = 1 1 0.1   * birth, death, sampling

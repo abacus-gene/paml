@@ -1,8 +1,6 @@
           seed = -1
-*       seqfile = tmp/seqs.phy
-*      treefile = tmp/calibration_tree.txt
        seqfile = mc.txt
-      treefile = 6S.trees
+      treefile = 6s-bracing.trees
       mcmcfile = mcmc.txt
        outfile = out.txt
 

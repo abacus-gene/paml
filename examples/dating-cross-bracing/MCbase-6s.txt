@@ -1,0 +1,37 @@
+ 0     * 0,1:seqs or patterns in paml format (mc.paml); 2:paup format (mc.nex); 3: paup JC69 format
+ -123  * random number seed (odd number)
+
+6 1000 1  * <# seqs>  <# nucleotide sites>  <# replicates>
+-1         * <tree length, use -1 if tree below has absolute branch lengths>
+
+(((A1 :0.3, A2 :0.31) :0.3, A3:0.61) :0.29, ((B1 :0.31, B2 :0.3) :0.3, B3:0.605) :0.31);
+
+4          * model: 0:JC69, 1:K80, 2:F81, 3:F84, 4:HKY85, 5:T92, 6:TN93, 7:REV
+2 * kappa or rate parameters in model
+0 0     * <alpha>  <#categories for discrete gamma>
+
+0.1  0.2  0.3  0.4   * base frequencies
+  T    C    A    G
+
+
+==================================================
+The rest of this data file are notes, ignored by the program evolver.
+Change the values of the parameters, but do not delete them.
+evolver simulates nucleotide sequences under the REV+Gamma model
+and its simpler forms.
+
+More notes:
+  Parameter kappa or rate parameters in the substituton model: 
+    For TN93, two kappa values are required, while for REV, 5 values
+    (a,b,c,d,e) are required (see Yang 1994 for the definition of these
+    parameters).  
+    The kappa parameter is defined differently under HKY85 (when k=1 means
+    no transition bias) and under F84 (when k=0 means no bias).
+    JC69 and F81 are considered species cases of HKY85, so use 1 for kappa
+    for those two models.  Notation is from my two papers in JME in 1994.
+  
+  Use equal base frequencies (0.25) for JC69 and K80.
+  Use 0 for alpha to have the same rate for all sites.
+  Use 0 for <#categories for discrete gamma> to use the continuous gamma
+
+=========!! Check screen output carefully !! =====

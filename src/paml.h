@@ -87,7 +87,7 @@ double QuantileChi2 (double prob, double v);
 double  PDFGamma(double x, double alpha, double beta);
 double logPDFGamma(double x, double alpha, double beta);
 #define CDFGamma(x,alpha,beta) IncompleteGamma((beta)*(x),alpha,lgamma(alpha))
-double logPriorRatioGamma(double xnew, double xold, double a, double b);
+double logPDFGammaRatio(double xnew, double xold, double a, double b);
 double  PDFinvGamma(double x, double alpha, double beta);
 #define CDFinvGamma(x,alpha,beta) (1-CDFGamma(1/(x),alpha,beta))
 #define CDFChi2(x,v) CDFGamma(x,(v)/2.0,0.5)
@@ -370,8 +370,8 @@ void copySptree(void);
 void printSptree(void);
 
 
-extern int BASEseq, CODONseq, AAseq, CODON2AAseq, BINARYseq, BASE5seq;
-extern int PrBranch, PrNodeNum, PrLabel, PrNodeStr, PrAge, PrOmega;
+enum DataType {BASEseq = 0, CODONseq = 1, AAseq = 2, CODON2AAseq = 3, BINARYseq = 4, BASE5seq = 5};
+enum PrintOptions { PrBranch = 1, PrNodeNum = 2, PrLabel = 4, PrNodeStr = 8, PrAge = 16, PrOmega = 32 };
 
 
 /* use mean (0; default) for discrete gamma instead of median (1) */
@@ -390,6 +390,6 @@ extern int PrBranch, PrNodeNum, PrLabel, PrNodeStr, PrAge, PrOmega;
 
 #define PAML_RELEASE      0
 
-#define pamlVerStr "paml version 4.10.5, March 2022"
+#define pamlVerStr "paml version 4.10.6, November 2022"
 
 #endif

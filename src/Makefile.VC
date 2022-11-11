@@ -1,6 +1,6 @@
 PRGS =  baseml basemlg codeml evolver mcmctree pamp yn00 chi2
 CC = cl # cc, gcc, cl
-CFLAGS =  -Ox -W3 -D_CRT_SECURE_NO_WARNINGS
+CFLAGS =  -Ox -W3 -D_CRT_SECURE_NO_WARNINGS 
 
 DEFINE = #
 LIBS = #-lm -lM

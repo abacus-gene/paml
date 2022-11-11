@@ -982,7 +982,7 @@ readseq:
    }
 
    EncodeSeqs();
-   if (fout) {
+   if (fout && !com.readpattern) {
       fprintf(fout, "\nPrinting out site pattern counts\n\n");
       printPatterns(fout);
 
@@ -2380,7 +2380,7 @@ int DistanceMatNG86(FILE* fout, FILE* fds, FILE* fdn, FILE* ft, double alpha)
    char* codon[2];
    int is, js, k, h, wname = 20, status = 0, ndiff, nsd[4];
    double ns, na, nst = -1, nat = -1, S = -1, N = -1, St, Nt, dS, dN, dN_dS, y, bigD = 3, lst;
-   double SEds, SEdn, p;
+   double SEds=-1, SEdn=-1, p;
 
    if (fout) {
       fputs("\n\n\nNei & Gojobori 1986. dN/dS (dN, dS)", fout);
@@ -4262,7 +4262,7 @@ void CladeSupport(FILE* fout, char treef[], int getSnames, char maintreef[], int
     split1 if for one tree, and split50 is for the majority-rule consensus tree.
     */
    int i, j, k, i1, ntreeM, ntree, itreeM, sizetree, found, lline = 1024;
-   int* index, * indexspace, maxnsplits, nsplits = 0, s, nsplit1, nsplit50, lsplit, same;
+   int* index, * indexspace, maxnsplits, nsplits = 0, s, nsplit1=-1, nsplit50, lsplit, same;
    int maxnptree, nptree = 0, sizeptree;
    char* split1, * splits = NULL, * splitM = NULL, * split50 = NULL, * pM, * ptree, * ptrees = NULL, * ptree0, * pc;
    double* countsplits = NULL, * countptree = NULL, * Psplit50, * Psame, y, cdf;
@@ -5151,7 +5151,7 @@ int MultipleGenes(FILE* fout, FILE* ftree, FILE* fpair[], double space[])
     Note that com.pose[] is not correct and so RateAncestor = 0 should be set
     in baseml and codeml.
     */
-   int ig = 0, j, ngene0, npatt0, lgene0[NGENE], posG0[NGENE + 1];
+   int ig = 0, j, ngene0, npatt0, lgene0[NGENE] = { 0 }, posG0[NGENE + 1] = {0};
    int nb = ((com.seqtype == 1 && !com.cleandata) ? 3 : 1);
 
    if (com.ndata > 1) error2("multiple data sets & multiple genes?");
@@ -8881,11 +8881,11 @@ int ReadMainTree( FILE*ftree, struct SPECIESTREE *stree)
 {
 /* This reads main species tree into stree, and names into stree->nodes[].name.
    */
-   int haslength, j;
+   int haslength, j, ntree;
 
    if (noisy) puts("\nReading main tree.");
-   fscanf(ftree, "%d%d", &stree->nspecies, &j);
-   if (j!=1) error2("main species tree should have the format: ns ntree");
+   j = fscanf(ftree, "%d%d", &stree->nspecies, &ntree);
+   if (ntree!=1) error2("maintree file can have only one tree");
    com.ns = stree->nspecies;
    if (com.ns > NS) error2("raise NS?");
    else if (com.ns < 2) error2("number of species <2?");

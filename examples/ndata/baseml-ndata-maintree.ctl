@@ -15,7 +15,7 @@
 *        model = 10 [5 (AC CA) (AG GA) (AT TA) (CG GC) (CT TC)] /* SYM */
         model = 7   * 0:JC69, 1:K80, 2:F81, 3:F84, 4:HKY85, 5:T92, 6:TN93, 7:REV, 8:UNREST, 9:REVu; 10:UNRESTu * REV = GTR
 
-        ndata = 3 maintree 
+        ndata = 3 maintree 0  # generate subtrees from maintree, don't run ML
         Mgene = 0   * 0:rates, 1:separate; 2:diff pi, 3:diff kapa, 4:all diff
 
         clock = 0   * 0:no clock, 1:clock; 2:local clock; 3:CombinedAnalysis

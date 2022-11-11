@@ -113,7 +113,7 @@ struct common_info {
    int seqtype, ns, ls, ngene, posG[NGENE + 1], lgene[NGENE], npatt, *pose, readpattern;
    int runmode, clock, verbose, print, codonf, aaDist, model, NSsites;
    int nOmega, nbtype, nOmegaType;  /* branch partition, AA pair (w) partition */
-   int method, icode, ncode, Mgene, ndata, idata, maintree, bootstrap;
+   int method, icode, ncode, Mgene, ndata, idata, ndata_trees_opt, bootstrap;
    int fix_rgene, fix_kappa, fix_omega, fix_alpha, fix_rho, nparK, fix_blength, getSE;
    int np, ntime, nrgene, nkappa, npi, nrate, nalpha, ncatG, hkyREV;
    size_t sconP, sspace;
@@ -340,10 +340,10 @@ int main(int argc, char *argv[])
       printf("\ntree file %s not found.\n", com.treef);
       exit(-1);
    }
-   if (com.maintree) {
+   if (com.ndata_trees_opt >= 2) {
       ReadMainTree(ftree, &stree);
       fclose(ftree);
-      if (com.maintree == 2) {
+      if (com.ndata_trees_opt == 3) {
          printf("\nPrinting trees for datasets into the file genetrees.trees\n\n");
          GenerateGtrees(fout, fseq, "genetrees.trees");
          fclose(fseq);   fclose(fout);
@@ -588,7 +588,7 @@ int main(int argc, char *argv[])
    fclose(frst);
    for (i = 0; i < 6; i++) if (fpair[i]) fclose(fpair[i]);
    if (com.ndata > 1 && fseq) fclose(fseq);
-   if (!com.maintree && ftree)
+   if (com.ndata_trees_opt <= 1 && ftree)
       fclose(ftree);
    fclose(fout);  fclose(frub);
    if (finitials)  fclose(finitials);
@@ -613,9 +613,10 @@ int Forestry(FILE* fout, FILE* ftree)
    double x[NP], xb[NP][2], xcom[NP - NBRANCH], lnL = 0, lnL0 = 0, e = 1e-8, tl = 0, nchange = -1;
    double *g = NULL, *H = NULL;
 
-   if (com.maintree == 0)
+   if (com.ndata_trees_opt <= 1) {
+      if (com.ndata_trees_opt == 0) rewind(ftree);
       j = GetTreeFileType(ftree, &ntree, &pauptree, 0);
-
+   }
    if (com.alpha)
       frate = (FILE*)gfopen(ratef, "w");
    if (ntree > 10 && com.npatt > 10000 && com.print)
@@ -633,15 +634,15 @@ int Forestry(FILE* fout, FILE* ftree)
    }
 
    for (itree = 0; ntree == -1 || itree < ntree; itree++, iteration = 1) {
-      if (com.maintree == 0)
+      if (com.ndata_trees_opt <= 1)
          if(ReadTreeN(ftree, &haslength, 0, 1))
             error2("end of tree file.");
-      if (com.maintree) {
+      if (com.ndata_trees_opt>=2) {
          printf("\nExtracting gene tree for dataset #%2d from main tree...\n", com.idata+1);
          GenerateGtree_locus(com.idata, com.ns, 0);
       }
       if (com.seqtype == 1 && com.model) {
-         if(1 || com.maintree==0)
+         if(1 || com.ndata_trees_opt==0)
             ProcessNodeAnnotation(&k);
          printf("\nTree is \n");  OutTreeN(stdout, 1, PrLabel);  printf("\n");
          if (com.nbtype > NBTYPE)
@@ -1704,12 +1705,12 @@ int GetOptions(char *ctlf)
         "ncatG", "fix_rho", "rho", "bootstrap", "Small_Diff", "fix_blength" };
    double t;
    FILE  *fctl;
-   int ng = -1, markgenes[NGENE + 99], it=0;
+   int ng = -1, markgenes[NGENE + 99], it=1;
    char *daafiles[] = { "", "grantham.dat", "miyata.dat", "g1974c.dat","g1974p.dat","g1974v.dat","g1974a.dat" };
 
    /* kostas, default prior for t & w */
    com.hyperpar[0] = 1.1; com.hyperpar[1] = 1.1; com.hyperpar[2] = 1.1; com.hyperpar[3] = 2.2;
-   com.maintree = 0;
+   com.ndata_trees_opt = 0;
 
    fctl = gfopen(ctlf, "r");
    if (noisy) printf("\n\nReading options from %s..\n", ctlf);
@@ -1738,9 +1739,11 @@ int GetOptions(char *ctlf)
             case (4): noisy = (int)t;           break;
             case (5):
                sscanf(pline + 1, "%d%s%d", &com.ndata, str, &it);
-               if (strstr(str, "maintree")) {
-                  com.maintree = 2;               /* generate genetree.trees but do not run ML */
-                  if (it == 1)  com.maintree = 1; /* run ML */
+               if (strstr(str, "separate_trees"))
+                  com.ndata_trees_opt = 1;    /* separate trees for ndata */
+               else if (strstr(str, "maintree")) {
+                  com.ndata_trees_opt = 2;    /* generate genetree.trees & run ML */
+                  if (it == 0)  com.ndata_trees_opt = 3; /* dry run, no ML */
                }
                break;
             case (6): com.cleandata = (char)t;  break;

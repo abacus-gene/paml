@@ -190,8 +190,8 @@ struct MCMCPARAMETERS {
 
 
 char *models[] = { "JC69", "K80", "F81", "F84", "HKY85", "T92", "TN93", "REV" };
-enum { JC69, K80, F81, F84, HKY85, T92, TN93, REV } MODELS;
-enum { BASE, AA, CODON, MORPHC } DATATYPE;
+enum MODELS { JC69, K80, F81, F84, HKY85, T92, TN93, REV };
+enum DATATYPE { BASE, AA, CODON, MORPHC };
 
 int nR = 4;
 double PMat[16], Cijk[64], Root[4];
@@ -202,11 +202,11 @@ int debug = 0;
 double BFbeta = 0;
 
 /* for stree.nodes[].fossil: lower, upper, bounds, gamma, inverse-gamma */
-enum { LOWER_F = 1, UPPER_F, BOUND_F, GAMMA_F, SKEWN_F, SKEWT_F, S2N_F } FOSSIL_FLAGS;
+enum FOSSIL_FLAGS { LOWER_F = 1, UPPER_F, BOUND_F, GAMMA_F, SKEWN_F, SKEWT_F, S2N_F };
 char *fossils[] = { " ", "L", "U", "B", "G", "SN", "ST", "S2N" };
 int npfossils[] = { 0,   4,   2,   4,   2,   3,    4,     7 };
 char *clockstr[] = { "", "Global clock", "Independent rates", "Autocorrelated rates" };
-enum { SQRT_B = 1, LOG_B, ARCSIN_B } B_Transforms;
+enum B_Transforms { SQRT_B = 1, LOG_B, ARCSIN_B };
 char *Btransform[] = { "", "square root", "logarithm", "arcsin" };
 
 #define MCMCTREE  1
@@ -3310,11 +3310,11 @@ int UpdateParaRates(double *lnL, double steplength[], char accept[], double spac
          else {                     /* conditional iid prior (Zhu et al. 2015 SB, p.279 eq. 8) */
             if (locus < g) {          /* mu_i & sigma2_i */
                a = gD[2];  b = gD[2] / para[g];
-               lnacceptance += logPriorRatioGamma(pnew, pold, a, b); /* f(mu_i) */
+               lnacceptance += logPDFGammaRatio(pnew, pold, a, b); /* f(mu_i) */
             }
             else {                 /* mu_bar & sigma2_bar */
                a = gD[0];  b = gD[1];
-               lnacceptance += logPriorRatioGamma(pnew, pold, a, b); /* f(mu_bar) */
+               lnacceptance += logPDFGammaRatio(pnew, pold, a, b); /* f(mu_bar) */
                a = gD[2];  bnew = gD[2] / pnew; bold = gD[2] / pold;
                lnacceptance += g*a*log(bnew / bold);
                for (j = 0; j < g; j++)
@@ -3607,7 +3607,7 @@ int UpdateParameters(double *lnL, double steplength[], char accept[])
          lnpDinew = lnpD_locus(locus);
          lnLd = lnpDinew - data.lnpDi[locus];
          lnacceptance += lnLd;
-         lnacceptance += logPriorRatioGamma(pnew, pold, gammaprior[0], gammaprior[1]);
+         lnacceptance += logPDFGammaRatio(pnew, pold, gammaprior[0], gammaprior[1]);
 
          if (debug == 4)
             printf("\nLocus %2d para%d %9.4f%9.4f %10.5f", locus + 1, ip + 1, pold, pnew, lnLd);
@@ -4257,9 +4257,7 @@ int MCMC(FILE* fout)
    }  /* for(ir) */
 
 
-   printf("me is here a\n");
    if (mcmc.print) fclose(fmcmc);
-   printf("me is here b\n");
    
    if (BFbeta != 1) printf("\nBFbeta = %8.6f  E_b(lnf(X)) = %9.4f\n", BFbeta, mlnL);
    printf("\nTime used: %s", printtime(timestr));
