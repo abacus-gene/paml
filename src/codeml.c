@@ -865,7 +865,7 @@ int Forestry(FILE* fout, FILE* ftree)
          if (com.clock && com.nbtype > 1)
             fputs("\nWarning: branch rates are not yet applied in tree length and branch lengths", fout);
          if (AbsoluteRate)
-            fputs("\nNote: mutation rate is not applied to tree length.  Tree has ages, for TreeView", fout);
+            fputs("\nNote: mutation rate is not applied to tree length.  Tree has ages", fout);
          for (i = 0, tl = 0; i < tree.nnode; i++)
             if (i != tree.root) tl += nodes[i].branch;
          fprintf(fout, "\ntree length = %9.6f%s\n", tl, com.ngene > 1 ? " (1st gene)" : "");
@@ -1442,7 +1442,7 @@ void DetailOutput(FILE *fout, double x[], double var[])
 
          /* the first label is the label assigned in the tree file.  The second is w ratio */
          if (com.aaDist == 0) {
-            fprintf(fout, "\nw ratios as labels for TreeView:\n");
+            fprintf(fout, "\nw ratios as node labels:\n");
             OutTreeN(fout, 1, PrOmega);  fprintf(fout, "\n");
          }
       }
