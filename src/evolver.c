@@ -110,7 +110,7 @@ int main(int argc, char* argv[])
    char* MCctlf = NULL, outf[512] = "evolver.out", treefile[512] = "mcmc.txt", maintreefile[512] = "\0";
    int i, option = -1, ntree = 1, rooted, BD = 0, gotoption = 0, pick1tree = 0;
    double birth = -1, death = -1, sample = -1, mut = -1, * space;
-   FILE* fout = gfopen(outf, "w");
+   FILE* fout = zopen(outf, "w");
 
    printf("EVOLVER in %s\n", pamlVerStr);
    com.alpha = 0; com.cleandata = 1; com.model = 0; com.NSsites = 0;
@@ -135,7 +135,7 @@ int main(int argc, char* argv[])
 
    for (i = 0; i < NS; i++) {
       com.spname[i] = (char*)malloc(LSPNAME * sizeof(char*));
-      if (com.spname[i] == NULL) error2("oom");
+      if (com.spname[i] == NULL) zerror("oom");
    }
 
 #if defined (CodonNSbranches)
@@ -176,8 +176,8 @@ int main(int argc, char* argv[])
             printf("No. of species: ");
             scanf("%d", &com.ns);
          }
-         if (com.ns > NS) error2("Too many species.  Raise NS.");
-         if ((space = (double*)malloc(10000 * sizeof(double))) == NULL) error2("oom");
+         if (com.ns > NS) zerror("Too many species.  Raise NS.");
+         if ((space = (double*)malloc(10000 * sizeof(double))) == NULL) zerror("oom");
          rooted = !(option % 2);
          if (option < 3) {
             printf("\nnumber of trees & random number seed? ");
@@ -187,10 +187,10 @@ int main(int argc, char* argv[])
             scanf("%d", &BD);
          }
          if (option <= 4) {
-            if (com.ns < 3) error2("no need to do this?");
+            if (com.ns < 3) zerror("no need to do this?");
             i = (com.ns * 2 - 1) * sizeof(struct TREEN);
             if ((nodes = (struct TREEN*)malloc(i)) == NULL)
-               error2("oom");
+               zerror("oom");
          }
          switch (option) {
          case(1):   /* random UNROOTED trees */
@@ -258,7 +258,7 @@ int between_f_and_x(void)
       printf("\ndirection (0:x=>f; 1:f=>x; -1:end)  &  #classes? ");
       scanf("%d", &fromf);
       if (fromf == -1) return(0);
-      scanf("%d", &n);  if (n > 100) error2("too many classes");
+      scanf("%d", &n);  if (n > 100) zerror("too many classes");
       printf("input the first %d values for %s? ", n - 1, (fromf ? "f" : "x"));
       for (i = 0; i < n - 1; i++) scanf("%lf", &x[i]);
       x[n - 1] = (fromf ? 1 - sum(x, n - 1) : 0);
@@ -286,17 +286,17 @@ void LabelClades(FILE* fout)
    printf("Treat tree as unrooted (0 no, 1 yes)? ");
    scanf("%d", &unrooted);
 
-   ftree = gfopen(treef, "r");
+   ftree = zopen(treef, "r");
    fscanf(ftree, "%d%d", &com.ns, &j);
-   if (com.ns <= 0) error2("need ns in tree file");
+   if (com.ns <= 0) zerror("need ns in tree file");
    debug = (com.ns < 20);
 
    i = (com.ns * 2 - 1) * sizeof(struct TREEN);
-   if ((nodes = (struct TREEN*)malloc(i)) == NULL) error2("oom");
+   if ((nodes = (struct TREEN*)malloc(i)) == NULL) zerror("oom");
    for (i = 0; i < com.ns * 2 - 1; i++)  nodes[i].annotation = NULL;
    for (i = 0; i < com.ns - 1; i++) {
       anc[i] = (int*)malloc((com.ns / SI + 1) * sizeof(int));
-      if (anc[i] == NULL)  error2("oom");
+      if (anc[i] == NULL)  zerror("oom");
    }
    ReadTreeN(ftree, &haslength, 1, 0);
    fclose(ftree);
@@ -406,18 +406,18 @@ void TreeDistanceDistribution(FILE* fout)
    puts("Tree file name?");
    scanf("%s", treef);
 
-   ftree = gfopen(treef, "r");
+   ftree = zopen(treef, "r");
    fscanf(ftree, "%d%d", &com.ns, &ntree);
    printf("%2d sequences %2d trees.\n", com.ns, ntree);
    i = (com.ns * 2 - 1) * sizeof(struct TREEN);
-   if ((nodes = (struct TREEN*)malloc(i)) == NULL) error2("oom");
+   if ((nodes = (struct TREEN*)malloc(i)) == NULL) zerror("oom");
 
    lpart = (com.ns - 1) * com.ns * sizeof(char);
    i = ntree * lpart;
    printf("\n%d bytes of space requested.\n", i);
    partition = (char*)malloc(i);
    nib = (int*)malloc(ntree * sizeof(int));
-   if (partition == NULL || nib == NULL) error2("out of memory");
+   if (partition == NULL || nib == NULL) zerror("out of memory");
 
    puts("\ntree #: mean prop of tree pairs with 0 1 2 ... shared bipartitions\n");
    fputs("\ntree #: prop of tree pairs with 0 1 2 ... shared bipartitions\n", fout);
@@ -463,13 +463,13 @@ void TreeDistances(FILE* fout)
    puts("\nNumber of identical bi-partitions between trees.\nTree file name?");
    scanf("%s", treef);
 
-   ftree = gfopen(treef, "r");
+   ftree = zopen(treef, "r");
    fscanf(ftree, "%d%d", &com.ns, &ntree);
    printf("%2d sequences %2d trees.\n", com.ns, ntree);
    i = (com.ns * 2 - 1) * sizeof(struct TREEN);
-   if ((nodes = (struct TREEN*)malloc(i)) == NULL) error2("oom");
+   if ((nodes = (struct TREEN*)malloc(i)) == NULL) zerror("oom");
 
-   if (ntree < 2) error2("ntree");
+   if (ntree < 2) zerror("ntree");
    printf("\n%d species, %d trees\n", com.ns, ntree);
    puts("\n\t1: first vs. rest?\n\t2: all pairwise comparisons?\n");
    k = 2;
@@ -480,7 +480,7 @@ void TreeDistances(FILE* fout)
    printf("\n%d bytes of space requested.\n", i);
    partition = (char*)malloc(i);
    nib = (int*)malloc(ntree * sizeof(int));
-   if (partition == NULL || nib == NULL) error2("out of memory");
+   if (partition == NULL || nib == NULL) zerror("out of memory");
 
    if (k == 2) {    /* pairwise comparisons */
       fputs("Number of identical bi-partitions in pairwise comparisons\n", fout);
@@ -504,7 +504,7 @@ void TreeDistances(FILE* fout)
    else {  /* first vs. others */
       ReadTreeN(ftree, &j, 0, 1);
       nib[0] = tree.nbranch - com.ns;
-      if (nib[0] == 0) error2("1st tree is a star tree..");
+      if (nib[0] == 0) zerror("1st tree is a star tree..");
       Tree2Partition(partition);
       fputs("Comparing the first tree with the others\nFirst tree:\n", fout);
       OutTreeN(fout, 0, 0);  fprintf(fout, "\n");
@@ -668,7 +668,7 @@ int GetDaa(FILE* fout, double daa[])
    char aa3[4] = "";
    int i, j, n = 20;
 
-   fdaa = gfopen(com.daafile, "r");
+   fdaa = zopen(com.daafile, "r");
    printf("\nReading rate matrix from %s\n", com.daafile);
 
    for (i = 0; i < n; i++)  for (j = 0, daa[i * n + i] = 0; j < i; j++) {
@@ -678,8 +678,8 @@ int GetDaa(FILE* fout, double daa[])
    if (com.model == Empirical) {
       for (i = 0; i < n; i++)
          if (fscanf(fdaa, "%lf", &com.pi[i]) != 1)
-            error2("err aaRatefile");
-      if (fabs(1 - sum(com.pi, 20)) > 1e-4) error2("\nSum of aa freq. != 1\n");
+            zerror("err aaRatefile");
+      if (fabs(1 - sum(com.pi, 20)) > 1e-4) zerror("\nSum of aa freq. != 1\n");
    }
    fclose(fdaa);
 
@@ -713,12 +713,12 @@ void MakeSeq(char* z, int ls)
    if (frootseq) {
       if (times++ == 0) printf("Reading sequence at the root from file.\n\n");
       if (com.siterates && com.ncatG > 1)
-         error2("sequence for root doesn't work for site-class models");
+         zerror("sequence for root doesn't work for site-class models");
 
       for (lst = 0; ; ) {
          for (i = 0; i < n31; i++) {
             while ((ch = fgetc(frootseq)) != EOF && !isalpha(ch));
-            if (ch == EOF) error2("EOF when reading root sequence.");
+            if (ch == EOF) zerror("EOF when reading root sequence.");
             if (isalpha(ch))
                codon[i] = (char)(ch = CodeChara((char)ch, com.seqtype));
          }
@@ -841,15 +841,15 @@ void Simulate(char* ctlf)
    noisy = 1;
    printf("\nReading options from data file %s\n", ctlf);
    com.ncode = n = (com.seqtype == 0 ? 4 : (com.seqtype == 1 ? 64 : 20));
-   fin = (FILE*)gfopen(ctlf, "r");
+   fin = (FILE*)zopen(ctlf, "r");
    fscanf(fin, "%d", &format);
    fgets(line, lline, fin);
    printf("\nSimulated data will go into %s.\n", seqf[format]);
    if (format == 2) printf("%s, %s, & %s will be appended if existent.\n", paupstart, paupblock, paupend);
    if (com.seqtype == 1) {
       printf("translated aa sequences will go into %s.\n", aaf);
-      faa = (FILE*)gfopen(aaf, "w");
-      fc12 = (FILE*)gfopen(c12f, "w");
+      faa = (FILE*)zopen(aaf, "w");
+      fc12 = (FILE*)zopen(c12f, "w");
    }
    fscanf(fin, "%d", &i);
    fgets(line, lline, fin);
@@ -857,9 +857,9 @@ void Simulate(char* ctlf)
    fscanf(fin, "%d%d%d", &com.ns, &com.ls, &nr);
    fgets(line, lline, fin);
    i = (com.ns * 2 - 1) * sizeof(struct TREEN);
-   if ((nodes = (struct TREEN*)malloc(i)) == NULL) error2("oom");
+   if ((nodes = (struct TREEN*)malloc(i)) == NULL) zerror("oom");
 
-   if (com.ns > NS) error2("too many seqs?");
+   if (com.ns > NS) zerror("too many seqs?");
    printf("\n%d seqs, %d sites, %d replicate(s)\n", com.ns, com.ls, nr);
    k = (com.ns * com.ls * (com.seqtype == CODONseq ? 4 : 1) * nr) / 1000 + 1;
    printf("Seq file will be about %dK bytes.\n", k);
@@ -869,9 +869,9 @@ void Simulate(char* ctlf)
    if (fixtree) {
       fscanf(fin, "%lf", &tlength);   fgets(line, lline, fin);
       if (ReadTreeN(fin, &i, 1, 1))  /* might overwrite spname */
-         error2("err tree..");
+         zerror("err tree..");
 
-      if (i == 0) error2("use : to specify branch lengths in tree");
+      if (i == 0) zerror("use : to specify branch lengths in tree");
       for (i = 0, T = 0; i < tree.nnode; i++)
          if (i != tree.root) T += nodes[i].branch;
       if (tlength > 0) {
@@ -902,8 +902,8 @@ void Simulate(char* ctlf)
    if (com.seqtype == BASEseq) {
       fscanf(fin, "%d", &com.model);
       fgets(line, lline, fin);
-      if (com.model<0 || com.model>REV) error2("model err");
-      if (com.model == T92) error2("T92: please use HKY85 with T=A and C=G.");
+      if (com.model<0 || com.model>REV) zerror("model err");
+      if (com.model == T92) zerror("T92: please use HKY85 with T=A and C=G.");
 
       printf("\nModel: %s\n", basemodels[com.model]);
       if (com.model == REV)        nrate = 5;
@@ -920,14 +920,14 @@ void Simulate(char* ctlf)
          printf("\n");
       }
       if ((com.model == JC69 || com.model == F81) && Qrates[0] != 1)
-         error2("kappa should be 1 for this model");
+         zerror("kappa should be 1 for this model");
    }
    else if (com.seqtype == CODONseq) {
       for (i = 0; i < 64; i++)
          getcodon(CODONs[i], i);
       if (com.model == 0 && com.NSsites) {  /* site model */
          fscanf(fin, "%d", &com.ncatG);   fgets(line, lline, fin);
-         if (com.ncatG > NCATG) error2("ncatG>NCATG");
+         if (com.ncatG > NCATG) zerror("ncatG>NCATG");
          for (i = 0; i < com.ncatG; i++) fscanf(fin, "%lf", &com.freqK[i]);
          fgets(line, lline, fin);
          for (i = 0; i < com.ncatG; i++) fscanf(fin, "%lf", &com.rK[i]);
@@ -941,7 +941,7 @@ void Simulate(char* ctlf)
          fscanf(fin, "%d", &com.ncatG);
          fgets(line, lline, fin);
          if (com.ncatG > min2(NCATG, 127))
-            error2("ncatG too large");
+            zerror("ncatG too large");
          for (i = 0; i < com.ncatG; i++)
             fscanf(fin, "%lf", &com.freqK[i]);
          fgets(line, lline, fin);
@@ -950,7 +950,7 @@ void Simulate(char* ctlf)
             printf("%9.5f", com.freqK[i]);
 
          if ((com.omegaBS = (double*)malloc((com.ncatG + 2) * tree.nnode * sizeof(double))) == NULL)
-            error2("oom");
+            zerror("oom");
          com.QfactorBS = com.omegaBS + com.ncatG * tree.nnode;
          blengthBS = com.QfactorBS + tree.nnode;
 
@@ -958,8 +958,8 @@ void Simulate(char* ctlf)
             blengthBS[i] = nodes[i].branch;
          for (k = 0; k < com.ncatG; k++) {
             ReadTreeN(fin, &i, 0, 1);
-            if (i) error2("do not include branch lengths except in the first tree.");
-            /* if (!j) error2("Use # to specify omega's for branches"); */
+            if (i) zerror("do not include branch lengths except in the first tree.");
+            /* if (!j) zerror("Use # to specify omega's for branches"); */
             for (i = 0; i < tree.nnode; i++)
                com.omegaBS[i * com.ncatG + k] = nodes[i].label;
          }
@@ -1003,8 +1003,8 @@ void Simulate(char* ctlf)
    if (com.alpha || com.ncatG) { /* this is used for codon NSsites as well. */
       k = com.ls;
       if (com.seqtype == 1 && com.model && com.NSsites) k *= tree.nnode;
-      if ((com.siterates = (double*)malloc(k * sizeof(double))) == NULL) error2("oom1");
-      if ((siteorder = (int*)malloc(com.ls * sizeof(int))) == NULL) error2("oom2");
+      if ((com.siterates = (double*)malloc(k * sizeof(double))) == NULL) zerror("oom1");
+      if ((siteorder = (int*)malloc(com.ls * sizeof(int))) == NULL) zerror("oom2");
    }
 
    if (com.seqtype == AAseq) { /* get aa substitution model and rate matrix */
@@ -1029,7 +1029,7 @@ void Simulate(char* ctlf)
       printf("genetic code: %d\n", com.icode);
       for (k = 0; k < com.ncode; k++)
          if (GeneticCode[com.icode][k] == -1 && com.pi[k])
-            error2("stop codons should have frequency 0?");
+            zerror("stop codons should have frequency 0?");
    }
 
    if (com.seqtype == BASEseq) {
@@ -1082,10 +1082,10 @@ void Simulate(char* ctlf)
       exit(-1);
    }
 
-   fseq = gfopen(seqf[format], "w");
+   fseq = zopen(seqf[format], "w");
    if (format == 2 || format == 3) appendfile(fseq, paupstart);
 
-   fanc = (FILE*)gfopen(ancf, "w");
+   fanc = (FILE*)zopen(ancf, "w");
    if (fixtree) {
       fputs("\nAncestral sequences generated during simulation ", fanc);
       fprintf(fanc, "(check against %s)\n", seqf[format]);
@@ -1094,20 +1094,20 @@ void Simulate(char* ctlf)
       OutTreeB(fanc); fprintf(fanc, "\n");
    }
    if (com.alpha || com.NSsites) {
-      fsiteID = (FILE*)gfopen(siteIDf, "w");
+      fsiteID = (FILE*)zopen(siteIDf, "w");
       if (com.seqtype == 1) fprintf(fsiteID, "\nSite class IDs\n");
       else               fprintf(fsiteID, "\nRates for sites\n");
       if (com.seqtype == CODONseq && com.NSsites) {
          if (!com.model) matout(fsiteID, com.rK, 1, com.ncatG);
          if ((com.siteID = (char*)malloc(com.ls * sizeof(char))) == NULL)
-            error2("oom siteID");
+            zerror("oom siteID");
       }
    }
 
    for (ir = 0; ir < nr; ir++) {
       for (j = 0; j < com.ns * 2 - 1; j++) {
          com.z[j] = (char*)realloc(com.z[j], com.ls * sizeof(char));
-         if (com.z[j] == NULL) error2("memory problem for z[]");
+         if (com.z[j] == NULL) zerror("memory problem for z[]");
       }
       if (!fixtree) {    /* right now tree is fixed */
          RandomLHistory(rooted, space);
@@ -1298,7 +1298,7 @@ int GetSpnamesFromMB(FILE* fmb, char line[], int lline)
          sscanf(p, "%d", &ispecies);
          p = strstr(line, mbstr2) + 3;
          if (com.spname[ispecies - 1][0])
-            error2("species name already read?");
+            zerror("species name already read?");
 
          for (j = 0; isgraph(*p) && j < lline; ) com.spname[ispecies - 1][j++] = *p++;
          com.spname[ispecies - 1][j] = 0;
@@ -1351,17 +1351,17 @@ void CladeMrBayesProbabilities(char treefile[])
    char* mbfiles[] = { "mb-1e-4.out", "mb-1e-1.out" };
 
    printf("tree file is %s\nmb output files:\n", treefile);
-   ftree = gfopen(treefile, "r");
+   ftree = zopen(treefile, "r");
    for (k = 0; k < nmbfiles; k++)
-      fmb[k] = gfopen(mbfiles[k], "r");
+      fmb[k] = zopen(mbfiles[k], "r");
    for (k = 0; k < nmbfiles; k++) printf("\t%s\n", mbfiles[k]);
 
    GetSpnamesFromMB(fmb[0], line, lline);  /* read species names from mb output */
 
    fscanf(ftree, "%d%d", &i, &k);
-   if (i && i != com.ns) error2("do you mean to specify ns in the tree file?");
+   if (i && i != com.ns) zerror("do you mean to specify ns in the tree file?");
    i = (com.ns * 2 - 1) * sizeof(struct TREEN);
-   if ((nodes = (struct TREEN*)malloc(i)) == NULL) error2("oom");
+   if ((nodes = (struct TREEN*)malloc(i)) == NULL) zerror("oom");
    ReadTreeN(ftree, &i, 0, 1);
 
    printf("\n");
@@ -1374,9 +1374,9 @@ void CladeMrBayesProbabilities(char treefile[])
    }
 
    partition = (char*)malloc(nib * com.ns * sizeof(char));
-   if (partition == NULL) error2("oom");
+   if (partition == NULL) zerror("oom");
    if ((Pclade = (double*)malloc(nib * nmbfiles * sizeof(double))) == NULL)
-      error2("oom");
+      zerror("oom");
    for (i = 0; i < nib * nmbfiles; i++) Pclade[i] = 0;
 
    Tree2Partition(partition);

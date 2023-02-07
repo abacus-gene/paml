@@ -14,6 +14,7 @@
 #include <float.h>
 #include <time.h>
 #include <assert.h>
+#include <stdarg.h>
 
 #define square(a) ((a)*(a))
 #define F0 stdout
@@ -201,10 +202,10 @@ void sleep2(int wait);
 char *strc (int n, int c);
 int printdouble(FILE*fout, double a);
 void strcase (char *str, int direction);
-void error2(char * message);
+void zerror(const char* format, ...);
 int  indexing(double x[], int n, int index[], int descending, int space[]);
 int binarysearch (const void *key, const void *base, size_t n, size_t size, int(*compare)(const void *, const void *), int *found);
-FILE *gfopen(char *filename, char *mode);
+FILE *zopen(char *filename, char *mode);
 int  appendfile(FILE*fout, char*filename);
 
 int zero (double x[], int n);

@@ -79,13 +79,13 @@ int main(int argc, char *argv[])
    GetOptions(ctlf);
 
    printf("PAMP in %s\n", pamlVerStr);
-   if ((fseq = fopen(com.seqf, "r")) == NULL) error2("seqfile err.");
-   if ((fout = fopen(com.outf, "w")) == NULL) error2("outfile creation err.");
-   if ((fseq = fopen(com.seqf, "r")) == NULL)  error2("No sequence file!");
+   if ((fseq = fopen(com.seqf, "r")) == NULL) zerror("seqfile err.");
+   if ((fout = fopen(com.outf, "w")) == NULL) zerror("outfile creation err.");
+   if ((fseq = fopen(com.seqf, "r")) == NULL)  zerror("No sequence file!");
    ReadSeq(NULL, fseq, com.cleandata, 0, 0);
    SetMapAmbiguity(com.seqtype, 0);
    i = (com.ns * 2 - 1) * sizeof(struct TREEN);
-   if ((nodes = (struct TREEN*)malloc(i)) == NULL) error2("oom");
+   if ((nodes = (struct TREEN*)malloc(i)) == NULL) zerror("oom");
 
    fprintf(fout, "PAMP %15s, %s sequences\n", com.seqf, Seqstr[com.seqtype]);
    if (com.nhomo) fprintf(fout, "nonhomogeneous model\n");
@@ -93,33 +93,33 @@ int main(int argc, char *argv[])
    space = (double*)malloc(1000000 * sizeof(double));  /* not safe */
    SeqDistance = (double*)malloc(com.ns*(com.ns - 1) / 2 * sizeof(double));
    ancestor = (int*)malloc(com.ns*(com.ns - 1) / 2 * sizeof(int));
-   if (SeqDistance == NULL || ancestor == NULL) error2("oom");
+   if (SeqDistance == NULL || ancestor == NULL) zerror("oom");
 
    i = com.ns*(com.ns - 1) / 2;
    s3 = sizeof(double)*((com.ns * 2 - 2)*(com.ns * 2 - 2 + 4 + i) + i);
    s3 = max2(s3, com.ncode*com.ncode*(2 * com.ns - 2 + 1)*(int)sizeof(double));
 
    Ft = (double*)malloc(s3);
-   if (space == NULL || Ft == NULL)  error2("oom space");
+   if (space == NULL || Ft == NULL)  zerror("oom space");
 
    InitializeBaseAA(fout);
-   if (com.ngene > 1) error2("option G not allowed yet");
+   if (com.ngene > 1) zerror("option G not allowed yet");
 
    /*
       PatternLS (fout, Ft, 0., space, &i);
       printf ("\nPairwise estimation of rate matrix done..\n");
       fflush(fout);
    */
-   ftree = gfopen(com.treef, "r");
+   ftree = zopen(com.treef, "r");
    fscanf(ftree, "%d%d", &i, &ntree);
-   if (i != com.ns) error2("ns in the tree file");
+   if (i != com.ns) zerror("ns in the tree file");
 
    for (itree = 0; itree < ntree; itree++) {
 
       printf("\nTREE # %2d\n", itree + 1);
       fprintf(fout, "\nTREE # %2d\n", itree + 1);
 
-      if (ReadTreeN(ftree, &i, 0, 1)) error2("err tree..");
+      if (ReadTreeN(ftree, &i, 0, 1)) zerror("err tree..");
       OutTreeN(F0, 0, 0);    printf("\n");
       OutTreeN(fout, 0, 0);  fprintf(fout, "\n");
 
@@ -149,7 +149,7 @@ int GetOptions(char *ctlf)
    int iopt, nopt = 6, i, lline = 4096, t;
    char line[4096], *pline, opt[32], *comment = "*#";
    char *optstr[] = { "seqfile","outfile","treefile", "seqtype", "ncatG", "nhomo" };
-   FILE  *fctl = gfopen(ctlf, "r");
+   FILE  *fctl = zopen(ctlf, "r");
 
    if (fctl) {
       for ( ; ; ) {
@@ -163,7 +163,7 @@ int GetOptions(char *ctlf)
          }
          if (t == 0) continue;
          sscanf(line, "%s%*s%d", opt, &t);
-         if ((pline = strstr(line, "=")) == NULL) error2("option file.");
+         if ((pline = strstr(line, "=")) == NULL) zerror("option file.");
 
          for (iopt = 0; iopt < nopt; iopt++) {
             if (strncmp(opt, optstr[iopt], 8) == 0) {
@@ -193,8 +193,8 @@ int GetOptions(char *ctlf)
    if (com.seqtype == 0)       com.ncode = 4;
    else if (com.seqtype == 2)  com.ncode = 20;
    else if (com.seqtype == 3)  com.ncode = 2;
-   else                      error2("seqtype");
-   if (com.ncatG > NCATG) error2("raise NCATG?");
+   else                      zerror("seqtype");
+   if (com.ncatG > NCATG) zerror("raise NCATG?");
    return (0);
 }
 
@@ -348,7 +348,7 @@ int PatternMP(FILE *fout, double Ft[])
    double *Q, *pi, *Root, *U, *V, *branch, *space, *T1, t;
 
    if ((Q = (double*)malloc((n*n * 6 + tree.nbranch) * sizeof(double))) == NULL)
-      error2("PatternMP: oom");
+      zerror("PatternMP: oom");
    pi = Q + n*n; Root = pi + n; U = Root + n; V = U + n*n; branch = V + n*n;
    space = T1 = branch + tree.nbranch;
 
@@ -404,14 +404,14 @@ int PathwayMP1(FILE *fout, int *maxchange, int NSiteChange[],
    fputs("\nList of most parsimonious reconstructions (MPRs) at each site: #MPRs (#changes)\n", fout);
    fputs("and then the most likely reconstruction out of the MPRs and its probability\n", fout);
    if ((pnsite = (double*)malloc((com.ns - 1)*n * sizeof(double))) == NULL)
-      error2("PathwayMP1: oom");
+      zerror("PathwayMP1: oom");
 
    PATHWay = (char*)malloc(nid*(n + 3) * sizeof(char));
    NCharaCur = PATHWay + nid;  ICharaCur = NCharaCur + nid;  CharaCur = ICharaCur + nid;
    if (job == 0) {
       zero(Ft, n*n*(tree.nbranch + 1));
       if ((Ftt = (int*)malloc(n*n*tree.nbranch * sizeof(int))) == NULL)
-         error2("oom");
+         zerror("oom");
    }
    else {
       pnode = (double*)malloc((nid*com.npatt + 1)*(sizeof(double) + sizeof(char)));
@@ -419,7 +419,7 @@ int PathwayMP1(FILE *fout, int *maxchange, int NSiteChange[],
          zz[com.ns + j] = (char*)(pnode + nid * com.npatt) + j * com.npatt;
       for (j = 0; j < com.ns; j++)
          zz[j] = com.z[j];
-      if (pnode == NULL) error2("oom");
+      if (pnode == NULL) zerror("oom");
    }
    visit[i = 0] = tree.root - com.ns;
    for (j = 0; j < tree.nbranch; j++)
@@ -449,7 +449,7 @@ int PathwayMP1(FILE *fout, int *maxchange, int NSiteChange[],
          Equivoc[j] = (NCharaCur[j] > 1);
 
       if (nchange > *maxchange) *maxchange = nchange;
-      if (nchange > NCATCHANGE - 1) error2("raise NCATCHANGE");
+      if (nchange > NCATCHANGE - 1) zerror("raise NCATCHANGE");
 
       NSiteChange[nchange]++;
       /* NSiteChange[nchange]+=(int)com.fpatt[hp]; */
@@ -616,7 +616,7 @@ double DistanceREV(double Ft[], int n, double alpha, double Root[], double U[],
    for (i = 0, t = 0; i < n; i++) t -= pi[i] * Q[i*n + i];
 
    if (noisy >= 9 && InApplicable) printf("Root(P)<0.  adhockery invoked\n");
-   if (t <= 0) error2("err: DistanceREV");
+   if (t <= 0) zerror("err: DistanceREV");
 
    for (i = 0; i < n; i++) Root[i] /= t;
    for (i = 0; i < n; i++) for (j = 0; j < n; j++) {
@@ -635,10 +635,10 @@ int PatternLS(FILE *fout, double Ft[], double alpha, double space[], int *cond)
    int n = com.ncode, i, j, k, h, it;
    double *Q = Ft, *Qt = Q + n*n, *Qm = Qt + n*n;
    double *pi, *Root, *U, *V, *T1 = space, *branch, t;
-   FILE *fdist = gfopen("Distance", "w");
+   FILE *fdist = zopen("Distance", "w");
 
    if ((pi = (double*)malloc((n*n * 3 + tree.nbranch) * sizeof(double))) == NULL)
-      error2("PatternLS: oom");
+      zerror("PatternLS: oom");
    Root = pi + n;  U = Root + n; V = U + n*n; branch = V + n*n;
 
    *cond = 0;

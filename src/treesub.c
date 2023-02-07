@@ -84,7 +84,7 @@ int PatternWeightSimple(void)
    if (maxnpatt > com.ls)   maxnpatt = com.ls;
    p2s = (int*)malloc(maxnpatt * sizeof(int));
    zt = (char*)malloc(com.ls * lpatt * sizeof(char));
-   if (p2s == NULL || zt == NULL)  error2("oom p2s or zt");
+   if (p2s == NULL || zt == NULL)  zerror("oom p2s or zt");
    memset(zt, 0, com.ls * lpatt * sizeof(char));
    for (j = 0; j < com.ns; j++)
       for (h = 0; h < com.ls; h++)
@@ -110,7 +110,7 @@ int PatternWeightSimple(void)
       }
       if (!same) {
          if (com.npatt > maxnpatt)
-            error2("npatt > maxnpatt");
+            zerror("npatt > maxnpatt");
          if (l > ip) ip++;        /* last comparison in bsearch had k > 0. */
          /* Insert new pattern at ip.  This is the expensive step. */
 
@@ -133,7 +133,7 @@ int PatternWeightSimple(void)
 
    /* (B) count pattern frequencies */
    com.fpatt = (double*)realloc(com.fpatt, com.npatt * sizeof(double));
-   if (com.fpatt == NULL) error2("oom fpatt");
+   if (com.fpatt == NULL) zerror("oom fpatt");
    memset(com.fpatt, 0, com.npatt * sizeof(double));
 
    for (h = 0; h < com.ls; h++) {
@@ -249,17 +249,17 @@ int PatternWeightJC69like(void)
           Use p2s to map patterns to sites in zt to avoid copying.
    */
    if (noisy > 2) printf("Counting site patterns again, for JC69.. %s\n", printtime(timestr));
-   if (com.seqtype == 1) error2("PatternWeightJC69like does not work for codon seqs");
-   if (com.ngene > 1) error2("PatternWeightJC69like does not work when ngene > 1");
+   if (com.seqtype == 1) zerror("PatternWeightJC69like does not work for codon seqs");
+   if (com.ngene > 1) zerror("PatternWeightJC69like does not work when ngene > 1");
 
    p2s = (int*)malloc(npatt0 * sizeof(int));
    zt = (char*)malloc(npatt0 * lpatt * sizeof(char));
    fpatt0 = (double*)malloc(npatt0 * sizeof(double));
-   if (p2s == NULL || zt == NULL || fpatt0 == NULL)  error2("oom p2s or zt or fpatt0");
+   if (p2s == NULL || zt == NULL || fpatt0 == NULL)  zerror("oom p2s or zt or fpatt0");
    memset(zt, 0, npatt0 * lpatt * sizeof(char));
    memmove(fpatt0, com.fpatt, npatt0 * sizeof(double));
    if (com.pose && com.ls > npatt0) {
-      if ((pose0 = (int*)malloc(com.ls * sizeof(int))) == NULL)  error2("oom pose0");
+      if ((pose0 = (int*)malloc(com.ls * sizeof(int))) == NULL)  zerror("oom pose0");
       memmove(pose0, com.pose, com.ls * sizeof(int));
    }
    for (h = 0; h < npatt0; h++)
@@ -337,7 +337,7 @@ int PatternWeightJC69like(void)
    }
    free(p2s);  free(zt);  free(fpatt0);
    if (pose0) free(pose0);
-   if (com.ngene > 1) error2("rewrite PatternWeightJC69like to deal with partitioned data");
+   if (com.ngene > 1) zerror("rewrite PatternWeightJC69like to deal with partitioned data");
    com.posG[1] = com.npatt;
    return (0);
 }
@@ -384,7 +384,7 @@ int GetSeqFileType(FILE* fseq, int* format)
       if (aligned)
          return(0);
       else
-         error2("The seq file appears to be in fasta format, but not aligned?");
+         zerror("The seq file appears to be in fasta format, but not aligned?");
    }
    if (fscanf(fseq, "%d%d", &com.ns, &com.ls) == 2) {
       *format = 0; return(0);
@@ -393,25 +393,25 @@ int GetSeqFileType(FILE* fseq, int* format)
    printf("\nseq file is not paml/phylip format.  Trying nexus format.");
 
    for (; ; ) {
-      if (fgets(line, lline, fseq) == NULL) error2("seq err1: EOF");
+      if (fgets(line, lline, fseq) == NULL) zerror("seq err1: EOF");
       strcase(line, 0);
       if (strstr(line, NEXUSstart)) break;
    }
    for (; ; ) {
-      if (fgets(line, lline, fseq) == NULL) error2("seq err2: EOF");
+      if (fgets(line, lline, fseq) == NULL) zerror("seq err2: EOF");
       strcase(line, 0);
       if ((p = strstr(line, ntax)) != NULL) {
-         while (*p != '=') { if (*p == 0) error2("seq err"); p++; }
+         while (*p != '=') { if (*p == 0) zerror("seq err"); p++; }
          sscanf(p + 1, "%d", &com.ns);
-         if ((p = strstr(line, nchar)) == NULL) error2("expect nchar");
-         while (*p != '=') { if (*p == 0) error2("expect ="); p++; }
+         if ((p = strstr(line, nchar)) == NULL) zerror("expect nchar");
+         while (*p != '=') { if (*p == 0) zerror("expect ="); p++; }
          sscanf(p + 1, "%d", &com.ls);
          break;
       }
    }
    /* printf("\nns: %d\tls: %d\n", com.ns, com.ls);  */
    for (; ; ) {
-      if (fgets(line, lline, fseq) == NULL) error2("seq err1: EOF");
+      if (fgets(line, lline, fseq) == NULL) zerror("seq err1: EOF");
       strcase(line, 0);
       if (strstr(line, NEXUSdata)) break;
    }
@@ -423,7 +423,7 @@ int PopupNEXUSComment(FILE* fseq)
    int ch, comment1 = ']';
    for (; ; ) {
       ch = fgetc(fseq);
-      if (ch == EOF) error2("expecting ]");
+      if (ch == EOF) zerror("expecting ]");
       if (ch == comment1) break;
       if (noisy) putchar(ch);
    }
@@ -438,9 +438,9 @@ int ReadMorphology(FILE* fout, FILE* fin, int locus)
    int i, j;
 
    if ((data.zmorph[locus][0] = (double*)malloc((com.ns * 2 - 1) * com.ls * sizeof(double))) == NULL)
-      error2("oom zmorph");
+      zerror("oom zmorph");
    if ((data.Rmorph[locus] = (double*)malloc(com.ls * com.ls * sizeof(double))) == NULL)
-      error2("oom Rmorph");
+      zerror("oom Rmorph");
 
    printf("Locus %d has morphological alignment\n", locus + 1);
    for (i = 1; i < com.ns * 2 - 1; i++) {
@@ -514,7 +514,7 @@ int ReadSeq(FILE* fout, FILE* fseq, int cleandata, int locus, int read_seq_only)
 #endif
    h = -1; /* avoid warning */
    com.readpattern = 0;
-   if (com.seqtype == 4) error2("seqtype==BINs, check with author");
+   if (com.seqtype == 4) zerror("seqtype==BINs, check with author");
    if (noisy >= 9 && (com.seqtype <= CODONseq || com.seqtype == CODON2AAseq)) {
       puts("\n\nAmbiguity character definition table:\n");
       for (i = 0; i < (int)strlen(BASEs); i++) {
@@ -526,7 +526,7 @@ int ReadSeq(FILE* fout, FILE* fseq, int cleandata, int locus, int read_seq_only)
    }
    GetSeqFileType(fseq, &format);
 
-   if (com.ns > NS) error2("too many sequences.. raise NS?");
+   if (com.ns > NS) zerror("too many sequences.. raise NS?");
    if (com.ls % n31 != 0) {
       printf("\n%d nucleotides, not a multiple of 3!", com.ls); exit(-1);
    }
@@ -537,15 +537,15 @@ int ReadSeq(FILE* fout, FILE* fseq, int cleandata, int locus, int read_seq_only)
       com.spname[j] = (char*)malloc((lspname + 1) * sizeof(char));
       for (i = 0; i < lspname + 1; i++) com.spname[j][i] = 0;
       if ((com.z[j] = (char*)realloc(com.z[j], com.ls * sizeof(char))) == NULL)
-         error2("oom z");
+         zerror("oom z");
    }
    com.rgene[0] = 1;   com.ngene = 1;
    lline = max2(lline, com.ls / n31 * (n31 + 1) + lspname + 50);
-   if ((line = (char*)malloc(lline * sizeof(char))) == NULL) error2("oom line");
+   if ((line = (char*)malloc(lline * sizeof(char))) == NULL) zerror("oom line");
 
    /* first line */
    if (format == 0) {
-      if (!fgets(line, lline, fseq)) error2("ReadSeq: first line");
+      if (!fgets(line, lline, fseq)) zerror("ReadSeq: first line");
       com.readpattern = (strchr(line, 'P') || strchr(line, 'p'));
 #if(MCMCTREE)
       char tmp[32];
@@ -568,7 +568,7 @@ int ReadSeq(FILE* fout, FILE* fseq, int cleandata, int locus, int read_seq_only)
       if (!com.readpattern) {
          if (com.pose) free(com.pose);
          if ((com.pose = (int*)malloc(com.ls / n31 * sizeof(int))) == NULL)
-            error2("oom pose");
+            zerror("oom pose");
          for (j = 0; j < com.ls / n31; j++) com.pose[j] = 0;      /* gene #1, default */
       }
       else {
@@ -593,15 +593,15 @@ int ReadSeq(FILE* fout, FILE* fseq, int cleandata, int locus, int read_seq_only)
       }
    }
    if (strchr(line, 'C')) {   /* protein-coding DNA sequences */
-      if (com.seqtype == 2) error2("option C?");
+      if (com.seqtype == 2) zerror("option C?");
       if (com.seqtype == 0) {
-         if (com.ls % 3 != 0 || noptline < 1)  error2("option C?");
+         if (com.ls % 3 != 0 || noptline < 1)  zerror("option C?");
          com.ngene = 3;
          for (i = 0; i < 3; i++) com.lgene[i] = com.ls / 3;
 #if(defined(BASEML) || defined(BASEMLG))
          com.coding = 1;
          if (com.readpattern)
-            error2("partterns for coding sequences (G C P) not implemented.");
+            zerror("partterns for coding sequences (G C P) not implemented.");
          else
             for (i = 0; i < com.ls; i++) com.pose[i] = (char)(i % 3);
 
@@ -622,12 +622,12 @@ int ReadSeq(FILE* fout, FILE* fseq, int cleandata, int locus, int read_seq_only)
       ch = (char)toupper(ch);
       switch (ch) {
       case ('G'):
-         if (basecoding) error2("sequence data file: incorrect option format, use GC?\n");
+         if (basecoding) zerror("sequence data file: incorrect option format, use GC?\n");
 #if(defined MCMCTREE || defined BPP)
-         error2("sequence data file: option G should not be used.");
+         zerror("sequence data file: option G should not be used.");
 #endif
-         if (fscanf(fseq, "%d", &com.ngene) != 1) error2("expecting #gene here..");
-         if (com.ngene > NGENE) error2("raise NGENE?");
+         if (fscanf(fseq, "%d", &com.ngene) != 1) zerror("expecting #gene here..");
+         if (com.ngene > NGENE) zerror("raise NGENE?");
 
          fgets(line, lline, fseq);
          if (!blankline(line)) {    /* #sites in genes on the 2nd line */
@@ -638,7 +638,7 @@ int ReadSeq(FILE* fout, FILE* fseq, int cleandata, int locus, int read_seq_only)
             }
             /* if ngene is large and some lgene is on the next line */
             for (; i < com.ngene; i++)
-               if (fscanf(fseq, "%d", &com.lgene[i]) != 1) error2("EOF at lgene");
+               if (fscanf(fseq, "%d", &com.lgene[i]) != 1) zerror("EOF at lgene");
 
             for (i = 0, k = 0; i < com.ngene; i++)
                k += com.lgene[i];
@@ -660,7 +660,7 @@ int ReadSeq(FILE* fout, FILE* fseq, int cleandata, int locus, int read_seq_only)
          }
          else {                   /* site marks on later line(s)  */
             if (com.readpattern)
-               error2("option PG: use number of patterns in each gene and not site marks");
+               zerror("option PG: use number of patterns in each gene and not site marks");
             for (k = 0; k < com.ls / n31; ) {
                if (com.ngene > 9)  fscanf(fseq, "%d", &ch);
                else {
@@ -673,7 +673,7 @@ int ReadSeq(FILE* fout, FILE* fseq, int cleandata, int locus, int read_seq_only)
                }
                com.pose[k++] = ch - 1;
             }
-            if (!fgets(line, lline, fseq)) error2("sequence file, gene marks");
+            if (!fgets(line, lline, fseq)) zerror("sequence file, gene marks");
          }
          break;
       default:
@@ -689,7 +689,7 @@ readseq:
       for (j = 0; j < com.ns; j++) {
          lspname = LSPNAME;
          for (i = 0; i < 2 * lspname; i++) line[i] = '\0';
-         if (!fgets(line, lline, fseq)) error2("EOF?");
+         if (!fgets(line, lline, fseq)) zerror("EOF?");
          if (blankline(line)) {
             if (PopEmptyLines(fseq, lline, line))
             {
@@ -724,7 +724,7 @@ readseq:
             if (p1 && p1 - pch >= nchar)
                miss = 1;
             if (*p == eq) {
-               if (j == 0) error2("Error in sequence data file: . in 1st seq.?");
+               if (j == 0) zerror("Error in sequence data file: . in 1st seq.?");
                com.z[j][k] = com.z[0][k];  k++;
             }
             else if (p1)
@@ -734,7 +734,7 @@ readseq:
                puts("Make sure to separate the sequence from its name by 2 or more spaces.");
                exit(0);
             }
-            else if (*p == (char)EOF) error2("EOF?");
+            else if (*p == (char)EOF) zerror("EOF?");
          }           /* for(k) */
          if (strchr(p, '\n') == NULL) /* pop up line return */
             while ((ch = fgetc(fseq)) != '\n' && ch != EOF);
@@ -754,17 +754,17 @@ readseq:
             if (!fgets(line, lline, fseq)) {
                printf("\nerr reading site %d, seq %d group %d\nsites read in each seq:",
                   lt[j] + 1, j + 1, igroup + 1);
-               error2("EOF?");
+               zerror("EOF?");
             }
             if (!hasbase(line)) {
                if (j) {
                   printf("\n%d, seq %d group %d", lt[j] + 1, j + 1, igroup + 1);
-                  error2("empty line.");
+                  zerror("empty line.");
                }
                else
                   if (PopEmptyLines(fseq, lline, line) == -1) {
                      printf("\n%d, seq %d group %d", lt[j] + 1, j + 1, igroup + 1);
-                     error2("EOF?");
+                     zerror("EOF?");
                   }
             }
             p = line;
@@ -807,7 +807,7 @@ readseq:
                      *p, lt[j] + 1, j + 1, igroup + 1);
                   exit(-1);
                }
-               else if (*p == (char)EOF) error2("EOF");
+               else if (*p == (char)EOF) zerror("EOF");
             }         /* for (*p) */
          }            /* for (j,com.ns) */
 
@@ -820,7 +820,7 @@ readseq:
    }
    if (format == 2) {  /* NEXUS format: pop up extra lines until "end;"  */
       for (; ; ) {
-         if (fgets(line, lline, fseq) == NULL) error2("seq err1: EOF");
+         if (fgets(line, lline, fseq) == NULL) zerror("seq err1: EOF");
          strcase(line, 0);
          if (strstr(line, NEXUSend)) break;
       }
@@ -953,7 +953,7 @@ readseq:
    else {  /*  read pattern counts */
       com.npatt = com.ls;
       if ((com.fpatt = (double*)realloc(com.fpatt, com.npatt * sizeof(double))) == NULL)
-         error2("oom fpatt");
+         zerror("oom fpatt");
       for (h = 0, lst = 0; h < com.npatt; h++) {
          fscanf(fseq, "%lf", &com.fpatt[h]);
          lst += com.fpatt[h];
@@ -1008,7 +1008,7 @@ int MarkStopCodons(void)
    int i, j, h, NColumnEdited = 0, nstops = 0;
    char codon[4] = "", stops[6][4] = { "", "", "" };
 
-   if (com.seqtype != 1) error2("should not be here");
+   if (com.seqtype != 1) zerror("should not be here");
 
    for (i = 0; i < 64; i++)
       if (GeneticCode[com.icode][i] == -1)
@@ -1074,7 +1074,7 @@ void RemoveEmptySequences(void)
    }
    com.ns = nsnew;
    if (com.ns <= 0)
-      error2("\nThis locus has nothing left after empty sequences are removed.  Use cleandata = 0.\n");
+      zerror("\nThis locus has nothing left after empty sequences are removed.  Use cleandata = 0.\n");
 }
 
 
@@ -1168,7 +1168,7 @@ void EncodeSeqs(void)
             }
             if (k == nA) {
                if (++nA > 256)
-                  error2("too many ambiguity codons in the data.  Contact author");
+                  zerror("too many ambiguity codons in the data.  Contact author");
                strcpy(CODONs[nA - 1], c);
             }
             com.z[j][h] = (char)k;
@@ -1318,7 +1318,7 @@ int IdenticalSeqs(void)
    if (nkept < com.ns) {
       strcpy(tmpf, com.seqf);
       strcat(tmpf, ".unique");
-      if ((ftmp = fopen(tmpf, "w")) == NULL) error2("IdenticalSeqs: file error");
+      if ((ftmp = fopen(tmpf, "w")) == NULL) zerror("IdenticalSeqs: file error");
       printSeqs(ftmp, com.z, com.spname, com.ns, com.ls, com.npatt, com.fpatt, NULL, keep, 1);
       fclose(ftmp);
       printf("\nUnique sequences collected in %s.\n", tmpf);
@@ -1353,7 +1353,7 @@ void AllPatterns(FILE* fout)
    }
    for (j = 0; j < com.ns; j++)
       if ((com.z[j] = (char*)malloc(com.npatt * sizeof(char))) == NULL)
-         error2("oom in AllPatterns");
+         zerror("oom in AllPatterns");
    for (h = 0; h < com.npatt; h++) {
       for (j = 0, it = h; j < com.ns; j++) {
          ic = it % com.ncode;
@@ -1414,7 +1414,7 @@ int PatternWeight(void)
    if (maxnpatt > com.ls) maxnpatt = com.ls;
    p2s = (int*)malloc(maxnpatt * sizeof(int));
    zt = (char*)malloc(com.ls * lpatt * sizeof(char));
-   if (p2s == NULL || zt == NULL)  error2("oom p2s or zt");
+   if (p2s == NULL || zt == NULL)  zerror("oom p2s or zt");
    memset(zt, 0, com.ls * lpatt * sizeof(char));
    for (j = 0; j < com.ns; j++)
       for (h = 0; h < com.ls; h++)
@@ -1444,7 +1444,7 @@ int PatternWeight(void)
          }
          if (!same) {
             if (com.npatt > maxnpatt)
-               error2("npatt > maxnpatt");
+               zerror("npatt > maxnpatt");
             if (l > ip) ip++;        /* last comparison in bsearch had k > 0. */
                                      /* Insert new pattern at ip.  This is the expensive step. */
             if (ip < com.npatt)
@@ -1470,13 +1470,13 @@ int PatternWeight(void)
    com.posG[com.ngene] = com.npatt;
    for (j = 0; j < com.ngene; j++)
       if (com.lgene[j] == 0)
-         error2("some genes do not have any sites?");
+         zerror("some genes do not have any sites?");
    for (j = 1; j < com.ngene; j++)
       com.lgene[j] += com.lgene[j - 1];
 
    com.fpatt = (double*)realloc(com.fpatt, com.npatt * sizeof(double));
    poset = (int*)malloc(com.ls * sizeof(int));
-   if (com.fpatt == NULL || poset == NULL) error2("oom poset");
+   if (com.fpatt == NULL || poset == NULL) zerror("oom poset");
    memset(com.fpatt, 0, com.npatt * sizeof(double));
 
    for (ig = 0; ig < com.ngene; ig++) {
@@ -1564,7 +1564,7 @@ int InitializeBaseAA(FILE* fout)
    if (noisy) printf("Counting frequencies..");
    if (fout)  fprintf(fout, "\nFrequencies..");
    if ((pisg = (double*)malloc(com.ns * n * sizeof(double))) == NULL)
-      error2("oom pisg");
+      zerror("oom pisg");
    for (h = 0, nconstp = 0; h < com.npatt; h++) {
       for (js = 1; js < com.ns; js++)
          if (com.z[js][h] != com.z[0][h])  break;
@@ -1766,9 +1766,9 @@ int RemoveIndel(void)
       n31 = 3; n = 4;
    }
 
-   if (com.ls % n31) error2("ls in RemoveIndel.");
+   if (com.ls % n31) zerror("ls in RemoveIndel.");
    if ((miss = (char*)malloc(com.ls / n31 * sizeof(char))) == NULL)
-      error2("oom miss");
+      zerror("oom miss");
    for (h = 0; h < com.ls / n31; h++)
       miss[h] = 0;
    for (js = 0; js < com.ns; js++) {
@@ -1824,10 +1824,10 @@ int MPInformSites(void)
 
    finf = fopen("MPinf.seq", "w");
    fninf = fopen("MPninf.seq", "w");
-   if (finf == NULL || fninf == NULL) error2("MPInformSites: file creation error");
+   if (finf == NULL || fninf == NULL) zerror("MPInformSites: file creation error");
 
    puts("\nSorting parsimony-informative sites: MPinf.seq & MPninf.seq");
-   if ((imark = (char*)malloc(com.ls * sizeof(char))) == NULL) error2("oom imark");
+   if ((imark = (char*)malloc(com.ls * sizeof(char))) == NULL) zerror("oom imark");
    for (h = 0, lsinf = 0; h < com.ls; h++) {
       for (i = 0; i < com.ns; i++) markb[i] = 0;
       for (i = 0; i < com.ns; i++) markb[(int)com.z[i][com.pose[h]]]++;
@@ -2251,7 +2251,7 @@ int eigenTN93(int model, double kappa1, double kappa2, double pi[],
          for (k = 1; k < 4; k++)  Cijk[i * 4 * nr + j * nr + k] = U[i * 4 + k] * V[k * 4 + j];
          break;
       default:
-         error2("model in eigenTN93");
+         zerror("model in eigenTN93");
       }
    }
 #ifdef BASEMLG
@@ -2494,7 +2494,7 @@ int eigenQREVbase(FILE* fout, double Q[NCODE * NCODE], double kappa[], double pi
    *nR = n;
    zero(Q, n * n);
    if (com.model == REV) {
-      if (n != 4) error2("ncode != 4 for REV");
+      if (n != 4) zerror("ncode != 4 for REV");
       Q[3 * n + 2] = Q[2 * n + 3] = 1;  /* r_AG = r_GA = 1. */
       for (i = 0, k = 0; i < n - 1; i++) for (j = i + 1; j < n; j++)
          if (i * n + j != 2 * n + 3)
@@ -2546,7 +2546,7 @@ int QUNREST(FILE* fout, double Q[], double rate[], double pi[])
    double mr, ts, space[20];
 
    if (com.model == UNREST) {
-      if (n != 4) error2("ncode != 4 for UNREST");
+      if (n != 4) zerror("ncode != 4 for UNREST");
       for (i = 0, k = 0, Q[14] = 1; i < n; i++) for (j = 0; j < n; j++)
          if (i != j && i * n + j != 14)  Q[i * n + j] = rate[k++];
    }
@@ -2606,7 +2606,7 @@ int SetAncestor()
             if (a1 == a2) { ancestor[it] = a1; break; }
          if (ancestor[it] != -1) break;
       }
-      if (ancestor[it] == -1) error2("no ancestor");
+      if (ancestor[it] == -1) zerror("no ancestor");
    }
    return(0);
 }
@@ -2619,7 +2619,7 @@ int fun_LS(double x[], double diff[], int np, int npair)
    double dexp;
 
    if (SetBranch(x) && noisy > 2) puts("branch len.");
-   if (npair != com.ns * (com.ns - 1) / 2) error2("# seq pairs err.");
+   if (npair != com.ns * (com.ns - 1) / 2) zerror("# seq pairs err.");
    for (i = 0; i < com.ns; i++) for (j = 0; j < i; j++) {
       it = i * (i - 1) / 2 + j;
       for (aa = i, dexp = 0; aa != ancestor[it]; aa = nodes[aa].father)
@@ -2715,7 +2715,7 @@ int GroupDistances()
    if (ancestor == NULL) {
       newancestor = 1;
       ancestor = (int*)realloc(ancestor, com.ns * (com.ns - 1) / 2 * sizeof(int));
-      if (ancestor == NULL) error2("oom ancestor");
+      if (ancestor == NULL) zerror("oom ancestor");
    }
    SetAncestor();
 
@@ -2748,7 +2748,7 @@ double CountTrees(int ns, int rooted)
 {
    double i, ntree = 1;
 
-   if (ns > 70) error2("ns too large in NumberofTrees().");
+   if (ns > 70) zerror("ns too large in NumberofTrees().");
    for (i = 4; i <= ns + rooted; i++)
       ntree *= 2 * i - 5;
    return (ntree);
@@ -2758,7 +2758,7 @@ double CountLHs(int ns)
 {
    double i, nLH = 1;
 
-   if (ns > 70) error2("ns too large in NumberofLHs().");
+   if (ns > 70) zerror("ns too large in NumberofLHs().");
    for (i = 3; i <= ns; i++)
       nLH *= i * (i - 1) / 2;
    return (nLH);
@@ -2807,7 +2807,7 @@ void NodeToBranch(void)
    tree.nbranch = 0;
    NodeToBranchSub(tree.root);
    if (tree.nnode != tree.nbranch + 1)
-      error2("nnode != nbranch + 1?");
+      zerror("nnode != nbranch + 1?");
 }
 
 
@@ -2840,7 +2840,7 @@ int ReadTreeB(FILE* ftree, int popline)
          if (fscanf(ftree, "%d", &tree.branches[j][i]) != 1) state = -1;
          tree.branches[j][i]--;
          if (tree.branches[j][i]<0 || tree.branches[j][i]>com.ns * 2 - 1)
-            error2("ReadTreeB: node numbers out of range");
+            zerror("ReadTreeB: node numbers out of range");
       }
       nodemark[tree.branches[j][1]] = 2;
       if (nodemark[tree.branches[j][0]] != 2) nodemark[tree.branches[j][0]] = 1;
@@ -2852,11 +2852,11 @@ int ReadTreeB(FILE* ftree, int popline)
    if (popline) fgets(line, 254, ftree);
    for (i = 0, tree.root = -1; i < tree.nbranch; i++)
       if (nodemark[tree.branches[i][0]] != 2) tree.root = tree.branches[i][0];
-   if (tree.root == -1) error2("root err");
+   if (tree.root == -1) zerror("root err");
    for (i = 0; i < com.ns; i++)
       if (nodemark[i] == 0) {
          matIout(F0, nodemark, 1, com.ns);
-         error2("branch specification of tree");
+         zerror("branch specification of tree");
       }
 
    if (YoungAncestor) {
@@ -2902,7 +2902,7 @@ int GetTreeFileType(FILE* ftree, int* ntree, int* pauptree, int shortform)
    k = fscanf(ftree, "%d%d", &i, ntree);
    if (k == 2) {
       if (i == com.ns)  return(0);                 /* old paml style */
-      else              error2("Number of sequences different in tree and seq files.");
+      else              zerror("Number of sequences different in tree and seq files.");
    }
    else if (k == 1) { *ntree = i; return(0); }           /* phylip & molphy style */
    while (ch != '(' && !isalnum(ch) && ch != EOF)
@@ -2914,21 +2914,21 @@ int GetTreeFileType(FILE* ftree, int* ntree, int* pauptree, int shortform)
 
    puts("\n# seqs in tree file does not match.  Read as the nexus format.");
    for ( ; ; ) {
-      if (fgets(line, lline, ftree) == NULL) error2("tree err1: EOF");
+      if (fgets(line, lline, ftree) == NULL) zerror("tree err1: EOF");
       strcase(line, 0);
       if (strstr(line, paupstart)) { *pauptree = 1; *ntree = -1; break; }
    }
    if (shortform) return(0);
    for ( ; ; ) {
-      if (fgets(line, lline, ftree) == NULL) error2("tree err2: EOF");
+      if (fgets(line, lline, ftree) == NULL) zerror("tree err2: EOF");
       strcase(line, 0);
       if (strstr(line, paupend)) break;
    }
    for ( ; ; ) {
-      if ((ch = fgetc(ftree)) == EOF) error2("tree err3: EOF");
+      if ((ch = fgetc(ftree)) == EOF) zerror("tree err3: EOF");
       if (ch == paupch) break;
    }
-   if (fgets(line, lline, ftree) == NULL) error2("tree err4: EOF");
+   if (fgets(line, lline, ftree) == NULL) zerror("tree err4: EOF");
 
    return(0);
 }
@@ -3000,7 +3000,7 @@ int ReadUntil(FILE* fin, char line[], char delimiters[], int maxline)
    for (i = 0; i < maxline; i++) {  /* read notes into line[] */
       line[i] = (char)fgetc(fin);
       if (line[i] == EOF)
-         error2("EOF when reading node label");
+         zerror("EOF when reading node label");
       if (strchr(delimiters, (int)line[i])) {
          ungetc(line[i], fin);
          line[i] = '\0';
@@ -3058,7 +3058,7 @@ int ReadTreeN(FILE* ftree, int* haslength, int copyname, int popline)
    ((A)H#H[&gamma = 0:3];H#H)R;
    ((A : 0:02; (B : 0:01)H#H1[&gamma=0:3] : 0:01)S : 0:03; (H#H1 : 0:02;C : 0:03)T : 0:02)R :0:03;
    */
-   if (com.ns <= 0)  error2("you should specify # seqs in the tree file.");
+   if (com.ns <= 0)  zerror("you should specify # seqs in the tree file.");
 
    for (i = 0; i < com.ns; i++) check[i] = 0;
    *haslength = 0;
@@ -3085,7 +3085,7 @@ int ReadTreeN(FILE* ftree, int* haslength, int copyname, int popline)
       if (ch == EOF) return(-1);
       else if (ch == ';') {
          if (level != 0)
-            error2("; in treefile");
+            zerror("; in treefile");
          else
             break;
       }
@@ -3097,7 +3097,7 @@ int ReadTreeN(FILE* ftree, int* haslength, int copyname, int popline)
          namelabel = 0;
          cnode = tree.nnode++;
          if (tree.nnode > 2 * com.ns - 1)
-            error2("check #seqs and tree: perhaps too many '('?");
+            zerror("check #seqs and tree: perhaps too many '('?");
          if (cfather >= 0) {
             if (nodes[cfather].nson >= MAXNSONS) {
                printf("there are at least %d daughter nodes, raise MAXNSONS?", nodes[cfather].nson);
@@ -3123,12 +3123,12 @@ int ReadTreeN(FILE* ftree, int* haslength, int copyname, int popline)
       }
       else if (namelabel == 0) { /* read species name or number for tip */
          if (level <= 0)
-            error2("expecting ; in the tree file");
+            zerror("expecting ; in the tree file");
          ungetc(ch, ftree);
          ReadUntil(ftree, line, delimitersN, lline);
          isname = IsNameNumber(line);
          if (isname == 0) {     /* number */
-            if (copyname == 2) error2("Use names in tree.");
+            if (copyname == 2) zerror("Use names in tree.");
             sscanf(line, "%d", &cnode);
             cnode--;
          }
@@ -3143,13 +3143,13 @@ int ReadTreeN(FILE* ftree, int* haslength, int copyname, int popline)
             }
             else {
                if (tip > com.ns - 1)
-                  error2("error in tree: too many species in tree");
+                  zerror("error in tree: too many species in tree");
                strcpy(com.spname[cnode = tip++], line);
             }
          }
          nodes[cnode].father = cfather;
          if (nodes[cfather].nson >= MAXNSONS)
-            error2("too many daughter nodes, raise MAXNSONS");
+            zerror("too many daughter nodes, raise MAXNSONS");
          nodes[cfather].sons[nodes[cfather].nson++] = cnode;
          tree.branches[tree.nbranch][0] = cfather;
          tree.branches[tree.nbranch][1] = cnode;
@@ -3168,7 +3168,7 @@ int ReadTreeN(FILE* ftree, int* haslength, int copyname, int popline)
             k = ReadUntil(ftree, line, delimitersL, lline);
          }
          nodes[inode].annotation = (char*)malloc((k + 1) * sizeof(char));
-         if (nodes[inode].annotation == NULL) error2("oom annotation");
+         if (nodes[inode].annotation == NULL) zerror("oom annotation");
          strcpy(nodes[inode].annotation, line);
          /* This line is used in MCcoal.  ProcessNodeAnnotation is used to process node annotation elsewhere. */
          if (line[0] == '#')        /* branch labels used in baseml and codeml */
@@ -3201,7 +3201,7 @@ int ReadTreeN(FILE* ftree, int* haslength, int copyname, int popline)
    }
    if (tree.nbranch > 2 * com.ns - 2) {
       printf("nbranch %d", tree.nbranch); 
-      error2("too many branches in tree?");
+      zerror("too many branches in tree?");
    }
    if (tree.nnode != tree.nbranch + 1) {
       printf("\nnnode%6d != nbranch%6d + 1\n", tree.nnode, tree.nbranch);
@@ -3219,7 +3219,7 @@ int OutSubTreeN(FILE* fout, int inode, int spnames, int printopt)
    int i, dad, nsib;
 
    if (inode > com.ns * 2 - 1)
-      error2("inode large?");
+      zerror("inode large?");
    dad = nodes[inode].father;
    nsib = (inode == tree.root ? 0 : nodes[dad].nson);
 
@@ -3293,7 +3293,7 @@ int DeRoot(void)
     */
    int i, ison, sib, root = tree.root;
 
-   if (nodes[root].nson != 2) error2("in DeRoot?");
+   if (nodes[root].nson != 2) zerror("in DeRoot?");
 
    ison = nodes[root].sons[i = 0];
    if (nodes[ison].nson == 0)
@@ -3449,12 +3449,12 @@ int GetSubTreeN(int keep[], int newnodeNO[])
    tree.nnode = k;
 
    nodestmp = (struct TREEN*)malloc(nnode0 * sizeof(struct TREEN));
-   if (nodestmp == NULL) error2("oom GetSubTreeN");
+   if (nodestmp == NULL) zerror("oom GetSubTreeN");
 
    if (sumnumber > nsnew) {
       /* to renumber the nodes.  k is current node number */
       if (sumnumber != nsnew * (nsnew + 1) / 2)
-         error2("keep[] not right in GetSubTreeN");
+         zerror("keep[] not right in GetSubTreeN");
       memmove(nodestmp, nodes, nnode0 * sizeof(struct TREEN));
 
       for (i = 0; i < nnode0; i++) newnodeNO[i] = -1;
@@ -3570,7 +3570,7 @@ int GetTipDate(void)
       if (strchr(p, '-')) {
          if (sscanf(p + 1, "%d-%d-%d", &year, &month, &day) == EOF) {
             printf("sequence name: %s\n", com.spname[i]);
-            error2("date format wrong for tipdate analysis?");
+            zerror("date format wrong for tipdate analysis?");
          }
          tipdate.ymd = 1;
          sampletime.tm_year = year - 1900;
@@ -3581,7 +3581,7 @@ int GetTipDate(void)
       else
          sscanf(p + 1, "%lf", &stree.nodes[i].age);
       if (stree.nodes[i].age <= 0)
-         error2("Tip date <= 0: somehow i am using positive numbers only for tip date");
+         zerror("Tip date <= 0: somehow i am using positive numbers only for tip date");
       else
          ndates++;
 
@@ -3604,7 +3604,7 @@ int GetTipDate(void)
    if (tipdate.timeunit <= 0)
       tipdate.timeunit = (young - old) * 2.5;
    if (young - old < 1e-100)
-      error2("TipDate: all sequences are of the same age?");
+      zerror("TipDate: all sequences are of the same age?");
    for (i = 0; i < stree.nspecies * 2 - 1; i++) {
       if (i < stree.nspecies || nodes[i].fossil) {
          stree.nodes[i].age = (young - stree.nodes[i].age) / tipdate.timeunit;
@@ -3746,7 +3746,7 @@ void GetAgeLow(int inode)
    }
    if (nodes[inode].fossil) {
       if (nodes[inode].age < tlow)
-         error2("age in tree is in conflict.");
+         zerror("age in tree is in conflict.");
       AgeLow[inode] = nodes[inode].age;
    }
    else
@@ -3845,7 +3845,7 @@ int GetInitialsTimes(double x[])
          for (i = 0; i < tree.nnode; i++) {
             if (i != tree.root && (j = (int)nodes[i].label + 1) > com.nbtype) {
                com.nbtype = j;
-               if (j<0 || j>tree.nbranch - 1) error2("branch label in the tree.");
+               if (j<0 || j>tree.nbranch - 1) zerror("branch label in the tree.");
             }
          }
          for (j = 0; j < com.nbtype; j++) {
@@ -3855,7 +3855,7 @@ int GetInitialsTimes(double x[])
                printf("\nNot all branch labels (0, ..., %d) are found on tree?", com.nbtype - 1);
          }
          if (noisy) printf("\nfound %d branch rates in tree.\n", com.nbtype);
-         if (com.nbtype <= 1) error2("use clock = 1 or add branch rate labels in tree");
+         if (com.nbtype <= 1) zerror("use clock = 1 or add branch rate labels in tree");
 
          for (i = 0; i < tree.nbranch; i++)
             printf("%3.0f", nodes[tree.branches[i][1]].label);
@@ -3869,14 +3869,14 @@ int GetInitialsTimes(double x[])
       }
    }
    if (NFossils && maxage > 10)
-      error2("Change time unit so that fossil dates fall in (0.00001, 10).");
+      zerror("Change time unit so that fossil dates fall in (0.00001, 10).");
 
    if (tipdate.flag)
       GetTipDate();
 
    AbsoluteRate = (tipdate.flag || NFossils);
    if (com.clock >= 5 && AbsoluteRate == 0)
-      error2("needs fossil calibrations");
+      zerror("needs fossil calibrations");
 
    com.ntime = AbsoluteRate + (tree.nnode - com.ns - NFossils) + (com.nbtype - 1);
    if (com.clock == ClockCombined)
@@ -3921,7 +3921,7 @@ int OutputTimesRates(FILE* fout, double x[], double var[])
             fprintf(fout, "%12.6f", GetBranchRate(i, j, x, &k));
             if (i == 0 && j == 0 && !AbsoluteRate) continue;
             if ((com.clock != LocalClock || com.ngene == 1) && com.getSE) {
-               if (k == -1) error2("we are in trouble. k should not be -1 here.");
+               if (k == -1) zerror("we are in trouble. k should not be -1 here.");
                fprintf(fout, " +- %8.6f", sqrt(var[k * com.np + k]));
             }
          }
@@ -3961,7 +3961,7 @@ int OutputTimesRates(FILE* fout, double x[], double var[])
          fprintf(fout, "Node %3d Time %9.5f", i + 1, nodes[i].age);
          if (com.getSE && i >= com.ns && !nodes[i].fossil) {
             fprintf(fout, " +- %7.5f", sqrt(var[k * com.np + k]));
-            if (fabs(nodes[i].age - x[k]) > 1e-5) error2("node order wrong.");
+            if (fabs(nodes[i].age - x[k]) > 1e-5) zerror("node order wrong.");
             k++;
             fprintf(fout, "\n");
          }
@@ -4028,7 +4028,7 @@ int readx(double x[], int* fromfile)
    else { npin = com.np - com.ntime; xin = x + com.ntime; }
 
    if (npin <= 0) return(0);
-   if (com.runmode > 0 && com.seqtype == 1 && com.model) error2("option or in.codeml");
+   if (com.runmode > 0 && com.seqtype == 1 && com.model) zerror("option or in.codeml");
    printf("\nReading initials/paras from file (np=%d). Stop if wrong.\n", npin);
    fscanf(finitials, "%lf", &xin[i = 0]);
    *fromfile = 1;
@@ -4061,7 +4061,7 @@ int CollapsNode(int inode, double x[])
     */
    int i, j, ifather, ibranch, ison;
 
-   if (inode == tree.root || inode < com.ns) error2("err CollapsNode");
+   if (inode == tree.root || inode < com.ns) zerror("err CollapsNode");
    ibranch = nodes[inode].ibranch;   ifather = nodes[inode].father;
    for (i = 0; i < nodes[inode].nson; i++) {
       ison = nodes[inode].sons[i];
@@ -4141,10 +4141,10 @@ int Partition2Tree(char splits[], int lsplit, int ns, int nsplit, double label[]
    int i, j, k, s21 = ns * 2 - 1, a, minndesc, ndesc[NS] = { 0 };  /* clade size */
    char debug = 0, * p, * pptable;
 
-   if (nsplit > ns - 2) error2("too many splits for ns");
+   if (nsplit > ns - 2) zerror("too many splits for ns");
    if (nsplit < 0) nsplit = 0;
    if ((pptable = (char*)malloc((s21 * s21 + 1) * sizeof(char))) == NULL)
-      error2("oom in Partition2Tree");
+      zerror("oom in Partition2Tree");
    memset(pptable, 0, s21 * s21 * sizeof(char));
 
    /* initialize tree */
@@ -4200,10 +4200,10 @@ int Partition2Tree(char splits[], int lsplit, int ns, int nsplit, double label[]
          }
       }
       if (a < 0)
-         error2("jgl");
+         zerror("jgl");
       nodes[i].father = a;
       if (nodes[a].nson > MAXNSONS)
-         error2("Partition2Tree: raise MAXNSONS?");
+         zerror("Partition2Tree: raise MAXNSONS?");
       nodes[a].sons[nodes[a].nson++] = i;
       if (a != tree.root && label) nodes[a].label = label[a - ns];
    }
@@ -4275,23 +4275,23 @@ void CladeSupport(FILE* fout, char treef[], int getSnames, char maintreef[], int
 
    /* Count trees and splits */
    printf("\nRead tree sample, count trees & splits \n");
-   ft = gfopen(treef, "r");
+   ft = zopen(treef, "r");
 
    if (getSnames)      /* species ordered as in first tree in file */
       GetNSfromTreeFile(ft, &com.ns, &k);
-   if (com.ns < 3) error2("need >=3 species to justify this much effort.");
+   if (com.ns < 3) zerror("need >=3 species to justify this much effort.");
    s = com.ns;  lsplit = s + 1;  maxnsplits = maxnptree = s; sizeptree = (s - 2) * lsplit;
    if ((split1 = (char*)malloc(4 * (s - 2) * lsplit * sizeof(char))) == NULL)
-      error2("oom splits");
+      zerror("oom splits");
    ptree = split1 + (s - 2) * lsplit;
    ptree0 = ptree + (s - 2) * lsplit;
    split50 = ptree0 + (s - 2) * lsplit;
    memset(split1, 0, 3 * (s - 2) * lsplit * sizeof(char));
    if ((Psplit50 = (double*)malloc(s * sizeof(double))) == NULL)
-      error2("oom Psplit50");
+      zerror("oom Psplit50");
 
    sizetree = (s * 2 - 1) * sizeof(struct TREEN);
-   if ((nodes = (struct TREEN*)malloc(sizetree * 2)) == NULL) error2("oom");
+   if ((nodes = (struct TREEN*)malloc(sizetree * 2)) == NULL) zerror("oom");
    for (i = 0; i < s * 2 - 1; i++) nodes[i].annotation = NULL;
    besttree = nodes + s * 2 - 1;
 
@@ -4301,7 +4301,7 @@ void CladeSupport(FILE* fout, char treef[], int getSnames, char maintreef[], int
          maxnptree = (int)(maxnptree * (ntree < 1000 ? 2 : 1.2));
          ptrees = (char*)realloc(ptrees, maxnptree * sizeptree);
          countptree = (double*)realloc(countptree, maxnptree * sizeof(double));
-         if (ptrees == NULL || countptree == NULL) error2("oom ptrees || countptree");
+         if (ptrees == NULL || countptree == NULL) zerror("oom ptrees || countptree");
          memset(ptrees + nptree * sizeptree, 0, (maxnptree - nptree) * sizeptree);
          memset(countptree + nptree, 0, (maxnptree - nptree) * sizeof(double));
       }
@@ -4309,7 +4309,7 @@ void CladeSupport(FILE* fout, char treef[], int getSnames, char maintreef[], int
          maxnsplits *= 2;
          splits = (char*)realloc(splits, maxnsplits * lsplit * sizeof(char));
          countsplits = (double*)realloc(countsplits, maxnsplits * sizeof(double));
-         if (splits == NULL || countsplits == NULL) error2("oom splits realloc");
+         if (splits == NULL || countsplits == NULL) zerror("oom splits realloc");
       }
 
       /* if (getSnames), copy species/sequence names from first tree in file.  */
@@ -4372,7 +4372,7 @@ void CladeSupport(FILE* fout, char treef[], int getSnames, char maintreef[], int
    printf("\n%6d trees read, %d distinct trees.\n", ntree, nptree);
 
    k = max2(nsplits, nptree);
-   if ((index = (int*)malloc(k * 2 * sizeof(int))) == NULL) error2("oom index");
+   if ((index = (int*)malloc(k * 2 * sizeof(int))) == NULL) zerror("oom index");
    indexspace = index + k;
 
    printf("\nSpecies in order:\n");
@@ -4446,17 +4446,17 @@ void CladeSupport(FILE* fout, char treef[], int getSnames, char maintreef[], int
    }
 
    fscanf(fM, "%d%d", &i, &ntreeM);
-   if (i != s || ntreeM < 1) error2("<ns> <ntree> on the first line in main tree.");
+   if (i != s || ntreeM < 1) zerror("<ns> <ntree> on the first line in main tree.");
 
    splitM = (char*)malloc(ntreeM * (s - 2) * lsplit * sizeof(char));
    Psame = (double*)malloc(ntreeM * sizeof(double));
-   if (splitM == NULL || Psame == NULL) error2("oom splitM");
+   if (splitM == NULL || Psame == NULL) zerror("oom splitM");
    zero(Psame, ntreeM);
    if (pick1tree >= 1 && pick1tree <= ntreeM && (f1tree = (FILE*)fopen(pick1treef, "w")) == NULL)
-      error2("oom");
+      zerror("oom");
    for (itreeM = 0, pM = splitM; itreeM < ntreeM; itreeM++, pM += (s - 2) * lsplit) {
       if (ReadTreeN(fM, &i, 0, 1)) break;
-      if (tree.nnode<s * 2 - 2 || tree.nnode>s * 2 - 1) error2("main trees have to be binary");
+      if (tree.nnode<s * 2 - 2 || tree.nnode>s * 2 - 1) zerror("main trees have to be binary");
       Tree2Partition(pM);
       qsort(pM, tree.nnode - s - 1, lsplit, (int(*)(const void*, const void*))strcmp);
       if (debug) {
@@ -4466,7 +4466,7 @@ void CladeSupport(FILE* fout, char treef[], int getSnames, char maintreef[], int
       }
    }
    if ((MAPtreeID = (double*)malloc(ntree * sizeof(double))) == NULL)
-      error2("oom MAPtreeID");
+      zerror("oom MAPtreeID");
    memset(MAPtreeID, 0, ntree * sizeof(double));
 
    /* read the tree sample again */
@@ -4628,9 +4628,9 @@ int Perturbation(FILE* fout, int initialMP, double space[])
    double* x = treestar.x;
    FILE* ftree;
 
-   if (com.clock) error2("\n\aerr: pertubation does not work with a clock yet.\n");
+   if (com.clock) zerror("\n\aerr: pertubation does not work with a clock yet.\n");
    if (initialMP && !com.cleandata)
-      error2("\ncannot get initial parsimony tree for gapped data yet.");
+      zerror("\ncannot get initial parsimony tree for gapped data yet.");
 
    fprintf(fout, "\n\nHeuristic tree search by NNI perturbation\n");
    if (initialMP) {
@@ -4641,10 +4641,10 @@ int Perturbation(FILE* fout, int initialMP, double space[])
    else {
       if (noisy) printf("\nInitial tree read from file %s:\n", com.treef);
       fprintf(fout, "\nInitial tree read from file.\n");
-      if ((ftree = fopen(com.treef, "r")) == NULL) error2("treefile not exist?");
+      if ((ftree = fopen(com.treef, "r")) == NULL) zerror("treefile not exist?");
       fscanf(ftree, "%d%d", &i, &ntree);
-      if (i != com.ns) error2("ns in the tree file");
-      if (ReadTreeN(ftree, &i, 0, 1)) error2("err tree..");
+      if (i != com.ns) zerror("ns in the tree file");
+      if (ReadTreeN(ftree, &i, 0, 1)) zerror("err tree..");
       fclose(ftree);
    }
    if (noisy) {
@@ -4728,7 +4728,7 @@ int StepwiseAdditionMP(double space[])
    _step0 = (int*)malloc(com.npatt * _mnnode * sizeof(int));
    if (noisy > 2)
       printf("\n%9zd bytes for MP (U0 & N0)\n", 2 * com.npatt * _mnnode * sizeof(int));
-   if (_U0 == NULL || _step0 == NULL) error2("oom U0&step0");
+   if (_U0 == NULL || _step0 == NULL) zerror("oom U0&step0");
 
    tree.nbranch = tree.root = com.ns = 3;
    for (i = 0; i < tree.nbranch; i++) { tree.branches[i][0] = com.ns; tree.branches[i][1] = i; }
@@ -4818,7 +4818,7 @@ double TreeScore(double x[], double space[])
    int i;
    double xb[NP][2], e = 1e-9, lnL = 0;
 
-   if (com.clock == 2) error2("local clock in TreeScore");
+   if (com.clock == 2) zerror("local clock in TreeScore");
    com.ntime = com.clock ? tree.nnode - com.ns : tree.nbranch;
 
    GetInitials(x, &i);  /* this shoulbe be improved??? */
@@ -4854,7 +4854,7 @@ int StepwiseAddition(FILE* fout, double space[])
 
    if (com.ns > 50) printf("if this crashes, increase com.sspace?");
 
-   if (com.ns < 3) error2("2 sequences, no need for tree search");
+   if (com.ns < 3) zerror("2 sequences, no need for tree search");
    if (noisy) printf("\n\nHeuristic tree search by stepwise addition\n");
    if (fout) fprintf(fout, "\n\nHeuristic tree search by stepwise addition\n");
    for (i = 0; i < ns0; i++) { z0[i] = com.z[i]; spname0[i] = com.spname[i]; }
@@ -4948,9 +4948,9 @@ int StarDecomposition(FILE* fout, double space[])
 
    if (com.runmode == 1) {   /* read the star-like tree from tree file */
       if ((ftree = fopen(com.treef, "r")) == NULL)
-         error2("no treefile");
+         zerror("no treefile");
       fscanf(ftree, "%d%d", &i, &ntree);
-      if (ReadTreeN(ftree, &i, 0, 1)) error2("err tree file");
+      if (ReadTreeN(ftree, &i, 0, 1)) zerror("err tree file");
       fclose(ftree);
    }
    else {                  /* construct the star tree of ns species */
@@ -5102,7 +5102,7 @@ int StarDecomposition(FILE* fout, double space[])
       }
    }    /* for (stage) */
 
-   if (com.ns <= 4 && !improve && best) error2("strange");
+   if (com.ns <= 4 && !improve && best) zerror("strange");
 
    if (com.ns <= 4) return (best);
    else return (0);
@@ -5154,7 +5154,7 @@ int MultipleGenes(FILE* fout, FILE* ftree, FILE* fpair[], double space[])
    int ig = 0, j, ngene0, npatt0, lgene0[NGENE] = { 0 }, posG0[NGENE + 1] = {0};
    int nb = ((com.seqtype == 1 && !com.cleandata) ? 3 : 1);
 
-   if (com.ndata > 1) error2("multiple data sets & multiple genes?");
+   if (com.ndata > 1) zerror("multiple data sets & multiple genes?");
 
    ngene0 = com.ngene;  npatt0 = com.npatt;
    for (ig = 0; ig < ngene0; ig++)   lgene0[ig] = com.lgene[ig];
@@ -5238,7 +5238,7 @@ void printSeqsMgenes(void)
          if (com.pose[h] == ig)
             lg++;
       sprintf(seqf, "Gene%d.seq", ig + 1);
-      if ((fseq = fopen(seqf, "w")) == NULL) error2("file creation err.");
+      if ((fseq = fopen(seqf, "w")) == NULL) zerror("file creation err.");
       printf("%d sites in gene %d go to file %s\n", lg, ig + 1, seqf);
 
       fprintf(fseq, "%8d%8d\n", com.ns, lg * n31);
@@ -5292,7 +5292,7 @@ void printSeqsMgenes2(void)
     for(ig=0,lg=0; ig<com.ngene; ig++) wantgene[ig]=!wantgene[ig];
     */
 
-   if (com.ngene != 44) error2("ngene!=44");
+   if (com.ngene != 44) zerror("ngene!=44");
    for (h = 0; h < com.ls; h++) {
       printf("%3d", com.pose[h]);
       if ((h + 1) % 20 == 0) printf("\n");
@@ -5304,7 +5304,7 @@ void printSeqsMgenes2(void)
    for (ig = 0, lg = 0; ig < com.ngene; ig++)
       if (wantgene[ig]) { ngenekept++; lg += com.lgene[ig]; }
 
-   if ((fseq = fopen(seqf, "w")) == NULL) error2("file creation err.");
+   if ((fseq = fopen(seqf, "w")) == NULL) zerror("file creation err.");
    fprintf(fseq, "%4d %4d  G\nG  %d  ", com.ns, lg * n31, ngenekept);
    for (ig = 0; ig < com.ngene; ig++)
       if (wantgene[ig]) fprintf(fseq, " %3d", com.lgene[ig]);
@@ -5710,13 +5710,13 @@ int BootstrapSeq(char* seqf)
    int iboot, nboot = com.bootstrap, h, is, ig, lg[NGENE] = { 0 }, j, start;
    int lsb = com.ls, n31 = 1, gap = 10, gpos[NGENE];
    int* sites = (int*)malloc(com.ls * sizeof(int)), * gmark = NULL;
-   FILE* fseq = (FILE*)gfopen(seqf, "w");
+   FILE* fseq = (FILE*)zopen(seqf, "w");
    enum { PAML = 0, PAUP };
    char* datatype = (com.seqtype == AAseq ? "protein" : "dna");
    char* paupstart = "paupstart", * paupblock = "paupblock", * paupend = "paupend";
    int  format = 0;  /* 0: paml-phylip; 1:paup-nexus */
 
-   if (com.readpattern) error2("work on bootstrapping pattern data.");
+   if (com.readpattern) zerror("work on bootstrapping pattern data.");
 
    printf("\nGenerating bootstrap samples in file %s\n", seqf);
    if (format == PAUP) {
@@ -5726,11 +5726,11 @@ int BootstrapSeq(char* seqf)
    }
 
    if (com.seqtype == CODONseq || com.seqtype == CODON2AAseq) { n31 = 3; gap = 1; }
-   if (sites == NULL) error2("oom in BootstrapSeq");
+   if (sites == NULL) zerror("oom in BootstrapSeq");
    if (com.ngene > 1) {
-      if (lsb < com.ls) error2("jackknife when #gene>1");
+      if (lsb < com.ls) zerror("jackknife when #gene>1");
       if ((gmark = (int*)malloc(com.ls * sizeof(int))) == NULL)
-         error2("oom in BootstrapSeq");
+         zerror("oom in BootstrapSeq");
 
       for (ig = 0; ig < com.ngene; ig++)  com.lgene[ig] = gpos[ig] = 0;
       for (h = 0; h < com.ls; h++)  com.lgene[com.pose[h]]++;
@@ -5851,25 +5851,25 @@ int rell(FILE* flnf, FILE* fout, int ntree)
    fprintf(fout, "Number of replicates: %d\n", nr);
 
    fscanf(flnf, "%d%d%d", &ntree0, &ls0, &npatt0);
-   if (ntree0 != -1 && ntree0 != ntree)  error2("rell: input data file strange.  Check.");
+   if (ntree0 != -1 && ntree0 != ntree)  zerror("rell: input data file strange.  Check.");
    if (ls0 != com.ls || npatt0 != com.npatt)
-      error2("rell: input data file incorrect.");
+      zerror("rell: input data file incorrect.");
    s = ntree * (com.npatt + nr + 5) * sizeof(double);
    if (com.sspace < s) {
       if (noisy) printf("resetting space to %zu bytes in rell.\n", s);
       com.sspace = s;
       if ((com.space = (double*)realloc(com.space, com.sspace)) == NULL)
-         error2("oom space");
+         zerror("oom space");
    }
    lnf = com.space; lnL0 = lnf + ntree * com.npatt; lnL = lnL0 + ntree; pRELL = lnL + ntree * nr;
    pSH = pRELL + ntree; vdl = pSH + ntree; btrees = (int*)(vdl + ntree);
    fpattB = (int*)malloc((com.npatt + com.ls + com.ngene) * sizeof(int));
-   if (fpattB == NULL) error2("oom fpattB in rell.");
+   if (fpattB == NULL) zerror("oom fpattB in rell.");
    sitelist = fpattB + com.npatt;  lgeneB = sitelist + com.ls;
 
    lline = (com.seqtype == 1 ? ns0 * 8 : ns0) + 100;
    lline = max2(16000, lline);
-   if ((line = (char*)malloc((lline + 1) * sizeof(char))) == NULL) error2("oom rell");
+   if ((line = (char*)malloc((lline + 1) * sizeof(char))) == NULL) zerror("oom rell");
 
    /* read lnf from file flnf, calculates lnL0[] & find ML tree */
    for (itree = 0, mltree = 0; itree < ntree; itree++) {
@@ -5949,11 +5949,11 @@ int rell(FILE* flnf, FILE* fout, int ntree)
    }
    free(fpattB);
 
-   if (fabs(1 - sum(pRELL, ntree)) > 1e-6) error2("sum pRELL != 1.");
+   if (fabs(1 - sum(pRELL, ntree)) > 1e-6) zerror("sum pRELL != 1.");
 
    /* Shimodaira & Hasegawa correction (1999), working on lnL[ntree*nr] */
    printf("\nnow doing S-H test");
-   if ((lnLmSH = (double*)malloc(nr * sizeof(double))) == NULL) error2("oom in rell");
+   if ((lnLmSH = (double*)malloc(nr * sizeof(double))) == NULL) zerror("oom in rell");
    for (j = 0; j < ntree; j++)  /* step 3: centering */
       for (ir = 0, y = sum(lnL + j * nr, nr) / nr; ir < nr; ir++) lnL[j * nr + ir] -= y;
    for (ir = 0; ir < nr; ir++) {
@@ -6057,7 +6057,7 @@ int ProbSitePattern(double x[], double* lnL, double fhsiteAnc[], double ScaleC[]
    int ig, i, k, h, ir;
    double fh, S, y = 1;
 
-   if (com.ncatG > 1 && com.method == 1) error2("don't need this?");
+   if (com.ncatG > 1 && com.method == 1) zerror("don't need this?");
    if (SetParameters(x)) puts("par err.");
    for (h = 0; h < com.npatt; h++)
       fhsiteAnc[h] = 0;
@@ -6180,7 +6180,7 @@ int PostProbNode(int inode, double x[], double fhsiteAnc[], double ScaleC[],
       for (h = 0; h < com.npatt; h++) {
          for (i = 0, y = 0; i < n; i++) y += (pChar1node[h * n + i] /= fhsiteAnc[h]);
          if (fabs(1 - y) > 1e-5)
-            error2("PostProbNode: sum!=1");
+            zerror("PostProbNode: sum!=1");
          for (i = 0, best = -1, pbest = -1; i < n; i++)
             if (pChar1node[h * n + i] > pbest) {
                best = i;
@@ -6303,7 +6303,7 @@ int AncestralMarginal(FILE* fout, double x[], double fhsiteAnc[], double Sir[])
    pChar1node = (double*)malloc(com.npatt * n * sizeof(double));
    pnode = (double*)malloc((nid * com.npatt + 1) * (sizeof(double) + sizeof(char)));
    if (pnode == NULL || pChar1node == NULL)
-      error2("oom pnode");
+      zerror("oom pnode");
    zanc = (char*)(pnode + nid * com.npatt);
 
 #ifdef BASEML
@@ -6312,7 +6312,7 @@ int AncestralMarginal(FILE* fout, double x[], double fhsiteAnc[], double Sir[])
    if (com.seqtype == 1) { coding = 1; lsc = com.npatt; }
    if (coding == 1) {
       if ((pbestAA = (double*)malloc(nid * lsc * 2 * sizeof(double))) == NULL)
-         error2("oom pbestAA");
+         zerror("oom pbestAA");
       bestAA = (char*)(pbestAA + nid * lsc);
    }
 
@@ -6382,7 +6382,7 @@ int AncestralMarginal(FILE* fout, double x[], double fhsiteAnc[], double Sir[])
                   pAA[ic] += fh;
             }
             if (fabs(1 - y - sum(pAA, 20)) > 1e-6)
-               error2("AncestralMarginal strange?");
+               zerror("AncestralMarginal strange?");
 
             for (j = 0, best = 0, pbest = 0; j < 20; j++)
                if (pAA[j] > pbest) { pbest = pAA[j]; best = j; }
@@ -6967,23 +6967,23 @@ int AncestralJointPPSG2000(FILE* fout, double x[])
       if (k > maxnson) maxnson = k;
    }
    if (maxnson > 16 || NBESTANC > 4) /* for int at least 32 bits */
-      error2("NBESTANC too large or too many sons.");
+      zerror("NBESTANC too large or too many sons.");
    for (i = 0, maxncomb = 1; i < maxnson; i++) maxncomb *= NBESTANC;
    if ((PMatTips = (double*)malloc(com.ns * n * n * sizeof(double))) == NULL)
-      error2("oom PMatTips");
+      zerror("oom PMatTips");
    s = NBESTANC * nintern * (size_t)com.npatt * n * sizeof(double);
    if (s > sconPold) {
       com.sconP = s;
       printf("\n%9zu bytes for conP, adjusted\n", com.sconP);
       if ((com.conP = (double*)realloc(com.conP, com.sconP)) == NULL)
-         error2("oom conP");
+         zerror("oom conP");
    }
    s = NBESTANC * nintern * com.npatt * n;
    s = ((s * sizeof(int) + (s + nintern) * sizeof(char) + 16) / sizeof(double)) * sizeof(double);
    if (s > com.sspace) {
       com.sspace = s;
       printf("\n%9zu bytes for space, adjusted\n", com.sspace);
-      if ((com.space = (double*)realloc(com.space, com.sspace)) == NULL) error2("oom space");
+      if ((com.space = (double*)realloc(com.space, com.sspace)) == NULL) zerror("oom space");
    }
    for (i = 0; i < NBESTANC; i++) {
       lnPanc[i] = com.conP + (size_t)i * nintern * com.npatt * n;
@@ -6992,10 +6992,10 @@ int AncestralJointPPSG2000(FILE* fout, double x[])
       ancState1site = charNode[0] + NBESTANC * nintern * com.npatt * n;
    }
    if ((ancSeq = (char*)malloc(nintern * com.npatt * n * sizeof(char))) == NULL)
-      error2("oom charNode");
+      zerror("oom charNode");
 
    if ((combScore = (double*)malloc((3 * n * maxncomb + com.ns) * sizeof(double))) == NULL)
-      error2("oom combScore");
+      zerror("oom combScore");
    nBestScore = (int*)(combScore + n * maxncomb);
    combIndex = nBestScore + com.ns;  /* combIndex[2*n*ncomb] contains work space */
 
@@ -7039,7 +7039,7 @@ int AncestralJointPPSG2000(FILE* fout, double x[])
    free(combScore);
    com.sconP = sconPold;
    if ((com.conP = (double*)realloc(com.conP, com.sconP)) == NULL)
-      error2("conP");
+      zerror("conP");
    PointconPnodes();
    return (0);
 }
@@ -7056,7 +7056,7 @@ int AncestralSeqs(FILE* fout, double x[])
    double lnL, * ScaleC = NULL;  /* collected scale factors */
 
    if (com.Mgene == 1)
-      error2("When Mgene=1, use RateAncestor = 0.");
+      zerror("When Mgene=1, use RateAncestor = 0.");
    if (tree.nnode == com.ns) {
       puts("\nNo ancestral nodes to reconstruct..\n");  return(0);
    }
@@ -7073,10 +7073,10 @@ int AncestralSeqs(FILE* fout, double x[])
 
    fprintf(fout, "\nNodes %d to %d are ancestral\n", com.ns + 1, tree.nnode);
    if ((fhsiteAnc = (double*)malloc(com.npatt * sizeof(double))) == NULL)
-      error2("oom fhsiteAnc");
+      zerror("oom fhsiteAnc");
    if (com.NnodeScale && com.ncatG > 1)
       if ((ScaleC = (double*)malloc(max2(com.npatt, com.ncatG) * sizeof(double))) == NULL)
-         error2("oom ScaleC in AncestralSeqs");
+         zerror("oom ScaleC in AncestralSeqs");
 
    if (com.alpha)
       puts("Rates are variable among sites, marginal reconstructions only.");
@@ -7132,14 +7132,14 @@ void InitializeNodeScale(void)
 
    com.NnodeScale = 0;
    com.nodeScale = (char*)realloc(com.nodeScale, tree.nnode * sizeof(char));
-   if (com.nodeScale == NULL) error2("oom");
+   if (com.nodeScale == NULL) zerror("oom");
    for (i = 0; i < tree.nnode; i++) com.nodeScale[i] = (char)0;
    SetNodeScale(tree.root);
    nS = com.NnodeScale * com.npatt;
    if (com.conPSiteClass) nS *= com.ncatG;
    if (com.NnodeScale) {
       if ((com.nodeScaleF = (double*)realloc(com.nodeScaleF, nS * sizeof(double))) == NULL)
-         error2("oom nscale");
+         zerror("oom nscale");
       memset(com.nodeScaleF, 0, nS * sizeof(double));
 
       if (noisy) {
@@ -7235,9 +7235,9 @@ int HessianSKT2004(double xmle[], double lnLm, double g[], double H[])
    double* x, * lnL[2], * df[2], eh0 = Small_Diff * 2, eh;
 
    if (com.np != tree.nbranch && method == 1)
-      error2("I think HessianSKT2004 works for branch lengths only");
+      zerror("I think HessianSKT2004 works for branch lengths only");
    df[0] = (double*)malloc((com.npatt * 2 + 1) * com.np * sizeof(double));
-   if (df[0] == NULL) error2("oom space in HessianSKT2004");
+   if (df[0] == NULL) zerror("oom space in HessianSKT2004");
    df[1] = df[0] + com.npatt * com.np;
    x = df[1] + com.npatt * com.np;
    lnL[0] = (double*)malloc(com.np * 2 * sizeof(double));
@@ -7317,7 +7317,7 @@ int lfunRates(FILE* fout, double x[], int np)
       matout2(fout, com.MK, com.ncatG, com.ncatG, 8, 4);
    }
 
-   if ((fhsite = (double*)malloc(com.npatt * sizeof(double))) == NULL) error2("oom fhsite");
+   if ((fhsite = (double*)malloc(com.npatt * sizeof(double))) == NULL) zerror("oom fhsite");
    fx_r(x, np);
    if (com.NnodeScale) {
       for (h = 0; h < com.npatt; h++) {
@@ -7830,7 +7830,7 @@ int minB(FILE* fout, double* lnL, double x[], double xb[][2], double e0, double 
          printf("\n%zu bytes in space, %zu bytes needed\n", com.sspace, s);
          printf("minB: reallocating memory for working space.\n");
          com.space = (double*)realloc(com.space, s);
-         if (com.space == NULL) error2("oom space");
+         if (com.space == NULL) zerror("oom space");
          com.sspace = s;
       }
    }
@@ -7838,8 +7838,8 @@ int minB(FILE* fout, double* lnL, double x[], double xb[][2], double e0, double 
    varb_minbranches = com.space + com.np;
    s = (3 * com.ncode * com.ncode + (com.conPSiteClass) * 4 * (size_t)com.npatt) * sizeof(double);
    if ((space_minbranches = (double*)malloc(s)) == NULL)
-      error2("oom minB");
-   if (com.ntime == 0) error2("minB: should not come here");
+      zerror("oom minB");
+   if (com.ntime == 0) zerror("minB: should not come here");
 
    if (*lnL <= 0)  *lnL = com.plfun(x, com.np);
    e = e_minbranches = (npcom ? 5.0 : e0);
@@ -7933,8 +7933,8 @@ int minB2(FILE* fout, double* lnL, double x[], double xb[][2], double e0, double
    double(*xbcom)[2] = xb + ntime0;
 
    s = (3 * com.ncode * com.ncode + (com.conPSiteClass) * 4 * (size_t)com.npatt) * sizeof(double);
-   if ((space_minbranches = (double*)malloc(s)) == NULL)  error2("oom minB2");
-   if (com.ntime == 0 || npcom == 0) error2("minB2: should not come here");
+   if ((space_minbranches = (double*)malloc(s)) == NULL)  zerror("oom minB2");
+   if (com.ntime == 0 || npcom == 0) zerror("minB2: should not come here");
 
    noisy_minbranches = 0;
    /* if(*lnL<=0)  *lnL=com.plfun(x,com.np); */
@@ -8042,7 +8042,7 @@ double minbranches(double x[], int np)
    double tb[2] = { 1e-8,50 }, e = e_minbranches, * space = space_minbranches;
    double* xcom = x + com.ntime;  /* this is incorrect as com.ntime=0 */
 
-   if (com.ntime) error2("ntime should be 0 in minbranches");
+   if (com.ntime) zerror("ntime should be 0 in minbranches");
    lnL0 = l0 = l = lnL = com.plfun(xcom, -1);
 
    if (noisy_minbranches > 2) printf("\tlnL0 =    %14.6f\n", -lnL0);
@@ -8653,7 +8653,7 @@ int ProcessNodeAnnotation(int* haslabel)
    double tailL = 0.025, tailR = 0.025, p_LOWERBOUND = 0.1, c_LOWERBOUND = 1.0;
 
    nodelabel = (int*)malloc(s * sizeof(int));
-   if (nodelabel == NULL) error2("oom");
+   if (nodelabel == NULL) zerror("oom");
    for (i = 0; i < s - 1; i++)  stree.nodes[s + i].label = nodelabel[i] = 0;
 
    for (i = s; i < s * 2 - 1; i++) {
@@ -8676,7 +8676,7 @@ int ProcessNodeAnnotation(int* haslabel)
             sscanf(pch + 1, "%lf", &stree.nodes[i].pfossil[1]);
          if (stree.nodes[i].pfossil[0] > stree.nodes[i].pfossil[1]) {
             printf("fossil bounds (%.4f, %.4f)", stree.nodes[i].pfossil[0], stree.nodes[i].pfossil[1]);
-            error2("fossil bounds in tree incorrect");
+            zerror("fossil bounds in tree incorrect");
          }
       }
       else if ((pch = strchr(nodes[i].annotation, '>'))) {
@@ -8703,7 +8703,7 @@ int ProcessNodeAnnotation(int* haslabel)
          pch2 = strchr(pch, braces[0]);
          if (pch2 == NULL) pch2 = strchr(pch, braces[1]);
          if (pch2 == NULL)
-            error2("did not find left brace");
+            zerror("did not find left brace");
          pch = pch2 + 1;
 
          switch (j) {
@@ -8726,7 +8726,7 @@ int ProcessNodeAnnotation(int* haslabel)
                &stree.nodes[i].pfossil[2], &stree.nodes[i].pfossil[3]);
             if (stree.nodes[i].pfossil[0] > stree.nodes[i].pfossil[1]) {
                printf("fossil bounds (%.4f, %.4f)", stree.nodes[i].pfossil[0], stree.nodes[i].pfossil[1]);
-               error2("fossil bounds in tree incorrect");
+               zerror("fossil bounds in tree incorrect");
             }
             break;
          case (GAMMA_F):
@@ -8755,7 +8755,7 @@ int ProcessNodeAnnotation(int* haslabel)
       have no calibrations.  If i is the main node, mirrored node j has stree.nodes[j].label = i.
    */
    if (stree.duplication) {
-      if (*haslabel == 0) error2("need node labels for duplication dating...");
+      if (*haslabel == 0) zerror("need node labels for duplication dating...");
       for (i = s; i < s * 2 - 1; i++) printf("%4d", nodelabel[i - s]);
       printf("\n");
 
@@ -8775,7 +8775,7 @@ int ProcessNodeAnnotation(int* haslabel)
                   if (fabs(stree.nodes[i].pfossil[k] - stree.nodes[j].pfossil[k]) > 1e-6) mismatch = 1;
                if (mismatch) {
                   printf("\nnodes %2d %2d share age but have different calibrations? ", i + 1, j + 1);
-                  error2("err");
+                  zerror("err");
                }
                stree.nfossil--;
             }
@@ -8797,7 +8797,7 @@ int ProcessNodeAnnotation(int* haslabel)
          }
          if (nmirror == 0) {
             printf("\nnode %2d has label %d, but is not mirrored by any other node? ", i, nodelabel[i]);
-            error2("error");
+            zerror("error");
          }
       }
 
@@ -8859,7 +8859,7 @@ int ProcessNodeAnnotation(int* haslabel)
       if (j + 1 > com.nbtype)
          com.nbtype = j + 1;
       if (j<0 || j>tree.nbranch - 1)
-         error2("branch label in the tree (note labels start from 0 and are consecutive)");
+         zerror("branch label in the tree (note labels start from 0 and are consecutive)");
    }
    if (com.nbtype > 1)
       printf("\n%d branch types are in tree. Stop if wrong.", com.nbtype);
@@ -8885,10 +8885,10 @@ int ReadMainTree( FILE*ftree, struct SPECIESTREE *stree)
 
    if (noisy) puts("\nReading main tree.");
    j = fscanf(ftree, "%d%d", &stree->nspecies, &ntree);
-   if (ntree!=1) error2("maintree file can have only one tree");
+   if (ntree!=1) zerror("maintree file can have only one tree");
    com.ns = stree->nspecies;
-   if (com.ns > NS) error2("raise NS?");
-   else if (com.ns < 2) error2("number of species <2?");
+   if (com.ns > NS) zerror("raise NS?");
+   else if (com.ns < 2) zerror("number of species <2?");
    /* to read species names into stree->nodes[].name */
    for (j = 0; j < stree->nspecies; j++)
       com.spname[j] = stree->nodes[j].name;
@@ -8905,7 +8905,7 @@ int ReadMainTree( FILE*ftree, struct SPECIESTREE *stree)
    /* copy main tree into stree */
 #if(MCMCTREE)
    if (tree.nnode != 2 * com.ns - 1)
-      error2("check and think about multifurcating trees.");
+      zerror("check and think about multifurcating trees.");
 #endif
    copy_to_Sptree(stree, nodes);
 
@@ -8924,7 +8924,7 @@ int ReadTreeSeqs(FILE* fout)
    FILE* fseq, * ftree;
    int i, j, locus, clean0 = com.cleandata;
 
-   ftree = gfopen(com.treef, "r");
+   ftree = zopen(com.treef, "r");
    ReadMainTree(ftree, &stree);
    /* process fossil calibration info 
      (((A1 , B1) '#1 B(0.1,0.3)', (A2 , B2) #1), C ) 'B(0.9, 1.1)';  
@@ -8939,9 +8939,9 @@ int ReadTreeSeqs(FILE* fout)
    /* read sequences at each locus, construct gene tree by pruning stree */
    data.ngene = com.ndata;
    com.ndata = 1;
-   fseq = gfopen(com.seqf, "r");
+   fseq = zopen(com.seqf, "r");
    if ((gnodes = (struct TREEN**)malloc(sizeof(struct TREEN*) * data.ngene)) == NULL)
-      error2("oom");
+      zerror("oom");
 
    printf("\nReading sequence data..  %d loci\n", data.ngene);
    for (locus = 0; locus < data.ngene; locus++) {
@@ -8963,7 +8963,7 @@ int ReadTreeSeqs(FILE* fout)
          if (com.sspace < max2(com.ngene + 1, com.ns) * (64 + 12 + 4) * sizeof(double)) {
             com.sspace = max2(com.ngene + 1, com.ns) * (64 + 12 + 4) * sizeof(double);
             if ((com.space = (double*)realloc(com.space, com.sspace)) == NULL)
-               error2("oom space for #c");
+               zerror("oom space for #c");
          }
          InitializeCodon(fout, com.space);
       }
@@ -9023,7 +9023,7 @@ int ReadTreeSeqs(FILE* fout)
 
 int GenerateGtrees(FILE* fout, FILE* fseq, char *treesfilename)
 {
-   FILE* ftrees = gfopen(treesfilename, "w");
+   FILE* ftrees = zopen(treesfilename, "w");
    int locus, s=stree.nspecies, i;
 
    for (locus = 0; locus < com.ndata; locus++) {
@@ -9051,9 +9051,9 @@ int GenerateGtree_locus(int locus, int ns, int allocate_gnodes)
    int nnode0=stree.nnode, i, j, keep[NS], * newnodeNO;
 
    if (ns > stree.nspecies) 
-      error2("ns in seqfile is > ns in main tree");
+      zerror("ns in seqfile is > ns in main tree");
    newnodeNO = (int*)malloc(nnode0 * sizeof(int));
-   if (newnodeNO == NULL) error2("oom GenerateGtree_locus");
+   if (newnodeNO == NULL) zerror("oom GenerateGtree_locus");
 
    for (j = 0; j < stree.nspecies; j++) keep[j] = 0;
    for (i = 0; i < ns; i++) {
@@ -9065,7 +9065,7 @@ int GenerateGtree_locus(int locus, int ns, int allocate_gnodes)
       }
       if (keep[j]) {
          printf("\nspecies %s occurs twice in locus %d", com.spname[i], locus + 1);
-         error2("\ngiving up...");
+         zerror("\ngiving up...");
       }
       keep[j] = i + 1;
       free(com.spname[i]);
@@ -9084,7 +9084,7 @@ int GenerateGtree_locus(int locus, int ns, int allocate_gnodes)
    /* printGtree(0);  */
    if (allocate_gnodes) {
       gnodes[locus] = (struct TREEN*)malloc((ns * 2 - 1) * sizeof(struct TREEN));
-      if (gnodes[locus] == NULL) error2("oom gtree");
+      if (gnodes[locus] == NULL) zerror("oom gtree");
       memcpy(gnodes[locus], nodes, (ns * 2 - 1) * sizeof(struct TREEN));
       data.root[locus] = tree.root;
    }
@@ -9166,13 +9166,15 @@ void copy_to_Sptree(struct SPECIESTREE* stree, struct TREEN* nodes)
       stree->nodes[i].label = nodes[i].label;
 #if(MCMCTREE)
       if (nodes[i].nson != 0 && nodes[i].nson != 2)
-         error2("main tree is not binary.");
+         zerror("main tree is not binary.");
 #endif
       for (j = 0; j < stree->nodes[i].nson; j++)
          stree->nodes[i].sons[j] = nodes[i].sons[j];
    }
+#if(!defined(MCMCTREE))
    for (j = 0; j < stree->nspecies; j++)
       com.spname[j] = NULL;
+#endif
 }
 
 
@@ -9231,7 +9233,7 @@ int GetMemPUVR(int nc, int nUVR)
    int i;
 
    PMat = (double*)malloc((nc * nc + nUVR * nc * nc * 2 + nUVR * nc) * sizeof(double));
-   if (PMat == NULL) error2("oom getting P&U&V&Root");
+   if (PMat == NULL) zerror("oom getting P&U&V&Root");
    U = _UU[0] = PMat + nc * nc;
    V = _VV[0] = _UU[0] + nc * nc;
    Root = _Root[0] = _VV[0] + nc * nc;
@@ -9259,7 +9261,7 @@ int GetUVRoot_codeml(void)
    if (com.seqtype == 1 && (!com.fix_kappa || !com.fix_omega)) nUVR = 1;
    GetMemPUVR(nc, nUVR);
 
-   if (nUVR > 6) error2("The maximum number of proteins is set to 6.");
+   if (nUVR > 6) zerror("The maximum number of proteins is set to 6.");
    if (com.seqtype == 2) {
       for (locus = 0; locus < data.ngene; locus++) {
          if (data.ngene > 1)
@@ -9384,10 +9386,10 @@ void GetMemBC(void)
    com.conP = (double*)malloc(com.sconP);
    printf("\n%5zu bytes for conP\n", com.sconP);
    if (com.conP == NULL)
-      error2("oom conP");
+      zerror("oom conP");
    if (com.alpha) {
       sfhK *= com.ncatG * sizeof(double);
-      if ((com.fhK = (double*)realloc(com.fhK, sfhK)) == NULL) error2("oom");
+      if ((com.fhK = (double*)realloc(com.fhK, sfhK)) == NULL) zerror("oom");
    }
 
    /* set gnodes[locus][].conP for internal nodes */
@@ -9407,7 +9409,7 @@ void GetMemBC(void)
          UseLocus(locus, -1, 0, 0);
          com.NnodeScale = 0;
          com.nodeScale = data.nodeScale[locus] = (char*)malloc(tree.nnode * sizeof(char));
-         if (com.nodeScale == NULL)  error2("oom");
+         if (com.nodeScale == NULL)  zerror("oom");
          for (j = 0; j < tree.nnode; j++) com.nodeScale[j] = 0;
 
          SetNodeScale(tree.root);
@@ -9426,7 +9428,7 @@ void GetMemBC(void)
       }
       if (maxsizeScale) {
          if ((com.nodeScaleF = (double*)malloc(maxsizeScale * sizeof(double))) == NULL)
-            error2("oom nscale");
+            zerror("oom nscale");
          for (j = 0; j < (int)maxsizeScale; j++) com.nodeScaleF[j] = 0;
       }
    }
@@ -9553,7 +9555,7 @@ double funSS_AHRS(double x[], int np)
       t0 = nodes[root].age - nodes[son0].age;
       t1 = nodes[root].age - nodes[son1].age;
       if (t0 + t1 < 1e-7)
-         error2("small root branch.  Think about what to do.");
+         zerror("small root branch.  Think about what to do.");
       nodes[root].label = (nodes[son0].label * t1 + nodes[son1].label * t0) / (t0 + t1);
 
       for (j = 0, lnLbi = 0; j < tree.nnode; j++) {
@@ -9759,8 +9761,8 @@ int AdHocRateSmoothing(FILE* fout, double x[NS * 3], double xb[NS * 3][2], doubl
    double mbrate[20], Rj[20], r, minr, maxr, beta, * pnu = &nu_AHRS, nu, mr[NGENE];
    int i, j, k, k0, locus, nbrate[20], maxnbrate = 20;
    char timestr[32];
-   FILE* fBV = gfopen("in.BV", "w");
-   FILE* fdist = gfopen("RateDist.txt", "w");
+   FILE* fBV = zopen("in.BV", "w");
+   FILE* fdist = zopen("RateDist.txt", "w");
    FILE* finStep1 = fopen("in.ClockStep1", "r"),
       * finStep2 = fopen("in.ClockStep2", "r");
 
@@ -9768,7 +9770,7 @@ int AdHocRateSmoothing(FILE* fout, double x[NS * 3], double xb[NS * 3][2], doubl
    for (locus = 0, k = 0; locus < data.ngene; locus++)
       k += 2 * data.ns[locus] - 1;
    if ((varb_AHRS = (double*)malloc(k * sizeof(double))) == NULL)
-      error2("oom AHRS");
+      zerror("oom AHRS");
    for (i = 0; i < k; i++)  varb_AHRS[i] = -1;
 
 
@@ -9866,7 +9868,7 @@ int AdHocRateSmoothing(FILE* fout, double x[NS * 3], double xb[NS * 3][2], doubl
    if (data.fix_nu == 2) com.np++;
    if (data.fix_nu == 3) com.np += data.ngene;
 
-   if (com.np > NS * 6) error2("change NP for ad hoc rate smoothing.");
+   if (com.np > NS * 6) zerror("change NP for ad hoc rate smoothing.");
    for (i = 0; i < com.ntime - 1; i++)
    {
       xb[i][0] = pb;  xb[i][1] = 1 - pb;
@@ -9964,7 +9966,7 @@ int AdHocRateSmoothing(FILE* fout, double x[NS * 3], double xb[NS * 3][2], doubl
       fprintf(fout, "\n");
       fflush(fout);
 
-      if (data.nbrate[locus] > maxnbrate) error2("too many rate classes?  Change source.");
+      if (data.nbrate[locus] > maxnbrate) zerror("too many rate classes?  Change source.");
       for (i = 0, minr = 1e6, maxr = 0; i < tree.nnode; i++)
          if (i != tree.root) {
             r = nodes[i].label;
@@ -10118,7 +10120,7 @@ void DatingHeteroData(FILE* fout)
    com.sspace = max2(com.sspace, spaceming2(maxnpADRS));
    com.sspace = max2(com.sspace, maxnpML * (maxnpML + 1) * sizeof(double));
    if ((com.space = (double*)realloc(com.space, com.sspace)) == NULL)
-      error2("oom space");
+      zerror("oom space");
 
 #if (defined CODEML)
    GetUVRoot_codeml();

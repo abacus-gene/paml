@@ -24,10 +24,10 @@ int main (int argc, char*argv[])
    strcpy(ctlf, argv[1]);
    if(argc>2) npoints = atoi(argv[2]);
    if(argc>3) strcpy(scriptf, argv[3]);
-   fctl = (FILE*)gfopen(ctlf, "r");
+   fctl = (FILE*)zopen(ctlf, "r");
    if( s = strstr(ctlf, ".ctl") ) *s = '\0';
 
-   fresults =  (FILE*)gfopen(resultsf, "w");
+   fresults =  (FILE*)zopen(resultsf, "w");
    fprintf(fresults, "%s\t%s\t%s\n", "beta", "weight", "ElnfX");
    GaussLegendreRule(&xNI, &wNI, npoints);
    for (j=0; j<npoints; j++) {
@@ -37,7 +37,7 @@ int main (int argc, char*argv[])
       weight = wNI[ixw];
       printf("b%02d: beta = %.4f  w = %8.6f\n", j+1, beta, weight );
       sprintf(ctlfi, "%s.b%02d.ctl\0", ctlf, j+1);
-      fctlb = (FILE*)gfopen(ctlfi, "w");
+      fctlb = (FILE*)zopen(ctlfi, "w");
       fprintf(fctlb, "BayesFactorBeta = %8.6f *  w=%8.6f.ctl\n", beta, weight);
 
       rewind(fctl);
@@ -60,7 +60,7 @@ int main (int argc, char*argv[])
    }
    fclose(fctl); 
 
-   fcommand = (FILE*)gfopen("commands", "w");
+   fcommand = (FILE*)zopen("commands", "w");
    fprintf(fcommand, "#!/bin/bash\nfor I in {01..%02d}\n", npoints);
    fprintf(fcommand, "  do\n");
    fprintf(fcommand, "     echo \"#!/bin/bash\" > %s\n", scriptf);

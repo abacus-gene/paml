@@ -173,7 +173,7 @@ int main (int argc, char *argv[])
    com.method = 0;    com.space = NULL;
 
    printf("BASEML in %s\n", pamlVerStr);
-   frub = gfopen("rub", "w");  frst = gfopen(rstf, "w"); frst1 = gfopen("rst1", "w");
+   frub = zopen("rub", "w");  frst = zopen(rstf, "w"); frst1 = zopen("rst1", "w");
 
    if (argc > 1)  strncpy(ctlf, argv[1], 4095);
    GetOptions(ctlf);
@@ -182,13 +182,13 @@ int main (int argc, char *argv[])
 
    fprintf(frst, "Supplemental results for BASEML\n\nseqf:  %s\ntreef: %s\n",
       com.seqf, com.treef);
-   fout = gfopen(com.outf, "w");
-   fpair[0] = (FILE*)gfopen(pairfs[0], "w");
+   fout = zopen(com.outf, "w");
+   fpair[0] = (FILE*)zopen(pairfs[0], "w");
 
    /* for stepwise addition, com.sspace should be calculated using com.ns. */
    com.sspace = 1000000 * sizeof(double);
    if ((com.space = (double*)malloc(com.sspace)) == NULL)
-      error2("oom space");
+      zerror("oom space");
 
    if (com.clock == 5 || com.clock == 6)
       DatingHeteroData(fout);
@@ -223,46 +223,46 @@ int main (int argc, char *argv[])
       if (com.idata)  GetOptions(ctlf); /* com.cleandata is read from here again. */
       ReadSeq((com.verbose ? fout : NULL), fseq, com.cleandata, 0, 0);
       if (com.ngene > 1 && (com.fix_blength == 2 || com.fix_blength == 3))
-         error2("fix_blength = 2 or 3 does not work for partitioned data or Mgene models");
+         zerror("fix_blength = 2 or 3 does not work for partitioned data or Mgene models");
       if (com.fix_blength == 3) {
          printf("\nRelative branch lengths in tree fixed; estimating a scale factor.\n");
          if ((com.blengths0 = (double*)malloc((com.ns * 2 - 2) * sizeof(double))) == NULL)
-            error2("oom blengths0");
+            zerror("oom blengths0");
       }
 
       SetMapAmbiguity(com.seqtype, 0);
 
       /* AllPatterns(fout); */
 
-      if (com.rho && com.readpattern) error2("rho doesn't work with readpattern.");
+      if (com.rho && com.readpattern) zerror("rho doesn't work with readpattern.");
       if (com.ndata == 1) fclose(fseq);
       k = (com.ns * 2 - 1) * sizeof(struct TREEN);
-      if ((nodes = (struct TREEN*)malloc(k)) == NULL) error2("oom");
+      if ((nodes = (struct TREEN*)malloc(k)) == NULL) zerror("oom");
       gnodes[0] = nodes;
 
       if (com.coding) {
          if (com.ls % 3 != 0 || (com.ngene != 1 && com.ngene != 3))
-            error2("this is not a coding sequence.  Remove icode?");
+            zerror("this is not a coding sequence.  Remove icode?");
       }
 
-      if (com.Mgene && com.ngene == 1)  error2("option Mgene for 1 gene?");
-      if (com.ngene > 1 && com.nhomo) error2("nhomo for mutliple genes?");
+      if (com.Mgene && com.ngene == 1)  zerror("option Mgene for 1 gene?");
+      if (com.ngene > 1 && com.nhomo) zerror("nhomo for mutliple genes?");
       if (com.nalpha && (!com.alpha || com.ngene == 1 || com.fix_alpha))
-         error2("Malpha");
-      if (com.nalpha > 1 && com.rho) error2("Malpha or rho");
+         zerror("Malpha");
+      if (com.nalpha > 1 && com.rho) zerror("Malpha or rho");
       if (com.alpha == 0)  com.nalpha = 0;
       else                 com.nalpha = (com.nalpha ? com.ngene : !com.fix_alpha);
       if (com.Mgene == 1)  com.nalpha = !com.fix_alpha;
 
       if (com.ngene == 1) com.Mgene = 0;
       if ((com.nhomo == 1 && com.ngene > 1) || (com.Mgene > 1 && com.nhomo >= 1))
-         error2("nhomo does not work with Mgene options");
+         zerror("nhomo does not work with Mgene options");
 
       if ((com.Mgene >= 2 && com.model == JC69) || (com.Mgene >= 3 && com.model == F81)
          || ((com.Mgene == 2 || com.Mgene == 4) && com.model == K80)
          || (com.Mgene > 1 && com.nhomo > 1)
          || (com.Mgene >= 2 && (com.model == UNREST || com.model == UNRESTu)))
-         error2("model || Mgene");
+         zerror("model || Mgene");
       fprintf(fout, "\nBASEML (in %s)  %s  %s ", pamlVerStr, com.seqf, models[com.model]);
       if (com.clock) fprintf(fout, " %s ", clockstr[com.clock]);
       if (!com.nparK && com.alpha && com.rho) fprintf(fout, "  Auto-");
@@ -280,7 +280,7 @@ int main (int argc, char *argv[])
          i = com.ns*(com.ns - 1) / 2;
          SeqDistance = (double*)realloc(SeqDistance, i * sizeof(double));
          ancestor = (int*)realloc(ancestor, i * sizeof(int));
-         if (SeqDistance == NULL || ancestor == NULL) error2("oom distance&ancestor");
+         if (SeqDistance == NULL || ancestor == NULL) zerror("oom distance&ancestor");
       }
       InitializeBaseAA(fout);
 
@@ -310,10 +310,10 @@ int main (int argc, char *argv[])
       }
       com.sconP = (com.ns - 1)*com.ncode*(size_t)com.npatt * sizeof(double);
       if ((com.conP = (double*)realloc(com.conP, com.sconP)) == NULL)
-         error2("oom conP");
+         zerror("oom conP");
       if (com.alpha || com.nparK) {
          s2 = com.npatt*com.ncatG * sizeof(double);
-         if ((com.fhK = (double*)realloc(com.fhK, s2)) == NULL) error2("oom");
+         if ((com.fhK = (double*)realloc(com.fhK, s2)) == NULL) zerror("oom");
       }
 
       printf("\n%9zu bytes for distance ", com.ns*(com.ns - 1) / 2 * (sizeof(double) + sizeof(int)));
@@ -331,17 +331,17 @@ int main (int argc, char *argv[])
       */
       {
          char keep[NS];
-         FILE *ftmp = gfopen("newdata.txt", "w");
+         FILE *ftmp = zopen("newdata.txt", "w");
          int is, js, i, j, nskeep, isbest = 0, isk, chosen[NS];
          double dmax, dminmax, d, dbig = 9;
 
          if (com.model == 0 && com.print == 0)
-            error2("choose RateAncestor = 1 to print the seqs correctly.");
+            zerror("choose RateAncestor = 1 to print the seqs correctly.");
          nskeep = 5;
          printf("\nPicking up the most different sequences.\nHow many do you want? ");
          scanf("%d", &nskeep);
 
-         if (nskeep >= com.ns) error2("nothing to do");
+         if (nskeep >= com.ns) zerror("nothing to do");
 
          for (is = 0; is < com.ns; is++) {
             keep[is] = 0;
@@ -441,16 +441,16 @@ int Forestry(FILE *fout, FILE *ftree)
       j = GetTreeFileType(ftree, &ntree, &pauptree, 0);
    }
    if (com.alpha)
-      frate = gfopen(ratef, "w");
+      frate = zopen(ratef, "w");
    if (com.alpha && com.rho == 0 && com.nhomo == 0 && com.nparK == 0 && com.ns < 15) {
-      inbasemlg = 1;  finbasemlg = gfopen("in.basemlg", "w");
+      inbasemlg = 1;  finbasemlg = zopen("in.basemlg", "w");
    }
-   flnf = gfopen("lnf", "w+");
+   flnf = zopen("lnf", "w+");
    fprintf(flnf, "%6d %6d %6d\n", ntree, com.ls, com.npatt);
 
    for (itree = 0; ntree == -1 || itree < ntree; itree++, iteration = 1) {
       if (com.ndata_trees_opt <= 1 && ReadTreeN(ftree, &haslength, 0, 1))
-         error2("end of tree file.");
+         zerror("end of tree file.");
       if (com.ndata_trees_opt>=2) {
          printf("\nExtracting gene tree for dataset #%2d from main tree...\n", com.idata + 1);
          GenerateGtree_locus(com.idata, com.ns, 0);
@@ -465,7 +465,7 @@ int Forestry(FILE *fout, FILE *ftree)
 
       LASTROUND = 0;
       if ((com.fix_blength == 2 || com.fix_blength == 3) && !haslength)
-         error2("We need branch lengths in tree");
+         zerror("We need branch lengths in tree");
       if (com.fix_blength > 0 && !haslength) com.fix_blength = 0;
       if (ages++ == 0 && com.fix_blength > 0 && haslength) {
          if (com.clock) puts("\nBranch lengths in tree are ignored");
@@ -499,12 +499,12 @@ int Forestry(FILE *fout, FILE *ftree)
 
       if (i == -1) iteration = 0;
 
-      if ((np = com.np) > NP) error2("raise NP and recompile");
+      if ((np = com.np) > NP) zerror("raise NP and recompile");
 
       if (com.sspace < spaceming2(np)) {
          com.sspace = spaceming2(np);
          if ((com.space = (double*)realloc(com.space, com.sspace)) == NULL)
-            error2("oom space");
+            zerror("oom space");
       }
 
       if (itree && !finitials && (com.nhomo == 0 || com.nhomo == 2))
@@ -572,7 +572,7 @@ int Forestry(FILE *fout, FILE *ftree)
          if (com.sspace < np*(np + 1) * sizeof(double)) {
             com.sspace = np*(np + 1) * sizeof(double);
             if ((com.space = (double*)realloc(com.space, com.sspace)) == NULL)
-               error2("oom space for SE");
+               zerror("oom space for SE");
          }
 
          g = com.space;
@@ -758,7 +758,7 @@ void DetailOutput(FILE *fout, double x[], double var[])
       SetParameters(x);
       if (com.alpha == 0) {
          if ((AncientFreqs = (double*)malloc(tree.nnode * 4 * sizeof(double))) == NULL)
-            error2("out of memory for OldDistributions()");
+            zerror("out of memory for OldDistributions()");
          OldDistributions(tree.root, AncientFreqs);
       }
       fputs("\n\n(frequency parameters for branches)  [frequencies at nodes] (see Yang & Roberts 1995 fig 1)\n", fout);
@@ -919,21 +919,21 @@ int GetStepMatrix(char*line)
    int n = com.ncode, i, j, k, b1 = -1, b2;
 
    p = strchr(line, '[');
-   if (p == NULL) error2("model specification.  Expecting '['.");
+   if (p == NULL) zerror("model specification.  Expecting '['.");
    sscanf(++p, "%d", &com.nrate);
    if (com.nrate < 0 || (com.model == REVu && com.nrate > 5) || (com.model == UNRESTu && com.nrate > 11))
-      error2(errstr);
+      zerror(errstr);
    for (i = 0; i < n; i++) for (j = 0; j < n; j++)
       StepMatrix[i*n + j] = (i == j ? -1 : 0);
    for (i = 0; i < com.nrate; i++) {
       while (*p && *p != '(') p++;
-      if (*p++ != '(') error2("expecting (");
+      if (*p++ != '(') zerror("expecting (");
       for (k = 0; k < 12; k++) {
          while (isspace(*p)) p++;
          if (*p == ')') break;
          b1 = CodeChara(*p++, 0);
          b2 = CodeChara(*p++, 0);
-         if (b1 < 0 || b1>3 || b2 < 0 || b2>3) error2("bases out of range.");
+         if (b1 < 0 || b1>3 || b2 < 0 || b2>3) zerror("bases out of range.");
          if (b1 == b2 || StepMatrix[b1*n + b2] > 0) {
             printf("pair %c%c already specified.\n", BASEs[b1], BASEs[b2]);
          }
@@ -966,7 +966,7 @@ int GetOptions(char* ctlf)
 
    com.ndata_trees_opt = 0;
    com.nalpha = 0;
-   fctl = gfopen(ctlf, "r");
+   fctl = zopen(ctlf, "r");
    if (noisy) printf("Reading options from %s..\n", ctlf);
    for (; ; ) {
       if (fgets(line, lline, fctl) == NULL) break;
@@ -980,7 +980,7 @@ int GetOptions(char* ctlf)
       if (t == 0) continue;
       sscanf(line, "%s%*s%lf", opt, &t);
       if ((pline = strstr(line, "=")) == NULL)
-         error2("option file.");
+         zerror("option file.");
 
       for (iopt = 0; iopt < nopt; iopt++) {
          if (strncmp(opt, optstr[iopt], 8) == 0) {
@@ -1070,9 +1070,9 @@ int GetOptions(char* ctlf)
       printf("Using parameters from the control file.");
 
 
-   if (com.seqtype != 0 && com.seqtype != 4 && com.seqtype != 5) error2("seqtype?");
+   if (com.seqtype != 0 && com.seqtype != 4 && com.seqtype != 5) zerror("seqtype?");
    if (com.fix_alpha == 1 && com.alpha == 0) {
-      if (!com.fix_rho || com.rho) error2("fix rho to 0 if alpha=0.");
+      if (!com.fix_rho || com.rho) zerror("fix rho to 0 if alpha=0.");
    }
    if (com.nparK >= 1) {
       com.fix_alpha = com.fix_rho = 1;
@@ -1080,15 +1080,15 @@ int GetOptions(char* ctlf)
       if (com.nparK <= 2) com.rho = 0;
       else             com.rho = 0.4;
       if (com.nhomo >= 1)
-         error2("nhomo & nparK");
+         zerror("nhomo & nparK");
    }
-   if (com.model != F84 && com.kappa <= 0)  error2("init kappa..");
-   if (!com.fix_alpha && com.alpha <= 0)  error2("init alpha..");
+   if (com.model != F84 && com.kappa <= 0)  zerror("init kappa..");
+   if (!com.fix_alpha && com.alpha <= 0)  zerror("init alpha..");
    if (!com.fix_rho && com.rho == 0) { com.rho = 0.001;  puts("init rho reset"); }
 
    if (com.alpha)
    {
-      if (com.ncatG<2 || com.ncatG>NCATG) error2("ncatG");
+      if (com.ncatG<2 || com.ncatG>NCATG) zerror("ncatG");
    }
    else if (com.ncatG > 1) com.ncatG = 1;
 
@@ -1097,34 +1097,34 @@ int GetOptions(char* ctlf)
       com.method = 0; puts("Iteration method reset: method = 0");
    }
    if (com.method && (com.model == UNREST || com.model == UNRESTu))
-      error2("I did not implemented method = 1 for UNREST.  Use method = 0");
+      zerror("I did not implemented method = 1 for UNREST.  Use method = 0");
 
    if (com.model > UNREST && com.Mgene > 2)
-      error2("u models don't work with Mgene");
+      zerror("u models don't work with Mgene");
 
    if (com.nhomo > 5)
-      error2("nhomo");
+      zerror("nhomo");
    else if (com.nhomo == 2) {
       if (com.model != K80 && com.model != F84 && com.model != HKY85) 
-         error2("nhomo = 2 works with F84 or HKY85");
+         zerror("nhomo = 2 works with F84 or HKY85");
    }
-   else if (com.nhomo > 2 && !(com.model >= F84 && com.model <= REV)) error2("nhomo & model");
-   else if (com.nhomo > 2 && com.method) error2("nhomo & method.");
+   else if (com.nhomo > 2 && !(com.model >= F84 && com.model <= REV)) zerror("nhomo & model");
+   else if (com.nhomo > 2 && com.method) zerror("nhomo & method.");
    else {
       if (com.nhomo == 1 && !(com.model >= F81 && com.model <= REV) && com.model != REVu)
-         error2("nhomo=1 and model");
+         zerror("nhomo=1 and model");
    }
 
-   if (com.nhomo >= 2 && com.clock == 2) error2("clock=2 & nhomo imcompatible");
+   if (com.nhomo >= 2 && com.clock == 2) zerror("clock=2 & nhomo imcompatible");
 
-   if (com.clock >= 5 && com.model >= TN93) error2("model & clock imcompatible");
+   if (com.clock >= 5 && com.model >= TN93) zerror("model & clock imcompatible");
 
-   if (com.nhomo > 1 && com.runmode > 0)  error2("nhomo incompatible with runmode");
-   if (com.runmode == -2) error2("runmode = -2 not implemented in baseml.");
-   if (com.clock && com.runmode > 2)  error2("runmode & clock?");
+   if (com.nhomo > 1 && com.runmode > 0)  zerror("nhomo incompatible with runmode");
+   if (com.runmode == -2) zerror("runmode = -2 not implemented in baseml.");
+   if (com.clock && com.runmode > 2)  zerror("runmode & clock?");
    if (com.runmode)  com.fix_blength = 0;
    if (com.runmode == 3 && (com.npi || com.nparK))
-      error2("runmode incompatible with nparK or nhomo.");
+      zerror("runmode incompatible with nparK or nhomo.");
 
    if (com.model == JC69 || com.model == K80 || com.model == UNREST)
       if (com.nhomo != 2)  com.nhomo = 0;
@@ -1132,7 +1132,7 @@ int GetOptions(char* ctlf)
    if ((com.model == TN93 || com.model == REV || com.model == REVu) && com.nhomo <= 2)
       com.fix_kappa = 0;
    if (com.seqtype == 5 && com.model != REVu)
-      error2("RNA-editing model requires REVu");
+      zerror("RNA-editing model requires REVu");
 
    if (com.nparK == 3) {
       puts("\n\nnparK==3, double stochastic, may not work.  Use nparK=4?\n");
@@ -1140,7 +1140,7 @@ int GetOptions(char* ctlf)
    }
    com.fix_omega = 1; com.omega = 0;
    if (com.ndata <= 0) com.ndata = 1;
-   if (com.bootstrap && com.ndata != 1) error2("ndata=1 for bootstrap.");
+   if (com.bootstrap && com.ndata != 1) zerror("ndata=1 for bootstrap.");
 
    return (0);
 }
@@ -1163,7 +1163,7 @@ int GetInitials(double x[], int *fromfile)
 
    NFunCall = NPMatUVRoot = NEigenQ = 0;
    if (com.clock == ClockCombined && com.ngene <= 1)
-      error2("Combined clock model requires mutliple genes.");
+      zerror("Combined clock model requires mutliple genes.");
    GetInitialsTimes(x);
 
    com.plfun = lfunAdG;
@@ -1181,14 +1181,14 @@ int GetInitials(double x[], int *fromfile)
          com.sconP = sconP_new;
          printf("\n%9zu bytes for conP, adjusted\n", com.sconP);
          if ((com.conP = (double*)realloc(com.conP, com.sconP)) == NULL)
-            error2("oom conP");
+            zerror("oom conP");
       }
    }
    InitializeNodeScale();
 
    com.nrgene = (!com.fix_rgene)*(com.ngene - 1);
    for (j = 0; j < com.nrgene; j++) x[com.ntime + j] = 1;
-   if (com.fix_kappa && (com.Mgene == 3 || com.Mgene == 4)) error2("Mgene options");
+   if (com.fix_kappa && (com.Mgene == 3 || com.Mgene == 4)) zerror("Mgene options");
 
    if (com.model <= UNREST) {
       com.nrate = 0;
@@ -1222,7 +1222,7 @@ int GetInitials(double x[], int *fromfile)
             if (j == com.nbtype)
                nodes[tree.root].label = com.npi++;
             else if (j <0 || j > com.nbtype)
-               error2("nhomo = 5: label for root strange?");
+               zerror("nhomo = 5: label for root strange?");
          }
       }
       
@@ -1642,7 +1642,7 @@ int GetPexpML(double x[], int ncat, int SiteCat[], double pexp[])
    double fh, y, Pt[NBRANCH][16];
 
    if (com.ngene > 1 || com.nhomo || com.alpha || com.nparK || com.model > REV)
-      error2("Pexp()");
+      zerror("Pexp()");
    SetParameters(x);
    for(j=0; j<tree.nbranch; j++)
       PMatCijk(Pt[j], nodes[tree.branches[j][1]].branch);
@@ -1674,7 +1674,7 @@ int TestModel(FILE *fout, double x[], int nsep, double space[])
    double *pexp = space, *nobs, lmax0, lnL0, X2, ef, de;
 
    SiteCat = (int*)malloc((1 << 2 * com.ns) * sizeof(int));
-   if (SiteCat == NULL)  error2("oom");
+   if (SiteCat == NULL)  zerror("oom");
    CollapsSite(F0, nsep, com.ns, &ncat, SiteCat);
    fprintf(fout, "\n\nAppr. test of model.. ncat%6d  nsep%6d\n", ncat, nsep);
 

@@ -77,7 +77,7 @@ int CountLHsTree(void)
    double y = 0;
 
    for (i = com.ns; i < tree.nnode; i++)
-      if (nodes[i].nson != 2) error2("this works for rooted trees only");
+      if (nodes[i].nson != 2) zerror("this works for rooted trees only");
    for (i = com.ns; i < tree.nnode; i++)
       nLR[i - com.ns][0] = nLR[i - com.ns][1] = -1;
    for (k = 0; k < com.ns; k++) {
@@ -102,10 +102,10 @@ int CountLHsTree(void)
       printf("\nnode %2d (%2d %2d): %2d %2d ", i+com.ns, nodes[i+com.ns].sons[0], nodes[i+com.ns].sons[1], nLR[i][0], nLR[i][1]);
       */
       if (nLR[i][0] == -1 || nLR[i][1] == -1)
-         error2("nLR = -1");
+         zerror("nLR = -1");
       if (nLR[i][0] && nLR[i][1]) {
          nLH *= (int)Binomial((double)(nLR[i][0] + nLR[i][1]), min2(nLR[i][0], nLR[i][1]), &y);
-         if (y) error2("y!=0 not considered");
+         if (y) zerror("y!=0 not considered");
       }
    }
    return(nLH);
@@ -169,8 +169,8 @@ int GetIofTree(int rooted, int keeptree, double space[])
    char ns2 = (char)(com.ns - 2), *bA = (char*)space;  /* bA[b*ns2+j]: ancestors on branch b */
    struct TREEB tree0 = tree;
 
-   if (tree.nnode - com.ns != com.ns - 1 - !rooted) error2("GetIofTree");
-   if (com.ns > 15) error2("ns too large in GetIofTree");
+   if (tree.nnode - com.ns != com.ns - 1 - !rooted) zerror("GetIofTree");
+   if (com.ns > 15) zerror("ns too large in GetIofTree");
 
    /* find new root.
       Ib[]: No. of times inner nodes are visited on paths 1-2, 1-3, 2-3 */
@@ -220,7 +220,7 @@ int GetIofTree(int rooted, int keeptree, double space[])
       a1 = nodes[k = tree0.root].sons[0];  a2 = nodes[tree0.root].sons[1];
       if (nodes[a1].father == k)      k = a1;
       else if (nodes[a2].father == k) k = a2;
-      else error2("rooooot");
+      else zerror("rooooot");
       for (b = 0; b < tree.nbranch; b++) if (tree.branches[b][1] == k) break;
       Ib[nM - 1] = b;
    }
@@ -294,7 +294,7 @@ int NeighborNNI(int i_tree)
    int i, a, b, c, d, ib = i_tree / 2, ip = i_tree % 2;
 
    if (tree.nbranch != com.ns * 2 - 2 - (nodes[tree.root].nson == 3))
-      error2("err NeighborNNI: multificating tree.");
+      zerror("err NeighborNNI: multificating tree.");
 
    /* locate a,b,c,d */
    for (i = 0, a = 0; i < tree.nbranch; i++)
@@ -359,7 +359,7 @@ int GetIofLHistory(void)
    int index, i, j, k[NS + 1], inode, nnode, nodea[NS], s[2] = {0}, t;
 
    if (nodes[tree.root].nson != 2 || tree.nnode != com.ns * 2 - 1
-      || tree.root != com.ns * 2 - 2)  error2("IofLH");
+      || tree.root != com.ns * 2 - 2)  zerror("IofLH");
    for (i = 0; i < com.ns; i++) nodea[i] = i;
    for (inode = nnode = com.ns, index = 0; inode < com.ns * 2 - 1; inode++, nnode--) {
       for (i = 0; i < 2; i++) 

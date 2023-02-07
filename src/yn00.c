@@ -91,11 +91,11 @@ int main(int argc, char* argv[])
    frst = fopen("rst", "w");
    frst1 = fopen("rst1", "w");
    frub = fopen("rub", "w");
-   if (fout == NULL || frst == NULL) error2("outfile creation err.");
+   if (fout == NULL || frst == NULL) zerror("outfile creation err.");
    fds = (FILE*)fopen(dsf, "w");
    fdn = (FILE*)fopen(dnf, "w");
    ft = (FILE*)fopen(tf, "w");
-   if (fds == NULL || fdn == NULL || ft == NULL) error2("file open error");
+   if (fds == NULL || fdn == NULL || ft == NULL) zerror("file open error");
 
    if ((fseq = fopen(com.seqf, "r")) == NULL) {
       printf("\n\nSequence file %s not found!\n", com.seqf);
@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
 
       sspace = max2(200000, 64 * com.ns * sizeof(double));
       sspace = max2(sspace, 64 * 64 * 5 * sizeof(double));
-      if ((space = (double*)realloc(space, sspace)) == NULL) error2("oom space");
+      if ((space = (double*)realloc(space, sspace)) == NULL) zerror("oom space");
 
       com.kappa = 4.6;
       com.omega = 1;
@@ -191,7 +191,7 @@ int GetOptions(char* ctlf)
    double t;
    FILE* fctl;
 
-   if ((fctl = fopen(ctlf, "r")) == NULL) error2("\nctl file open error.\n");
+   if ((fctl = fopen(ctlf, "r")) == NULL) zerror("\nctl file open error.\n");
    printf("\nReading options from %s..\n", ctlf);
    for (;;) {
       if (fgets(line, lline, fctl) == NULL) break;
@@ -200,7 +200,7 @@ int GetOptions(char* ctlf)
          else if (line[i] == comment) break;
       if (t == 0) continue;
       sscanf(line, "%s%*s%lf", opt, &t);
-      if ((pline = strstr(line, "=")) == NULL) error2("option file.");
+      if ((pline = strstr(line, "=")) == NULL) zerror("option file.");
 
       for (i = 0; i < nopt; i++) {
          if (strncmp(opt, optstr[i], 8) == 0) {
@@ -567,7 +567,7 @@ int CountSites(char z[], double pi[], double* Stot, double* Ntot, double fbS[], 
       b[0] = c[0] / 16; b[1] = (c[0] % 16) / 4; b[2] = c[0] % 4;
       aa[0] = GeneticCode[com.icode][c[0]];
       if (aa[0] == -1)
-         error2("stop codon");
+         zerror("stop codon");
       for (j = 0, S = N = 0; j < 3; j++) {
          for (k = 0; k < 4; k++) {    /* b[j] changes to k */
             if (k == b[j]) continue;
@@ -661,7 +661,7 @@ int CountDiffs(char z1[], char z2[], double* Sdts, double* Sdtv, double* Ndts, d
          aa[i] = GeneticCode[com.icode][c[i]];
       }
       if (aa[0] == -1 || aa[1] == -1)
-         error2("stop codon in sequence.");
+         zerror("stop codon in sequence.");
       ndiff = 0;  sts = stv = nts = ntv = 0;
       for (k = 0; k < 3; k++) dmark[k] = -1;
       for (k = 0; k < 3; k++) if (b[0][k] != b[1][k]) dmark[ndiff++] = k;
@@ -786,7 +786,7 @@ int DistanceF84(double n, double P, double Q, double pi[],
    if (P < -1e-10 || Q < -1e-10 || fabs(Y + R - 1)>1e-8) {
       printf("\nPQYR & pi[]: %9.5f%9.5f%9.5f%9.5f", P, Q, Y, R);
       matout(F0, pi, 1, 4);
-      error2("DistanceF84: input err.");
+      zerror("DistanceF84: input err.");
    }
    if (Q < Qsmall)  failF84 = failK80 = 1;
    else if (Y <= 0 || R <= 0 || (tc <= 0 && ag <= 0)) failF84 = 1;
@@ -868,7 +868,7 @@ double dsdnREV(int is, int js, double space[])
       }
    }
    if (fabs(1 - sum(F, n * n)) > 1e-6)
-      error2("Sum F != 1 in dsdnREV");
+      zerror("Sum F != 1 in dsdnREV");
 
    for (i = 0; i < n; i++) {
       pi[i] = sum(F + i * n, n);
@@ -878,7 +878,7 @@ double dsdnREV(int is, int js, double space[])
       if (F[i * n + i] <= small)  F[i * n + i] = 1 - pi[i] + F[i * n + i];
       else                  abyx(1 / pi[i], F + i * n, n);
    }
-   if (eigen(1, F, n, Root, T1, U, V, T2)) error2("eigen jgl");
+   if (eigen(1, F, n, Root, T1, U, V, T2)) zerror("eigen jgl");
    xtoy(U, V, n * n);
    matinv(V, n, n, T1);
 
