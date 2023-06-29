@@ -855,7 +855,7 @@ double dsdnREV(int is, int js, double space[])
    int n = com.ncode, i, j, h;
    double* F = PMat, * Qt = F;
    double* Root = space + n * n, * pi = Root + n, * U = pi + n, * V = U + n * n;
-   double* T1 = V + n * n, * T2 = T1 + n * n, t, small = 1e-6;
+   double* T1 = V + n * n, * T2 = T1 + n * n, det, t, small = 1e-6;
 
    fprintf(frst, "\npi in model\n");
    matout(frst, com.pi, 1, n);
@@ -880,7 +880,7 @@ double dsdnREV(int is, int js, double space[])
    }
    if (eigen(1, F, n, Root, T1, U, V, T2)) zerror("eigen jgl");
    xtoy(U, V, n * n);
-   matinv(V, n, n, T1);
+   matinv(V, n, n, &det, T1);
 
    fprintf(frst, "\npi in data\n");
    matout(frst, pi, 1, n); 

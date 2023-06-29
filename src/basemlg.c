@@ -142,7 +142,7 @@ int Forestry(FILE* fout, double space[])
 {
    int i, j, itree, ntree, np;
    int pauptree = 0, haslength, iteration = 1;
-   double x[NP], xb[NP][2], lnL[NTREE] = { 0 }, e = 1e-6, * var = space + NP;
+   double x[NP], xb[NP][2], lnL[NTREE] = { 0 }, e = 1e-6, * var = space + NP, det;
    FILE* ftree;
 
    if ((ftree = fopen(com.treef, "r")) == NULL)   zerror("treefile err.");
@@ -198,7 +198,7 @@ int Forestry(FILE* fout, double space[])
             i = ming2(frub, &lnL[itree], lfunG,
                ((com.clock || com.model > HKY85) ? NULL : lfunG_d), x, xb, space, e, np);
             Hessian(np, x, lnL[itree], space, var, lfunG, var + np * np);
-            matinv(var, np, np, var + np * np);
+            matinv(var, np, np, &det, var + np * np);
          }
          else
             i = Newton(frub, &lnL[itree], lfunG, lfunG_dd, testx, x, var, e, np);

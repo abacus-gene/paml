@@ -29,6 +29,8 @@
 #define max2(a,b) ((a)>(b)?(a):(b))
 #define swap2(a,b,y) { y=a; a=b; b=y; }
 #define Pi  3.1415926535897932384626433832795
+#define X_STRING(x) #x
+#define X_C2S(x) X_STRING(x)
 
 int ReadSeq (FILE* fout, FILE* fseq, int cleandata, int locus, int read_seq_only);
 int ScanFastaFile (FILE *f, int *ns, int *ls, int *aligned);
@@ -228,8 +230,8 @@ int matout (FILE *file, double x[], int n, int m);
 int matout2 (FILE *fout, double x[], int n, int m, int wid, int deci);
 int mattransp1 (double x[], int n);
 int mattransp2 (double x[], double y[], int n, int m);
-int matinv (double x[], int n, int m, double space[]);
-int matexp (double A[], int n, int nTaylorTerms, int nSquares, double space[]);
+int matinv(double x[], int n, int m, double *det, double space[]);
+int matexp(double A[], int n, int nTaylorTerms, int nSquares, double space[]);
 #ifdef USE_GSL
 int matexpGSL (double A[], int n, double space[]);
 #endif
@@ -391,6 +393,6 @@ enum PrintOptions { PrBranch = 1, PrNodeNum = 2, PrLabel = 4, PrNodeStr = 8, PrA
 
 #define PAML_RELEASE      0
 
-#define pamlVerStr "paml version 4.10.6, November 2022"
+#define pamlVerStr "paml version 4.10.7, June 2023"
 
 #endif

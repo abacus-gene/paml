@@ -919,7 +919,7 @@ int QtoPi(double Q[], double pi[], int n, double space[])
       space[] is of size n*(n+1).
    */
    int i, j;
-   double *T = space;      /* T[n*(n+1)]  */
+   double *T = space, det;      /* T[n*(n+1)]  */
 
    for (i = 0; i < n + 1; i++) T[i] = 1;
    for (i = 1; i < n; i++) {
@@ -927,7 +927,7 @@ int QtoPi(double Q[], double pi[], int n, double space[])
          T[i*(n + 1) + j] = Q[j*n + i];     /* transpose */
       T[i*(n + 1) + n] = 0.;
    }
-   matinv(T, n, n + 1, pi);
+   matinv(T, n, n + 1, &det, pi);
    for (i = 0; i < n; i++)
       pi[i] = T[i*(n + 1) + n];
    return (0);
@@ -940,7 +940,7 @@ int PtoPi(double P[], double pi[], int n, double space[])
       space[] is of size n*(n+1).
    */
    int i, j;
-   double *T = space;      /* T[n*(n+1)]  */
+   double *T = space, det;      /* T[n*(n+1)]  */
 
    for (i = 0; i < n + 1; i++) T[i] = 1;
    for (i = 1; i < n; i++) {
@@ -948,7 +948,7 @@ int PtoPi(double P[], double pi[], int n, double space[])
          T[i*(n + 1) + j] = P[j*n + i] - (double)(i == j);     /* transpose */
       T[i*(n + 1) + n] = 0;
    }
-   matinv(T, n, n + 1, pi);
+   matinv(T, n, n + 1, &det, pi);
    for (i = 0; i < n; i++) pi[i] = T[i*(n + 1) + n];
    return (0);
 }
@@ -4757,8 +4757,6 @@ int matbytransposed(double a[], double b_transposed[], double c[], int n, int m,
    return (0);
 }
 
-
-
 int matIout(FILE *fout, int x[], int n, int m)
 {
    int i, j;
@@ -4815,27 +4813,31 @@ int mattransp2(double x[], double y[], int n, int m)
    return (0);
 }
 
-int matinv(double x[], int n, int m, double space[])
+int matinv(double x[], int n, int m, double *det, double space[])
 {
-   /* x[n*m]  ... m>=n
-      space[n].  This puts the fabs(|x|) into space[0].  Check and calculate |x|.
-      Det may have the wrong sign.  Check and fix.
-   */
+/* x[n*m]  ... m>=n
+*  This solves the linear system of equations A y = b by placing [A b] in the same matrix 
+*  of n*m.  The same transformation converts A into A^-1, and b into A^-1 b (which are the roots).
+*  The function returns the inverse A^-1 in the square matrix x[n*n], and the roots in the last 
+*  m - n columns.
+*  The determinant |A| is returned in det.  Check that the sign is correct.
+*/
    int i, j, k;
    int *irow = (int*)space;
-   double ee = 1e-100, t, t1, xmax, det = 1;
-
+   double e = 1e-300, t, t1, xmax;
+   
+   *det = 1;
    for (i = 0; i < n; i++) irow[i] = i;
 
    for (i = 0; i < n; i++) {
       xmax = fabs(x[i*m + i]);
-      for (j = i + 1; j < n; j++)
-         if (xmax < fabs(x[j*m + i]))
-         {
-            xmax = fabs(x[j*m + i]); irow[i] = j;
+      for (j = i + 1; j < n; j++) {
+         if (xmax < fabs(x[j * m + i])) {
+            xmax = fabs(x[j * m + i]);  irow[i] = j;
          }
-      det *= x[irow[i] * m + i];
-      if (xmax < ee) {
+      }
+      *det *= x[irow[i] * m + i];
+      if (xmax < e) {
          printf("\nxmax = %.4e close to zero at %3d!\t\n", xmax, i + 1);
          exit(-1);
       }
@@ -4858,13 +4860,13 @@ int matinv(double x[], int n, int m, double space[])
    }                            /* for(i) */
    for (i = n - 1; i >= 0; i--) {
       if (irow[i] == i) continue;
+      *det = -(*det);
       for (j = 0; j < n; j++) {
          t = x[j*m + i];
          x[j*m + i] = x[j*m + irow[i]];
          x[j*m + irow[i]] = t;
       }
    }
-   space[0] = det;
    return(0);
 }
 
@@ -6056,7 +6058,7 @@ int nls2(FILE *fout, double *sx, double * x0, int nx,
    double s0 = 0.0, s = 0.0, t;
    double v = 0.0, vmax = 1.0 / e, bigger = 2.5, smaller = 0.75;
    /* v : Marguardt factor, suggested factors in SSL II (1.5,0.5)  */
-   double *x, *g, *p, *C, *J, *y, *space, *space_J;
+   double *x, *g, *p, *C, *J, *y, *space, *space_J, det;
 
    sspace = (n*(n + 4 + ny) + ny + 2 * (n + ny)) * sizeof(double);
    if ((space = (double*)malloc(sspace)) == NULL) zerror("oom in nls2");
@@ -6088,7 +6090,7 @@ int nls2(FILE *fout, double *sx, double * x0, int nx,
          C[i*(n + 1) + i] += v*v;
       }
 
-      if (matinv(C, n, n + 1, y + ny) == -1) {
+      if (matinv(C, n, n + 1, &det, y + ny) == -1) {
          v *= bigger;
          continue;
       }
@@ -6492,7 +6494,7 @@ int Newton(FILE *fout, double *f, double(*fun)(double x[], int n),
    double x0[], double space[], double e, int n)
 {
    int i, j, maxround = 500;
-   double f0 = 1e40, smallv = 1e-10, h, SIZEp, t, *H, *x, *g, *p, *tv;
+   double f0 = 1e40, smallv = 1e-10, h, SIZEp, t, *H, *x, *g, *p, *tv, det;
 
    H = space, x = H + n*n;   g = x + n;   p = g + n, tv = p + n;
 
@@ -6508,7 +6510,7 @@ int Newton(FILE *fout, double *f, double(*fun)(double x[], int n),
          *f = (*fun)(x0, n);
          Hessian(n, x0, *f, g, H, fun, tv);
       }
-      matinv(H, n, n, tv);
+      matinv(H, n, n, &det, tv);
       for (i = 0; i < n; i++) for (j = 0, p[i] = 0; j < n; j++)
         p[i] -= H[i * n + j] * g[j];
 

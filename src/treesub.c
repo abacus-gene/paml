@@ -2596,7 +2596,7 @@ int SetAncestor()
     */
    int is, js, it, a1, a2;
 
-   PrintTree(0);
+   /* PrintTree(0); */
 
    for (is = 0; is < com.ns; is++) for (js = 0; js < is; js++) {
       it = is * (is - 1) / 2 + js;
@@ -7912,7 +7912,7 @@ int minB(FILE* fout, double* lnL, double x[], double xb[][2], double e0, double 
    com.ntime = ntime0;
    com.fix_blength = fix_blength0;
    *lnL = com.plfun(x, com.np); /* restore things, for e.g. AncestralSeqs */
-   if (fabs(*lnL - lnL0) > 1e-5)
+   if (fabs(*lnL - lnL0) > 1e-3)
       printf("%.6f != %.6f lnL error.  Something is wrong in minB\n", *lnL, lnL0);
    free(space_minbranches);
 
@@ -10089,7 +10089,7 @@ void DatingHeteroData(FILE* fout)
     */
    char timestr[64];
    int i, j, k, s, np, locus;
-   double x[NS * 6], xb[NS * 6][2], lnL, e = 1e-7, * var = NULL;
+   double x[NS * 6], xb[NS * 6][2], lnL, e = 1e-7, * var = NULL, det;
    int nbrate = 4;
    size_t maxnpML, maxnpADRS;
 
@@ -10172,7 +10172,7 @@ void DatingHeteroData(FILE* fout)
       if (np > 100 || (com.seqtype && np > 20)) puts("Calculating SE's");
       var = com.space + np;
       Hessian(np, x, lnL, com.space, var, lnLfunHeteroData, var + np * np);
-      matinv(var, np, np, var + np * np);
+      matinv(var, np, np, &det, var + np * np);
    }
    nodes = nodes_t; 
    copy_from_Sptree(&stree, nodes);

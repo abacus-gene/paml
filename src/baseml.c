@@ -433,7 +433,7 @@ int Forestry(FILE *fout, FILE *ftree)
    int status = 0, inbasemlg = 0, i, j = 0, itree = 0, ntree=1, np, iteration = 1;
    int pauptree = 0, btree = 0, haslength;
    double x[NP], xcom[NP - NBRANCH], lnL, lnL0 = 0, lnLbest = 0, e = 1e-7, nchange = -1;
-   double xb[NP][2], tl = 0, *g = NULL, *H = NULL;
+   double xb[NP][2], tl = 0, *g = NULL, *H = NULL, det;
    FILE *finbasemlg = NULL, *frate = NULL;
 
    if (com.ndata_trees_opt <= 1) {
@@ -596,7 +596,7 @@ int Forestry(FILE *fout, FILE *ftree)
             fflush(frst2);
          }
          for (i = 0; i < np*np; i++)  H[i] *= -1;
-         matinv(H, np, np, H + np*np);
+         matinv(H, np, np, &det, H + np*np);
          fprintf(fout, "SEs for parameters:\n");
          for (i = 0; i < np; i++)
             fprintf(fout, " %8.6f", (H[i*np + i] > 0. ? sqrt(H[i*np + i]) : -1));

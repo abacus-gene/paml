@@ -289,7 +289,7 @@ int main(int argc, char *argv[])
    mergeSeqs(frst);  exit(0);
    Ina();
    */
-   SetSeed(1, 0);
+   SetSeed(-1, 0);
 
 #if (DSDN_MC || DSDN_MC_SITES)
    SimulateData2s61();
@@ -336,7 +336,7 @@ int main(int argc, char *argv[])
       printf("\n\nSequence file %s not found!\n", com.seqf);
       exit(-1);
    }
-   if ((ftree = fopen(com.treef, "r")) == NULL) {
+   if (com.runmode != -2 && (ftree = fopen(com.treef, "r")) == NULL) {
       printf("\ntree file %s not found.\n", com.treef);
       exit(-1);
    }
@@ -382,7 +382,6 @@ int main(int argc, char *argv[])
          if (com.seqtype != 1) zerror("batch run of site models requires codon seqs.");
          if (com.fix_omega) zerror("fix omega during batch run?");
          if (com.model) zerror("only NSsites models are available in the batch run.");
-         if (com.runmode) zerror("runmode?");
 
          /* for allocating memory com.fhK[] */
          com.NSsites = NSbetaw;  com.ncatG = ncatG0 + 1;
@@ -611,7 +610,7 @@ int Forestry(FILE* fout, FILE* ftree)
    int  status = 0, i, j = 0, k, itree, ntree=1, np, iteration = 1;
    int pauptree = 0, haslength;
    double x[NP], xb[NP][2], xcom[NP - NBRANCH], lnL = 0, lnL0 = 0, e = 1e-8, tl = 0, nchange = -1;
-   double *g = NULL, *H = NULL;
+   double *g = NULL, *H = NULL, det;
 
    if (com.ndata_trees_opt <= 1) {
       if (com.ndata_trees_opt == 0) rewind(ftree);
@@ -847,7 +846,7 @@ int Forestry(FILE* fout, FILE* ftree)
             }
 
             for (i = 0; i < np * np; i++)  H[i] *= -1;
-            matinv(H, np, np, H + np * np);
+            matinv(H, np, np, &det, H + np * np);
             fprintf(fout, "SEs for parameters:\n");
             for (i = 0; i < np; i++)
                fprintf(fout, " %8.6f", (H[i * np + i] > 0. ? sqrt(H[i * np + i]) : -1));
@@ -1849,8 +1848,11 @@ int GetOptions(char *ctlf)
 
    if ((com.runmode == -2 || com.runmode == -3) && com.cleandata == 0) {
       com.cleandata = 1;
-      if (noisy) puts("gaps are removed for pairwise comparison.");
+      if (noisy) puts("\ngaps are removed for pairwise comparison.");
    }
+   if (com.runmode == -2 && nnsmodels > 1) 
+      zerror("runmode = -2 does not work with multiple NSsites models...");
+
    if (com.method && (com.clock || com.rho)) {
       com.method = 0; puts("Iteration method reset: method = 0");
    }
@@ -1872,8 +1874,7 @@ int GetOptions(char *ctlf)
    if (!com.fix_alpha && com.alpha <= 0)
       zerror("initial value alpha <= 0 for fix_alpha = 0");
    if (!com.fix_rho && com.rho == 0) { com.rho = 0.001;  puts("init rho reset"); }
-   if (com.alpha || com.NSsites)
-   {
+   if (com.alpha || com.NSsites) {
       if (com.ncatG<2 || com.ncatG>NCATG) zerror("ncatG");
    }
    else if (com.ncatG > 1) com.ncatG = 1;
@@ -2102,7 +2103,7 @@ int GetInitialsCodon(double x[])
             for (i = 0; i < 4; i++) x[k++] = .1 + rndu();
          }
          else if (!com.fix_kappa)
-            x[k++] = com.kappa;
+            x[k++] = 0.1+ com.kappa*(0.8+0.4*rndu());
          if (com.codonf == FMutSel0 || com.codonf == FMutSel) {
             for (i = 0; i < 3; i++)   /* pi_TCA */
                x[k++] = com.pf3x4[i] / (com.pf3x4[3] + .02*rndu());
@@ -2133,7 +2134,7 @@ int GetInitialsCodon(double x[])
          }
          if (com.NSsites == 0 && (com.model == 0 || com.model == FromCodon0)) {
             if (!com.aaDist) {
-               if (!com.fix_omega)    x[k++] = com.omega;
+               if (!com.fix_omega)  x[k++] = 0.01 + com.omega * (0.9 + 0.2 * rndu());
             }
             else if (com.aaDist == AAClasses)
                for (i = 0; i < com.nOmegaType; i++)
@@ -2397,7 +2398,7 @@ int GetInitials(double x[], int* fromfile)
       }
    }
 
-   for (i = 0; i < com.nalpha; i++) x[com.np++] = com.alpha;
+   for (i = 0; i < com.nalpha; i++) x[com.np++] = 0.025 + (0.9 + 0.2 * rndu()) * com.alpha;
 
    if (!com.fix_rho) x[com.np++] = com.rho;
    if (com.rho)
@@ -2413,10 +2414,8 @@ int GetInitials(double x[], int* fromfile)
       readx(x, fromfile);
       if (com.runmode > 0 && fromfile && com.NSsites)  LASTROUND = 1;
    }
-
    return (0);
 }
-
 
 
 int SetPGene(int igene, int _pi, int _UVRoot, int _alpha, double x[])
@@ -4360,7 +4359,7 @@ int PairwiseCodon(FILE *fout, FILE*fds, FILE*fdn, FILE*ft, double space[])
    double x[10] = { .9,1,.5,.5,.5,.5,.3 }, xb[10][2] = { {1e-5,50} };
    double kappab[2] = { .01,999 }, wb[2] = { .001,99 };
    double lnL, e = 1e-7, *var = space + NP, S, dS, dN, mr = 0;
-   double JacobiSN[2 * 3], T1[2 * 3], T2[2 * 3], vSN[2 * 2], dS1, dN1, dS2, dN2, y[3], eh;
+   double JacobiSN[2 * 3], T1[2 * 3], T2[2 * 3], vSN[2 * 2], dS1, dN1, dS2, dN2, y[3], eh, det;
    /* for calculating SEs of dS & dN */
    double dHKY[4], kHKY[4];
 
@@ -4514,7 +4513,7 @@ int PairwiseCodon(FILE *fout, FILE*fds, FILE*fdn, FILE*ft, double space[])
 
          if (np && com.getSE) {
             Hessian(np, x, lnL, space, var, lfun2dSdN, var + np*np);
-            matinv(var, np, np, var + np*np);
+            matinv(var, np, np, &det, var + np*np);
             fprintf(fout, "SEs for parameters:\n");
             for (k = 0; k < np; k++) fprintf(fout, " %8.5f", (var[k*np + k] > 0. ? sqrt(var[k*np + k]) : -0));
             fprintf(fout, "\n");
@@ -4610,8 +4609,7 @@ int PairwiseCodon(FILE *fout, FILE*fds, FILE*fdn, FILE*ft, double space[])
 
 
 //kostas
-int BayesPairwise(int is, int js, double x[], double var[], double maxlogl,
-   int npoints, double xb[][2], double space[])
+int BayesPairwise(int is, int js, double x[], double var[], double maxlogl, int npoints, double xb[][2], double space[])
 {
    /*This function returns estimates of E[ t | x ], E[ w | x ], Var[ t | x ], Var[ w | x ],
    Cov[ w,t | x ], Corr[ w,t | x], P[ w>1 | x ]
@@ -4620,13 +4618,13 @@ int BayesPairwise(int is, int js, double x[], double var[], double maxlogl,
    double interm_results[7] = { 0,0,0,0,0,0,0 }; //contain the normalizing_constant, E[w|x], E[t|x], E[w^2|x], E[t^2|x], E[w*t|x], P[w>1|x]  
    register int i = 0, j = 0;
    int w_index = 0, t_index = 0, way = 0, setp = 0;
-   double w_value, t_value, w_weight, t_weight, sign, scalefactor = 0, Qmatrix[64 * 64],
-      z1, z2, logl, logposterior, hvalue, m1, m2, s1, s2, rvalue,
-      bayes_est[7], maxlogP, e = 1e-7, xp[2], kappa[1], pS, pN, sdiff[3] = { 1e-7, 1e-8, 1e-9 };
-   double FL, alpha, u, w_p, Rp[64 * 64], Up[64 * 64], Vp[64 * 64], PMatp[64 * 64], logl_p, logposterior_p,
-      hvalue_p, qvalue;  //For calculation of P(w>1|x)
-   char ch1[] = "E[t]", ch2[] = "E[w]", ch3[] = "SE[t]", ch4[] = "SE[w]",
-      ch5[] = "Cov[t,w]", ch6[] = "Corr[t,w]", ch7[] = "P[w > 1]";
+   double w_value, t_value, w_weight, t_weight, sign, scalefactor = 0, Qmatrix[64 * 64];
+   double z1, z2, logl, logposterior, hvalue, m1, m2, s1, s2, rvalue;
+   double bayes_est[7], maxlogP, e = 1e-7, xp[2], kappa[1], pS, pN, sdiff[3] = { 1e-7, 1e-8, 1e-9 };
+   double FL, alpha, u, w_p, Rp[64 * 64], Up[64 * 64], Vp[64 * 64], PMatp[64 * 64], det;
+   double logl_p, logposterior_p, hvalue_p, qvalue;  //For calculation of P(w>1|x)
+   char ch1[] = "E[t]", ch2[] = "E[w]", ch3[] = "SE[t]", ch4[] = "SE[w]";
+   char ch5[] = "Cov[t,w]", ch6[] = "Corr[t,w]", ch7[] = "P[w > 1]";
 
    if (com.fix_kappa == 1 && com.fix_omega == 0) {
       x[2] = x[1];
@@ -4690,7 +4688,7 @@ int BayesPairwise(int is, int js, double x[], double var[], double maxlogl,
       }//end of if
 
       Small_Diff = x[5];   //Restore the initial value of Small_Diff    
-      matinv(var, 2, 2, var + 2 * 2);
+      matinv(var, 2, 2, &det, var + 2 * 2);
       x[0] = xp[0]; x[2] = xp[1]; var[1] = var[3];
    }  // end of else
 

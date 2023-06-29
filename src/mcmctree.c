@@ -3383,7 +3383,7 @@ void getSinvDetS(double space[])
       matout(F0, data.Sinv, g, g);
    }
 
-   matinv(data.Sinv, g, g, space);
+   matinv(data.Sinv, g, g, &det, space);
    data.detS = fabs(space[0]);
 
    if (debug) {
