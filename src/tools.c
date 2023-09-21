@@ -1051,11 +1051,11 @@ int printsma(FILE*fout, char*spname[], char*z[], int ns, int l, int lline, int g
          for (h = igroup*lline, lt = 0, igap = 0; lt < lline && h < l; h++, lt++) {
             hp = (pose ? pose[h] : h);
             if (seqtype == CODONseq && transformed) {
-               fprintf(fout, " %s", CODONs[(int)z[i][hp]]);
+               fprintf(fout, " %s", CODONs[(unsigned char)z[i][hp]]);
                continue;
             }
-            b0 = (int)z[0][hp];
-            b = (int)z[i][hp];
+            b0 = (unsigned char)z[0][hp];
+            b = (unsigned char)z[i][hp];
             if (transformed) {
                b0 = pch[b0];
                b = pch[b];
@@ -5708,41 +5708,54 @@ int HPDinterval(double x[], int n, double HPD[2], double alpha)
    return(0);
 }
 
-
-double Eff_IntegratedCorrelationTime(double x[], int n, double *mx, double *vx, double *rho1)
+double Eff_IntegratedCorrelationTime(double x[], int n, double* mx, double* vx, double* rho1)
 {
    /* This calculates Efficiency or Tint using Geyer's (1992) initial positive
       sequence method.
       Note that this destroys x[].
    */
-   double Tint = 1, rho0 = 0, rho, m = 0, s = 0;
-   int  i, ir, minNr = 10, maxNr = 2000;
+   double Tint = -1, rho0 = 1, rho, m = 0, s = 0;
+   int i, k, minNr = 10, maxNr = 2000;
+
 
    /* if(n<1000) puts("chain too short for calculating Eff? "); */
-   for (i = 0; i < n; i++) m += x[i];
+   for (i = 0; i < n; i++)
+      m += x[i];
    m /= n;
-   for (i = 0; i < n; i++) x[i] -= m;
-   for (i = 0; i < n; i++) s += x[i] * x[i];
+   for (i = 0; i < n; i++)
+      x[i] -= m;
+   for (i = 0; i < n; i++)
+      s += x[i] * x[i];
    s = sqrt(s / n);
-   for (i = 0; i < n; i++) x[i] /= s;
+   for (i = 0; i < n; i++)
+      x[i] /= s;
 
-   if (mx) { *mx = m; *vx = s*s; }
+   if (mx) {
+      *mx = m;
+      *vx = s * s;
+   }
    if (s / (fabs(m) + 1) < 1E-9)
       Tint = n;
    else {
-      for (ir = 1; ir < min2(maxNr, n - minNr); ir++) {
-         for (i = 0, rho = 0; i < n - ir; i++)
-            rho += x[i] * x[i + ir];
-         rho /= (n - ir);
-         if (ir == 1) *rho1 = rho;
-         if (ir > minNr && rho + rho0 < 0) break;
-         Tint += rho * 2;
+      for (k = 1; k < min2(maxNr, n - minNr); k++) {
+         for (i = 0, rho = 0; i < n - k; i++)
+            rho += x[i] * x[i + k];
+         rho /= (n - k);
+         if (k == 1)
+            *rho1 = rho;
+         if (k % 2 == 1) {
+            if (k > minNr && rho0 + rho < 0)
+               break;
+            else {
+               Tint += (rho0 + rho) * 2;
+            }
+         }
          rho0 = rho;
       }
    }
+
    return (1 / Tint);
 }
-
 
 double Eff_IntegratedCorrelationTime2 (double x[], int n, int nbatch, double *mx, double *vx)
 {

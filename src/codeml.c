@@ -3540,7 +3540,7 @@ int ConditionalPNode(int inode, int igene, double x[])
          nodes[inode].conP[h] = 1;
    if (com.cleandata && inode < com.ns)
       for (h = pos0; h < pos1; h++)
-         nodes[inode].conP[h*n + com.z[inode][h]] = 1;
+         nodes[inode].conP[h*n + (unsigned char)com.z[inode][h]] = 1;
 
    for (i = 0; i < nodes[inode].nson; i++) {
       ison = nodes[inode].sons[i];
@@ -3560,8 +3560,8 @@ int ConditionalPNode(int inode, int igene, double x[])
       else if (nodes[ison].nson < 1 && !com.cleandata) {  /* tip & unclean */
          for (h = pos0; h < pos1; h++)
             for (j = 0; j < n; j++) {
-               for (k = 0, t = 0; k < nChara[(int)com.z[ison][h]]; k++)
-                  t += PMat[j*n + CharaMap[(int)com.z[ison][h]][k]];
+               for (k = 0, t = 0; k < nChara[(unsigned char)com.z[ison][h]]; k++)
+                  t += PMat[j*n + CharaMap[(unsigned char)com.z[ison][h]][k]];
                nodes[inode].conP[h*n + j] *= t;
             }
       }
@@ -3647,7 +3647,7 @@ void CountCodons(FILE *fout, double fcodonsg[], double fb3x4sg[], double fb4g[])
    for (j = 0; j < com.ns; j++) {
       for (h = 0; h < com.npatt; h++) {
          for (k = 0; k < 3; k++)
-            NucListall(CODONs[(int)com.z[j][h]][k], &nb[k], ib[k]);
+            NucListall(CODONs[(unsigned char)com.z[j][h]][k], &nb[k], ib[k]);
          k = nb[0] * nb[1] * nb[2];
          if (k > 1)  continue;
          ic = ib[0][0] * 16 + ib[1][0] * 4 + ib[2][0];
@@ -3672,7 +3672,7 @@ void CountCodons(FILE *fout, double fcodonsg[], double fb3x4sg[], double fb4g[])
       for (j = 0; j < com.ns; j++) {
          for (h = com.posG[ig]; h < com.posG[ig + 1]; h++) {
             for (k = 0; k < 3; k++)
-               NucListall(CODONs[(int)com.z[j][h]][k], &nb[k], ib[k]);
+               NucListall(CODONs[(unsigned char)com.z[j][h]][k], &nb[k], ib[k]);
 
             k = nb[0] * nb[1] * nb[2];
             if (k > 1) continue;
@@ -3738,7 +3738,7 @@ void AddCodonFreqSeqGene(int js, int ig, double fcodon0[], double fcodon[],
 
    for (h = com.posG[ig]; h < com.posG[ig + 1]; h++) {
       for (k = 0; k < 3; k++)
-         NucListall(CODONs[(int)com.z[js][h]][k], &nb[k], ib[k]);
+         NucListall(CODONs[(unsigned char)com.z[js][h]][k], &nb[k], ib[k]);
       k = nb[0] * nb[1] * nb[2];
       for (k = 0; k < 3; k++) {  /* f3x4 & f1x4, no regard for stop codons */
          for (i0 = 0, t = t1 = 0; i0 < nb[k]; i0++) {
@@ -4248,8 +4248,8 @@ double lfun2dSdN(double x[], int np)
       expt[k] = exp(x[0] * Root[k]);
    for (h = 0; h < com.npatt; h++) {
       if (com.fpatt[h] < 1e-20) continue;
-      z0 = com.z[0][h];
-      z1 = com.z[1][h];
+      z0 = (unsigned char)com.z[0][h];
+      z1 = (unsigned char)com.z[1][h];
       for (k = 0, fh = 0; k < n; k++)
          fh += U[z0*n + k] * expt[k] * V[k*n + z1];
       fh *= com.pi[z0];
@@ -6060,7 +6060,8 @@ void Get4foldSites(void)
          NucListall(com.z[0][h * 3 + k], &nb[k], ib[k]);
       if (nb[0] == 1 && nb[2] == 1 && FourFold[ib[0][0]][ib[1][0]]) {
          for (j = 1; j < com.ns; j++)
-            for (k = 0; k < 2; k++) if (com.z[j][h * 3 + k] != com.z[0][h * 3 + k]) goto nextsite;
+            for (k = 0; k < 2; k++)
+               if (com.z[j][h * 3 + k] != com.z[0][h * 3 + k]) goto nextsite;
          mark4[h] = 1;  ls4++;
       }
    nextsite:;

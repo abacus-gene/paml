@@ -745,7 +745,8 @@ readseq:
       for (j = 0; j < com.ns; j++) lt[j] = 0;  /* temporary seq length */
       for (igroup = 0; ; igroup++) {
          /*
-          printf ("\nreading block %d ", igroup+1);  matIout(F0,lt,1,com.ns);*/
+         printf ("\nreading block %d ", igroup+1);  matIout(F0,lt,1,com.ns);
+         */
 
          for (j = 0; j < com.ns; j++)
             if (lt[j] < com.ls) break;
@@ -829,8 +830,8 @@ readseq:
 
    if (read_seq_only) return (0);
 
-   /*** delete empty sequences ******************/
 #if(0)
+   /*** delete empty sequences ***/
    { int ns1 = com.ns, del[100] = { 0 };
    for (i = 0; i < com.ns; i++) {
       for (h = 0; h < com.ls; h++)   if (com.z[i][h] != '?') break;
@@ -1117,7 +1118,7 @@ void EncodeSeqs(void)
    /* This encodes sequences and set up com.TipMap[][], called after sites are collapsed
       into patterns.
    */
-   int is, h, k, ch;
+   int is, h, k, ch, max_char = CHAR_MAX;  /* max_char = 256; */
    char* pch = ((com.seqtype == 0 || com.seqtype == 1) ? BASEs : (com.seqtype == 2 ? AAs : BINs));
 
    if (com.seqtype != 1) {
@@ -1166,11 +1167,8 @@ void EncodeSeqs(void)
                for (k = n; k < nA; k++)
                   if (strcmp(CODONs[k], c) == 0) break;
             }
-            if (k == nA) {
-               if (++nA > 256)
-                  zerror("too many ambiguity codons in the data.  Contact author");
-               strcpy(CODONs[nA - 1], c);
-            }
+            if (k == nA) 
+               strcpy(CODONs[nA++], c);
             com.z[j][h] = (char)k;
          }
          com.z[j] = (char*)realloc(com.z[j], com.npatt);
@@ -1180,6 +1178,10 @@ void EncodeSeqs(void)
          for (k = n; k < nA; k++)  printf("%4s", CODONs[k]);
          printf("\n");
       }
+      if (nA > max_char+1)
+         puts("You have many ambiguity codons in the data.");
+      if (nA > 256)
+         exit(-1);
    }
 #endif
 }
@@ -2408,8 +2410,8 @@ int DistanceMatNG86(FILE* fout, FILE* fds, FILE* fdn, FILE* ft, double alpha)
          for (h = 0, lst = 0, nst = nat = S = N = 0; h < com.npatt; h++) {
             if (com.z[is][h] >= com.ncode || com.z[js][h] >= com.ncode)
                continue;
-            codon[0] = CODONs[(int)com.z[is][h]];
-            codon[1] = CODONs[(int)com.z[js][h]];
+            codon[0] = CODONs[(unsigned char)com.z[is][h]];
+            codon[1] = CODONs[(unsigned char)com.z[js][h]];
             lst += com.fpatt[h];
             ndiff = difcodonNG(codon[0], codon[1], &St, &Nt, &ns, &na, 0, com.icode);
             nsd[ndiff] += (int)com.fpatt[h];
@@ -2469,6 +2471,7 @@ int DistanceMatNG86(FILE* fout, FILE* fds, FILE* fdn, FILE* ft, double alpha)
    }    /* for(is) */
    printf("\n");
    if (status) fprintf(fout, "NOTE: -1 means that NG86 is inapplicable.\n");
+   fprintf(fout, "\n");
 
    SS = S, NN = N, Sd = nst, Nd = nat;  /* kostas */
 
