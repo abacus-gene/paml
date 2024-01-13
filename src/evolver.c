@@ -1075,6 +1075,7 @@ void Simulate(char* ctlf)
 
    puts("\nAll parameters are read.  Ready to simulate\n");
    sspace = max2(sspace, 8000000);
+   sspace = max2(sspace, sizeof(double) * com.ls);
    space = (double*)malloc(sspace);
    if (com.alpha || com.ncatG) tmpseq = (char*)space;
    if (space == NULL) {
@@ -1095,8 +1096,10 @@ void Simulate(char* ctlf)
    }
    if (com.alpha || com.NSsites) {
       fsiteID = (FILE*)zopen(siteIDf, "w");
-      if (com.seqtype == 1) fprintf(fsiteID, "\nSite class IDs\n");
-      else               fprintf(fsiteID, "\nRates for sites\n");
+      if (com.seqtype == 1)
+         fprintf(fsiteID, "\nSite class IDs\n");
+      else
+         fprintf(fsiteID, "\nRates for sites\n");
       if (com.seqtype == CODONseq && com.NSsites) {
          if (!com.model) matout(fsiteID, com.rK, 1, com.ncatG);
          if ((com.siteID = (char*)malloc(com.ls * sizeof(char))) == NULL)

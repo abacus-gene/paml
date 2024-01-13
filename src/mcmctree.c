@@ -4246,6 +4246,7 @@ int MCMC(FILE* fout)
          for (j = 0; j < com.np; j++) fprintf(fmcmc, "\t%.7f", x[j]);
          if (mcmc.usedata) fprintf(fmcmc, "\t%.3f", lnL / BFbeta);
          fprintf(fmcmc, "\n");
+         fflush(fmcmc);
       }
       if ((ir + 1) % max2(mcmc.sampfreq, mcmc.sampfreq*mcmc.nsample / 100) == 0) {
          printf("\r%3.0f%%", (ir + 1.) / (mcmc.nsample*mcmc.sampfreq)*100.);
@@ -4298,8 +4299,6 @@ int MCMC(FILE* fout)
    fputs("\nSpecies tree for FigTree.  Branch lengths = posterior mean times; 95% CIs = labels", fout);
    fprintf(fout, "\n");    OutTreeN(fout, 1, PrNodeNum);
    fprintf(fout, "\n\n");  OutTreeN(fout, 1, 1);   fprintf(fout, "\n");
-
-puts("me is at a0..");
 
    if (mcmc.print)
       DescriptiveStatisticsSimpleMCMCTREE(fout, com.mcmcf);

@@ -9159,8 +9159,9 @@ void copy_to_Sptree(struct SPECIESTREE* stree, struct TREEN* nodes)
    int i, j;
 
    stree->nspecies = com.ns;
-   for (j = 0; j < stree->nspecies; j++)
-      strcpy(stree->nodes[j].name, com.spname[j]);
+   if(stree->nodes[0].name != com.spname[0])
+     for (j = 0; j < stree->nspecies; j++)
+        strcpy(stree->nodes[j].name, com.spname[j]);
    stree->nnode = tree.nnode;  stree->nbranch = tree.nbranch;
    stree->root = tree.root;    stree->nfossil = 0;
    for (i = 0; i < stree->nnode; i++) {
