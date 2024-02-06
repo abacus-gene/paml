@@ -463,6 +463,8 @@ int SaveMCMCstate(char *filename, int ir, double lnpR, double lnL)
    double *tmp = (double*)malloc((s*2-1)*sizeof(double));
 
    printf("\nSaving MCMC state to file %s...\n", filename);
+   /*GAB: Print which checkpoint option is being used*/
+   printf("\nUsing option checkpoint = %i\n", com.checkpoint);
    if (f == NULL) error2("file open error");
    if (tmp == NULL) error2("oom in SaveMCMCState()");
    fwrite(&ir, sizeof(int), 1, f);
@@ -4150,6 +4152,10 @@ int MCMC(FILE* fout)
       ReadMCMCstate(com.checkpointf);
       mcmc.burnin = 0;
       printf("\nInitial parameters, np = %d.\nSptree & Genetrees read from %s.\n", com.np, com.checkpointf);
+      /*GAB: Making MCMCTree believe we are writing for the first time so that it doesn not just saves the
+       chain but also resumes from the values in mcmctree.ckpt, as expected for checkpoint=2*/
+      printf("\nOption checkpoint = 2, re-setting to = 1 in order to save the MCMC state for allowing to\nresume more than once\n");
+      com.checkpoint = 1;
    }
 
    /* calculates prior for times and likelihood for each locus */
