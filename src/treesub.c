@@ -3564,15 +3564,15 @@ int GetTipDate(void)
    tipdate.youngest = 0;
    for (i = 0, ndates = 0; i < stree.nspecies; i++) {
       stree.nodes[i].age = 0;
-      j = (int)strlen(com.spname[i]);
-      for (indate = 0, p = com.spname[i] + j - 1; j >= 0; j--, p--) {
+      j = (int)strlen(stree.nodes[i].name);
+      for (indate = 0, p = stree.nodes[i].name + j - 1; j >= 0; j--, p--) {
          if (isdigit(*p) || *p == '.' || *p == '-') indate = 1;
          else if (indate)
             break;
       }
       if (strchr(p, '-')) {
          if (sscanf(p + 1, "%d-%d-%d", &year, &month, &day) == EOF) {
-            printf("sequence name: %s\n", com.spname[i]);
+            printf("sequence name: %s\n", stree.nodes[i].name);
             zerror("date format wrong for tipdate analysis?");
          }
          tipdate.ymd = 1;
@@ -3810,8 +3810,12 @@ int GetInitialsTimes(double x[])
     lineages.
     A recursive algorithm is used to specify initials if(TipDate||NFossil).
     */
-   int i, j, k;
+   int i, j, k, mlflag = 0;
    double maxage, t;
+
+#if(defined(BASEML) || defined(CODEML))
+   mlflag = 1;
+#endif
 
    if (com.fix_blength == 2) {
       com.ntime = 0; com.method = 0; return(0);
@@ -3874,8 +3878,13 @@ int GetInitialsTimes(double x[])
    if (NFossils && maxage > 10)
       zerror("Change time unit so that fossil dates fall in (0.00001, 10).");
 
-   if (tipdate.flag)
+   if (tipdate.flag) {
+      if (mlflag && stree.nspecies == 0)
+         copy_to_Sptree(&stree, nodes);
       GetTipDate();
+      if (mlflag)
+         copy_from_Sptree(&stree, nodes);
+   }
 
    AbsoluteRate = (tipdate.flag || NFossils);
    if (com.clock >= 5 && AbsoluteRate == 0)
@@ -3940,6 +3949,7 @@ int OutputTimesRates(FILE* fout, double x[], double var[])
    if (AbsoluteRate) {
       fputs("\nNodes and Times\n\n", fout);
    }
+   fout = stdout;
    if (tipdate.flag) { /* DANGER! SE not printed if(TipDate && NFossil). */
       struct tm* sampletime; /* yyyy-mm-dd, example: 2020-02-10 */
       time_t seconds = 0;    /* seconds since 1970 */
@@ -3957,6 +3967,7 @@ int OutputTimesRates(FILE* fout, double x[], double var[])
             fprintf(fout, " +- %6.2f", sqrt(var[k * com.np + k]) * scale);
             k++;
          }
+         fprintf(fout, "\n");
       }
    }
    else if (AbsoluteRate) {
@@ -9174,7 +9185,10 @@ void copy_to_Sptree(struct SPECIESTREE* stree, struct TREEN* nodes)
 #endif
       for (j = 0; j < stree->nodes[i].nson; j++)
          stree->nodes[i].sons[j] = nodes[i].sons[j];
-   }
+
+      stree->nodes[i].age = nodes[i].age;
+      stree->nodes[i].fossil = nodes[i].fossil;
+   } nodes[2 * NS - 1];
 #if(!defined(MCMCTREE))
    for (j = 0; j < stree->nspecies; j++)
       com.spname[j] = NULL;

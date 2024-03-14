@@ -369,9 +369,9 @@ int UseLocus (int locus, int copyconP, int setmodel, int setSeqName);
 int GetGtree(int locus);
 int printGtree(int printBlength);
 
-void copySptree(void);
-void printSptree(void);
-
+void copy_from_Sptree(struct SPECIESTREE* stree, struct TREEN* nodes);
+void copy_to_Sptree(struct SPECIESTREE* stree, struct TREEN* nodes);
+void printStree(void);
 
 enum DataType {BASEseq = 0, CODONseq = 1, AAseq = 2, CODON2AAseq = 3, BINARYseq = 4, BASE5seq = 5};
 enum PrintOptions { PrBranch = 1, PrNodeNum = 2, PrLabel = 4, PrNodeStr = 8, PrAge = 16, PrOmega = 32 };

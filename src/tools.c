@@ -2200,27 +2200,29 @@ double PDFloglogistic(double x, double loc, double s)
 
 double PDFlogt2(double x, double loc, double s)
 {
-   double y = (log(x) - loc) / s, pdf;
-   y = 2 + y*y;  y *= y*y;   /* [2 + y*y]^3 */
-   if (y < 1E-300)
-      zerror("y==0");
-   pdf = 1 / (sqrt(y)*x*s);
-   return pdf;
+  double y = (log(x) - loc) / s, pdf;
+  y = 2 + y * y;  y *= y * y;   /* [2 + y*y]^3 */
+  if (y < 1E-300)
+    zerror("y==0");
+  pdf = 1 / (sqrt(y) * x * s);
+  return pdf;
 }
 
 double PDFt2(double x, double m, double s)
 {
-   double y = (x - m) / s;
-   y = 2 + y*y;  y *= y*y;   /* [2 + y*y]^3 */
-   if (y < 1e-300)
-      zerror("y==0");
-   return 1 / (sqrt(y)*s);
+  double y = (x - m) / s;
+  y = 2 + y * y;  y *= y * y;   /* [2 + y*y]^3 */
+  if (y < 1e-300)
+    zerror("y==0");
+  return 1 / (sqrt(y) * s);
 }
 
 double PDFt4(double x, double m, double s)
 {
-   /* This t4 PDF has mean m and variance s*s.  Note that the standard t4 has variance 2*s*s.
-   */
+/*  This t4 PDF has mean m and variance s*s.
+    Note that the standard t4 has variance 2*s*s, with density
+    pdf = 3 /8.0*pow(1 + z*z/4), -2.5);
+*/
    double z = (x - m) / s, pdf;
 
    pdf = 3 / (4 * 1.414213562*s)*pow(1 + z*z / 2, -2.5);
