@@ -3625,6 +3625,15 @@ int GetTipDate(void)
 #endif
 
 
+#if (defined BASEML || defined CODEML || defined MCMCTREE)
+void copy_from_Sptree(struct SPECIESTREE* stree, struct TREEN* nodes);
+void copy_to_Sptree(struct SPECIESTREE* stree, struct TREEN* nodes);
+void printStree(void);
+int ReadMainTree(FILE* ftree, struct SPECIESTREE* stree);
+int GenerateGtree_locus(int locus, int ns, int allocate_gnodes);
+#endif
+
+
 #if(defined(BASEML) || defined(CODEML))
 
 double* AgeLow = NULL;
@@ -8885,11 +8894,6 @@ int ProcessNodeAnnotation(int* haslabel)
 
 /* routines for dating analysis of heterogeneous data */
 #if (defined BASEML || defined CODEML || defined MCMCTREE)
-
-void copy_from_Sptree(struct SPECIESTREE* stree, struct TREEN* nodes);
-void copy_to_Sptree(struct SPECIESTREE* stree, struct TREEN* nodes);
-int ReadMainTree(FILE *ftree, struct SPECIESTREE *stree);
-int GenerateGtree_locus(int locus, int ns, int allocate_gnodes);
 
 int ReadMainTree( FILE*ftree, struct SPECIESTREE *stree)
 {
