@@ -3958,7 +3958,6 @@ int OutputTimesRates(FILE* fout, double x[], double var[])
    if (AbsoluteRate) {
       fputs("\nNodes and Times\n\n", fout);
    }
-   fout = stdout;
    if (tipdate.flag) { /* DANGER! SE not printed if(TipDate && NFossil). */
       struct tm* sampletime; /* yyyy-mm-dd, example: 2020-02-10 */
       time_t seconds = 0;    /* seconds since 1970 */
