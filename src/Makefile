@@ -1,6 +1,6 @@
 PRGS =  baseml codeml basemlg mcmctree pamp evolver yn00 chi2
 CC = cc # cc, gcc, cl
-CFLAGS = -O3 -Wall -Wno-unused-result -Wmemset-elt-size
+CFLAGS = -O3 -Wall -Wno-unused-result
 #CC = icc
 #CFLAGS = -fast -Wall
 
