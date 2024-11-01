@@ -34,7 +34,7 @@ To download and install `PAML` software, please follow the next links in the wik
 
 The [PAML Wiki](https://github.com/abacus-gene/paml/wiki/) is still under construction :wrench: -- we are slowly migrating the [PAML documentation in PDF format](https://github.com/abacus-gene/paml/blob/master/doc/pamlDOC.pdf) to a more interactive and engaging tutorial!
 
-In the meantime, you can access the following sections, which are also detailed in PAML Wiki home section:
+In the meantime, you can access the following sections, which are also detailed in the PAML Wiki home section:
 
 * [Overview](https://github.com/abacus-gene/paml/wiki/Overview)
   * [`PAML` documentation](https://github.com/abacus-gene/paml/wiki/Overview#paml-documentation)
