@@ -67,9 +67,9 @@ In the meantime, you can access the following sections, which are also detailed 
   * [BASEML](https://github.com/abacus-gene/paml/wiki/BASEML)
   * [BASEMLG](https://github.com/abacus-gene/paml/wiki/BASEMLG)
   * [CODEML](https://github.com/abacus-gene/paml/wiki/CODEML)
-  * [Evolver]([Evolver](https://github.com/abacus-gene/paml/wiki/Evolver))
+  * [Evolver](https://github.com/abacus-gene/paml/wiki/Evolver)
   * [Infinitesites](https://github.com/abacus-gene/paml/wiki/Infinitesites)
-  * [MCMCtree]([MCMCtree](https://github.com/abacus-gene/paml/wiki/MCMCtree))
+  * [MCMCtree](https://github.com/abacus-gene/paml/wiki/MCMCtree)
   * [yn00](https://github.com/abacus-gene/paml/wiki/yn00)
 
 ## Citing `PAML`
