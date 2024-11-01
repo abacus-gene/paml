@@ -1,0 +1,10 @@
+ 7  1
+
+((((human, (chimpanzee, bonobo)) '>.06<.08', gorilla), (orangutan, sumatran)) '>.12<.16', gibbon);
+
+//end of file
+
+
+((((human, (chimpanzee, bonobo)) '>.06<.08', gorilla), (orangutan, sumatran)) '>.12<.16', gibbon);
+
+((((human, (chimpanzee, bonobo)) 'B(.06, .08)', gorilla), (orangutan, sumatran)) 'B(.12, .16)', gibbon);
