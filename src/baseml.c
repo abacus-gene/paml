@@ -102,7 +102,7 @@ struct SPECIESTREE {
    int nbranch, nnode, root, nspecies, nfossil;
    struct TREESPN {
       char name[LSPNAME + 1], fossil, usefossil;  /* fossil: 0, 1, 2, 3 */
-      int father, nson, sons[2];
+      int father, nson, sons[MAXNSONS];
       double label, age, pfossil[7];   /* lower and upper bounds or alpha & beta */
       double *lnrates;          /* log rates for loci */
    } nodes[2 * NS - 1];

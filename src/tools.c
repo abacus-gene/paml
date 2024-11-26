@@ -5791,110 +5791,110 @@ double Eff_IntegratedCorrelationTime2 (double x[], int n, int nbatch, double *mx
 }
 
 
-int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int propternary, int SkipColumns)
+int DescriptiveStatistics(FILE* fout, char infile[], int nbin, int propternary, int SkipColumns)
 {
-   /* This routine reads n records (observations) each of p continuous variables,
-      to calculate summary statistics.  It also uses kernel density estimation to
-      smooth the histogram for each variable, as well as calculating 2-D densities
-      for selected variable pairs.  The smoothing used the kerney estimator, with
-      both fixed window size and adaptive kernel smoothing using variable bandwiths.
-      The kernel function is Epanechnikov.  For 2-D smoothing, Fukunaga's transform is used
-      (p.77 in B.W. Silverman 1986).
-   */
-   FILE *fin = zopen(infile, "r");
-   int  n, p, i, j, k, jj, kk;
-   char *fmt = " %9.6f", *fmt1 = " %9.1f", timestr[32];
-   double *data, *x, *mean, *median, *minx, *maxx, *x005, *x995, *x025, *x975, *xHPD025, *xHPD975, *var;
-   double *Tint, tmp[2], d, rho1;
-   double h, *y, *gap, *space, v2d[4];
-   int nf2d = 0, ivar_f2d[MAXNF2D][2] = { {5,6},{0,2} }, k2d;
+  /* This routine reads n records (observations) each of p continuous variables,
+     to calculate summary statistics.  It also uses kernel density estimation to
+     smooth the histogram for each variable, as well as calculating 2-D densities
+     for selected variable pairs.  The smoothing used the kerney estimator, with
+     both fixed window size and adaptive kernel smoothing using variable bandwiths.
+     The kernel function is Epanechnikov.  For 2-D smoothing, Fukunaga's transform is used
+     (p.77 in B.W. Silverman 1986).
+  */
+  FILE* fin = zopen(infile, "r");
+  int  n, p, i, j, k, jj, kk;
+  char* fmt = " %9.6f", * fmt1 = " %9.1f", timestr[32];
+  double* data, * x, * mean, * median, * minx, * maxx, * x005, * x995, * x025, * x975, * xHPD025, * xHPD975, * var;
+  double* rho1, * Tint, tmp[2], d;
+  double h, * y, * gap, * space, v2d[4];
+  int nf2d = 0, ivar_f2d[MAXNF2D][2] = { {5,6},{0,2} }, k2d;
 
-   static int  lline = 1000000, ifields[MAXNFIELDS], HasHeader = 1;
-   char *line;
-   static char varstr[MAXNFIELDS][32] = { "" };
+  static int  lline = 1000000, ifields[MAXNFIELDS], HasHeader = 1;
+  char* line;
+  static char varstr[MAXNFIELDS][32] = { "" };
 
-   if ((line = (char*)malloc(lline * sizeof(char))) == NULL) zerror("oom ds");
-   scanfile(fin, &n, &p, &HasHeader, line, ifields);
-   printf("\n%d records, %d variables\n", n, p);
-   data = (double*)malloc(p*n * sizeof(double));
-   mean = (double*)malloc((p * 13 + p*p + n) * sizeof(double));
-   if (data == NULL || mean == NULL) zerror("oom DescriptiveStatistics.");
-   memset(data, 0, p*n * sizeof(double));
-   memset(mean, 0, (p * 13 + p*p + n) * sizeof(double));
-   median = mean + p; minx = median + p; maxx = minx + p;
-   x005 = maxx + p; x995 = x005 + p; x025 = x995 + p; x975 = x025 + p; xHPD025 = x975 + p; xHPD975 = xHPD025 + p;
-   var = xHPD975 + p;  gap = var + p*p, Tint = gap + p;  y = Tint + p;
+  if ((line = (char*)malloc(lline * sizeof(char))) == NULL) zerror("oom ds");
+  scanfile(fin, &n, &p, &HasHeader, line, ifields);
+  printf("\n%d records, %d variables\n", n, p);
+  data = (double*)malloc(p * n * sizeof(double));
+  mean = (double*)malloc((p * 14 + p * p + n) * sizeof(double));
+  if (data == NULL || mean == NULL) zerror("oom DescriptiveStatistics.");
+  memset(data, 0, p * n * sizeof(double));
+  memset(mean, 0, (p * 14 + p * p + n) * sizeof(double));
+  median = mean + p; minx = median + p; maxx = minx + p;
+  x005 = maxx + p; x995 = x005 + p; x025 = x995 + p; x975 = x025 + p; xHPD025 = x975 + p; xHPD975 = xHPD025 + p;
+  var = xHPD975 + p;  gap = var + p * p, rho1 = gap + p;  Tint = rho1 + p;  y = Tint + p;
 
-   space = (double*)malloc((n + nbin*nbin * 3) * sizeof(double));
-   if (space == NULL) { printf("not enough mem for %d variables\n", n); exit(-1); }
+  space = (double*)malloc((n + nbin * nbin * 3) * sizeof(double));
+  if (space == NULL) { printf("not enough mem for %d variables\n", n); exit(-1); }
 
-   if (HasHeader)
-      for (i = 0; i < p; i++) sscanf(line + ifields[i], "%s", varstr[i]);
-   for (i = 0; i < n; i++)
-      for (j = 0; j < p; j++)
-         fscanf(fin, "%lf", &data[j*n + i]);
-   fclose(fin);
-/*
-   if(p>1) {
-      printf("\nGreat offer!  I can smooth a few 2-D densities for free.  How many do you want? ");
-      scanf("%d", &nf2d);
-   }
-*/   
-   if (nf2d > MAXNF2D) zerror("I don't want to do that many!");
-   for (i = 0; i < nf2d; i++) {
-      printf("pair #%d (e.g., type  1 3  to use variables #1 and #3)? ", i + 1);
-      scanf("%d%d", &ivar_f2d[i][0], &ivar_f2d[i][1]);
-      ivar_f2d[i][0]--;
-      ivar_f2d[i][1]--;
-   }
+  if (HasHeader)
+    for (i = 0; i < p; i++) sscanf(line + ifields[i], "%s", varstr[i]);
+  for (i = 0; i < n; i++)
+    for (j = 0; j < p; j++)
+      fscanf(fin, "%lf", &data[j * n + i]);
+  fclose(fin);
+  /*
+     if(p>1) {
+        printf("\nGreat offer!  I can smooth a few 2-D densities for free.  How many do you want? ");
+        scanf("%d", &nf2d);
+     }
+  */
+  if (nf2d > MAXNF2D) zerror("I don't want to do that many!");
+  for (i = 0; i < nf2d; i++) {
+    printf("pair #%d (e.g., type  1 3  to use variables #1 and #3)? ", i + 1);
+    scanf("%d%d", &ivar_f2d[i][0], &ivar_f2d[i][1]);
+    ivar_f2d[i][0]--;
+    ivar_f2d[i][1]--;
+  }
 
-   printf("Collecting mean, median, min, max, percentiles, etc.\n");
-   for (j = SkipColumns, x = data + j*n; j < p; j++, x += n) {
-      memmove(y, x, n * sizeof(double));
-      Tint[j] = 1 / Eff_IntegratedCorrelationTime(y, n, &mean[j], &var[j], &rho1);
-      memmove(y, x, n * sizeof(double));
-      qsort(y, (size_t)n, sizeof(double), comparedouble);
-      minx[j] = y[0];  maxx[j] = y[n - 1];
-      median[j] = (n % 2 == 0 ? (y[n/2 - 1] + y[n/2]) / 2 : y[n/2]);
-      x005[j] = y[(int)(n*.005)];    x995[j] = y[(int)(n*.995)];
-      x025[j] = y[(int)(n*.025)];    x975[j] = y[(int)(n*.975)];
+  printf("Collecting mean, median, min, max, percentiles, etc.\n");
+  for (j = SkipColumns, x = data + j * n; j < p; j++, x += n) {
+    memmove(y, x, n * sizeof(double));
+    Tint[j] = 1 / Eff_IntegratedCorrelationTime(y, n, &mean[j], &var[j], &rho1[j]);
+    memmove(y, x, n * sizeof(double));
+    qsort(y, (size_t)n, sizeof(double), comparedouble);
+    minx[j] = y[0];  maxx[j] = y[n - 1];
+    median[j] = (n % 2 == 0 ? (y[n / 2 - 1] + y[n / 2]) / 2 : y[n / 2]);
+    x005[j] = y[(int)(n * .005)];    x995[j] = y[(int)(n * .995)];
+    x025[j] = y[(int)(n * .025)];    x975[j] = y[(int)(n * .975)];
 
-      HPDinterval(y, n, tmp, 0.05);
-      xHPD025[j] = tmp[0];
-      xHPD975[j] = tmp[1];
-      if ((j + 1) % 2 == 0 || j == p - 1)
-         printf("\r\t\t%6d/%6d done  %s", j + 1, p, printtime(timestr));
-   }
+    HPDinterval(y, n, tmp, 0.05);
+    xHPD025[j] = tmp[0];
+    xHPD975[j] = tmp[1];
+    if ((j + 1) % 2 == 0 || j == p - 1)
+      printf("\r\t\t%6d/%6d done  %s", j + 1, p, printtime(timestr));
+  }
 
-   /* variance-covariance matrix */
-   zero(var, p*p);
-   for (j = SkipColumns; j < p; j++)
-      for (k = SkipColumns; k <= j; k++)
-         for (i = 0; i < n; i++)
-            var[j*p + k] += (data[j*n + i] - mean[j]) * (data[k*n + i] - mean[k]);
-   for (j = SkipColumns; j < p; j++)
-      for (k = SkipColumns, var[j*p + j] /= (n - 1.0); k < j; k++)
-         var[k*p + j] = var[j*p + k] /= (n - 1.0);
+  /* variance-covariance matrix */
+  zero(var, p * p);
+  for (j = SkipColumns; j < p; j++)
+    for (k = SkipColumns; k <= j; k++)
+      for (i = 0; i < n; i++)
+        var[j * p + k] += (data[j * n + i] - mean[j]) * (data[k * n + i] - mean[k]);
+  for (j = SkipColumns; j < p; j++)
+    for (k = SkipColumns, var[j * p + j] /= (n - 1.0); k < j; k++)
+      var[k * p + j] = var[j * p + k] /= (n - 1.0);
 
-   fprintf(fout, "\n(A) Descriptive statistics\n\n       ");
-   for (j = SkipColumns; j < p; j++) fprintf(fout, "   %s", varstr[j]);
-   fprintf(fout, "\nmean    ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, mean[j]);
-   fprintf(fout, "\nmedian  ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, median[j]);
-   fprintf(fout, "\nS.D.    ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, sqrt(var[j*p + j]));
-   fprintf(fout, "\nmin     ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, minx[j]);
-   fprintf(fout, "\nmax     ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, maxx[j]);
-   fprintf(fout, "\n2.5%%    "); for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, x025[j]);
-   fprintf(fout, "\n97.5%%   "); for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, x975[j]);
-   fprintf(fout, "\n2.5%%HPD "); for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, xHPD025[j]);
-   fprintf(fout, "\n97.5%%HPD"); for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, xHPD975[j]);
-   fprintf(fout, "\nESS*    ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt1, n / Tint[j]);
-   fprintf(fout, "\nEff*    ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, 1 / Tint[j]);
+  fprintf(fout, "\n(A) Descriptive statistics\n\n       ");
+  for (j = SkipColumns; j < p; j++) fprintf(fout, "   %s", varstr[j]);
+  fprintf(fout, "\nmean    ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, mean[j]);
+  fprintf(fout, "\nmedian  ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, median[j]);
+  fprintf(fout, "\nS.D.    ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, sqrt(var[j * p + j]));
+  fprintf(fout, "\nmin     ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, minx[j]);
+  fprintf(fout, "\nmax     ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, maxx[j]);
+  fprintf(fout, "\n2.5%%    "); for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, x025[j]);
+  fprintf(fout, "\n97.5%%   "); for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, x975[j]);
+  fprintf(fout, "\n2.5%%HPD "); for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, xHPD025[j]);
+  fprintf(fout, "\n97.5%%HPD"); for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, xHPD975[j]);
+  fprintf(fout, "\nrho1    "); for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, rho1[j]);
+  fprintf(fout, "\nESS*    ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt1, n / Tint[j]);
+  fprintf(fout, "\nEff*    ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, 1 / Tint[j]);
 
-   fprintf(fout, "\n\n");
-   fflush(fout);
+  fprintf(fout, "\n\n");
+  fflush(fout);
 
-   //return(0);
-
+  //return(0);
    fprintf(fout, "\nCorrelation matrix");
    for (j = SkipColumns; j < p; j++) {
       fprintf(fout, "\n%-8s ", varstr[j]);

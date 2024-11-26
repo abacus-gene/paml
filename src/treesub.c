@@ -908,7 +908,7 @@ readseq:
 
 
 #if (0 && defined CODEML)
-   /* list sites with 2 types of serine codons: TC? and TCY.  19 March 2014, Ziheng. */
+   /* list sites with 2 types of serine codons: TCN and AGY.  19 March 2014, Ziheng. */
    if (com.seqtype == 1) {
       char codon[4] = "";
       int nbox0, nbox1, present = 0;
@@ -3888,9 +3888,9 @@ int GetInitialsTimes(double x[])
       zerror("Change time unit so that fossil dates fall in (0.00001, 10).");
 
    if (tipdate.flag) {
-      if (mlflag && stree.nspecies == 0)
+      if (mlflag)
          copy_to_Sptree(&stree, nodes);
-      GetTipDate();
+      GetTipDate();  /* GetTipDate processes stree nodes */
       if (mlflag)
          copy_from_Sptree(&stree, nodes);
    }
@@ -7182,7 +7182,7 @@ int SetNodeScale(int inode)
 
    if (com.seqtype == 0)       every = 100;   /* baseml */
    else if (com.seqtype == 1)  every = 15;    /* codonml */
-   else                     every = 50;    /* aaml */
+   else                        every = 50;    /* aaml */
 
    for (i = 0; i < nodes[inode].nson; i++) {
       ison = nodes[inode].sons[i];

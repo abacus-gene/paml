@@ -22,7 +22,7 @@
 #include "paml.h"
 
 
-#define NS            500
+#define NS            1025
 #define NBRANCH      (NS*2-2)
 #define NNODE        (NS*2-1)
 #define MAXNSONS      3
@@ -4130,6 +4130,10 @@ int MCMC(FILE* fout)
       com.cleandata, mcmc.print, mcmc.saveconP);
 
    com.np = GetInitials();
+   /* ziheng-2024.4.4 */
+   for (int is = com.ns; is < stree.nnode; is++)
+      stree.nodes[is].age /= 2;
+
 
    for (j = 0; j < mcmc.nsteplength; j++)
       mcmc.steplength[j] = 0.001 + 0.1*rndu();
@@ -4179,6 +4183,7 @@ int MCMC(FILE* fout)
    data.lnpT = lnpriorTimes();
 
    for (j = 0; j < data.ngene; j++) com.rgene[j] = -1;  /* com.rgene[] is not used. */
+   data.lnpR = -1;
    if (com.clock > 1)
       data.lnpR = lnpriorRates();
    printf("\nInitial parameters (np = %d):\n", com.np);

@@ -753,7 +753,7 @@ int Forestry(FILE* fout, FILE* ftree)
 
          if (iteration && np) {
             if (com.method == 1)
-               j = minB(noisy > 2 ? frub : NULL, &lnL, x, xb, e, com.space);
+               j = minB(noisy > 2 ? frub : NULL, &lnL, x, xb, 1e-6, com.space);
             else if (com.method == 3)
                j = minB2(noisy > 2 ? frub : NULL, &lnL, x, xb, e, com.space);
             else
