@@ -10,8 +10,8 @@
          clock = 2    * 1: global clock; 2: independent rates; 3: correlated rates
        RootAge = '<1.0'  * safe constraint on root age, used if no fossil for root.
 
-         model = 0    * 0:JC69, 1:K80, 2:F81, 3:F84, 4:HKY85
-         alpha = 0    * alpha for gamma rates at sites
+         model = 4    * 0:JC69, 1:K80, 2:F81, 3:F84, 4:HKY85
+         alpha = 1    * alpha for gamma rates at sites
          ncatG = 5    * No. categories in discrete gamma
 
      cleandata = 0    * remove sites with ambiguity data (1:yes, 0:no)?
@@ -29,5 +29,4 @@
         burnin = 2000
       sampfreq = 10
        nsample = 20000
-
-*** Note: Make your window wider (100 columns) before running the program.
+    checkpoint = 1 0.01 mcmctree.ckpt1 * flag(0: none;  1: save;  2: resume) prob filename

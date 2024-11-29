@@ -1347,7 +1347,7 @@ void CladeMrBayesProbabilities(char treefile[])
    */
    int lline = 100000, i, j, k, nib, inode, parti2B[NS] = { 0 };
    char line[100000], * partition, * p;
-   char symbol[2] = ".*", cladestr[NS + 1] = { 0 };
+   char symbol[4] = ".*", cladestr[NS + 1] = { 0 };
    FILE* ftree, * fmb[20];
    double* Pclade, t;
    int nmbfiles = 2;

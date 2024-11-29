@@ -368,7 +368,7 @@ int main(int argc, char *argv[])
    else if (com.runmode == -2)
       fpair[0] = (FILE*)zopen("2AA.t", "w");
    
-   gnodes = malloc(sizeof(struct TREEN*));
+   gnodes = (struct TREEN**)malloc(sizeof(struct TREEN*));
    for (com.idata = 0; com.idata < com.ndata; com.idata++) {
       if (com.ndata > 1) {
          printf("\nDataset %2d ", com.idata + 1);
@@ -5984,7 +5984,7 @@ int SlidingWindow(FILE*fout, FILE* fpair[], double space[])
    for (j = 0; j < com.ns; j++)
       z0[j] = com.z[j];
    for (j = 0; j < com.ns; j++)
-      if ((com.z[j] = malloc(npatt0 * sizeof(char))) == NULL) zerror("oom z");
+      if ((com.z[j] = (char*)malloc(npatt0 * sizeof(char))) == NULL) zerror("oom z");
    if ((fpatt0 = (double*)malloc(npatt0 * sizeof(double))) == NULL) zerror("oom fp");
    for (h = 0; h < com.npatt; h++)
       fpatt0[h] = com.fpatt[h];

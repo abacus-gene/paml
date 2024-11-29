@@ -1914,7 +1914,7 @@ void printSeqs(FILE* fout, char* z[], char* spnames[], int ns, int ls, int npatt
       This is used by evolver.  Check and merge with printsma().
    */
    int h, i, j, ls1, n31 = (com.seqtype == 1 ? 3 : 1), nskept = ns, wname = 10;
-   char* dt = (com.seqtype == AAseq ? "protein" : "dna");
+   char* dt = (char*)(com.seqtype == AAseq ? "protein" : "dna");
    char* pch = (com.seqtype == 0 ? BASEs : AAs);
 
    ls1 = (format == 1 ? npatt : ls);
@@ -5734,7 +5734,7 @@ int BootstrapSeq(char* seqf)
    int* sites = (int*)malloc(com.ls * sizeof(int)), * gmark = NULL;
    FILE* fseq = (FILE*)zopen(seqf, "w");
    enum { PAML = 0, PAUP };
-   char* datatype = (com.seqtype == AAseq ? "protein" : "dna");
+   char* datatype = (char*)(com.seqtype == AAseq ? "protein" : "dna");
    char* paupstart = "paupstart", * paupblock = "paupblock", * paupend = "paupend";
    int  format = 0;  /* 0: paml-phylip; 1:paup-nexus */
 
@@ -6305,7 +6305,7 @@ int AncestralMarginal(FILE* fout, double x[], double fhsiteAnc[], double Sir[])
     */
    char* pch = (com.seqtype == 0 ? BASEs : (com.seqtype == 2 ? AAs : BINs));
    char* zanc, str[4] = "", codon[2][4] = { "   ","   " }, aa[4] = "";
-   char* sitepatt = (com.readpattern ? "pattern" : "site");
+   char* sitepatt = (char*)(com.readpattern ? "pattern" : "site");
    int n = com.ncode, inode, ic = 0, b[3], i, j, k1 = -1, k2 = -1, k3, lsc = com.ls;
    int lst = (com.readpattern ? com.npatt : com.ls);
    int h, hp, ig, best, oldroot = tree.root;
@@ -9191,7 +9191,7 @@ void copy_to_Sptree(struct SPECIESTREE* stree, struct TREEN* nodes)
 
       stree->nodes[i].age = nodes[i].age;
       stree->nodes[i].fossil = nodes[i].fossil;
-   } nodes[2 * NS - 1];
+   }
 #if(!defined(MCMCTREE))
    for (j = 0; j < stree->nspecies; j++)
       com.spname[j] = NULL;

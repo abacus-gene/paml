@@ -97,7 +97,7 @@ struct CommonInfo {
    int cleandata, ndata;
    int model, clock, fix_kappa, fix_alpha, fix_rgene, Mgene;
    int method, icode, codonf, aaDist, NSsites;
-   double *fpatt, kappa, alpha;
+   double *fpatt, kappa, alpha, checkpointp;
    double rgene[NGENE], piG[NGENE][NCODE];  /* not used */
    double(*plfun)(double x[], int np), freqK[NCATG], rK[NCATG], *conP, *fhK;
    double pi[NCODE];
@@ -110,18 +110,15 @@ struct CommonInfo {
 }  com;
 
 #if(0)
-
 struct NODE { /* ipop is node number in species tree */
    int father, nson, sons[2], ibranch, ipop;
    double branch, age, label, label2, *conP;
    char fossil, *name, *annotation;
 };
-
 struct TREE {
    int  ns, rooted, root;            /* number of tips and root index */
    struct NODE *nodes;
 } tree;
-
 #else
 
 struct TREEB {
@@ -466,7 +463,7 @@ int SaveMCMCstate(char *filename, int ir, double lnpR, double lnL)
    int i,j, s = stree.nspecies, g = data.ngene, g1 = g + (data.rgeneprior == 1);
    double *tmp = (double*)malloc((s*2-1)*sizeof(double));
 
-   printf("\nSaving MCMC state to file %s...\n", filename);
+   printf("\n\t\tSaving MCMC state to %s... ", filename);
    if (f == NULL) zerror("file open error");
    if (tmp == NULL) zerror("oom in SaveMCMCState()");
    fwrite(&ir, sizeof(int), 1, f);
@@ -493,7 +490,7 @@ int SaveMCMCstate(char *filename, int ir, double lnpR, double lnL)
    fwrite(&lnL, sizeof(double), 1, f);
    fclose(f);
    free(tmp);
-   printf("lnpR = %.6f lnL = %.6f\n", lnpR, lnL);
+   printf("iteration %6d: lnpR = %.2f lnL = %.2f\n", ir, lnpR, lnL);
    return(0);
 }
 
@@ -1153,9 +1150,8 @@ int GetOptions(char *ctlf)
    char *optstr[] = { "seed", "seqfile","treefile", "outfile", "mcmcfile", "checkpoint", "BayesFactorBeta",
         "seqtype", "aaRatefile", "icode", "noisy", "usedata", "ndata", "duplication", "model", "clock",
         "TipDate", "RootAge", "fossilerror", "alpha", "ncatG", "cleandata",
-        "BDparas", "kappa_gamma", "alpha_gamma",
-        "rgene_gamma", "sigma2_gamma", "print", "burnin", "sampfreq",
-        "nsample", "finetune" };
+        "BDparas", "kappa_gamma", "alpha_gamma", "rgene_gamma", "sigma2_gamma", 
+        "print", "burnin", "sampfreq", "nsample", "finetune" };
    double t = 1, *eps = mcmc.steplength;
    FILE  *fctl = zopen(ctlf, "r");
 
@@ -1189,7 +1185,7 @@ int GetOptions(char *ctlf)
                case (2): sscanf(pline + 1, "%s", com.treef);   break;
                case (3): sscanf(pline + 1, "%s", com.outf);    break;
                case (4): sscanf(pline + 1, "%s", com.mcmcf);   break;
-               case (5): sscanf(pline + 1, "%d", &com.checkpoint); break;
+               case (5): sscanf(pline + 1, "%d%lf%s", &com.checkpoint, &com.checkpointp, com.checkpointf); break;
                case (6): sscanf(pline + 1, "%lf", &BFbeta);    break; /* beta for marginal likelihood */
                case (7): com.seqtype = (int)t;    break;
                case (8): sscanf(pline + 2, "%s", com.daafile);  break;
@@ -4175,6 +4171,7 @@ int MCMC(FILE* fout)
       ReadMCMCstate(com.checkpointf);
       mcmc.burnin = 0;
       printf("\nInitial parameters, np = %d.\nSptree & Genetrees read from %s.\n", com.np, com.checkpointf);
+      com.checkpoint = 1;
    }
 
    /* calculates prior for times and likelihood for each locus */
@@ -4278,11 +4275,13 @@ int MCMC(FILE* fout)
          testlnL = 0;
          if (mcmc.print) fflush(fmcmc);
          printf(" %s\n", printtime(timestr));
-         if (com.checkpoint == 1 && ir >= 0 && (ir + 1) % (k / 10) == 0) /* save MCMC state */
-            SaveMCMCstate(com.checkpointf, ir, data.lnpR, lnL);
       }
+      
+      /* save MCMC state */
+      if (com.checkpoint == 1 && k > 100 && ir > 0
+         && (ir + 1) % (int)(k * com.checkpointp) == 0)
+         SaveMCMCstate(com.checkpointf, ir, data.lnpR, lnL);
    }  /* for(ir) */
-
 
    if (mcmc.print) fclose(fmcmc);
    

@@ -665,7 +665,7 @@ int PMatTN93(double P[], double a1t, double a2t, double bt, double pi[])
 
 
 int EvolveHKY85(char source[], char target[], int ls, double t,
-   double rates[], double pi[4], double kappa, int isHKY85)
+   double rates[], double pi[], double kappa, int isHKY85)
 {
    /* isHKY85=1 if HKY85,  =0 if F84
       Use NULL for rates if rates are identical among sites.
@@ -1604,7 +1604,7 @@ int rndNp(double x[], int n, int p, double mx[], double vx[], int isvroot)
    double* L, * z, u, v, s;
 
    k = isvroot ? p : p * (1 + p);
-   if ((z = malloc(k * sizeof(double))) == NULL) zerror("error rndNp");
+   if ((z = (double*)malloc(k * sizeof(double))) == NULL) zerror("error rndNp");
 
    if (isvroot)
       L = vx;

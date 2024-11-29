@@ -212,7 +212,7 @@ int main (int argc, char *argv[])
       }
    }
 
-   gnodes = malloc(sizeof(struct TREEN*));
+   gnodes = (struct TREEN**)malloc(sizeof(struct TREEN*));
    for (com.idata = 0; com.idata < com.ndata; com.idata++) {
       if (com.ndata > 1) {
          printf("\nData set %4d\n", com.idata + 1);
