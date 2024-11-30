@@ -158,7 +158,7 @@ int dnamaker(char z[], int ls, double pi[])
    xtoy(pi, p, 4);
    for (i = 1; i < 4; i++) p[i] += p[i - 1];
    if (fabs(p[3] - 1) > smallv)
-      error2("sum pi != 1..");
+      zerror("sum pi != 1..");
    for (i = 0; i < ls; i++) {
       for (j = 0, r = rndu(); j < 4; j++)
          if (r < p[j]) break;
@@ -227,7 +227,7 @@ int PickExtreme(FILE *fout, char *z, int ls, int iring, int lfrag, int *ffrag)
 
    f_mono_di(fout, z, ls, iring, fb1, fb2, p_2);
    if (iring) {
-      error2("change PickExtreme()");
+      zerror("change PickExtreme()");
       for (i = 0; i < lfrag - 1; i++)  z[ls + i] = z[i];
       z[ls + i] = (char)0;
    }
@@ -665,7 +665,7 @@ int PMatTN93(double P[], double a1t, double a2t, double bt, double pi[])
 
 
 int EvolveHKY85(char source[], char target[], int ls, double t,
-   double rates[], double pi[4], double kappa, int isHKY85)
+   double rates[], double pi[], double kappa, int isHKY85)
 {
    /* isHKY85=1 if HKY85,  =0 if F84
       Use NULL for rates if rates are identical among sites.
@@ -683,7 +683,7 @@ int EvolveHKY85(char source[], char target[], int ls, double t,
          PMatTN93(TransP, a1t*r, a2t*r, bt*r, pi);
          for (i = 0; i < n; i++) {
             for (j = 1; j < n; j++) TransP[i*n + j] += TransP[i*n + j - 1];
-            if (fabs(TransP[i*n + n - 1] - 1) > 1e-5) error2("TransP err");
+            if (fabs(TransP[i*n + n - 1] - 1) > 1e-5) zerror("TransP err");
          }
       }
       for (j = 0, i = source[h], r = rndu(); j < n - 1; j++)  if (r < TransP[i*n + j]) break;
@@ -732,7 +732,7 @@ char *getcodon(char codon[], int icodon)
    /* id : (0,63) */
    if (icodon < 0 || icodon>63) {
       printf("\ncodon %d\n", icodon);
-      error2("getcodon.");
+      zerror("getcodon.");
    }
    codon[0] = BASEs[icodon / 16];
    codon[1] = BASEs[(icodon % 16) / 4];
@@ -745,7 +745,7 @@ char *getcodon(char codon[], int icodon)
 char *getAAstr(char *AAstr, int iaa)
 {
    /* iaa (0,20) with 20 meaning termination */
-   if (iaa < 0 || iaa>20) error2("getAAstr: iaa err. \n");
+   if (iaa < 0 || iaa>20) zerror("getAAstr: iaa err. \n");
    strncpy(AAstr, AA3Str + iaa * 3, 3);
    return (AAstr);
 }
@@ -919,7 +919,7 @@ int QtoPi(double Q[], double pi[], int n, double space[])
       space[] is of size n*(n+1).
    */
    int i, j;
-   double *T = space;      /* T[n*(n+1)]  */
+   double *T = space, det;      /* T[n*(n+1)]  */
 
    for (i = 0; i < n + 1; i++) T[i] = 1;
    for (i = 1; i < n; i++) {
@@ -927,7 +927,7 @@ int QtoPi(double Q[], double pi[], int n, double space[])
          T[i*(n + 1) + j] = Q[j*n + i];     /* transpose */
       T[i*(n + 1) + n] = 0.;
    }
-   matinv(T, n, n + 1, pi);
+   matinv(T, n, n + 1, &det, pi);
    for (i = 0; i < n; i++)
       pi[i] = T[i*(n + 1) + n];
    return (0);
@@ -940,7 +940,7 @@ int PtoPi(double P[], double pi[], int n, double space[])
       space[] is of size n*(n+1).
    */
    int i, j;
-   double *T = space;      /* T[n*(n+1)]  */
+   double *T = space, det;      /* T[n*(n+1)]  */
 
    for (i = 0; i < n + 1; i++) T[i] = 1;
    for (i = 1; i < n; i++) {
@@ -948,7 +948,7 @@ int PtoPi(double P[], double pi[], int n, double space[])
          T[i*(n + 1) + j] = P[j*n + i] - (double)(i == j);     /* transpose */
       T[i*(n + 1) + n] = 0;
    }
-   matinv(T, n, n + 1, pi);
+   matinv(T, n, n + 1, &det, pi);
    for (i = 0; i < n; i++) pi[i] = T[i*(n + 1) + n];
    return (0);
 }
@@ -1000,7 +1000,7 @@ int ScanFastaFile(FILE *fin, int *ns, int *ls, int *aligned)
       }
       else if (isgraph(ch)) {
          if (*ns == -1)
-            error2("seq file error: use '>' in fasta format.");
+            zerror("seq file error: use '>' in fasta format.");
          len++;
       }
    }
@@ -1051,11 +1051,11 @@ int printsma(FILE*fout, char*spname[], char*z[], int ns, int l, int lline, int g
          for (h = igroup*lline, lt = 0, igap = 0; lt < lline && h < l; h++, lt++) {
             hp = (pose ? pose[h] : h);
             if (seqtype == CODONseq && transformed) {
-               fprintf(fout, " %s", CODONs[(int)z[i][hp]]);
+               fprintf(fout, " %s", CODONs[(unsigned char)z[i][hp]]);
                continue;
             }
-            b0 = (int)z[0][hp];
-            b = (int)z[i][hp];
+            b0 = (unsigned char)z[0][hp];
+            b = (unsigned char)z[i][hp];
             if (transformed) {
                b0 = pch[b0];
                b = pch[b];
@@ -1119,7 +1119,7 @@ char *strc(int n, int c)
    static char s[256];
    int i;
 
-   if (n > 255) error2("line >255 in strc");
+   if (n > 255) zerror("line >255 in strc");
    for (i = 0; i < n; i++) s[i] = (char)c;
    s[n] = 0;
    return (s);
@@ -1140,12 +1140,12 @@ void strcase(char *str, int direction)
 }
 
 
-FILE *gfopen(char *filename, char *mode)
+FILE* zopen(char* filename, char* mode)
 {
-   FILE *fp;
+   FILE* fp;
 
    if (filename == NULL || filename[0] == 0)
-      error2("file name empty.");
+      zerror("file name empty.");
 
    fp = (FILE*)fopen(filename, mode);
    if (fp == NULL) {
@@ -1160,6 +1160,27 @@ FILE *gfopen(char *filename, char *mode)
    return(fp);
 }
 
+/*
+FILE *gfopen(char *filename, char *mode)
+{
+   FILE *fp;
+
+   if (filename == NULL || filename[0] == 0)
+      zerror("file name empty.");
+
+   fp = (FILE*)fopen(filename, mode);
+   if (fp == NULL) {
+      printf("\nerror when opening file %s\n", filename);
+      if (!strchr(mode, 'r')) exit(-1);
+      printf("tell me the full path-name of the file? ");
+      scanf("%s", filename);
+      if ((fp = (FILE*)fopen(filename, mode)) != NULL)  return(fp);
+      puts("Can't find the file.  I give up.");
+      exit(-1);
+   }
+   return(fp);
+}
+*/
 
 int appendfile(FILE*fout, char*filename)
 {
@@ -1180,12 +1201,15 @@ int appendfile(FILE*fout, char*filename)
 }
 
 
-void error2(char * message)
+void zerror(const char* format, ...)
 {
-   fprintf(stderr, "\nError: %s.\n", message); 
-   exit(-1);
+   va_list argptr;
+   va_start(argptr, format);
+   fprintf(stderr, "\nerror: ");
+   vfprintf(stderr, format, argptr);
+   va_end(argptr);
+   exit(1);
 }
-
 
 int zero(double x[], int n)
 {
@@ -1326,7 +1350,7 @@ int f_and_x(double x[], double f[], int n, int fromf, int LastItem)
    double tot;
 
    if (fromf) {  /* f => x */
-      if ((tot = 1 - sum(f, n - 1)) < 1e-80) error2("f[n-1]==1, not dealt with.");
+      if ((tot = 1 - sum(f, n - 1)) < 1e-80) zerror("f[n-1]==1, not dealt with.");
       tot = 1 / tot;
       for (i = 0; i < n - 1; i++)  x[i] = log(f[i] * tot);
       if (LastItem) x[n - 1] = 0;
@@ -1357,13 +1381,13 @@ void SetSeed(int seed, int PrintSeed)
      z_rndu and w_rndu are of type unsigned int.
    */
    if (sizeof(int) != 4)
-      error2("oh-oh, we are in trouble.  int not 32-bit?  rndu() assumes 32-bit int.");
+      zerror("oh-oh, we are in trouble.  int not 32-bit?  rndu() assumes 32-bit int.");
 
    if (seed <= 0) {
       FILE *frand = fopen("/dev/urandom", "r");
       if (frand) {
          if (fread(&seed, sizeof(int), 1, frand) != 1)
-            error2("failure to read white noise...");
+            zerror("failure to read white noise...");
          fclose(frand);
          seed = abs(seed * 2 - 1);
       }
@@ -1374,7 +1398,7 @@ void SetSeed(int seed, int PrintSeed)
       if (PrintSeed) {
          FILE *fseed;
          fseed = fopen("SeedUsed", "w");
-         if (fseed == NULL) error2("can't open file SeedUsed.");
+         if (fseed == NULL) zerror("can't open file SeedUsed.");
          fprintf(fseed, "%d\n", seed);
          fclose(fseed);
       }
@@ -1580,7 +1604,7 @@ int rndNp(double x[], int n, int p, double mx[], double vx[], int isvroot)
    double* L, * z, u, v, s;
 
    k = isvroot ? p : p * (1 + p);
-   if ((z = malloc(k * sizeof(double))) == NULL) error2("error rndNp");
+   if ((z = (double*)malloc(k * sizeof(double))) == NULL) zerror("error rndNp");
 
    if (isvroot)
       L = vx;
@@ -1683,7 +1707,7 @@ double getRoot(double(*f)(double), double(*df)(double), double initVal)
    } while ((fabs(x - newx) > 1e-10) && nIter < 100);
 
    if (fabs(x - newx) > 1e-10) {
-      error2("root finder didn't converge");
+      zerror("root finder didn't converge");
    }
    return(newx);
 }
@@ -2034,7 +2058,7 @@ int MultiNomial2(int n, int ncat, double prob[], int nobs[], double space[])
       for (i = 1; i < ncat; i++) pcdf[i] += pcdf[i - 1];
    }
    if (fabs(pcdf[ncat - 1] - 1) > smallv)
-      error2("sum P!=1 in MultiNomial2");
+      zerror("sum P!=1 in MultiNomial2");
    if (crude) {
       for (j = 1, lcrude[0] = i = 0; j < ncrude; j++) {
          while (pcdf[i] < (double)j / ncrude) i++;
@@ -2176,27 +2200,29 @@ double PDFloglogistic(double x, double loc, double s)
 
 double PDFlogt2(double x, double loc, double s)
 {
-   double y = (log(x) - loc) / s, pdf;
-   y = 2 + y*y;  y *= y*y;   /* [2 + y*y]^3 */
-   if (y < 1E-300)
-      error2("y==0");
-   pdf = 1 / (sqrt(y)*x*s);
-   return pdf;
+  double y = (log(x) - loc) / s, pdf;
+  y = 2 + y * y;  y *= y * y;   /* [2 + y*y]^3 */
+  if (y < 1E-300)
+    zerror("y==0");
+  pdf = 1 / (sqrt(y) * x * s);
+  return pdf;
 }
 
 double PDFt2(double x, double m, double s)
 {
-   double y = (x - m) / s;
-   y = 2 + y*y;  y *= y*y;   /* [2 + y*y]^3 */
-   if (y < 1e-300)
-      error2("y==0");
-   return 1 / (sqrt(y)*s);
+  double y = (x - m) / s;
+  y = 2 + y * y;  y *= y * y;   /* [2 + y*y]^3 */
+  if (y < 1e-300)
+    zerror("y==0");
+  return 1 / (sqrt(y) * s);
 }
 
 double PDFt4(double x, double m, double s)
 {
-   /* This t4 PDF has mean m and variance s*s.  Note that the standard t4 has variance 2*s*s.
-   */
+/*  This t4 PDF has mean m and variance s*s.
+    Note that the standard t4 has variance 2*s*s, with density
+    pdf = 3 /8.0*pow(1 + z*z/4), -2.5);
+*/
    double z = (x - m) / s, pdf;
 
    pdf = 3 / (4 * 1.414213562*s)*pow(1 + z*z / 2, -2.5);
@@ -2286,7 +2312,7 @@ int StirlingS2(int n, int k)
    if (k == n - 1)
       return n*(n - 1) / 2;
    if (n > 15)
-      error2("n>15 too large in StirlingS2()");
+      zerror("n>15 too large in StirlingS2()");
 
    S[1] = S[2] = 1;  /* start with n = 2 */
    for (i = 3; i <= n; i++) {
@@ -2304,7 +2330,7 @@ double lnStirlingS2(int n, int k)
    int i;
    double lnS = 0, t0, x0, x, A, nk, y;
 
-   if (k > n) error2("k<n in lnStirlingS2");
+   if (k > n) zerror("k<n in lnStirlingS2");
 
    if (n == 0 && k == 0)
       return 0;
@@ -2356,10 +2382,10 @@ double LnGamma(double x)
    else {
       if (x <= 0) {
          printf("LnGamma(%.6f) not implemented", x);
-         if ((int)x - x == 0) error2("LnGamma undefined"); 
+         if ((int)x - x == 0) zerror("LnGamma undefined"); 
          for (fneg = 1; x < 0; x++) fneg /= x;
          if (fneg < 0)
-            error2("strange!! check LnGamma");
+            zerror("strange!! check LnGamma");
          fneg = log(fneg);
       }
       if (x < 7) {
@@ -2385,10 +2411,10 @@ double PDFGamma(double x, double a, double b)
    */
    if (x <= 0 || a <= 0 || b <= 0) {
       printf("x=%.6f a=%.6f b=%.6f", x, a, b);
-      error2("x a b outside range in logPDFGamma()");
+      zerror("x a b outside range in logPDFGamma()");
    }
    if (a > 1000)
-      error2("large alpha in PDFGamma()");
+      zerror("large alpha in PDFGamma()");
    return pow(b * x, a) / x * exp(-b * x - lgamma(a));
 }
 
@@ -2398,7 +2424,7 @@ double logPDFGamma(double x, double a, double b)
    */
    if (x <= 0 || a <= 0 || b <= 0) {
       printf("x=%.6f a=%.6f b=%.6f", x, a, b);
-      error2("x a b outside range in logPDFGamma()");
+      zerror("x a b outside range in logPDFGamma()");
    }
    return a * log(b) - lgamma(a) + (a - 1) * log(x) - b * x;
 }
@@ -2419,10 +2445,10 @@ double PDFinvGamma(double x, double alpha, double beta)
    */
    if (x <= 0 || alpha <= 0 || beta <= 0) {
       printf("x=%.6f a=%.6f b=%.6f", x, alpha, beta);
-      error2("x a b outside range in PDF_IGamma()");
+      zerror("x a b outside range in PDF_IGamma()");
    }
    if (alpha > 100)
-      error2("large alpha in PDF_IGamma()");
+      zerror("large alpha in PDF_IGamma()");
    return pow(beta / x, alpha) / x * exp(-beta / x - lgamma(alpha));
 }
 
@@ -2531,7 +2557,7 @@ l3:
 l4:
    q = ch;   p1 = .5*ch;
    if ((t = IncompleteGamma(p1, xx, g)) < 0)
-      error2("\nIncompleteGamma");
+      zerror("\nIncompleteGamma");
    p2 = p - t;
    t = p2*exp(xx*aa + g + p1 - c*log(ch));
    b = t / ch;  a = 0.5*t - b*c;
@@ -2626,7 +2652,7 @@ int AutodGamma(double M[], double freqK[], double rK[], double *rho1, double alp
    double *point = freqK;
    double x, y, large = 20, v1;
    /*
-      if (fabs(rho)>1-1e-4) error2("rho out of range");
+      if (fabs(rho)>1-1e-4) zerror("rho out of range");
    */
    for (i = 0; i < K - 1; i++)
       point[i] = QuantileNormal((i + 1.0) / K);
@@ -2693,7 +2719,7 @@ double LBinormal(double h, double k, double r)
    h = min2(h0, k0);  k = max2(h0, k0);
    sk = (r >= 0 ? k : -k);
    shk = (r >= 0 ? h*k : -h*k);
-   if (fabs(r) > 1) error2("|r| > 1 in LBinormal");
+   if (fabs(r) > 1) zerror("|r| > 1 in LBinormal");
    GaussLegendreRule(&x, &w, nGL);
 
    if (fabs(r) < 0.925) {  /* equation 3 */
@@ -2777,7 +2803,7 @@ double logLBinormal(double h, double k, double r)
    h = min2(h0, k0);  k = max2(h0, k0);
    sk = signr*k;
    shk = signr*h*k;
-   if (fabs(r) > 1 + smallr) error2("|r| > 1 in LBinormal");
+   if (fabs(r) > 1 + smallr) zerror("|r| > 1 in LBinormal");
    GaussLegendreRule(&x, &w, nGL);
 
    if (fabs(r) < 0.925) {  /* equation 3 */
@@ -2976,7 +3002,7 @@ double probBetaBinomial(int n, int k, double p, double q)
    C3 = Binomial(-a - b, n, &scale3);
    C1 *= C2 / C3;
    if (C1 < 0)
-      error2("error in probBetaBinomial");
+      zerror("error in probBetaBinomial");
    return C1*exp(scale1 + scale2 - scale3);
 }
 
@@ -2997,7 +3023,7 @@ double PDFBeta(double x, double p, double q)
    double y, smallv = 1e-20;
 
    if (x < smallv || x>1 - smallv)
-      error2("bad x in PDFbeta");
+      zerror("bad x in PDFbeta");
 
    y = (p - 1) * log(x) + (q - 1) * log(1 - x);
    y -= lgamma(p) + lgamma(q) - lgamma(p + q);
@@ -3012,7 +3038,7 @@ double logPDFBeta(double x, double p, double q)
    double y, smallv = 1e-20;
 
    if (x < smallv || x>1 - smallv)
-      error2("bad x in logPDFbeta");
+      zerror("bad x in logPDFbeta");
 
    y = (p - 1) * log(x) + (q - 1) * log(1 - x);
    y -= lgamma(p) + lgamma(q) - lgamma(p + q);
@@ -3152,13 +3178,13 @@ double QuantileBeta(double prob, double p, double q, double lnbeta)
    double a, adj, g, h, pp, prev = 0, qq, r, s, t, tx = 0, w, y, yprev;
    double acu, xinbta;
 
-   if (prob < 0 || prob>1 || p < 0 || q < 0) error2("out of range in QuantileBeta");
+   if (prob < 0 || prob>1 || p < 0 || q < 0) zerror("out of range in QuantileBeta");
 
    /* define accuracy and initialize */
    xinbta = prob;
 
    /* test for admissibility of parameters */
-   if (p < 0 || q < 0 || prob < 0 || prob>1)  error2("beta par err");
+   if (p < 0 || q < 0 || prob < 0 || prob>1)  zerror("beta par err");
    if (prob == 0 || prob == 1)
       return prob;
 
@@ -4342,7 +4368,7 @@ int GaussLegendreRule(const double **x, const double **w, int npoints)
    case (1024):
       *x = x1024;  *w = w1024; break;
    default:
-      error2("use 4, 8, 16, 32, 64, 128, 512, 1024 for npoints for legendre.");
+      zerror("use 4, 8, 16, 32, 64, 128, 512, 1024 for npoints for legendre.");
    }
    return(status);
 }
@@ -4359,7 +4385,7 @@ double NIntegrateGaussLegendre(double(*fun)(double x), double a, double b, int n
    double s = 0, t;
 
    if (npoints % 2 != 0)
-      error2("this assumes even number of points.");
+      zerror("this assumes even number of points.");
    GaussLegendreRule(&x, &w, npoints);
 
    /* x changes monotonically from a to b. */
@@ -4577,7 +4603,7 @@ void rainbowRGB(double temperature, int *R, int *G, int *B)
    */
    double T = temperature, maxT = 1;
 
-   if (T > maxT) error2("temperature rescaling needed.");
+   if (T > maxT) zerror("temperature rescaling needed.");
    *R = (int)fabs(-5157.3*T*T*T*T + 9681.4*T*T*T - 5491.9*T*T + 1137.7*T + 6.2168);
    *G = (int)fabs(-1181.4*T*T*T + 964.8*T*T + 203.66*T + 1.2028);
    *B = (int)fabs(92.463*T*T*T - 595.92*T*T + 481.11*T + 21.769);
@@ -4630,7 +4656,7 @@ double Binomial(double n, int k, double *scale)
 
    *scale = 0;
    if ((int)k != k)
-      error2("k is not a whole number in Binomial.");
+      zerror("k is not a whole number in Binomial.");
    if (k == 0) return(1);
    if (n > 0 && (k<0 || k>n)) return (0);
 
@@ -4733,8 +4759,6 @@ int matbytransposed(double a[], double b_transposed[], double c[], int n, int m,
    return (0);
 }
 
-
-
 int matIout(FILE *fout, int x[], int n, int m)
 {
    int i, j;
@@ -4791,27 +4815,31 @@ int mattransp2(double x[], double y[], int n, int m)
    return (0);
 }
 
-int matinv(double x[], int n, int m, double space[])
+int matinv(double x[], int n, int m, double *det, double space[])
 {
-   /* x[n*m]  ... m>=n
-      space[n].  This puts the fabs(|x|) into space[0].  Check and calculate |x|.
-      Det may have the wrong sign.  Check and fix.
-   */
+/* x[n*m]  ... m>=n
+*  This solves the linear system of equations A y = b by placing [A b] in the same matrix 
+*  of n*m.  The same transformation converts A into A^-1, and b into A^-1 b (which are the roots).
+*  The function returns the inverse A^-1 in the square matrix x[n*n], and the roots in the last 
+*  m - n columns.
+*  The determinant |A| is returned in det.  Check that the sign is correct.
+*/
    int i, j, k;
    int *irow = (int*)space;
-   double ee = 1e-100, t, t1, xmax, det = 1;
-
+   double e = 1e-300, t, t1, xmax;
+   
+   *det = 1;
    for (i = 0; i < n; i++) irow[i] = i;
 
    for (i = 0; i < n; i++) {
       xmax = fabs(x[i*m + i]);
-      for (j = i + 1; j < n; j++)
-         if (xmax < fabs(x[j*m + i]))
-         {
-            xmax = fabs(x[j*m + i]); irow[i] = j;
+      for (j = i + 1; j < n; j++) {
+         if (xmax < fabs(x[j * m + i])) {
+            xmax = fabs(x[j * m + i]);  irow[i] = j;
          }
-      det *= x[irow[i] * m + i];
-      if (xmax < ee) {
+      }
+      *det *= x[irow[i] * m + i];
+      if (xmax < e) {
          printf("\nxmax = %.4e close to zero at %3d!\t\n", xmax, i + 1);
          exit(-1);
       }
@@ -4834,13 +4862,13 @@ int matinv(double x[], int n, int m, double space[])
    }                            /* for(i) */
    for (i = n - 1; i >= 0; i--) {
       if (irow[i] == i) continue;
+      *det = -(*det);
       for (j = 0; j < n; j++) {
          t = x[j*m + i];
          x[j*m + i] = x[j*m + irow[i]];
          x[j*m + irow[i]] = t;
       }
    }
-   space[0] = det;
    return(0);
 }
 
@@ -4881,7 +4909,7 @@ int matexp(double A[], int n, int nTaylorTerms, int nSquares, double space[])
    int it, i, j;
    double *T[3], *B, m1, factor = 1;   /*  B = A/2^nSquares  */
 
-   if (nSquares > 31) error2("nSquares too large");
+   if (nSquares > 31) zerror("nSquares too large");
    T[0] = A;
    T[1] = space;
    T[2] = T[1] + n*n;
@@ -4926,7 +4954,7 @@ int matsqrt(double A[], int n, double work[])
    status = EigenTridagQLImplicit(Root, V, n, U);
    mattransp2(U, V, n, n);
    for (i = 0; i < n; i++) {
-      if (Root[i] < 0) error2("negative root in matsqrt?");
+      if (Root[i] < 0) zerror("negative root in matsqrt?");
       else          Root[i] = sqrt(Root[i]);
    }
    for (i = 0; i < n; i++) for (j = 0; j < n; j++)
@@ -5444,7 +5472,7 @@ int scanfile(FILE*fin, int *nrecords, int *nx, int *HasHeader, char line[], int 
          }
          else {
             printf("text found on line %d.", *nrecords + 1);
-            error2("file format");
+            zerror("file format");
          }
       }
       nxline = splitline(line, MAXNFIELDS, ifields);
@@ -5459,10 +5487,10 @@ int scanfile(FILE*fin, int *nrecords, int *nx, int *HasHeader, char line[], int 
          else {
             printf("file format error: %d fields in line %d while %d fields in first line.",
                nxline, *nrecords + 1, *nx);
-            error2("error in scanfile()");
+            zerror("error in scanfile()");
          }
       }
-      if (*nx > MAXNFIELDS) error2("raise MAXNFIELDS?");
+      if (*nx > MAXNFIELDS) zerror("raise MAXNFIELDS?");
 
       (*nrecords)++;
       /* printf("line # %3d:  %3d variables\n", *nrecords+1, nxline); */
@@ -5682,41 +5710,54 @@ int HPDinterval(double x[], int n, double HPD[2], double alpha)
    return(0);
 }
 
-
-double Eff_IntegratedCorrelationTime(double x[], int n, double *mx, double *vx, double *rho1)
+double Eff_IntegratedCorrelationTime(double x[], int n, double* mx, double* vx, double* rho1)
 {
    /* This calculates Efficiency or Tint using Geyer's (1992) initial positive
       sequence method.
       Note that this destroys x[].
    */
-   double Tint = 1, rho0 = 0, rho, m = 0, s = 0;
-   int  i, ir, minNr = 10, maxNr = 2000;
+   double Tint = -1, rho0 = 1, rho, m = 0, s = 0;
+   int i, k, minNr = 10, maxNr = 2000;
+
 
    /* if(n<1000) puts("chain too short for calculating Eff? "); */
-   for (i = 0; i < n; i++) m += x[i];
+   for (i = 0; i < n; i++)
+      m += x[i];
    m /= n;
-   for (i = 0; i < n; i++) x[i] -= m;
-   for (i = 0; i < n; i++) s += x[i] * x[i];
+   for (i = 0; i < n; i++)
+      x[i] -= m;
+   for (i = 0; i < n; i++)
+      s += x[i] * x[i];
    s = sqrt(s / n);
-   for (i = 0; i < n; i++) x[i] /= s;
+   for (i = 0; i < n; i++)
+      x[i] /= s;
 
-   if (mx) { *mx = m; *vx = s*s; }
+   if (mx) {
+      *mx = m;
+      *vx = s * s;
+   }
    if (s / (fabs(m) + 1) < 1E-9)
       Tint = n;
    else {
-      for (ir = 1; ir < min2(maxNr, n - minNr); ir++) {
-         for (i = 0, rho = 0; i < n - ir; i++)
-            rho += x[i] * x[i + ir];
-         rho /= (n - ir);
-         if (ir == 1) *rho1 = rho;
-         if (ir > minNr && rho + rho0 < 0) break;
-         Tint += rho * 2;
+      for (k = 1; k < min2(maxNr, n - minNr); k++) {
+         for (i = 0, rho = 0; i < n - k; i++)
+            rho += x[i] * x[i + k];
+         rho /= (n - k);
+         if (k == 1)
+            *rho1 = rho;
+         if (k % 2 == 1) {
+            if (k > minNr && rho0 + rho < 0)
+               break;
+            else {
+               Tint += (rho0 + rho) * 2;
+            }
+         }
          rho0 = rho;
       }
    }
+
    return (1 / Tint);
 }
-
 
 double Eff_IntegratedCorrelationTime2 (double x[], int n, int nbatch, double *mx, double *vx)
 {
@@ -5750,110 +5791,110 @@ double Eff_IntegratedCorrelationTime2 (double x[], int n, int nbatch, double *mx
 }
 
 
-int DescriptiveStatistics(FILE *fout, char infile[], int nbin, int propternary, int SkipColumns)
+int DescriptiveStatistics(FILE* fout, char infile[], int nbin, int propternary, int SkipColumns)
 {
-   /* This routine reads n records (observations) each of p continuous variables,
-      to calculate summary statistics.  It also uses kernel density estimation to
-      smooth the histogram for each variable, as well as calculating 2-D densities
-      for selected variable pairs.  The smoothing used the kerney estimator, with
-      both fixed window size and adaptive kernel smoothing using variable bandwiths.
-      The kernel function is Epanechnikov.  For 2-D smoothing, Fukunaga's transform is used
-      (p.77 in B.W. Silverman 1986).
-   */
-   FILE *fin = gfopen(infile, "r");
-   int  n, p, i, j, k, jj, kk;
-   char *fmt = " %9.6f", *fmt1 = " %9.1f", timestr[32];
-   double *data, *x, *mean, *median, *minx, *maxx, *x005, *x995, *x025, *x975, *xHPD025, *xHPD975, *var;
-   double *Tint, tmp[2], d, rho1;
-   double h, *y, *gap, *space, v2d[4];
-   int nf2d = 0, ivar_f2d[MAXNF2D][2] = { {5,6},{0,2} }, k2d;
+  /* This routine reads n records (observations) each of p continuous variables,
+     to calculate summary statistics.  It also uses kernel density estimation to
+     smooth the histogram for each variable, as well as calculating 2-D densities
+     for selected variable pairs.  The smoothing used the kerney estimator, with
+     both fixed window size and adaptive kernel smoothing using variable bandwiths.
+     The kernel function is Epanechnikov.  For 2-D smoothing, Fukunaga's transform is used
+     (p.77 in B.W. Silverman 1986).
+  */
+  FILE* fin = zopen(infile, "r");
+  int  n, p, i, j, k, jj, kk;
+  char* fmt = " %9.6f", * fmt1 = " %9.1f", timestr[32];
+  double* data, * x, * mean, * median, * minx, * maxx, * x005, * x995, * x025, * x975, * xHPD025, * xHPD975, * var;
+  double* rho1, * Tint, tmp[2], d;
+  double h, * y, * gap, * space, v2d[4];
+  int nf2d = 0, ivar_f2d[MAXNF2D][2] = { {5,6},{0,2} }, k2d;
 
-   static int  lline = 1000000, ifields[MAXNFIELDS], HasHeader = 1;
-   char *line;
-   static char varstr[MAXNFIELDS][32] = { "" };
+  static int  lline = 1000000, ifields[MAXNFIELDS], HasHeader = 1;
+  char* line;
+  static char varstr[MAXNFIELDS][32] = { "" };
 
-   if ((line = (char*)malloc(lline * sizeof(char))) == NULL) error2("oom ds");
-   scanfile(fin, &n, &p, &HasHeader, line, ifields);
-   printf("\n%d records, %d variables\n", n, p);
-   data = (double*)malloc(p*n * sizeof(double));
-   mean = (double*)malloc((p * 13 + p*p + n) * sizeof(double));
-   if (data == NULL || mean == NULL) error2("oom DescriptiveStatistics.");
-   memset(data, 0, p*n * sizeof(double));
-   memset(mean, 0, (p * 13 + p*p + n) * sizeof(double));
-   median = mean + p; minx = median + p; maxx = minx + p;
-   x005 = maxx + p; x995 = x005 + p; x025 = x995 + p; x975 = x025 + p; xHPD025 = x975 + p; xHPD975 = xHPD025 + p;
-   var = xHPD975 + p;  gap = var + p*p, Tint = gap + p;  y = Tint + p;
+  if ((line = (char*)malloc(lline * sizeof(char))) == NULL) zerror("oom ds");
+  scanfile(fin, &n, &p, &HasHeader, line, ifields);
+  printf("\n%d records, %d variables\n", n, p);
+  data = (double*)malloc(p * n * sizeof(double));
+  mean = (double*)malloc((p * 14 + p * p + n) * sizeof(double));
+  if (data == NULL || mean == NULL) zerror("oom DescriptiveStatistics.");
+  memset(data, 0, p * n * sizeof(double));
+  memset(mean, 0, (p * 14 + p * p + n) * sizeof(double));
+  median = mean + p; minx = median + p; maxx = minx + p;
+  x005 = maxx + p; x995 = x005 + p; x025 = x995 + p; x975 = x025 + p; xHPD025 = x975 + p; xHPD975 = xHPD025 + p;
+  var = xHPD975 + p;  gap = var + p * p, rho1 = gap + p;  Tint = rho1 + p;  y = Tint + p;
 
-   space = (double*)malloc((n + nbin*nbin * 3) * sizeof(double));
-   if (space == NULL) { printf("not enough mem for %d variables\n", n); exit(-1); }
+  space = (double*)malloc((n + nbin * nbin * 3) * sizeof(double));
+  if (space == NULL) { printf("not enough mem for %d variables\n", n); exit(-1); }
 
-   if (HasHeader)
-      for (i = 0; i < p; i++) sscanf(line + ifields[i], "%s", varstr[i]);
-   for (i = 0; i < n; i++)
-      for (j = 0; j < p; j++)
-         fscanf(fin, "%lf", &data[j*n + i]);
-   fclose(fin);
-/*
-   if(p>1) {
-      printf("\nGreat offer!  I can smooth a few 2-D densities for free.  How many do you want? ");
-      scanf("%d", &nf2d);
-   }
-*/   
-   if (nf2d > MAXNF2D) error2("I don't want to do that many!");
-   for (i = 0; i < nf2d; i++) {
-      printf("pair #%d (e.g., type  1 3  to use variables #1 and #3)? ", i + 1);
-      scanf("%d%d", &ivar_f2d[i][0], &ivar_f2d[i][1]);
-      ivar_f2d[i][0]--;
-      ivar_f2d[i][1]--;
-   }
+  if (HasHeader)
+    for (i = 0; i < p; i++) sscanf(line + ifields[i], "%s", varstr[i]);
+  for (i = 0; i < n; i++)
+    for (j = 0; j < p; j++)
+      fscanf(fin, "%lf", &data[j * n + i]);
+  fclose(fin);
+  /*
+     if(p>1) {
+        printf("\nGreat offer!  I can smooth a few 2-D densities for free.  How many do you want? ");
+        scanf("%d", &nf2d);
+     }
+  */
+  if (nf2d > MAXNF2D) zerror("I don't want to do that many!");
+  for (i = 0; i < nf2d; i++) {
+    printf("pair #%d (e.g., type  1 3  to use variables #1 and #3)? ", i + 1);
+    scanf("%d%d", &ivar_f2d[i][0], &ivar_f2d[i][1]);
+    ivar_f2d[i][0]--;
+    ivar_f2d[i][1]--;
+  }
 
-   printf("Collecting mean, median, min, max, percentiles, etc.\n");
-   for (j = SkipColumns, x = data + j*n; j < p; j++, x += n) {
-      memmove(y, x, n * sizeof(double));
-      Tint[j] = 1 / Eff_IntegratedCorrelationTime(y, n, &mean[j], &var[j], &rho1);
-      memmove(y, x, n * sizeof(double));
-      qsort(y, (size_t)n, sizeof(double), comparedouble);
-      minx[j] = y[0];  maxx[j] = y[n - 1];
-      median[j] = (n % 2 == 0 ? (y[n/2 - 1] + y[n/2]) / 2 : y[n/2]);
-      x005[j] = y[(int)(n*.005)];    x995[j] = y[(int)(n*.995)];
-      x025[j] = y[(int)(n*.025)];    x975[j] = y[(int)(n*.975)];
+  printf("Collecting mean, median, min, max, percentiles, etc.\n");
+  for (j = SkipColumns, x = data + j * n; j < p; j++, x += n) {
+    memmove(y, x, n * sizeof(double));
+    Tint[j] = 1 / Eff_IntegratedCorrelationTime(y, n, &mean[j], &var[j], &rho1[j]);
+    memmove(y, x, n * sizeof(double));
+    qsort(y, (size_t)n, sizeof(double), comparedouble);
+    minx[j] = y[0];  maxx[j] = y[n - 1];
+    median[j] = (n % 2 == 0 ? (y[n / 2 - 1] + y[n / 2]) / 2 : y[n / 2]);
+    x005[j] = y[(int)(n * .005)];    x995[j] = y[(int)(n * .995)];
+    x025[j] = y[(int)(n * .025)];    x975[j] = y[(int)(n * .975)];
 
-      HPDinterval(y, n, tmp, 0.05);
-      xHPD025[j] = tmp[0];
-      xHPD975[j] = tmp[1];
-      if ((j + 1) % 2 == 0 || j == p - 1)
-         printf("\r\t\t%6d/%6d done  %s", j + 1, p, printtime(timestr));
-   }
+    HPDinterval(y, n, tmp, 0.05);
+    xHPD025[j] = tmp[0];
+    xHPD975[j] = tmp[1];
+    if ((j + 1) % 2 == 0 || j == p - 1)
+      printf("\r\t\t%6d/%6d done  %s", j + 1, p, printtime(timestr));
+  }
 
-   /* variance-covariance matrix */
-   zero(var, p*p);
-   for (j = SkipColumns; j < p; j++)
-      for (k = SkipColumns; k <= j; k++)
-         for (i = 0; i < n; i++)
-            var[j*p + k] += (data[j*n + i] - mean[j]) * (data[k*n + i] - mean[k]);
-   for (j = SkipColumns; j < p; j++)
-      for (k = SkipColumns, var[j*p + j] /= (n - 1.0); k < j; k++)
-         var[k*p + j] = var[j*p + k] /= (n - 1.0);
+  /* variance-covariance matrix */
+  zero(var, p * p);
+  for (j = SkipColumns; j < p; j++)
+    for (k = SkipColumns; k <= j; k++)
+      for (i = 0; i < n; i++)
+        var[j * p + k] += (data[j * n + i] - mean[j]) * (data[k * n + i] - mean[k]);
+  for (j = SkipColumns; j < p; j++)
+    for (k = SkipColumns, var[j * p + j] /= (n - 1.0); k < j; k++)
+      var[k * p + j] = var[j * p + k] /= (n - 1.0);
 
-   fprintf(fout, "\n(A) Descriptive statistics\n\n       ");
-   for (j = SkipColumns; j < p; j++) fprintf(fout, "   %s", varstr[j]);
-   fprintf(fout, "\nmean    ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, mean[j]);
-   fprintf(fout, "\nmedian  ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, median[j]);
-   fprintf(fout, "\nS.D.    ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, sqrt(var[j*p + j]));
-   fprintf(fout, "\nmin     ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, minx[j]);
-   fprintf(fout, "\nmax     ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, maxx[j]);
-   fprintf(fout, "\n2.5%%    "); for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, x025[j]);
-   fprintf(fout, "\n97.5%%   "); for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, x975[j]);
-   fprintf(fout, "\n2.5%%HPD "); for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, xHPD025[j]);
-   fprintf(fout, "\n97.5%%HPD"); for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, xHPD975[j]);
-   fprintf(fout, "\nESS*    ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt1, n / Tint[j]);
-   fprintf(fout, "\nEff*    ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, 1 / Tint[j]);
+  fprintf(fout, "\n(A) Descriptive statistics\n\n       ");
+  for (j = SkipColumns; j < p; j++) fprintf(fout, "   %s", varstr[j]);
+  fprintf(fout, "\nmean    ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, mean[j]);
+  fprintf(fout, "\nmedian  ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, median[j]);
+  fprintf(fout, "\nS.D.    ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, sqrt(var[j * p + j]));
+  fprintf(fout, "\nmin     ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, minx[j]);
+  fprintf(fout, "\nmax     ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, maxx[j]);
+  fprintf(fout, "\n2.5%%    "); for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, x025[j]);
+  fprintf(fout, "\n97.5%%   "); for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, x975[j]);
+  fprintf(fout, "\n2.5%%HPD "); for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, xHPD025[j]);
+  fprintf(fout, "\n97.5%%HPD"); for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, xHPD975[j]);
+  fprintf(fout, "\nrho1    "); for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, rho1[j]);
+  fprintf(fout, "\nESS*    ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt1, n / Tint[j]);
+  fprintf(fout, "\nEff*    ");  for (j = SkipColumns; j < p; j++) fprintf(fout, fmt, 1 / Tint[j]);
 
-   fprintf(fout, "\n\n");
-   fflush(fout);
+  fprintf(fout, "\n\n");
+  fflush(fout);
 
-   //return(0);
-
+  //return(0);
    fprintf(fout, "\nCorrelation matrix");
    for (j = SkipColumns; j < p; j++) {
       fprintf(fout, "\n%-8s ", varstr[j]);
@@ -6032,10 +6073,10 @@ int nls2(FILE *fout, double *sx, double * x0, int nx,
    double s0 = 0.0, s = 0.0, t;
    double v = 0.0, vmax = 1.0 / e, bigger = 2.5, smaller = 0.75;
    /* v : Marguardt factor, suggested factors in SSL II (1.5,0.5)  */
-   double *x, *g, *p, *C, *J, *y, *space, *space_J;
+   double *x, *g, *p, *C, *J, *y, *space, *space_J, det;
 
    sspace = (n*(n + 4 + ny) + ny + 2 * (n + ny)) * sizeof(double);
-   if ((space = (double*)malloc(sspace)) == NULL) error2("oom in nls2");
+   if ((space = (double*)malloc(sspace)) == NULL) zerror("oom in nls2");
    zero(space, n*(n + 4 + ny) + ny);
    x = space;  g = x + n;  p = g + n;  C = p + n;  J = C + n*(n + 1);  y = J + ny*n; space_J = y + ny;
 
@@ -6064,7 +6105,7 @@ int nls2(FILE *fout, double *sx, double * x0, int nx,
          C[i*(n + 1) + i] += v*v;
       }
 
-      if (matinv(C, n, n + 1, y + ny) == -1) {
+      if (matinv(C, n, n + 1, &det, y + ny) == -1) {
          v *= bigger;
          continue;
       }
@@ -6146,7 +6187,7 @@ double LineSearch(double(*fun)(double x), double *f, double *x0, double xb[2], d
    if (step <= 0) return(*x0);
    a0 = a1 = a2 = a3 = f0 = f1 = f2 = f3 = -1;
    if (*x0<xb[0] || *x0>xb[1])
-      error2("err LineSearch: x0 out of range");
+      zerror("err LineSearch: x0 out of range");
    f2 = f0 = fun(a2 = a0 = *x0);
    step1 = min2(step, (a0 - xb[0]) / 4);
    step1 = max2(step1, e);
@@ -6468,7 +6509,7 @@ int Newton(FILE *fout, double *f, double(*fun)(double x[], int n),
    double x0[], double space[], double e, int n)
 {
    int i, j, maxround = 500;
-   double f0 = 1e40, smallv = 1e-10, h, SIZEp, t, *H, *x, *g, *p, *tv;
+   double f0 = 1e40, smallv = 1e-10, h, SIZEp, t, *H, *x, *g, *p, *tv, det;
 
    H = space, x = H + n*n;   g = x + n;   p = g + n, tv = p + n;
 
@@ -6476,7 +6517,7 @@ int Newton(FILE *fout, double *f, double(*fun)(double x[], int n),
    for (i = 0; i < n; i++) printf("%8.4f", x0[i]);
    printf("\n");
    if (fout) fprintf(fout, "\n\nNewton\tnp:%6d\n", n);
-   if (testx(x0, n)) error2("Newton..invalid initials.");
+   if (testx(x0, n)) zerror("Newton..invalid initials.");
    for (Iround = 0; Iround < maxround; Iround++) {
       if (ddfun)
          (*ddfun) (x0, f, g, H, n);
@@ -6484,7 +6525,7 @@ int Newton(FILE *fout, double *f, double(*fun)(double x[], int n),
          *f = (*fun)(x0, n);
          Hessian(n, x0, *f, g, H, fun, tv);
       }
-      matinv(H, n, n, tv);
+      matinv(H, n, n, &det, tv);
       for (i = 0; i < n; i++) for (j = 0, p[i] = 0; j < n; j++)
         p[i] -= H[i * n + j] * g[j];
 

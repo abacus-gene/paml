@@ -106,10 +106,10 @@ int main(int argc, char* argv[])
    GetOptions(ctlf);
    finitials = fopen("in.basemlg", "r");
 
-   if ((fout = fopen(com.outf, "w")) == NULL) error2("outfile creation err.");
-   if ((fseq = fopen(com.seqf, "r")) == NULL)  error2("No sequence file!");
+   if ((fout = fopen(com.outf, "w")) == NULL) zerror("outfile creation err.");
+   if ((fseq = fopen(com.seqf, "r")) == NULL)  zerror("No sequence file!");
    ReadSeq(NULL, fseq, com.cleandata, 0, 0);
-   if ((fpair[0] = (FILE*)fopen(pairfs[0], "w")) == NULL) error2("2base.t file open error");
+   if ((fpair[0] = (FILE*)fopen(pairfs[0], "w")) == NULL) zerror("2base.t file open error");
 
    fprintf(fout, "BASEMLG %15s %8s + Gamma", com.seqf, models[com.model]);
    if (com.clock) fprintf(fout, ", Clock");
@@ -119,7 +119,7 @@ int main(int argc, char* argv[])
 
    SeqDistance = (double*)malloc(com.ns * (com.ns - 1) / 2 * sizeof(double));
    ancestor = (int*)malloc(com.ns * (com.ns - 1) / 2 * sizeof(int));
-   if (SeqDistance == NULL || ancestor == NULL) error2("oom");
+   if (SeqDistance == NULL || ancestor == NULL) zerror("oom");
 
    InitializeBaseAA(fout);
    if (com.model == JC69) {
@@ -142,10 +142,10 @@ int Forestry(FILE* fout, double space[])
 {
    int i, j, itree, ntree, np;
    int pauptree = 0, haslength, iteration = 1;
-   double x[NP], xb[NP][2], lnL[NTREE] = { 0 }, e = 1e-6, * var = space + NP;
+   double x[NP], xb[NP][2], lnL[NTREE] = { 0 }, e = 1e-6, * var = space + NP, det;
    FILE* ftree;
 
-   if ((ftree = fopen(com.treef, "r")) == NULL)   error2("treefile err.");
+   if ((ftree = fopen(com.treef, "r")) == NULL)   zerror("treefile err.");
    GetTreeFileType(ftree, &ntree, &pauptree, 0);
 
    fprintf(flfh, "%6d%6d%6d\n", ntree, com.ls, com.npatt);
@@ -198,7 +198,7 @@ int Forestry(FILE* fout, double space[])
             i = ming2(frub, &lnL[itree], lfunG,
                ((com.clock || com.model > HKY85) ? NULL : lfunG_d), x, xb, space, e, np);
             Hessian(np, x, lnL[itree], space, var, lfunG, var + np * np);
-            matinv(var, np, np, var + np * np);
+            matinv(var, np, np, &det, var + np * np);
          }
          else
             i = Newton(frub, &lnL[itree], lfunG, lfunG_dd, testx, x, var, e, np);
@@ -399,7 +399,7 @@ int GetMem(int nbranch, int nR, int nitem)
    printf("\nMemory required: %6.0fK bytes\n", memsize / 1024);
    if (nm * nitem * sizeof(double) <= 0 ||
       (com.conP = (double*)realloc(com.conP, nm * nitem * sizeof(double))) == NULL)
-      error2("out of memory");
+      zerror("out of memory");
 
    com.ErSave = com.conP;
    if (nitem > 1) com.SSave = com.ErSave + nm;
@@ -459,7 +459,7 @@ int RhoRate(double x[])
    double lnL, fh, sumfh = 0, rh, Bmx, alpha, kappa;
    double mrh = 0, mrh0 = 0, vrh = 0, vrh0 = 0;
 
-   if (com.ngene > 1) error2("ngene>1");
+   if (com.ngene > 1) zerror("ngene>1");
    alpha = (com.fix_alpha ? com.alpha : x[com.np - 1]);
    kappa = (com.fix_kappa ? com.kappa : x[com.ntime]);
 
@@ -523,7 +523,7 @@ int lfunG_print(double x[], int np)
 
    fputs("\nEstimation of rates for sites by BASEMLG.\n", frate);
 
-   if ((rates = (double*)malloc(com.npatt * 2 * sizeof(double))) == NULL) error2("oom");
+   if ((rates = (double*)malloc(com.npatt * 2 * sizeof(double))) == NULL) zerror("oom");
    fhs = rates + com.npatt;
 
    for (i = 0; i < com.nrgene; i++)
@@ -631,7 +631,7 @@ int lfunG_d(double x[], double* lnL, double dl[], int np)
    double drk1[4], c = 1;
    double* p = com.pi, T = p[0], C = p[1], A = p[2], G = p[3], Y = T + C, R = A + G;
 
-   if (com.clock || com.model > HKY85) error2("err lfunG_d");
+   if (com.clock || com.model > HKY85) zerror("err lfunG_d");
    NFunCall++;
    for (i = 0; i < com.nrgene; i++)
       com.rgene[i + 1] = x[com.ntime + i];
@@ -692,7 +692,7 @@ int lfunG_dd(double x[], double* lnL, double dl[], double ddl[], int np)
    double T = com.pi[0], C = com.pi[1], A = com.pi[2], G = com.pi[3], Y = T + C, R = A + G;
 
 
-   if (com.clock || com.model > HKY85) error2("err lfunG_dd");
+   if (com.clock || com.model > HKY85) zerror("err lfunG_dd");
    NFunCall++;
    for (i = 0; i < com.nrgene; i++)
       com.rgene[i + 1] = x[com.ntime + i];
@@ -808,7 +808,7 @@ int GetOptions(char* ctlf)
             else if (strchr(comment, line[i])) break;
          if (t == 0) continue;
          sscanf(line, "%s%*s%lf", opt, &t);
-         if ((pline = strstr(line, "=")) == NULL) error2("option file.");
+         if ((pline = strstr(line, "=")) == NULL) zerror("option file.");
 
          for (i = 0; i < nopt; i++) {
             if (strncmp(opt, optstr[i], 8) == 0) {
@@ -856,12 +856,12 @@ int GetOptions(char* ctlf)
    else
       if (noisy) printf("\nno ctl file..");
 
-   if (com.runmode)  error2("runmode!=0 for BASEMLG?");
-   if (com.model != F84 && com.kappa <= 0)  error2("init kappa..");
-   if (com.alpha <= 0) error2("init alpha..");
+   if (com.runmode)  zerror("runmode!=0 for BASEMLG?");
+   if (com.model != F84 && com.kappa <= 0)  zerror("init kappa..");
+   if (com.alpha <= 0) zerror("init alpha..");
    if (com.alpha == 0 || com.Malpha || com.rho > 0 || com.nhomo > 0 || com.nparK > 0
       || com.model > HKY85)
-      error2("\noptions in file baseml.ctl inappropriate.. giving up..");
+      zerror("\noptions in file baseml.ctl inappropriate.. giving up..");
    if (com.model == JC69 || com.model == F81) { com.fix_kappa = 1; com.kappa = 1; }
    if (com.cleandata == 0) {
       puts("cleandata set to 1, with ambiguity data removed. ");

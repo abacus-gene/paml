@@ -281,15 +281,15 @@ int main(int argc, char *argv[])
    com.getSE = 0;       com.print = 0;    com.verbose = 1;  com.fix_blength = 0;
    com.method = 0;      com.space = NULL;
 
-   frub = gfopen("rub", "w");
-   frst = gfopen("rst", "w");
-   frst1 = gfopen("rst1", "w");
+   frub = zopen("rub", "w");
+   frst = zopen("rst", "w");
+   frst1 = zopen("rst1", "w");
 
    /*
    mergeSeqs(frst);  exit(0);
    Ina();
    */
-   SetSeed(1, 0);
+   SetSeed(-1, 0);
 
 #if (DSDN_MC || DSDN_MC_SITES)
    SimulateData2s61();
@@ -312,7 +312,7 @@ int main(int argc, char *argv[])
 
    printf("%s in %s\n", seqtypestr[com.seqtype - 1], pamlVerStr);
 
-   fout = gfopen(com.outf, "w");
+   fout = zopen(com.outf, "w");
 
    if (noisy && (com.seqtype == CODONseq || com.model == FromCodon0 || com.model == FromCodon)) {
       printcu(F0, NULL, com.icode); puts("Nice code, uuh?");
@@ -336,7 +336,7 @@ int main(int argc, char *argv[])
       printf("\n\nSequence file %s not found!\n", com.seqf);
       exit(-1);
    }
-   if ((ftree = fopen(com.treef, "r")) == NULL) {
+   if (com.runmode != -2 && (ftree = fopen(com.treef, "r")) == NULL) {
       printf("\ntree file %s not found.\n", com.treef);
       exit(-1);
    }
@@ -361,14 +361,14 @@ int main(int argc, char *argv[])
 
    if (com.seqtype == 1) {
       for (i = 0; i < 3; i++)
-         fpair[i] = (FILE*)gfopen(pairfs[i], "w");
+         fpair[i] = (FILE*)zopen(pairfs[i], "w");
       if (com.runmode == -2 || com.runmode == -3)
-         for (; i < 6; i++) fpair[i] = (FILE*)gfopen(pairfs[i], "w");
+         for (; i < 6; i++) fpair[i] = (FILE*)zopen(pairfs[i], "w");
    }
    else if (com.runmode == -2)
-      fpair[0] = (FILE*)gfopen("2AA.t", "w");
+      fpair[0] = (FILE*)zopen("2AA.t", "w");
    
-   gnodes = malloc(sizeof(struct TREEN*));
+   gnodes = (struct TREEN**)malloc(sizeof(struct TREEN*));
    for (com.idata = 0; com.idata < com.ndata; com.idata++) {
       if (com.ndata > 1) {
          printf("\nDataset %2d ", com.idata + 1);
@@ -379,10 +379,9 @@ int main(int argc, char *argv[])
       }
 
       if (nnsmodels > 1) {
-         if (com.seqtype != 1) error2("batch run of site models requires codon seqs.");
-         if (com.fix_omega) error2("fix omega during batch run?");
-         if (com.model) error2("only NSsites models are available in the batch run.");
-         if (com.runmode) error2("runmode?");
+         if (com.seqtype != 1) zerror("batch run of site models requires codon seqs.");
+         if (com.fix_omega) zerror("fix omega during batch run?");
+         if (com.model) zerror("only NSsites models are available in the batch run.");
 
          /* for allocating memory com.fhK[] */
          com.NSsites = NSbetaw;  com.ncatG = ncatG0 + 1;
@@ -396,11 +395,11 @@ int main(int argc, char *argv[])
       /* ReadSeq may change seqtype*/
       ReadSeq((com.verbose ? fout : NULL), fseq, com.cleandata, 0, 0);
       if (com.ngene > 1 && (com.fix_blength == 2 || com.fix_blength == 3))
-         error2("fix_blength = 2 or 3 does not work for partitioned data or Mgene models");
+         zerror("fix_blength = 2 or 3 does not work for partitioned data or Mgene models");
       if (com.fix_blength == 3) {
          printf("\nRelative branch lengths in tree fixed; estimating a scale factor.\n");
          if ((com.blengths0 = (double*)malloc((com.ns * (size_t)2 - 2) * sizeof(double))) == NULL)
-            error2("oom blengths0");
+            zerror("oom blengths0");
       }
 
       SetMapAmbiguity(com.seqtype, 0);
@@ -411,13 +410,13 @@ int main(int argc, char *argv[])
          com.Mgene = 0;
       if (com.ngene > 1) {
          if (com.seqtype == 1 && com.npi)
-            error2("codon models (estFreq) not implemented for ngene > 1");
-         if (com.runmode == -2 && com.Mgene != 1) error2("use Mgene=1 for runmode=-2?");
-         if (com.runmode == -3 && com.Mgene != 1) error2("use Mgene=1 for runmode=-3?");
-         if (com.model) error2("NSbranchsites with ngene.");
-         if (com.NSsites) error2("NSsites with ngene.");
+            zerror("codon models (estFreq) not implemented for ngene > 1");
+         if (com.runmode == -2 && com.Mgene != 1) zerror("use Mgene=1 for runmode=-2?");
+         if (com.runmode == -3 && com.Mgene != 1) zerror("use Mgene=1 for runmode=-3?");
+         if (com.model) zerror("NSbranchsites with ngene.");
+         if (com.NSsites) zerror("NSsites with ngene.");
          if (com.aaDist >= FIT1) { /* because of pcodon0[] */
-            error2("ngene for amino acid fitness models");
+            zerror("ngene for amino acid fitness models");
          }
       }
 
@@ -426,7 +425,7 @@ int main(int argc, char *argv[])
       /* number of sequences in alignment may be smaller than number of species in main tree. */
       k = (com.ns * 2 - 1) * sizeof(struct TREEN);
       if ((nodes = (struct TREEN*)malloc(k)) == NULL)
-         error2("oom nodes");
+         zerror("oom nodes");
       gnodes[0] = nodes;
 
       pmodel = (com.seqtype == CODONseq ? NSbranchmodels[com.model] : aamodels[com.model]);
@@ -449,11 +448,11 @@ int main(int argc, char *argv[])
       else                 com.nalpha = (com.nalpha ? com.ngene : !com.fix_alpha);
       if (com.Mgene == 1)  com.nalpha = !com.fix_alpha;
       if (com.nalpha > 1 && (!com.alpha || com.ngene == 1 || com.fix_alpha))
-         error2("Malpha");
-      if (com.nalpha > 1 && com.rho) error2("Malpha or rho");
+         zerror("Malpha");
+      if (com.nalpha > 1 && com.rho) zerror("Malpha or rho");
       if (com.nalpha > 1) fprintf(fout, "(%d gamma)", com.nalpha);
 
-      if (com.Mgene && com.ngene == 1) error2("Mgene for one gene.");
+      if (com.Mgene && com.ngene == 1) zerror("Mgene for one gene.");
       if (com.seqtype == CODONseq) {
          fprintf(fout, "\nCodon frequency model: %s\n", codonfreqs[com.codonf]);
          if (com.alpha)
@@ -480,7 +479,7 @@ int main(int argc, char *argv[])
          k = com.ns*(com.ns - 1) / 2;
          SeqDistance = (double*)realloc(SeqDistance, k * sizeof(double));
          ancestor = (int*)realloc(ancestor, k * sizeof(int));
-         if (SeqDistance == NULL || ancestor == NULL) error2("oom distance&ancestor");
+         if (SeqDistance == NULL || ancestor == NULL) zerror("oom distance&ancestor");
          for (i = 0; i < k; i++) SeqDistance[i] = -1;
       }
 
@@ -491,7 +490,7 @@ int main(int argc, char *argv[])
       }
       if ((com.space = (double*)realloc(com.space, com.sspace)) == NULL) {
          printf("\nfailed to get %9zu bytes for space", com.sspace);
-         error2("oom space");
+         zerror("oom space");
       }
 
       if (com.seqtype == AAseq) {
@@ -507,10 +506,10 @@ int main(int argc, char *argv[])
          if (com.sspace < max2(com.ngene + 1, com.ns)*(64 + 12 + 4) * sizeof(double)) {
             com.sspace = max2(com.ngene + 1, com.ns)*(64 + 12 + 4) * sizeof(double);
             if ((com.space = (double*)realloc(com.space, com.sspace)) == NULL)
-               error2("oom space for #c");
+               zerror("oom space for #c");
          }
          if (InitializeCodon(fout, com.space))
-            error2("giving up on stop codons");
+            zerror("giving up on stop codons");
 
          if (com.Mgene == 3)
             for (i = 0; i < com.ngene; i++)
@@ -532,7 +531,7 @@ int main(int argc, char *argv[])
       }
       if (com.alpha || com.NSsites) {
          s2 = com.npatt*com.ncatG * sizeof(double);
-         if ((com.fhK = (double*)realloc(com.fhK, s2)) == NULL) error2("oom fhK");
+         if ((com.fhK = (double*)realloc(com.fhK, s2)) == NULL) zerror("oom fhK");
       }
 
       if ((com.runmode == -2 || com.runmode == -3) && com.Mgene != 1) {
@@ -566,7 +565,7 @@ int main(int argc, char *argv[])
          printf("\n%9zu bytes for conP\n", com.sconP);
          printf("%9zu bytes for fhK\n%9zu bytes for space\n", s2, com.sspace);
          if (com.conP == NULL)
-            error2("oom conP");
+            zerror("oom conP");
 
          if (com.Mgene == 1)        MultipleGenes(fout, ftree, fpair, com.space);
          else if (com.runmode == 0) Forestry(fout, ftree);
@@ -611,17 +610,17 @@ int Forestry(FILE* fout, FILE* ftree)
    int  status = 0, i, j = 0, k, itree, ntree=1, np, iteration = 1;
    int pauptree = 0, haslength;
    double x[NP], xb[NP][2], xcom[NP - NBRANCH], lnL = 0, lnL0 = 0, e = 1e-8, tl = 0, nchange = -1;
-   double *g = NULL, *H = NULL;
+   double *g = NULL, *H = NULL, det;
 
    if (com.ndata_trees_opt <= 1) {
       if (com.ndata_trees_opt == 0) rewind(ftree);
       j = GetTreeFileType(ftree, &ntree, &pauptree, 0);
    }
    if (com.alpha)
-      frate = (FILE*)gfopen(ratef, "w");
+      frate = (FILE*)zopen(ratef, "w");
    if (ntree > 10 && com.npatt > 10000 && com.print)
       puts("\nlnf file may be large");
-   flnf = gfopen("lnf", "w+");
+   flnf = zopen("lnf", "w+");
    fprintf(flnf, "%6d %6d %6d\n", ntree, com.ls, com.npatt);
 
    if (com.seqtype == 1 && com.aaDist >= FIT1) {
@@ -630,13 +629,13 @@ int Forestry(FILE* fout, FILE* ftree)
       for (i = 0; i < com.ncode; i++)
          paa0[GeneticCode[com.icode][FROM61[i]]] += pcodon0[i];
       pcodonClass = (double*)malloc(com.ncatG * 64 * sizeof(double));
-      if (pcodonClass == NULL) error2("oom pcodonClass");
+      if (pcodonClass == NULL) zerror("oom pcodonClass");
    }
 
    for (itree = 0; ntree == -1 || itree < ntree; itree++, iteration = 1) {
       if (com.ndata_trees_opt <= 1)
          if(ReadTreeN(ftree, &haslength, 0, 1))
-            error2("end of tree file.");
+            zerror("end of tree file.");
       if (com.ndata_trees_opt>=2) {
          printf("\nExtracting gene tree for dataset #%2d from main tree...\n", com.idata+1);
          GenerateGtree_locus(com.idata, com.ns, 0);
@@ -646,12 +645,12 @@ int Forestry(FILE* fout, FILE* ftree)
             ProcessNodeAnnotation(&k);
          printf("\nTree is \n");  OutTreeN(stdout, 1, PrLabel);  printf("\n");
          if (com.nbtype > NBTYPE)
-            error2("nbtype too large.  Raise NBTYPE");
+            zerror("nbtype too large.  Raise NBTYPE");
          if (com.seqtype == 1 && com.NSsites == 0 && com.model == 2 && com.nbtype <= 1) {
-            error2("we need more than 1 branch type to fit the branch model.");
+            zerror("we need more than 1 branch type to fit the branch model.");
          }
          else if (com.seqtype == 1 && com.NSsites && com.model == 2 && com.nbtype != 2) {
-            error2("We need 2 branch types in the tree for branch-site models.");
+            zerror("We need 2 branch types in the tree for branch-site models.");
          }
       }
 
@@ -692,7 +691,7 @@ int Forestry(FILE* fout, FILE* ftree)
          fprintf(frub, "\n\nTREE #%2d\n", itree + 1);
 
          if ((com.fix_blength == 2 || com.fix_blength == 3) && !haslength)
-            error2("We need branch lengths in tree");
+            zerror("We need branch lengths in tree");
          if (com.fix_blength > 0 && !haslength) com.fix_blength = 0;
          if (ages++ == 0 && com.fix_blength > 0 && haslength) {
             if (com.clock) puts("\nBranch lengths in tree are ignored");
@@ -723,13 +722,13 @@ int Forestry(FILE* fout, FILE* ftree)
          np = com.np;
          if (noisy >= 3 && np < 100) matout(F0, x, 1, np);
          if (i == -1) iteration = 0;
-         if (np > NP || np - com.ntime > NP - NBRANCH) error2("raise NP");
+         if (np > NP || np - com.ntime > NP - NBRANCH) zerror("raise NP");
          if (com.sspace < spaceming2(np)) {
             com.sspace = spaceming2(np);
             printf("\nspace adjusted to %9zu bytes\n", com.sspace);
             if ((com.space = (double*)realloc(com.space, com.sspace)) == NULL) {
                printf("\ntrying to get %zu bytes for ming2", com.sspace);
-               error2("oom space");
+               zerror("oom space");
             }
          }
          printf("\nntime & nrate & np:%6d%6d%6d\n", com.ntime, com.nrate, com.np);
@@ -754,7 +753,7 @@ int Forestry(FILE* fout, FILE* ftree)
 
          if (iteration && np) {
             if (com.method == 1)
-               j = minB(noisy > 2 ? frub : NULL, &lnL, x, xb, e, com.space);
+               j = minB(noisy > 2 ? frub : NULL, &lnL, x, xb, 1e-6, com.space);
             else if (com.method == 3)
                j = minB2(noisy > 2 ? frub : NULL, &lnL, x, xb, e, com.space);
             else
@@ -823,7 +822,7 @@ int Forestry(FILE* fout, FILE* ftree)
             if (com.sspace < np * (np + 1) * sizeof(double)) {
                com.sspace = np * (np + 1) * sizeof(double);
                if ((com.space = (double*)realloc(com.space, com.sspace)) == NULL)
-                  error2("oom space for SE");
+                  zerror("oom space for SE");
             }
 
             g = com.space;
@@ -847,7 +846,7 @@ int Forestry(FILE* fout, FILE* ftree)
             }
 
             for (i = 0; i < np * np; i++)  H[i] *= -1;
-            matinv(H, np, np, H + np * np);
+            matinv(H, np, np, &det, H + np * np);
             fprintf(fout, "SEs for parameters:\n");
             for (i = 0; i < np; i++)
                fprintf(fout, " %8.6f", (H[i * np + i] > 0. ? sqrt(H[i * np + i]) : -1));
@@ -957,7 +956,7 @@ double *PointOmega(double xcom[], int igene, int inode, int isiteclass)
    int nka = (com.hkyREV ? 5 : 1), nw = (com.aaDist == AAClasses ? com.nOmegaType : 1);
 
    if (com.seqtype != CODONseq && com.model != FromCodon0 && com.model != FromCodon)
-      error2("should not be here.");
+      zerror("should not be here.");
 
    if (com.NSsites == 0 && com.model == 0) { /* simple case: one ratio */
       if (com.ngene <= 1) {
@@ -1022,8 +1021,8 @@ int sortwM3(double x[])
    int i, k = com.ntime + com.nrgene + com.nkappa + com.npi, index[NCATG];
    double space[NCATG];
 
-   if (com.NSsites != NSdiscrete) error2("sortwM3");
-   if (fabs(1 - sum(com.freqK, com.ncatG)) > 1e-6) error2("sortwM3: freqK");
+   if (com.NSsites != NSdiscrete) zerror("sortwM3");
+   if (fabs(1 - sum(com.freqK, com.ncatG)) > 1e-6) zerror("sortwM3: freqK");
 
    if (com.nparK) { puts("\asortwM3 for HMM not implemented yet.."); return(-1); }
 
@@ -1043,7 +1042,7 @@ void printParametersNSsites(FILE* fout, double x[])
    int i, j, k = com.ntime + com.nrgene + com.nkappa + com.npi;
    double w[NBTYPE][3];
 
-   if (!com.NSsites) error2("should not be here");
+   if (!com.NSsites) zerror("should not be here");
 
    fprintf(fout, "\n\nMLEs of dN/dS (w) for site classes (K=%d)\n", com.ncatG);
    if (com.model == 0) {
@@ -1350,7 +1349,7 @@ void DetailOutput(FILE *fout, double x[], double var[])
    /* dN & dS for each branch in the tree */
    if (com.seqtype == CODONseq && com.ngene == 1 && (com.model == 0 || com.model == FromCodon0 || com.NSsites == 0)) {
       tdSdNb = (double*)malloc(tree.nnode * 3 * sizeof(double));
-      if (tdSdNb == NULL) error2("oom DetailOutput");
+      if (tdSdNb == NULL) zerror("oom DetailOutput");
       if (com.model >= NSbranchB && com.model <= NSbranch3 && com.aaDist != AAClasses) {  /*  branch models */
          fprintf(fout, "\nw (dN/dS) for branches: ");
          k = com.ntime + com.nrgene + com.nkappa + com.npi;
@@ -1461,7 +1460,7 @@ void ReadNSsitesModels(char *line)
    char *pline;
    int pop_digit;
 
-   if ((pline = strstr(line, "=")) == NULL) error2(".ctl file error NSsites");
+   if ((pline = strstr(line, "=")) == NULL) zerror(".ctl file error NSsites");
    pline++;
    for (nnsmodels = 0; nnsmodels < maxNSsitesModels; nnsmodels++) {
       if (sscanf(pline, "%d", &nsmodels[nnsmodels]) != 1) break;
@@ -1471,10 +1470,10 @@ void ReadNSsitesModels(char *line)
             pline++;
             if (pop_digit) break;
          }
-         else  error2(".ctl file NSsites line strange.");
+         else  zerror(".ctl file NSsites line strange.");
       }
       if (nsmodels[nnsmodels] < 0 || nsmodels[nnsmodels] >= maxNSsitesModels)
-         error2("NSsites model");
+         zerror("NSsites model");
    }
    com.NSsites = nsmodels[0];
 }
@@ -1501,9 +1500,9 @@ int getnrate(int firsttime)
    int i, j;
 
    if (com.seqtype == AAseq || com.seqtype == CODON2AAseq) {
-      if (com.NSsites) error2("use NSsites=0 for amino acids?");
+      if (com.NSsites) zerror("use NSsites=0 for amino acids?");
       if (com.hkyREV && (com.model == FromCodon0 || com.model == FromCodon))  /*  REV & FromCodon not well-tested. */
-         error2("use hkyREV=0 for amino acids?");
+         zerror("use hkyREV=0 for amino acids?");
       com.ncode = 20;
       if (com.aaDist == AAClasses)
          com.nrate = com.nkappa = (com.hkyREV ? 5 : !com.fix_kappa);
@@ -1522,7 +1521,7 @@ int getnrate(int firsttime)
       case (FromCodon):
          com.nrate = com.nkappa = (com.hkyREV ? 5 : !com.fix_kappa);
          if (com.aaDist) com.nrate++;
-         if (com.fix_omega) error2("fix_omega = 1?  omega is not estimable!");
+         if (com.fix_omega) zerror("fix_omega = 1?  omega is not estimable!");
          com.omega = -1;
          if (com.codonf) {
             com.codonf = 0;  puts("CodonFreq=0 reset for model=6.");
@@ -1530,10 +1529,10 @@ int getnrate(int firsttime)
          break;
       case (REVaa_0): com.fix_kappa = 0; com.kappa = 0; break;
       case (REVaa):   com.fix_kappa = 0; com.kappa = 0; com.nrate = 189; break;
-      default: error2("model unavailable");
+      default: zerror("model unavailable");
       }
       if (com.Mgene > 2 || (com.Mgene == 2 && (com.model == Fequal || com.model == 2)))
-         error2("Mgene && model");
+         zerror("Mgene && model");
       if (com.seqtype == 2 && com.model != FromCodon0 && com.model != FromCodon && com.model != AAClasses) {
          com.fix_kappa = com.fix_omega = 1; com.kappa = com.omega = 0;
       }
@@ -1541,34 +1540,34 @@ int getnrate(int firsttime)
    else if (com.seqtype == CODONseq) {
       if (com.nparK)
          if (com.model || com.aaDist || com.NSsites != NSdiscrete || com.alpha || com.rho)
-            error2("HMM model option");
-      if (com.Mgene > 1 && com.model) error2("Mgene & model?");
+            zerror("HMM model option");
+      if (com.Mgene > 1 && com.model) zerror("Mgene & model?");
       if (com.fix_kappa) {
          if (com.hkyREV)
-            error2("can't fix kappa for the codon model you selected.");
+            zerror("can't fix kappa for the codon model you selected.");
          else
             com.pkappa[0] = com.kappa;
       }
       if (com.codonf >= FMutSel0 && com.Mgene >= 2)
-         error2("model FMutSel + Mgene not implemented");
+         zerror("model FMutSel + Mgene not implemented");
       if (com.runmode == -2 && com.seqtype == 1 && com.npi)
-         error2("runmode = -2 not implemented for codon models with frequencies");
+         zerror("runmode = -2 not implemented for codon models with frequencies");
       if (com.runmode == -3 && com.seqtype == 1 && com.npi)
-         error2("runmode = -3 not implemented for codon models with frequencies");
+         zerror("runmode = -3 not implemented for codon models with frequencies");
       if (com.hkyREV && (com.aaDist || com.Mgene > 1))
-         error2("hkyREV with aaDist or Mgene: check options?\a");
+         zerror("hkyREV with aaDist or Mgene: check options?\a");
       if (com.NSsites<0 || com.NSsites>maxNSsitesModels || (com.NSsites > 13 && com.NSsites < 22))
-         error2("option NSsites.");
+         zerror("option NSsites.");
       if (com.aaDist && com.NSsites)
-         error2("aaDist & NSsites don't work together");
+         zerror("aaDist & NSsites don't work together");
       if ((com.model && com.model != FromCodon0 && com.aaDist)
          && ((com.model > NSbranch2 && com.model != FromCodon0) || com.aaDist != AAClasses))
-         error2("model & aaDist");
+         zerror("model & aaDist");
       if (com.model == NSbranch3 && com.NSsites != 2 && com.NSsites != 3)
-         error2("clade model should have model = 3 NSsites = 2 or 3.");
+         zerror("clade model should have model = 3 NSsites = 2 or 3.");
 
       if (com.aaDist && com.fix_omega)
-         error2("can't fix_omega for aaDist models");
+         zerror("can't fix_omega for aaDist models");
 
       com.nrate = com.nkappa = (com.hkyREV ? 5 : !com.fix_kappa);
 
@@ -1589,35 +1588,35 @@ int getnrate(int firsttime)
       com.nrate += com.npi;
 
       if (com.aaDist != AAClasses) {
-         if (com.fix_kappa > 1) error2("fix_kappa>1, not tested.");  /** ???? */
+         if (com.fix_kappa > 1) zerror("fix_kappa>1, not tested.");  /** ???? */
          if (com.model > 0 && com.model != FromCodon0 && (com.alpha || !com.fix_alpha))
-            error2("dN/dS ratios among branches not implemented for gamma");
+            zerror("dN/dS ratios among branches not implemented for gamma");
          if (com.model > 0 && com.clock)
-            error2("model and clock don't work together");
+            zerror("model and clock don't work together");
          if (com.fix_omega) {
             com.omega_fix = com.omega;
             if ((com.model == 0 && com.NSsites == NSdiscrete)
                || (com.model && com.NSsites && com.NSsites != NSpselection
                   &&com.NSsites != NSdiscrete && com.NSsites != NSbetaw))
-               error2("\afix_omega?");
+               zerror("\afix_omega?");
          }
          if (com.model > NSbranch3 && com.model != FromCodon0)
-            error2("seqtype or model.");
+            zerror("seqtype or model.");
          if (com.model == NSbranch2 && com.clock == 2)
-            error2("NSbranch & local clock.");
+            zerror("NSbranch & local clock.");
          if (com.model == NSbranch3 && (com.NSsites == NSpselection || com.NSsites == NSdiscrete) && com.ncatG != 3) {
             com.ncatG = 3; puts("ncatG = 3 reset.");
          }
-         if (com.kappa < 0)  error2("kappa..");
+         if (com.kappa < 0)  zerror("kappa..");
          if (com.runmode)  com.fix_blength = 0;
          if ((com.runmode == -2 || com.runmode == -3) && (com.NSsites || com.alpha || com.aaDist))
-            error2("wrong model for pairwise comparison.\ncheck NSsites, alpha, aaDist, model etc.");
-         if (com.runmode > 0 && com.model == 2) error2("tree search & model");
+            zerror("wrong model for pairwise comparison.\ncheck NSsites, alpha, aaDist, model etc.");
+         if (com.runmode > 0 && com.model == 2) zerror("tree search & model");
          if (com.aaDist && com.NSsites != 0 && com.NSsites != NSdiscrete)
-            error2("NSsites && aaDist.");
+            zerror("NSsites && aaDist.");
 
          if ((com.NSsites || nnsmodels > 1) && (com.alpha || com.fix_alpha == 0))
-            error2("NSsites & Gamma");
+            zerror("NSsites & Gamma");
          if (com.seqtype == 1 && (com.alpha || com.fix_alpha == 0))
             puts("\aGamma codon model: are you sure this is the model you want to use? ");
 
@@ -1642,7 +1641,7 @@ int getnrate(int firsttime)
             if (com.model && com.NSsites)
                if ((com.model != 2 && com.model != 3)
                   || (com.NSsites != NSpselection && com.NSsites != NSdiscrete))
-                  error2("only NSsites=2,3 & model=2,3 are compatible.");
+                  zerror("only NSsites=2,3 & model=2,3 are compatible.");
             switch (com.NSsites) {
             case (NSnneutral):
                com.ncatG = 2;  break;
@@ -1712,7 +1711,7 @@ int GetOptions(char *ctlf)
    com.hyperpar[0] = 1.1; com.hyperpar[1] = 1.1; com.hyperpar[2] = 1.1; com.hyperpar[3] = 2.2;
    com.ndata_trees_opt = 0;
 
-   fctl = gfopen(ctlf, "r");
+   fctl = zopen(ctlf, "r");
    if (noisy) printf("\n\nReading options from %s..\n", ctlf);
    for ( ; ; ) {
       if (fgets(line, lline, fctl) == NULL) break;
@@ -1725,7 +1724,7 @@ int GetOptions(char *ctlf)
       if (t == 0) continue;
       sscanf(line, "%s%*s%lf", opt, &t);
       if ((pline = strstr(line, "=")) == NULL)
-         error2("err: option file. add space around the equal sign?");
+         zerror("err: option file. add space around the equal sign?");
 
       for (iopt = 0; iopt < nopt; iopt++) {
          if (strncmp(opt, optstr[iopt], 8) == 0) {
@@ -1844,13 +1843,16 @@ int GetOptions(char *ctlf)
       setmark_61_64();
 
    if (com.seqtype != AAseq && com.seqtype == CODON2AAseq && com.seqtype == CODONseq)
-      error2("seqtype..");
+      zerror("seqtype..");
    getnrate(1);
 
    if ((com.runmode == -2 || com.runmode == -3) && com.cleandata == 0) {
       com.cleandata = 1;
-      if (noisy) puts("gaps are removed for pairwise comparison.");
+      if (noisy) puts("\ngaps are removed for pairwise comparison.");
    }
+   if (com.runmode == -2 && nnsmodels > 1) 
+      zerror("runmode = -2 does not work with multiple NSsites models...");
+
    if (com.method && (com.clock || com.rho)) {
       com.method = 0; puts("Iteration method reset: method = 0");
    }
@@ -1859,8 +1861,8 @@ int GetOptions(char *ctlf)
    }
 
    if (com.clock && com.fix_blength == 2)
-      error2("can't fix branch lengths under clock model.");
-   if (com.runmode == 3 && (com.clock)) error2("runmode+clock");
+      zerror("can't fix branch lengths under clock model.");
+   if (com.runmode == 3 && (com.clock)) zerror("runmode+clock");
    if (com.aaDist <= 6 && (com.seqtype == CODONseq || com.model == FromCodon0 || com.model == FromCodon))
       strcpy(com.daafile, daafiles[abs(com.aaDist)]);
 
@@ -1870,16 +1872,15 @@ int GetOptions(char *ctlf)
    }
 
    if (!com.fix_alpha && com.alpha <= 0)
-      error2("initial value alpha <= 0 for fix_alpha = 0");
+      zerror("initial value alpha <= 0 for fix_alpha = 0");
    if (!com.fix_rho && com.rho == 0) { com.rho = 0.001;  puts("init rho reset"); }
-   if (com.alpha || com.NSsites)
-   {
-      if (com.ncatG<2 || com.ncatG>NCATG) error2("ncatG");
+   if (com.alpha || com.NSsites) {
+      if (com.ncatG<2 || com.ncatG>NCATG) zerror("ncatG");
    }
    else if (com.ncatG > 1) com.ncatG = 1;
 
    if (com.ndata <= 0) com.ndata = 1;
-   if (com.bootstrap && com.ndata != 1) error2("ndata=1 for bootstrap.");
+   if (com.bootstrap && com.ndata != 1) zerror("ndata=1 for bootstrap.");
 
    return(0);
 }
@@ -1950,7 +1951,7 @@ int SetxBound(int np, double xb[][2])
          break;
       case(NSdiscrete):  /* pK[] & rK[] */
          if (com.model == 3) {                                      /* Clade model D */
-            if (com.nparK) error2("model & NSsites & nparK");
+            if (com.nparK) zerror("model & NSsites & nparK");
             for (j = 0; j < 2; j++) { xb[k][0] = -99; xb[k++][1] = 99; }  /* p0 & p1 */
             xb[k][0] = w0b[0];  xb[k++][1] = w0b[1];                 /* w0 */
             xb[k][0] = w1b[0];  xb[k++][1] = w1b[1];                 /* w1 */
@@ -2026,7 +2027,7 @@ int SetxBound(int np, double xb[][2])
 
    if (com.aaDist < 0 && (com.seqtype == 1 || com.model == FromCodon0 || com.model == FromCodon)) {
       /* linear relationship between d_ij and w_ij */
-      if (com.nrate != !com.fix_kappa + 1 + (com.seqtype == 1)) error2("in Setxbound");
+      if (com.nrate != !com.fix_kappa + 1 + (com.seqtype == 1)) zerror("in Setxbound");
       xb[com.ntime + com.nrgene + !com.fix_kappa][1] = 1; /* 0<b<1 */
    }
 
@@ -2058,7 +2059,7 @@ void getpcodonClass(double x[], double pcodonClass[])
    int i, iclass, iaa, k, nclass = (com.NSsites == 0 ? 1 : com.ncatG);
    double paaClass[20], *w, fit;
 
-   if (com.seqtype != 1 || com.aaDist < FIT1) error2("getpcodonClass");
+   if (com.seqtype != 1 || com.aaDist < FIT1) zerror("getpcodonClass");
    k = com.ntime + com.nrgene + !com.fix_kappa + nclass - 1;
    for (iclass = 0; iclass < nclass; iclass++) {
       w = x + k + iclass*(4 + (com.aaDist == FIT2));
@@ -2073,7 +2074,7 @@ void getpcodonClass(double x[], double pcodonClass[])
          pcodonClass[iclass * 64 + i] = pcodon0[i] / paa0[iaa] * paaClass[iaa];
       }
 
-      if (fabs(1 - sum(pcodonClass + iclass * 64, com.ncode)) > 1e-5) error2("pcodon!=1");
+      if (fabs(1 - sum(pcodonClass + iclass * 64, com.ncode)) > 1e-5) zerror("pcodon!=1");
       /*
       fprintf(frst,"\nSite class %d: ",iclass+1);
       matout (frst,paaClass,2, 10);
@@ -2102,7 +2103,7 @@ int GetInitialsCodon(double x[])
             for (i = 0; i < 4; i++) x[k++] = .1 + rndu();
          }
          else if (!com.fix_kappa)
-            x[k++] = com.kappa;
+            x[k++] = 0.1+ com.kappa*(0.8+0.4*rndu());
          if (com.codonf == FMutSel0 || com.codonf == FMutSel) {
             for (i = 0; i < 3; i++)   /* pi_TCA */
                x[k++] = com.pf3x4[i] / (com.pf3x4[3] + .02*rndu());
@@ -2133,7 +2134,7 @@ int GetInitialsCodon(double x[])
          }
          if (com.NSsites == 0 && (com.model == 0 || com.model == FromCodon0)) {
             if (!com.aaDist) {
-               if (!com.fix_omega)    x[k++] = com.omega;
+               if (!com.fix_omega)  x[k++] = 0.01 + com.omega * (0.9 + 0.2 * rndu());
             }
             else if (com.aaDist == AAClasses)
                for (i = 0; i < com.nOmegaType; i++)
@@ -2151,7 +2152,7 @@ int GetInitialsCodon(double x[])
          }
          for (i = 0; i < com.ngene; i++) {
             if (com.hkyREV)
-               error2("hkyREV for ngene>1.  Fix me.");
+               zerror("hkyREV for ngene>1.  Fix me.");
             if (!com.fix_kappa && !com.fix_omega)
             {
                x[k++] = com.kappa;  x[k++] = com.omega;
@@ -2331,7 +2332,7 @@ int GetInitials(double x[], int* fromfile)
 
    NFunCall = NPMatUVRoot = NEigenQ = 0;
    if (com.clock == ClockCombined && com.ngene <= 1)
-      error2("Combined clock model requires mutliple genes.");
+      zerror("Combined clock model requires mutliple genes.");
    GetInitialsTimes(x);
 
    com.plfun = (com.alpha == 0 ? lfun : (com.rho == 0 ? lfundG : lfunAdG));
@@ -2347,7 +2348,7 @@ int GetInitials(double x[], int* fromfile)
       com.sconP = sconP_new;
       printf("\n%9zu bytes for conP, adjusted\n", com.sconP);
       if ((com.conP = (double*)realloc(com.conP, com.sconP)) == NULL)
-         error2("oom conP");
+         zerror("oom conP");
    }
 
    InitializeNodeScale();
@@ -2397,7 +2398,7 @@ int GetInitials(double x[], int* fromfile)
       }
    }
 
-   for (i = 0; i < com.nalpha; i++) x[com.np++] = com.alpha;
+   for (i = 0; i < com.nalpha; i++) x[com.np++] = 0.025 + (0.9 + 0.2 * rndu()) * com.alpha;
 
    if (!com.fix_rho) x[com.np++] = com.rho;
    if (com.rho)
@@ -2413,10 +2414,8 @@ int GetInitials(double x[], int* fromfile)
       readx(x, fromfile);
       if (com.runmode > 0 && fromfile && com.NSsites)  LASTROUND = 1;
    }
-
    return (0);
 }
-
 
 
 int SetPGene(int igene, int _pi, int _UVRoot, int _alpha, double x[])
@@ -2486,7 +2485,7 @@ int SetParametersNSsites(double x[])
    double w[NBTYPE][3], t, S, dS, dN, spaceP2PI[NCATG*(NCATG + 1)], small = 1e-4;
    double mr, f;
 
-   if (com.NSsites == 0) error2("SetParametersNSsites : strange.");
+   if (com.NSsites == 0) zerror("SetParametersNSsites : strange.");
 
    switch (com.NSsites) {
    case(NSnneutral):
@@ -2525,13 +2524,13 @@ int SetParametersNSsites(double x[])
             com.freqK[K - 1] -= (com.freqK[j] = x[k++]);
          if (com.freqK[K - 1] < -small || com.freqK[K - 1]>1 + small) {
             matout(F0, com.freqK, 1, K);
-            error2("freqK[]");
+            zerror("freqK[]");
          }
       }
 
       /* setting up w[] */
       if (com.NSsites == NSfreqs) {
-         if (com.ncatG != 5) error2("NSfreqs, ncatG?");
+         if (com.ncatG != 5) zerror("NSfreqs, ncatG?");
          com.rK[0] = 0;
          com.rK[1] = 1. / 3;
          com.rK[2] = 2. / 3;
@@ -2609,7 +2608,7 @@ int SetParametersNSsites(double x[])
    else if (com.model == NSbranch2) { /* branch&site models */
       t = com.freqK[0] + com.freqK[1];
       if (t < 1e-100)
-         error2("p0 + p1 too small for branch&site model?");
+         zerror("p0 + p1 too small for branch&site model?");
       com.freqK[2] = (1 - t)*com.freqK[0] / t;
       com.freqK[3] = (1 - t)*com.freqK[1] / t;
       /* calculates scale factors: background branches has two site classes
@@ -2669,7 +2668,7 @@ int Set_UVR_BranchSite(int iclass, int branchlabel)
    */
    int iUVR = 0;
 
-   if (com.model == 0 || com.NSsites == 0) error2("should not be here.");
+   if (com.model == 0 || com.NSsites == 0) zerror("should not be here.");
 
    if (com.model <= NSbranch2) { /* branch-site models A & B */
       if (branchlabel == 0) iUVR = iclass % 2;                  /* back, w0 w1 */
@@ -3101,7 +3100,7 @@ int SelectionCoefficients(FILE* fout, double kappa[], double ppi[], double omega
    int ncat = 21;
 
    if (com.codonf < FMutSel0)
-      error2("codonf incorrect");
+      zerror("codonf incorrect");
 
    fprintf(fout, "\nI\tJ\tij\t2Ns_IJ\tpMut_IJ\tpSub_IJ\t2Ns_JI\tpMut_JI\tpSub_JI\n\n");
    fb[0] = ppi[0]; fb[1] = ppi[1]; fb[2] = ppi[2]; fb[3] = 1;
@@ -3270,7 +3269,7 @@ int eigenQcodon(int mode, double blength, double *S, double *dS, double *dN,
    else times++;
 
    NEigenQ++;
-   if (blength >= 0 && (S == NULL || dS == NULL || dN == NULL)) error2("eigenQcodon");
+   if (blength >= 0 && (S == NULL || dS == NULL || dN == NULL)) zerror("eigenQcodon");
    memset(Q, 0, n*n * sizeof(double));
    for (i = 1; i < n; i++) {
       ic1 = FROM61[i]; from[0] = ic1 / 16; from[1] = (ic1 / 4) % 4; from[2] = ic1 % 4;
@@ -3333,7 +3332,7 @@ int eigenQcodon(int mode, double blength, double *S, double *dS, double *dN,
             aa2 = GeneticCode[com.icode][ic2];
             for (k = 0, ndiff = 0; k < 3; k++)
                if (from[k] != to[k]) { ndiff++; pos = k; }
-            if (ndiff != 1) error2("jgl");
+            if (ndiff != 1) zerror("jgl");
 
             piQij = pi[i] * Q[i*n + j];
             if (pos == 2 && FourFold[to[0]][to[1]])
@@ -3354,7 +3353,7 @@ int eigenQcodon(int mode, double blength, double *S, double *dS, double *dN,
       }    /* for (i) */
 
       if (fabs(mr - (rs + ra)) > 1e-6)
-         error2("mr should be = rs+ra");
+         zerror("mr should be = rs+ra");
 
       rs0 = rs;
       w = (rs0 + ra0);  rs0 /= w;  ra0 /= w;   *S = rs0 * 3 * com.ls;
@@ -3446,10 +3445,10 @@ int eigenQaa(FILE *fout, double Root[], double U[], double V[], double rate[])
 
    if (fout && com.model >= REVaa_0) {
       printf("\nAA substitution rate matrix printed into %s\n", AAratefile);
-      fAArate = (FILE*)gfopen(AAratefile, "w");
+      fAArate = (FILE*)zopen(AAratefile, "w");
       fprintf(fout, "\n\nRate matrix (symmetrical part, Sij)\n");
       for (i = 0, t = 0; i < naa; i++) {
-         if (com.pi[i] == 0) error2("eigenQaa: do this now");
+         if (com.pi[i] == 0) zerror("eigenQaa: do this now");
          for (j = 0; j < i; j++)
             t += Q[i*naa + j] / com.pi[j] / (naa*(naa - 1) / 2.);
       }
@@ -3541,7 +3540,7 @@ int ConditionalPNode(int inode, int igene, double x[])
          nodes[inode].conP[h] = 1;
    if (com.cleandata && inode < com.ns)
       for (h = pos0; h < pos1; h++)
-         nodes[inode].conP[h*n + com.z[inode][h]] = 1;
+         nodes[inode].conP[h*n + (unsigned char)com.z[inode][h]] = 1;
 
    for (i = 0; i < nodes[inode].nson; i++) {
       ison = nodes[inode].sons[i];
@@ -3561,8 +3560,8 @@ int ConditionalPNode(int inode, int igene, double x[])
       else if (nodes[ison].nson < 1 && !com.cleandata) {  /* tip & unclean */
          for (h = pos0; h < pos1; h++)
             for (j = 0; j < n; j++) {
-               for (k = 0, t = 0; k < nChara[(int)com.z[ison][h]]; k++)
-                  t += PMat[j*n + CharaMap[(int)com.z[ison][h]][k]];
+               for (k = 0, t = 0; k < nChara[(unsigned char)com.z[ison][h]]; k++)
+                  t += PMat[j*n + CharaMap[(unsigned char)com.z[ison][h]][k]];
                nodes[inode].conP[h*n + j] *= t;
             }
       }
@@ -3648,7 +3647,7 @@ void CountCodons(FILE *fout, double fcodonsg[], double fb3x4sg[], double fb4g[])
    for (j = 0; j < com.ns; j++) {
       for (h = 0; h < com.npatt; h++) {
          for (k = 0; k < 3; k++)
-            NucListall(CODONs[(int)com.z[j][h]][k], &nb[k], ib[k]);
+            NucListall(CODONs[(unsigned char)com.z[j][h]][k], &nb[k], ib[k]);
          k = nb[0] * nb[1] * nb[2];
          if (k > 1)  continue;
          ic = ib[0][0] * 16 + ib[1][0] * 4 + ib[2][0];
@@ -3673,7 +3672,7 @@ void CountCodons(FILE *fout, double fcodonsg[], double fb3x4sg[], double fb4g[])
       for (j = 0; j < com.ns; j++) {
          for (h = com.posG[ig]; h < com.posG[ig + 1]; h++) {
             for (k = 0; k < 3; k++)
-               NucListall(CODONs[(int)com.z[j][h]][k], &nb[k], ib[k]);
+               NucListall(CODONs[(unsigned char)com.z[j][h]][k], &nb[k], ib[k]);
 
             k = nb[0] * nb[1] * nb[2];
             if (k > 1) continue;
@@ -3739,7 +3738,7 @@ void AddCodonFreqSeqGene(int js, int ig, double fcodon0[], double fcodon[],
 
    for (h = com.posG[ig]; h < com.posG[ig + 1]; h++) {
       for (k = 0; k < 3; k++)
-         NucListall(CODONs[(int)com.z[js][h]][k], &nb[k], ib[k]);
+         NucListall(CODONs[(unsigned char)com.z[js][h]][k], &nb[k], ib[k]);
       k = nb[0] * nb[1] * nb[2];
       for (k = 0; k < 3; k++) {  /* f3x4 & f1x4, no regard for stop codons */
          for (i0 = 0, t = t1 = 0; i0 < nb[k]; i0++) {
@@ -3977,7 +3976,7 @@ int GetDaa(FILE* fout, double daa[])
 
    if (noisy > 3) printf("\n\nReading matrix from %s", com.daafile);
    if (com.model == REVaa_0 || com.model == REVaa) puts(", to get initial values.");
-   fdaa = gfopen(com.daafile, "r");
+   fdaa = zopen(com.daafile, "r");
 
    for (i = 0; i < naa; i++)
       for (j = 0, daa[i*naa + i] = 0; j < i; j++) {
@@ -4002,7 +4001,7 @@ int GetDaa(FILE* fout, double daa[])
       if (com.model == Empirical) {
          for (i = 0; i < naa; i++)
             if (fscanf(fdaa, "%lf", &com.pi[i]) != 1)
-               error2("aaRatefile");
+               zerror("aaRatefile");
          if (fabs(1 - sum(com.pi, 20)) > 1e-5) {
             printf("\nSum of freq. = %.6f != 1 in aaRateFile\n", sum(com.pi, naa));
             exit(-1);
@@ -4125,19 +4124,19 @@ int GetOmegaAA(int OmegaAA[])
          fscanf(fin, "%d", &j);
          if (j != iomega + 1) { printf("err data file %s.", OmegaAAf); exit(-1); }
          printf("\nClass #%d: ", j);
-         j = fgetc(fin);  if (j != ':') error2("err expecting :");
+         j = fgetc(fin);  if (j != ':') zerror("err expecting :");
          fgets(line, nline, fin);
 
          printf("%s\n", line);
          for (j = 0, npair = 0; j < nline - 1 && line[j] && line[j] != '\n'; j++) {
             iaa = line[j];
             if (!isalpha(iaa)) continue;
-            jaa = line[++j];  if (!isalpha(jaa)) error2("err jaa");
+            jaa = line[++j];  if (!isalpha(jaa)) zerror("err jaa");
             npair++;
 
             printf("\npair %2d: |%c%c| ", npair, iaa, jaa);
             iaa = CodeChara((char)iaa, AAseq); jaa = CodeChara((char)jaa, AAseq);
-            if (iaa < 0 || iaa>19 || jaa < 0 || jaa>19) error2("aa not found");
+            if (iaa < 0 || iaa>19 || jaa < 0 || jaa>19) zerror("aa not found");
             if (iaa < jaa) { k = jaa, jaa = iaa; iaa = k; }
 
             printf("|%c%c (%2d,%2d)| ", AAs[iaa], AAs[jaa], iaa, jaa);
@@ -4147,7 +4146,7 @@ int GetOmegaAA(int OmegaAA[])
                continue;
             }
             else if (OmegaAA[iaa * (iaa - 1) / 2 + jaa])
-               error2("This pair has already been specified?");
+               zerror("This pair has already been specified?");
             OmegaAA[iaa * (iaa - 1) / 2 + jaa] = iomega + 1;
             printf(" in class %d ", iomega + 1);
          }
@@ -4249,8 +4248,8 @@ double lfun2dSdN(double x[], int np)
       expt[k] = exp(x[0] * Root[k]);
    for (h = 0; h < com.npatt; h++) {
       if (com.fpatt[h] < 1e-20) continue;
-      z0 = com.z[0][h];
-      z1 = com.z[1][h];
+      z0 = (unsigned char)com.z[0][h];
+      z1 = (unsigned char)com.z[1][h];
       for (k = 0, fh = 0; k < n; k++)
          fh += U[z0*n + k] * expt[k] * V[k*n + z1];
       fh *= com.pi[z0];
@@ -4360,7 +4359,7 @@ int PairwiseCodon(FILE *fout, FILE*fds, FILE*fdn, FILE*ft, double space[])
    double x[10] = { .9,1,.5,.5,.5,.5,.3 }, xb[10][2] = { {1e-5,50} };
    double kappab[2] = { .01,999 }, wb[2] = { .001,99 };
    double lnL, e = 1e-7, *var = space + NP, S, dS, dN, mr = 0;
-   double JacobiSN[2 * 3], T1[2 * 3], T2[2 * 3], vSN[2 * 2], dS1, dN1, dS2, dN2, y[3], eh;
+   double JacobiSN[2 * 3], T1[2 * 3], T2[2 * 3], vSN[2 * 2], dS1, dN1, dS2, dN2, y[3], eh, det;
    /* for calculating SEs of dS & dN */
    double dHKY[4], kHKY[4];
 
@@ -4397,7 +4396,7 @@ int PairwiseCodon(FILE *fout, FILE*fds, FILE*fdn, FILE*ft, double space[])
             puts("\nInput the pair i & j (i>j) for dN-dS calculation? ");
             scanf("%d%d", &is, &js);
             is--; js--;
-            if (is > com.ns || js < 0 || is < js) error2("invalid pair");
+            if (is > com.ns || js < 0 || is < js) zerror("invalid pair");
          }
          if (noisy > 1) printf("\n%4d vs. %3d", is + 1, js + 1);
          fprintf(fout, "\n\n%d (%s) ... %d (%s)",
@@ -4514,7 +4513,7 @@ int PairwiseCodon(FILE *fout, FILE*fds, FILE*fdn, FILE*ft, double space[])
 
          if (np && com.getSE) {
             Hessian(np, x, lnL, space, var, lfun2dSdN, var + np*np);
-            matinv(var, np, np, var + np*np);
+            matinv(var, np, np, &det, var + np*np);
             fprintf(fout, "SEs for parameters:\n");
             for (k = 0; k < np; k++) fprintf(fout, " %8.5f", (var[k*np + k] > 0. ? sqrt(var[k*np + k]) : -0));
             fprintf(fout, "\n");
@@ -4610,8 +4609,7 @@ int PairwiseCodon(FILE *fout, FILE*fds, FILE*fdn, FILE*ft, double space[])
 
 
 //kostas
-int BayesPairwise(int is, int js, double x[], double var[], double maxlogl,
-   int npoints, double xb[][2], double space[])
+int BayesPairwise(int is, int js, double x[], double var[], double maxlogl, int npoints, double xb[][2], double space[])
 {
    /*This function returns estimates of E[ t | x ], E[ w | x ], Var[ t | x ], Var[ w | x ],
    Cov[ w,t | x ], Corr[ w,t | x], P[ w>1 | x ]
@@ -4620,13 +4618,13 @@ int BayesPairwise(int is, int js, double x[], double var[], double maxlogl,
    double interm_results[7] = { 0,0,0,0,0,0,0 }; //contain the normalizing_constant, E[w|x], E[t|x], E[w^2|x], E[t^2|x], E[w*t|x], P[w>1|x]  
    register int i = 0, j = 0;
    int w_index = 0, t_index = 0, way = 0, setp = 0;
-   double w_value, t_value, w_weight, t_weight, sign, scalefactor = 0, Qmatrix[64 * 64],
-      z1, z2, logl, logposterior, hvalue, m1, m2, s1, s2, rvalue,
-      bayes_est[7], maxlogP, e = 1e-7, xp[2], kappa[1], pS, pN, sdiff[3] = { 1e-7, 1e-8, 1e-9 };
-   double FL, alpha, u, w_p, Rp[64 * 64], Up[64 * 64], Vp[64 * 64], PMatp[64 * 64], logl_p, logposterior_p,
-      hvalue_p, qvalue;  //For calculation of P(w>1|x)
-   char ch1[] = "E[t]", ch2[] = "E[w]", ch3[] = "SE[t]", ch4[] = "SE[w]",
-      ch5[] = "Cov[t,w]", ch6[] = "Corr[t,w]", ch7[] = "P[w > 1]";
+   double w_value, t_value, w_weight, t_weight, sign, scalefactor = 0, Qmatrix[64 * 64];
+   double z1, z2, logl, logposterior, hvalue, m1, m2, s1, s2, rvalue;
+   double bayes_est[7], maxlogP, e = 1e-7, xp[2], kappa[1], pS, pN, sdiff[3] = { 1e-7, 1e-8, 1e-9 };
+   double FL, alpha, u, w_p, Rp[64 * 64], Up[64 * 64], Vp[64 * 64], PMatp[64 * 64], det;
+   double logl_p, logposterior_p, hvalue_p, qvalue;  //For calculation of P(w>1|x)
+   char ch1[] = "E[t]", ch2[] = "E[w]", ch3[] = "SE[t]", ch4[] = "SE[w]";
+   char ch5[] = "Cov[t,w]", ch6[] = "Corr[t,w]", ch7[] = "P[w > 1]";
 
    if (com.fix_kappa == 1 && com.fix_omega == 0) {
       x[2] = x[1];
@@ -4690,7 +4688,7 @@ int BayesPairwise(int is, int js, double x[], double var[], double maxlogl,
       }//end of if
 
       Small_Diff = x[5];   //Restore the initial value of Small_Diff    
-      matinv(var, 2, 2, var + 2 * 2);
+      matinv(var, 2, 2, &det, var + 2 * 2);
       x[0] = xp[0]; x[2] = xp[1]; var[1] = var[3];
    }  // end of else
 
@@ -4995,13 +4993,13 @@ double PairwiseAArev(int is, int js)
    com.ntime = 1;  /* 1: t1=t2; 2: t1 and t2 */
    if (com.ntime == 2) np++;
    _Fij = Fij;
-   if (com.cleandata != 1) error2("cleandata");
+   if (com.cleandata != 1) zerror("cleandata");
 
    if (com.sspace < spaceming2(np)) {
       com.sspace = spaceming2(np);
       printf("\nspace adjusted to %9zu bytes\n", com.sspace);
       if ((com.space = (double*)realloc(com.space, com.sspace)) == NULL)
-         error2("oom space");
+         zerror("oom space");
    }
 
    for (h = 0, zero(Fij, n*n); h < com.npatt; h++) {
@@ -5045,10 +5043,10 @@ int PairwiseAA(FILE *fout, FILE*f2AA)
    int n = com.ncode, j, is, js;
    double x, xb[2] = { 0,19 }, lnL, step;
 
-   if (com.ngene > 1 && com.Mgene == 1) error2("ngene>1 to be tested.");
+   if (com.ngene > 1 && com.Mgene == 1) zerror("ngene>1 to be tested.");
    if (noisy) printf("\npairwise ML distances of AA seqs.\n\n");
    /*
-      if(com.model>Empirical_F)  error2("PairwiseAA: model wrong");
+      if(com.model>Empirical_F)  zerror("PairwiseAA: model wrong");
    */
    if (com.model == 0)  fillxc(com.pi, 1. / n, n);
    if (com.model >= Empirical)  GetDaa(NULL, com.daa);
@@ -5110,7 +5108,7 @@ char GetAASiteSpecies(int species, int sitepatt)
    int aa = 0, newaa = 0;
 
    if (com.seqtype != 1)
-      error2("GetAASiteSpecies() right now works for codon seqs only.  Check.");
+      zerror("GetAASiteSpecies() right now works for codon seqs only.  Check.");
    c = com.z[species][sitepatt];
    if (c < n) {
       aa = AAs[GeneticCode[com.icode][FROM61[c]]];
@@ -5258,10 +5256,10 @@ int lfunNSsites_rate(FILE* frst, double x[], int np)
    char sitelabel[96], *colors[5] = { "darkblue", "lightblue", "purple", "pinkred", "red" };
    char *colorvalues[5] = { "[2,2,120]", "[133,57,240]", "[186,60,200]", "[200,60,160]", "[250,5,5]" };
 
-   if (com.nparK) error2("lfunNSsites_rate to be done for HMM.");
+   if (com.nparK) zerror("lfunNSsites_rate to be done for HMM.");
 
    if ((meanw = (double*)malloc(com.npatt * sizeof(double))) == NULL)
-      error2("oom lfunNSsites_rate");  /* meanw useful for NSsites only */
+      zerror("oom lfunNSsites_rate");  /* meanw useful for NSsites only */
    if (com.aaDist == 0)
       printParametersNSsites(frst, x);
    else
@@ -5335,7 +5333,7 @@ int lfunNSsites_rate(FILE* frst, double x[], int np)
          printf("Choose color scheme (0: %d colors, 1: white->red, 2: rainbow) ", ncolors);
          scanf("%d", &continuous);
 
-         fras = (FILE*)gfopen("RasMol.txt", "w");
+         fras = (FILE*)zopen("RasMol.txt", "w");
          for (h = 0, maxmw = 0, minmw = 99; h < com.npatt; h++) {
             if (maxmw < meanw[h]) maxmw = meanw[h];
             if (minmw > meanw[h]) minmw = meanw[h];
@@ -5524,7 +5522,7 @@ int TestModelQc(FILE * fout, double x[])
       printf("cat #%4d: %4d%4d%4d%6.0f\n", j + 1, j / 9 + 1, (j / 3) % 3 + 1, j % 3 + 1, nobs[j]);
 
    if (com.ns > 5 || com.alpha || com.ngene > 1)
-      error2("TestModelQc: ns>5 || alpha>0.");
+      zerror("TestModelQc: ns>5 || alpha>0.");
    if (SetParameters(x)) puts("\npar err..");
    for (j = 0, npatt = 1; j < com.ns; j++)  npatt *= n;
    for (isum = 0, nsum = 1; isum < tree.nnode - com.ns; nsum *= n, isum++);
@@ -5597,16 +5595,16 @@ void SimulateData2s61(void)
    com.ncode = n; com.cleandata = 1; setmark_61_64();
    for (j = 0; j < com.ns; j++)
       com.z[j] = (char*)malloc(npatt0 * sizeof(char));
-   if (com.z[com.ns - 1] == NULL) error2("oom z");
+   if (com.z[com.ns - 1] == NULL) zerror("oom z");
    if ((com.fpatt = (double*)malloc(npatt0 * sizeof(double))) == NULL)
-      error2("oom fpatt");
+      zerror("oom fpatt");
    for (j = 0; j < 3; j++) { xb[j][0] = .0001; xb[j][1] = 99; }
 
 #if (DSDN_MC_SITES)
    strcpy(infile, "in.codon2sSites");
 #endif
    printf("\nTwo codon seq. simulation for ML (GY94), input from %s\n", infile);
-   fin = gfopen(infile, "r");
+   fin = zopen(infile, "r");
 
    fscanf(fin, "%d%d%d%d", &k, &nr, &com.codonf, &nil);
    printf("\n%d replicates, %s model for analysis\nLc:",
@@ -5618,7 +5616,7 @@ void SimulateData2s61(void)
       fscanf(fin, "%lf", &y);
       if (GeneticCode[com.icode][i] > -1) pi0[k++] = y;
       else if (y != 0)
-         error2("stop codon freq !=0");
+         zerror("stop codon freq !=0");
    }
    printf("sum pi = 1 = %.6f\n", sum(pi0, n));
 
@@ -5648,7 +5646,7 @@ void SimulateData2s61(void)
       fprintf(frst, "\n"); 
 
       if (1 - sum(com.freqK, com.ncatG))
-         error2("freqs do not sum to 1");
+         zerror("freqs do not sum to 1");
       for (j = 0, Qfactor_NS = 0, dS = dN = 0; j < com.ncatG; j++) {
          freqK_NS = com.freqK[j];
          eigenQcodon(2, 1, &S, &dSt, &dNt, NULL, NULL, NULL, &mr, &kappa0, com.rK[j], PMat);
@@ -5695,7 +5693,7 @@ void SimulateData2s61(void)
          com.z[0][h] = (char)i; com.z[1][h] = (char)j;
          com.fpatt[h] = Efij[h];  h++;
       }
-      if (fabs(1 - sum(Efij, npatt0)) > 1e-6) error2("sum Efij != 1");
+      if (fabs(1 - sum(Efij, npatt0)) > 1e-6) zerror("sum Efij != 1");
 
       for (il = 0; il < nil + 1; il++) {
          com.ls = ls[il];
@@ -5744,7 +5742,7 @@ void SimulateData2s61(void)
                ir + 1, x[0], x[1], x[2], mx[0], mx[1], mx[2], mx[3], mx[4]);
 #if 0
             if (ir == 9) {
-               fseq = gfopen(seqfile, "w");
+               fseq = zopen(seqfile, "w");
                fprintf(fseq, "%6d %6d\n", com.ns, com.ls * 3);
                for (i = 0; i < 2; i++) {
                   fprintf(fseq, "seq.%-5d  ", i + 1);
@@ -5823,9 +5821,9 @@ void Ina(void)
    com.icode = 0; com.seqtype = 1; com.ns = 2; com.ls = 1; npatt0 = n*(n + 1) / 2;
    com.ncode = n; setmark_61_64();
    for (j = 0; j < com.ns; j++) com.z[j] = (char*)malloc(npatt0 * sizeof(char));
-   if (com.z[com.ns - 1] == NULL) error2("oom z");
+   if (com.z[com.ns - 1] == NULL) zerror("oom z");
    if ((com.fpatt = (double*)malloc(npatt0 * sizeof(double))) == NULL)
-      error2("oom fpatt");
+      zerror("oom fpatt");
 
    printf("\nInfinite sequences.\nsum pi=1=%.6f\n", sum(com.pi, NCODE));
    noisy = 0;
@@ -5865,7 +5863,7 @@ void Ina(void)
                   com.z[0][com.npatt] = i; com.z[1][com.npatt] = j;
                   com.fpatt[com.npatt++] = nobs[k];
                }
-            fseq = gfopen(seqfile, "w");
+            fseq = zopen(seqfile, "w");
             fprintf(fseq, "> %6d %6d\n", com.ns, com.ls * 3);
             for (i = 0; i < 2; i++) {
                fprintf(fseq, "seq.%-5d  ", i + 1);
@@ -5878,9 +5876,9 @@ void Ina(void)
             fclose(fseq);
             if (com.ls > 2000) system("Ina1Large codonseq.tmp >t");
             else            system("Ina1 codonseq.tmp >t");
-            ftmp = gfopen(tmpfile, "r");
+            ftmp = zopen(tmpfile, "r");
             if (fscanf(ftmp, "%lf%lf%lf", &x[0], &x[1], &x[2]) != 3)
-               error2("reading tmpf");
+               zerror("reading tmpf");
             fclose(ftmp);
             for (j = 0; j < 5; j++) {
                vx[j] += (x[j] - mx[j])*(x[j] - mx[j]);
@@ -5938,13 +5936,13 @@ int mergeSeqs(FILE*fout)
    noisy = 0;
    for(i=0; i<ns0; i++) 
       if ((z0[i] = (char*)malloc(lswhole * sizeof(char))) == NULL)
-         error2("oom z");
+         zerror("oom z");
    for (ifile = 0, ls0 = 0; ifile < nfile; ifile++) {
       printf("Reading data set %2d/%2d (%s)", ifile + 1, nfile, filenames[ifile]);
-      fseq = gfopen(filenames[ifile], "r");
+      fseq = zopen(filenames[ifile], "r");
       ReadSeq(NULL, fseq, 1, 0, 0);
       lgene0[ifile] = com.ls;  com.ls *= 3;
-      for (i = 0; i < ns0; i++) if (strcmp(spname0[i], com.spname[i])) error2("spname different");
+      for (i = 0; i < ns0; i++) if (strcmp(spname0[i], com.spname[i])) zerror("spname different");
       for (i = 0; i < ns0; i++)  for (h = 0; h < com.ls; h++)
          z0[i][ls0 + h] = com.z[i][h];
       ls0 += com.ls;
@@ -5977,17 +5975,17 @@ int SlidingWindow(FILE*fout, FILE* fpair[], double space[])
    char *z0[NS];
    double *fpatt0, pi0[NCODE], lnL0 = 0, lnL1 = 0;
 
-   if (com.seqtype != 1) error2("implemented for codon sequences only.");
-   if (com.runmode != -2) error2("this version of sliding windows requires runmode=-2");
+   if (com.seqtype != 1) zerror("implemented for codon sequences only.");
+   if (com.runmode != -2) zerror("this version of sliding windows requires runmode=-2");
    if (!com.cleandata || com.ngene > 1)
-      error2("clean data & one gene only for sliding window analysis");
+      zerror("clean data & one gene only for sliding window analysis");
    if (com.print)
-      error2("Choose RateAncestor=0 for sliding window analysis");
+      zerror("Choose RateAncestor=0 for sliding window analysis");
    for (j = 0; j < com.ns; j++)
       z0[j] = com.z[j];
    for (j = 0; j < com.ns; j++)
-      if ((com.z[j] = malloc(npatt0 * sizeof(char))) == NULL) error2("oom z");
-   if ((fpatt0 = (double*)malloc(npatt0 * sizeof(double))) == NULL) error2("oom fp");
+      if ((com.z[j] = (char*)malloc(npatt0 * sizeof(char))) == NULL) zerror("oom z");
+   if ((fpatt0 = (double*)malloc(npatt0 * sizeof(double))) == NULL) zerror("oom fp");
    for (h = 0; h < com.npatt; h++)
       fpatt0[h] = com.fpatt[h];
    for (j = 0; j < n; j++)
@@ -6053,8 +6051,8 @@ void Get4foldSites(void)
    char file4[12] = "4fold.nuc", *mark4;
    FILE *f4;
 
-   f4 = gfopen(file4, "w");
-   if ((mark4 = (char*)malloc(com.ls * sizeof(char))) == NULL) error2("oom mark");
+   f4 = zopen(file4, "w");
+   if ((mark4 = (char*)malloc(com.ls * sizeof(char))) == NULL) zerror("oom mark");
    for (h = 0; h < com.ls; h++)  mark4[h] = 0;
 
    for (h = 0, ls4 = 0; h < com.ls; h++) {
@@ -6062,7 +6060,8 @@ void Get4foldSites(void)
          NucListall(com.z[0][h * 3 + k], &nb[k], ib[k]);
       if (nb[0] == 1 && nb[2] == 1 && FourFold[ib[0][0]][ib[1][0]]) {
          for (j = 1; j < com.ns; j++)
-            for (k = 0; k < 2; k++) if (com.z[j][h * 3 + k] != com.z[0][h * 3 + k]) goto nextsite;
+            for (k = 0; k < 2; k++)
+               if (com.z[j][h * 3 + k] != com.z[0][h * 3 + k]) goto nextsite;
          mark4[h] = 1;  ls4++;
       }
    nextsite:;
@@ -6137,7 +6136,7 @@ void d4dSdN(FILE* fout)
       t = t0[ii];
       eigenQcodon(2, t, &S, &dS, &dN, NULL, NULL, NULL, &mr, &com.kappa, com.omega, PMat);
       PMatUVRoot(PMat, t, n, U, V, Root);
-      if (testTransP(PMat, n)) error2("testP");
+      if (testTransP(PMat, n)) zerror("testP");
 
       matout(frst, PMat, n, n);
 
@@ -6442,22 +6441,22 @@ int lfunNSsites_M2M8(FILE* frst, double x[], int np)
    if (com.NSsites == 8) com.ncatG = n1d + n1d;  /* w from beta & ws */
    else               com.ncatG = (M2a ? n1d + 1 + n1d : 2 + n1d);  /* w0, w1=1, w2 */
    if ((meanw = (double*)malloc(com.npatt*(2 + nclassM) * sizeof(double))) == NULL)
-      error2("oom meanw");
+      zerror("oom meanw");
    varw = meanw + com.npatt;  postSite = varw + com.npatt;
    ternary = (com.NSsites == 2 && ternary);
 
    if (ternary && (postp0p1 = (double*)malloc(n1d*n1d * sizeof(double))) == NULL)
-      error2("oom postp0p1");
+      zerror("oom postp0p1");
    if ((lnfXs = (double*)malloc(ngrid * sizeof(double))) == NULL)
-      error2("oom lnfXs");
+      zerror("oom lnfXs");
    if ((pclassM = (double*)malloc(ngrid*nclassM*(sizeof(double) + sizeof(int)))) == NULL)
-      error2("oom pclassM");  /* this wastes space */
+      zerror("oom pclassM");  /* this wastes space */
    iw = (int*)(pclassM + ngrid*nclassM);
    if ((lnprior = (double*)malloc(n1d*n1d * sizeof(double))) == NULL)
-      error2("oom lnprior");  /* this wastes space */
+      zerror("oom lnprior");  /* this wastes space */
 
    k = com.npatt*com.ncatG * sizeof(double);
-   if ((com.fhK = (double*)realloc(com.fhK, k)) == NULL) error2("oom fhK");
+   if ((com.fhK = (double*)realloc(com.fhK, k)) == NULL) zerror("oom fhK");
 
    for (j = 0; j < n1d*n1d; j++) lnprior[j] = 0;
    if (com.NSsites == 8 && trianglePriorM8) {
@@ -6896,14 +6895,14 @@ int lfunNSsites_ACD(FILE* frst, double x[], int np)
       + ngrid*nclassM * sizeof(int);
    if (noisy) printf("\nTrying to get %.1fM memory in lfunNSsites_ACD\n", k / 1000000.0);
    if ((postp0p1 = (double*)malloc(k)) == NULL)
-      error2("oom in lfunNSsites_ACD");
+      zerror("oom in lfunNSsites_ACD");
    postSite = postp0p1 + n1d*n1d;
    lnfXs = postSite + com.npatt*nclassM;
    pclassM = lnfXs + ngrid;
    iw = (int*)(pclassM + ngrid*nclassM);
 
    k = com.npatt*com.ncatG * sizeof(double);
-   if ((com.fhK = (double*)realloc(com.fhK, k)) == NULL) error2("oom fhK");
+   if ((com.fhK = (double*)realloc(com.fhK, k)) == NULL) zerror("oom fhK");
 
    BayesEB = 2;
    get_grid_para_like_ACD(para, n1d, dim, w0b, w1b, (modelACD == mA ? wsb : w2b), x, &S1);

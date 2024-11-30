@@ -14,6 +14,7 @@
 #include <float.h>
 #include <time.h>
 #include <assert.h>
+#include <stdarg.h>
 
 #define square(a) ((a)*(a))
 #define F0 stdout
@@ -28,6 +29,8 @@
 #define max2(a,b) ((a)>(b)?(a):(b))
 #define swap2(a,b,y) { y=a; a=b; b=y; }
 #define Pi  3.1415926535897932384626433832795
+#define X_STRING(x) #x
+#define X_C2S(x) X_STRING(x)
 
 int ReadSeq (FILE* fout, FILE* fseq, int cleandata, int locus, int read_seq_only);
 int ScanFastaFile (FILE *f, int *ns, int *ls, int *aligned);
@@ -201,10 +204,10 @@ void sleep2(int wait);
 char *strc (int n, int c);
 int printdouble(FILE*fout, double a);
 void strcase (char *str, int direction);
-void error2(char * message);
+void zerror(const char* format, ...);
 int  indexing(double x[], int n, int index[], int descending, int space[]);
 int binarysearch (const void *key, const void *base, size_t n, size_t size, int(*compare)(const void *, const void *), int *found);
-FILE *gfopen(char *filename, char *mode);
+FILE *zopen(char *filename, char *mode);
 int  appendfile(FILE*fout, char*filename);
 
 int zero (double x[], int n);
@@ -227,8 +230,8 @@ int matout (FILE *file, double x[], int n, int m);
 int matout2 (FILE *fout, double x[], int n, int m, int wid, int deci);
 int mattransp1 (double x[], int n);
 int mattransp2 (double x[], double y[], int n, int m);
-int matinv (double x[], int n, int m, double space[]);
-int matexp (double A[], int n, int nTaylorTerms, int nSquares, double space[]);
+int matinv(double x[], int n, int m, double *det, double space[]);
+int matexp(double A[], int n, int nTaylorTerms, int nSquares, double space[]);
 #ifdef USE_GSL
 int matexpGSL (double A[], int n, double space[]);
 #endif
@@ -366,10 +369,6 @@ int UseLocus (int locus, int copyconP, int setmodel, int setSeqName);
 int GetGtree(int locus);
 int printGtree(int printBlength);
 
-void copySptree(void);
-void printSptree(void);
-
-
 enum DataType {BASEseq = 0, CODONseq = 1, AAseq = 2, CODON2AAseq = 3, BINARYseq = 4, BASE5seq = 5};
 enum PrintOptions { PrBranch = 1, PrNodeNum = 2, PrLabel = 4, PrNodeStr = 8, PrAge = 16, PrOmega = 32 };
 
@@ -390,6 +389,6 @@ enum PrintOptions { PrBranch = 1, PrNodeNum = 2, PrLabel = 4, PrNodeStr = 8, PrA
 
 #define PAML_RELEASE      0
 
-#define pamlVerStr "paml version 4.10.6, November 2022"
+#define pamlVerStr "paml version 4.10.8, November 2027"
 
 #endif

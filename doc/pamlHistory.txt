@@ -8,6 +8,29 @@ discussion site
 https://groups.google.com/forum/#!forum/pamlsoftware.
 
 
+paml v4.10.7, November 2024
+
+(*) baseml/codeml Tipdate-clock option.  The Tipdate-clock (clock = 1,
+tipdate = 1 100) option in baseml/codeml is broken when multiple trees
+are in the tree file, with the program analysing the first tree
+multiple times.  The error shows up when one changes the first line in
+the file examples/TipDate.HIV2/HIV2ge.tre from 33 1 to 33 3.
+
+I think the example data file was last edited around 2013, at the time
+the paper with Tanja ( Stadler & Yang 2013 Syst Biol 62: 674-688) was
+prepared.  Based on my quick tests, the option is correct in versions
+4.8a (August 2014) to version 4.9h (March 2018), but has been broken
+in version 4.9i (September 2018) and 4.9j (February 2020).  I haven't
+tested the different updates since version 4.10.
+
+I have fixed the bug.  Note that some of the trees in the tree file
+are bootstrap consensus trees which are multifurcating trees.
+
+Thanks to jtmccr1 for identifying the bug:
+https://github.com/abacus-gene/paml/issues/43#issuecomment-2342570454
+
+
+
 paml v4.10.1, December 2021
 
 (*) mcmctree.  We decided to change the default MCMC sliding-window
