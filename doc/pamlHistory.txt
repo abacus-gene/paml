@@ -8,7 +8,7 @@ discussion site
 https://groups.google.com/forum/#!forum/pamlsoftware.
 
 
-paml v4.10.7, November 2024
+paml v4.10.8, November 2024
 
 (*) baseml/codeml Tipdate-clock option.  The Tipdate-clock (clock = 1,
 tipdate = 1 100) option in baseml/codeml is broken when multiple trees
