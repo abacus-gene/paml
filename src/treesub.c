@@ -1,6 +1,6 @@
 /* treesub.c
- subroutines that operates on trees, inserted into other programs
- such as baseml, basemlg, codeml, and pamp.
+   subroutines that operates on trees, inserted into other programs
+   such as baseml, basemlg, codeml, and pamp.
  */
 
 extern char BASEs[], * EquateBASE[], AAs[], BINs[], CODONs[][4], nChara[], CharaMap[][64];

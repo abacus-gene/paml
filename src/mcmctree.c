@@ -302,12 +302,10 @@ int main(int argc, char *argv[])
       mcmc.print *= -1;
       fputs("\nSpecies tree for FigTree.", fout);
       nodes = nodes_t;
-      copy_to_Sptree(&stree, nodes);
+      copy_from_Sptree(&stree, nodes);
+      /* copy_to_Sptree(&stree, nodes); */
       fprintf(fout, "\n"); 
       OutTreeN(fout, 1, PrNodeNum);
-
-fflush(fout);
-puts("i is at a..");
 
       fprintf(fout, "\n");
       DescriptiveStatisticsSimpleMCMCTREE(fout, com.mcmcf);
@@ -4031,6 +4029,7 @@ int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[])
    }
    fprintf(fout, "\n");
    OutTreeN(fout, 1, PrBranch | PrLabel | PrNodeStr);  /* prints ages & CIs */
+   /* OutTreeN(fout, 1, PrBranch | PrLabel | PrNodeStr); */ /* prints ages & CIs */
    fprintf(fout, "\n");
 
    /* sprintf(FigTreef, "%s.FigTree.tre", com.seqf); */
