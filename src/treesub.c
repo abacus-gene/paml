@@ -1,6 +1,6 @@
 /* treesub.c
- subroutines that operates on trees, inserted into other programs
- such as baseml, basemlg, codeml, and pamp.
+   subroutines that operates on trees, inserted into other programs
+   such as baseml, basemlg, codeml, and pamp.
  */
 
 extern char BASEs[], * EquateBASE[], AAs[], BINs[], CODONs[][4], nChara[], CharaMap[][64];
@@ -1522,10 +1522,10 @@ void AddFreqSeqGene(int js, int ig, double pi0[], double pi[]);
 
 void Chi2FreqHomo(double f[], int ns, int nc, double X2G[2])
 {
-   /* This calculates a chi-square like statistic for testing that the base
-    or amino acid frequencies are identical among sequences.
-    f[ns*nc] where ns is #sequences (rows) and nc is #states (columns).
-    */
+/* This calculates a chi-square like statistic for testing that the base
+  or amino acid frequencies are identical among sequences.
+  f[ns*nc] where ns is #sequences (rows) and nc is #states (columns).
+*/
    int i, j;
    double mf[64] = { 0 }, smallv = 1e-50;
 
@@ -2122,10 +2122,10 @@ extern double* SeqDistance;
 
 int DistanceMatNuc(FILE* fout, FILE* f2base, int model, double alpha)
 {
-   /* This calculates pairwise distances.  The data may be clean and coded
+/* This calculates pairwise distances.  The data may be clean and coded
     (com.cleandata==1) or not.  In the latter case, ambiguity sites are not
     used (pairwise deletion).  Site patterns are used.
-    */
+*/
    int is, js, status = 0;
    double kappat = 0, t, bigD = 9;
 
@@ -2660,11 +2660,11 @@ int LSDistance(double* ss, double x[], int(*testx)(double x[], int np))
 
 double PairDistanceML(int is, int js)
 {
-   /* This calculates the ML distance between is and js, the sum of ML branch
+/* This calculates the ML distance between is and js, the sum of ML branch
     lengths along the path between is and js.
     LSdistance() has to be called once to set ancestor before calling this
     routine.
-    */
+*/
    int it, a;
    double dij = 0;
 

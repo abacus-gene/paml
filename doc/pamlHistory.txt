@@ -8,6 +8,20 @@ discussion site
 https://groups.google.com/forum/#!forum/pamlsoftware.
 
 
+paml v4.10.8, 15 April 2025
+
+mcmctree.  The print=-1 option, which summarizes the MCMC sample
+rather than running the MCMC algorithm, is broken and it prints out a
+wrong tree, different from the tree specified in the tree file.
+Version 4.10.3 (Dec 2021) is correct, but the error is in v4.10.7
+(June 2023).  This error is now fixed.
+
+Also I have changed the CIs on the estimated species divergence times
+in the FigTree.tre file from the 95% equal-tail CIs to the 95% HPD
+CIs.
+
+
+
 paml v4.10.8, November 2024
 
 (*) baseml/codeml Tipdate-clock option.  The Tipdate-clock (clock = 1,

@@ -36,7 +36,6 @@
 double(*rndSymmetrical)(void);
 
 
-
 extern int noisy, NFunCall;
 extern char BASEs[];
 extern double PjumpOptimum;
@@ -169,6 +168,7 @@ struct DATA { /* locus-specific data and tree information */
    double zpopvar[NGENE], ldetRm[NGENE]; /* MdR */
    double *fpatt[NGENE], lnpT, lnpR, lnpDi[NGENE], pi[NGENE][NCODE];
    double kappa[NGENE], alpha[NGENE];
+   int BDS_flag;   /* 0: conditional construction; 1: multiplicative construction */
    double BDS[4];  /* parameters in the birth-death-sampling model */
    double kappagamma[2], alphagamma[2];
    double pfossilerror[3], /* (p_beta, q_beta, NminCorrect) */ Pfossilerr, *CcomFossilErr;
@@ -242,7 +242,8 @@ int main(int argc, char *argv[])
    if (argc > 1)
       strncpy(ctlf, argv[1], 4095);
 
-   data.BDS[0] = 1;    data.BDS[1] = 1;  data.BDS[2] = 0;
+   data.BDS_flag = 1;   /* 0: conditional construction; 1: multiplicative construction */
+   data.BDS[0] = 1;    data.BDS[1] = 1;  data.BDS[2] = 0;  data.BDS[3] = 0;
    strcpy(com.outf, "out");
    strcpy(com.mcmcf, "mcmc.txt");
 
@@ -301,12 +302,10 @@ int main(int argc, char *argv[])
       mcmc.print *= -1;
       fputs("\nSpecies tree for FigTree.", fout);
       nodes = nodes_t;
-      copy_to_Sptree(&stree, nodes);
+      copy_from_Sptree(&stree, nodes);
+      /* copy_to_Sptree(&stree, nodes); */
       fprintf(fout, "\n"); 
       OutTreeN(fout, 1, PrNodeNum);
-
-fflush(fout);
-puts("i is at a..");
 
       fprintf(fout, "\n");
       DescriptiveStatisticsSimpleMCMCTREE(fout, com.mcmcf);
@@ -1146,7 +1145,7 @@ int GetOptions(char *ctlf)
 {
    int  transform0 = ARCSIN_B; /* default transform: SQRT_B, LOG_B, ARCSIN_B */
    int  iopt, i, j, nopt = 32, lline = 4096;
-   char line[4096], *pline, opt[33], *comment = "*#";
+   char line[4096], *pline, opt[33], *comment = "*#", ch;
    char *optstr[] = { "seed", "seqfile","treefile", "outfile", "mcmcfile", "checkpoint", "BayesFactorBeta",
         "seqtype", "aaRatefile", "icode", "noisy", "usedata", "ndata", "duplication", "model", "clock",
         "TipDate", "RootAge", "fossilerror", "alpha", "ncatG", "cleandata",
@@ -1157,6 +1156,7 @@ int GetOptions(char *ctlf)
 
    data.rgeneprior = 0;  /* default rate prior is gamma-Dirichlet. */
    data.transform = transform0;
+   com.checkpointp = 0.1;
    strcpy(com.checkpointf, "mcmctree.ckpt");
    if (fctl) {
       if (noisy) printf("\nReading options from %s..\n", ctlf);
@@ -1235,8 +1235,15 @@ int GetOptions(char *ctlf)
                case (20): com.ncatG = (int)t;      break;
                case (21): com.cleandata = (int)t;  break;
                case (22):
-                  sscanf(pline + 1, "%lf%lf%lf%lf", &data.BDS[0], &data.BDS[1], &data.BDS[2], &data.BDS[3]);
-                  break;
+                  ch = -1;
+                  sscanf(pline + 1, "%lf%lf%lf%lf%c", &data.BDS[0], &data.BDS[1], &data.BDS[2], &data.BDS[3], &ch);
+                  if (ch == -1)
+                     sscanf(pline + 1, "%lf%lf%lf %c", &data.BDS[0], &data.BDS[1], &data.BDS[2], &ch);
+                  ch = toupper(ch);
+                  if (ch == 'C')       data.BDS_flag = 0;
+                  else if (ch == 'M')  data.BDS_flag = 1;
+                  else if (ch >= 'A' && ch <= 'Z') zerror("unrecognised flag for birth-death process prior");
+                  break;                 
                case (23):
                   sscanf(pline + 1, "%lf%lf", data.kappagamma, data.kappagamma + 1); break;
                case (24):
@@ -2411,12 +2418,11 @@ double CDFkernelBDS_YR07(double t, double t1, double vt1, double lambda, double 
    return(cdf);
 }
 
-
 double lnPDFkernelBeta(double t, double t1, double p, double q)
 {
-   /* This calculates the PDF for the beta kernel.
-      The normalizing constant is calculated outside this routine.
-   */
+/* This calculates the PDF for the beta kernel.
+   The normalizing constant is calculated outside this routine.
+*/
    double lnp, x = t / t1;
 
    if (x < 0 || x>1) zerror("t outside of range (0, t1)");
@@ -2424,7 +2430,6 @@ double lnPDFkernelBeta(double t, double t1, double p, double q)
    lnp -= log(t1);
    return(lnp);
 }
-
 
 double lnptNCgiventC(void)
 {
@@ -2478,7 +2483,7 @@ double lnptNCgiventC(void)
 
       for (j = 1, lnpt = 0; j < n1; j++) {
          k = stree.nspecies + j;
-         if (!stree.nodes[k].usefossil)   /* non-calibration node age */
+         if (data.BDS_flag == 1 || !stree.nodes[k].usefossil)   /* non-calibration node age */
             lnpt += lnPDFkernelBDS_YR07(stree.nodes[k].age, t1, vt1, lambda, mu, rho);
       }
    }
@@ -2486,10 +2491,11 @@ double lnptNCgiventC(void)
       lnbeta = lgamma(p) + lgamma(q) - lgamma(p + q);
       for (j = 1, lnpt = 0; j < n1; j++) {
          k = stree.nspecies + j;
-         if (!stree.nodes[k].usefossil)   /* non-calibration node age */
+         if (data.BDS_flag == 1 || !stree.nodes[k].usefossil) /* non-calibration node age */
             lnpt += lnPDFkernelBeta(stree.nodes[k].age, t1, p, q) + lnbeta;
       }
    }
+   if (data.BDS_flag == 1) return lnpt;
 
    /* (B) Divide by f(tC), marginal of calibration node ages (eq.9/eq.11).
       This goes through the calibration nodes in the order of their ages,
@@ -4022,7 +4028,7 @@ int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[])
       sprintf(nodes[j].annotation, "[&95%%HPD={%.6g, %.6g}]", xHPD025[jj], xHPD975[jj]);
    }
    fprintf(fout, "\n");
-   OutTreeN(fout, 1, PrBranch | PrLabel | PrNodeStr);  /* prints ages & CIs */
+   OutTreeN(fout, 1, PrBranch | PrNodeStr);  /* prints ages & CIs */
    fprintf(fout, "\n");
 
    /* sprintf(FigTreef, "%s.FigTree.tre", com.seqf); */
@@ -4059,7 +4065,6 @@ int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[])
       printf("%-10s ", varstr[j]);
       printf("%10.4f (%7.4f, %7.4f) (%7.4f, %7.4f) %7.4f", mean[j], x025[j], x975[j], xHPD025[j], xHPD975[j], xHPD975[j] - xHPD025[j]);
       if (j < SkipC1 + stree.nspecies - 1) {
-         printf("  (Jnode %2d)", 2 * stree.nspecies - 1 - 1 - j + SkipC1);
          if (tipdate.flag)
             printf(" time: %7.3f (%6.3f, %6.3f)", tipdate.youngest - mean[j] * tipdate.timeunit,
                tipdate.youngest - x975[j] * tipdate.timeunit, tipdate.youngest - x025[j] * tipdate.timeunit);
@@ -4075,7 +4080,6 @@ int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[])
          fprintf(fout, "%-10s ", varstr[j]);
          fprintf(fout, "%10.4f (%7.4f, %7.4f) (%7.4f, %7.4f) %7.4f", mean[j], x025[j], x975[j], xHPD025[j], xHPD975[j], xHPD975[j] - xHPD025[j]);
          if (j < SkipC1 + stree.nspecies - 1) {
-            fprintf(fout, " (Jnode %2d)", 2 * stree.nspecies - 1 - 1 - j + SkipC1);
             if (tipdate.flag)
                fprintf(fout, " time: %7.3f (%6.3f, %6.3f)", tipdate.youngest - mean[j] * tipdate.timeunit,
                   tipdate.youngest - x975[j] * tipdate.timeunit, tipdate.youngest - x025[j] * tipdate.timeunit);
@@ -4126,10 +4130,6 @@ int MCMC(FILE* fout)
       com.cleandata, mcmc.print, mcmc.saveconP);
 
    com.np = GetInitials();
-   /* ziheng-2024.4.4 */
-   for (int is = com.ns; is < stree.nnode; is++)
-      stree.nodes[is].age /= 2;
-
 
    for (j = 0; j < mcmc.nsteplength; j++)
       mcmc.steplength[j] = 0.001 + 0.1*rndu();
