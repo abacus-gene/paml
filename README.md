@@ -27,8 +27,6 @@ To download and install `PAML` software, please follow the next links in the wik
     * [`PAML` for Mac OS X](https://github.com/abacus-gene/paml/wiki/Installation#old-paml-versions-for-mac-os-x)
     * [`PAML` for Windows 9x/NT/2000/XP/Vista 7](https://github.com/abacus-gene/paml/wiki/Installation#old-paml-versions-for-windows-9xnt2000xpvista-7)
   * [Graphical user interface: PAML-X](https://github.com/abacus-gene/paml/wiki/Installation#graphical-user-interface-paml-x)
- 
-> If you are a macOS user and you are experiencing issues such as "trace trap" or "segmentation fault" when running `PAML` programs, please download the `dev` branch and follow the installation instructions given in the section [`PAML` for Mac OS X in the PAML Wiki](https://github.com/abacus-gene/paml/wiki/Installation#paml-for-mac-os-x). 
 
 ## Documentation
 
