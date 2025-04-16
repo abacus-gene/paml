@@ -4028,8 +4028,7 @@ int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[])
       sprintf(nodes[j].annotation, "[&95%%HPD={%.6g, %.6g}]", xHPD025[jj], xHPD975[jj]);
    }
    fprintf(fout, "\n");
-   OutTreeN(fout, 1, PrBranch | PrLabel | PrNodeStr);  /* prints ages & CIs */
-   /* OutTreeN(fout, 1, PrBranch | PrLabel | PrNodeStr); */ /* prints ages & CIs */
+   OutTreeN(fout, 1, PrBranch | PrNodeStr);  /* prints ages & CIs */
    fprintf(fout, "\n");
 
    /* sprintf(FigTreef, "%s.FigTree.tre", com.seqf); */
