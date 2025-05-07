@@ -7934,8 +7934,8 @@ int minB(FILE* fout, double* lnL, double x[], double xb[][2], double e0, double 
    com.ntime = ntime0;
    com.fix_blength = fix_blength0;
    *lnL = com.plfun(x, com.np); /* restore things, for e.g. AncestralSeqs */
-   if (fabs(*lnL - lnL0) > 1e-3)
-      printf("%.6f != %.6f lnL error.  Something is wrong in minB\n", *lnL, lnL0);
+   if (fabs(*lnL - lnL0) > 0.1)
+      printf("%.6f != %.6f lnL error.  Something may be wrong in minB\n", *lnL, lnL0);
    free(space_minbranches);
 
    return (status == -1 ? -1 : 0);

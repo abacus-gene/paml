@@ -16,7 +16,7 @@
 
      cleandata = 0    * remove sites with ambiguity data (1:yes, 0:no)?
 
-       BDparas = 1 1 0.1  * birth, death, sampling
+       BDparas = 1 1 0.1 multiplicative  * birth, death, sampling, multiplicative/conditional
    kappa_gamma = 6 2      * gamma prior for kappa
    alpha_gamma = 1 1      * gamma prior for alpha
 

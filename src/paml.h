@@ -389,6 +389,6 @@ enum PrintOptions { PrBranch = 1, PrNodeNum = 2, PrLabel = 4, PrNodeStr = 8, PrA
 
 #define PAML_RELEASE      0
 
-#define pamlVerStr "paml version 4.10.8, 15 May 2025"
+#define pamlVerStr "paml version 4.10.9, 7 May 2025"
 
 #endif

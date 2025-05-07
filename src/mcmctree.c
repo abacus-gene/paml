@@ -1235,14 +1235,14 @@ int GetOptions(char *ctlf)
                case (20): com.ncatG = (int)t;      break;
                case (21): com.cleandata = (int)t;  break;
                case (22):
-                  ch = -1;
+                  ch = -1;  /* there may be either 3 or 4 parameters in the BDS model. */
                   sscanf(pline + 1, "%lf%lf%lf%lf%c", &data.BDS[0], &data.BDS[1], &data.BDS[2], &data.BDS[3], &ch);
                   if (ch == -1)
                      sscanf(pline + 1, "%lf%lf%lf %c", &data.BDS[0], &data.BDS[1], &data.BDS[2], &ch);
                   ch = toupper(ch);
                   if (ch == 'C')       data.BDS_flag = 0;
                   else if (ch == 'M')  data.BDS_flag = 1;
-                  else if (ch >= 'A' && ch <= 'Z') zerror("unrecognised flag for birth-death process prior");
+                  else                 zerror("Flag for birth-death process prior expected: C for conditional, M for multiplicative");
                   break;                 
                case (23):
                   sscanf(pline + 1, "%lf%lf", data.kappagamma, data.kappagamma + 1); break;
