@@ -29,7 +29,7 @@
 *       BDparas = 1 0.5 0 0.9  * lambda, mu, rho, psi for birth-death-sampling model
 *       BDparas = 20 10 0 18  * lambda, mu, rho, psi for birth-death-sampling model
 *       BDparas = 0.2 0.1 0 0.18  * lambda, mu, rho, psi for birth-death-sampling model
-       BDparas = 2   1 0 1.8  * lambda, mu, rho, psi for birth-death-sampling model
+       BDparas = 2 1 0 1.8 M * lambda, mu, rho, psi for birth-death-sampling model
 
    kappa_gamma = 2 1   * gamma prior for kappa
    alpha_gamma = 2 4   * gamma prior for alpha
