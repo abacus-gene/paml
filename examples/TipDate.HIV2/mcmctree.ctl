@@ -23,7 +23,7 @@
 
      cleandata = 0    * remove sites with ambiguity data (1:yes, 0:no)?
 
-       BDparas = 2 1 0 1.8  * lambda, mu, rho, psi for birth-death-sampling model
+       BDparas = 2 1 0 1.8 M * lambda, mu, rho, psi for birth-death-sampling model
    kappa_gamma = 6 2      * gamma prior for kappa
    alpha_gamma = 1 1      * gamma prior for alpha
 
