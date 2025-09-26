@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
 
    if(argc>1) strcpy(infile, argv[1]);
    if(argc>2) strcpy(outfile,argv[2]);
-   fp = (FILE*)zopen(outfile,"w");
+   fp = (FILE*)zfopen(outfile,"w");
    puts("results go into out.txt");
    starttimer();
    DescriptiveStatistics(fp, infile, 100, 0, 1);

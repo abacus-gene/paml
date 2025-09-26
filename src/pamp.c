@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
       printf ("\nPairwise estimation of rate matrix done..\n");
       fflush(fout);
    */
-   ftree = zopen(com.treef, "r");
+   ftree = zfopen(com.treef, "r");
    fscanf(ftree, "%d%d", &i, &ntree);
    if (i != com.ns) zerror("ns in the tree file");
 
@@ -149,7 +149,7 @@ int GetOptions(char *ctlf)
    int iopt, nopt = 6, i, lline = 4096, t;
    char line[4096], *pline, opt[32], *comment = "*#";
    char *optstr[] = { "seqfile","outfile","treefile", "seqtype", "ncatG", "nhomo" };
-   FILE  *fctl = zopen(ctlf, "r");
+   FILE  *fctl = zfopen(ctlf, "r");
 
    if (fctl) {
       for ( ; ; ) {
@@ -635,7 +635,7 @@ int PatternLS(FILE *fout, double Ft[], double alpha, double space[], int *cond)
    int n = com.ncode, i, j, k, h, it;
    double *Q = Ft, *Qt = Q + n*n, *Qm = Qt + n*n;
    double *pi, *Root, *U, *V, *T1 = space, *branch, t;
-   FILE *fdist = zopen("Distance", "w");
+   FILE *fdist = zfopen("Distance", "w");
 
    if ((pi = (double*)malloc((n*n * 3 + tree.nbranch) * sizeof(double))) == NULL)
       zerror("PatternLS: oom");

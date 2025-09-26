@@ -173,7 +173,7 @@ int main (int argc, char *argv[])
    com.method = 0;    com.space = NULL;
 
    printf("BASEML in %s\n", pamlVerStr);
-   frub = zopen("rub", "w");  frst = zopen(rstf, "w"); frst1 = zopen("rst1", "w");
+   frub = zfopen("rub", "w");  frst = zfopen(rstf, "w"); frst1 = zfopen("rst1", "w");
 
    if (argc > 1)  strncpy(ctlf, argv[1], 4095);
    GetOptions(ctlf);
@@ -182,8 +182,8 @@ int main (int argc, char *argv[])
 
    fprintf(frst, "Supplemental results for BASEML\n\nseqf:  %s\ntreef: %s\n",
       com.seqf, com.treef);
-   fout = zopen(com.outf, "w");
-   fpair[0] = (FILE*)zopen(pairfs[0], "w");
+   fout = zfopen(com.outf, "w");
+   fpair[0] = (FILE*)zfopen(pairfs[0], "w");
 
    /* for stepwise addition, com.sspace should be calculated using com.ns. */
    com.sspace = 1000000 * sizeof(double);
@@ -331,7 +331,7 @@ int main (int argc, char *argv[])
       */
       {
          char keep[NS];
-         FILE *ftmp = zopen("newdata.txt", "w");
+         FILE *ftmp = zfopen("newdata.txt", "w");
          int is, js, i, j, nskeep, isbest = 0, isk, chosen[NS];
          double dmax, dminmax, d, dbig = 9;
 
@@ -441,11 +441,11 @@ int Forestry(FILE *fout, FILE *ftree)
       j = GetTreeFileType(ftree, &ntree, &pauptree, 0);
    }
    if (com.alpha)
-      frate = zopen(ratef, "w");
+      frate = zfopen(ratef, "w");
    if (com.alpha && com.rho == 0 && com.nhomo == 0 && com.nparK == 0 && com.ns < 15) {
-      inbasemlg = 1;  finbasemlg = zopen("in.basemlg", "w");
+      inbasemlg = 1;  finbasemlg = zfopen("in.basemlg", "w");
    }
-   flnf = zopen("lnf", "w+");
+   flnf = zfopen("lnf", "w+");
    fprintf(flnf, "%6d %6d %6d\n", ntree, com.ls, com.npatt);
 
    for (itree = 0; ntree == -1 || itree < ntree; itree++, iteration = 1) {
@@ -966,7 +966,7 @@ int GetOptions(char* ctlf)
 
    com.ndata_trees_opt = 0;
    com.nalpha = 0;
-   fctl = zopen(ctlf, "r");
+   fctl = zfopen(ctlf, "r");
    if (noisy) printf("Reading options from %s..\n", ctlf);
    for (; ; ) {
       if (fgets(line, lline, fctl) == NULL) break;

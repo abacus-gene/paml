@@ -281,9 +281,9 @@ int main(int argc, char *argv[])
    com.getSE = 0;       com.print = 0;    com.verbose = 1;  com.fix_blength = 0;
    com.method = 0;      com.space = NULL;
 
-   frub = zopen("rub", "w");
-   frst = zopen("rst", "w");
-   frst1 = zopen("rst1", "w");
+   frub = zfopen("rub", "w");
+   frst = zfopen("rst", "w");
+   frst1 = zfopen("rst1", "w");
 
    /*
    mergeSeqs(frst);  exit(0);
@@ -312,7 +312,7 @@ int main(int argc, char *argv[])
 
    printf("%s in %s\n", seqtypestr[com.seqtype - 1], pamlVerStr);
 
-   fout = zopen(com.outf, "w");
+   fout = zfopen(com.outf, "w");
 
    if (noisy && (com.seqtype == CODONseq || com.model == FromCodon0 || com.model == FromCodon)) {
       printcu(F0, NULL, com.icode); puts("Nice code, uuh?");
@@ -361,12 +361,12 @@ int main(int argc, char *argv[])
 
    if (com.seqtype == 1) {
       for (i = 0; i < 3; i++)
-         fpair[i] = (FILE*)zopen(pairfs[i], "w");
+         fpair[i] = (FILE*)zfopen(pairfs[i], "w");
       if (com.runmode == -2 || com.runmode == -3)
-         for (; i < 6; i++) fpair[i] = (FILE*)zopen(pairfs[i], "w");
+         for (; i < 6; i++) fpair[i] = (FILE*)zfopen(pairfs[i], "w");
    }
    else if (com.runmode == -2)
-      fpair[0] = (FILE*)zopen("2AA.t", "w");
+      fpair[0] = (FILE*)zfopen("2AA.t", "w");
    
    gnodes = (struct TREEN**)malloc(sizeof(struct TREEN*));
    for (com.idata = 0; com.idata < com.ndata; com.idata++) {
@@ -617,10 +617,10 @@ int Forestry(FILE* fout, FILE* ftree)
       j = GetTreeFileType(ftree, &ntree, &pauptree, 0);
    }
    if (com.alpha)
-      frate = (FILE*)zopen(ratef, "w");
+      frate = (FILE*)zfopen(ratef, "w");
    if (ntree > 10 && com.npatt > 10000 && com.print)
       puts("\nlnf file may be large");
-   flnf = zopen("lnf", "w+");
+   flnf = zfopen("lnf", "w+");
    fprintf(flnf, "%6d %6d %6d\n", ntree, com.ls, com.npatt);
 
    if (com.seqtype == 1 && com.aaDist >= FIT1) {
@@ -1711,7 +1711,7 @@ int GetOptions(char *ctlf)
    com.hyperpar[0] = 1.1; com.hyperpar[1] = 1.1; com.hyperpar[2] = 1.1; com.hyperpar[3] = 2.2;
    com.ndata_trees_opt = 0;
 
-   fctl = zopen(ctlf, "r");
+   fctl = zfopen(ctlf, "r");
    if (noisy) printf("\n\nReading options from %s..\n", ctlf);
    for ( ; ; ) {
       if (fgets(line, lline, fctl) == NULL) break;
@@ -3445,7 +3445,7 @@ int eigenQaa(FILE *fout, double Root[], double U[], double V[], double rate[])
 
    if (fout && com.model >= REVaa_0) {
       printf("\nAA substitution rate matrix printed into %s\n", AAratefile);
-      fAArate = (FILE*)zopen(AAratefile, "w");
+      fAArate = (FILE*)zfopen(AAratefile, "w");
       fprintf(fout, "\n\nRate matrix (symmetrical part, Sij)\n");
       for (i = 0, t = 0; i < naa; i++) {
          if (com.pi[i] == 0) zerror("eigenQaa: do this now");
@@ -3976,7 +3976,7 @@ int GetDaa(FILE* fout, double daa[])
 
    if (noisy > 3) printf("\n\nReading matrix from %s", com.daafile);
    if (com.model == REVaa_0 || com.model == REVaa) puts(", to get initial values.");
-   fdaa = zopen(com.daafile, "r");
+   fdaa = zfopen(com.daafile, "r");
 
    for (i = 0; i < naa; i++)
       for (j = 0, daa[i*naa + i] = 0; j < i; j++) {
@@ -5333,7 +5333,7 @@ int lfunNSsites_rate(FILE* frst, double x[], int np)
          printf("Choose color scheme (0: %d colors, 1: white->red, 2: rainbow) ", ncolors);
          scanf("%d", &continuous);
 
-         fras = (FILE*)zopen("RasMol.txt", "w");
+         fras = (FILE*)zfopen("RasMol.txt", "w");
          for (h = 0, maxmw = 0, minmw = 99; h < com.npatt; h++) {
             if (maxmw < meanw[h]) maxmw = meanw[h];
             if (minmw > meanw[h]) minmw = meanw[h];
@@ -5604,7 +5604,7 @@ void SimulateData2s61(void)
    strcpy(infile, "in.codon2sSites");
 #endif
    printf("\nTwo codon seq. simulation for ML (GY94), input from %s\n", infile);
-   fin = zopen(infile, "r");
+   fin = zfopen(infile, "r");
 
    fscanf(fin, "%d%d%d%d", &k, &nr, &com.codonf, &nil);
    printf("\n%d replicates, %s model for analysis\nLc:",
@@ -5742,7 +5742,7 @@ void SimulateData2s61(void)
                ir + 1, x[0], x[1], x[2], mx[0], mx[1], mx[2], mx[3], mx[4]);
 #if 0
             if (ir == 9) {
-               fseq = zopen(seqfile, "w");
+               fseq = zfopen(seqfile, "w");
                fprintf(fseq, "%6d %6d\n", com.ns, com.ls * 3);
                for (i = 0; i < 2; i++) {
                   fprintf(fseq, "seq.%-5d  ", i + 1);
@@ -5863,7 +5863,7 @@ void Ina(void)
                   com.z[0][com.npatt] = i; com.z[1][com.npatt] = j;
                   com.fpatt[com.npatt++] = nobs[k];
                }
-            fseq = zopen(seqfile, "w");
+            fseq = zfopen(seqfile, "w");
             fprintf(fseq, "> %6d %6d\n", com.ns, com.ls * 3);
             for (i = 0; i < 2; i++) {
                fprintf(fseq, "seq.%-5d  ", i + 1);
@@ -5876,7 +5876,7 @@ void Ina(void)
             fclose(fseq);
             if (com.ls > 2000) system("Ina1Large codonseq.tmp >t");
             else            system("Ina1 codonseq.tmp >t");
-            ftmp = zopen(tmpfile, "r");
+            ftmp = zfopen(tmpfile, "r");
             if (fscanf(ftmp, "%lf%lf%lf", &x[0], &x[1], &x[2]) != 3)
                zerror("reading tmpf");
             fclose(ftmp);
@@ -5939,7 +5939,7 @@ int mergeSeqs(FILE*fout)
          zerror("oom z");
    for (ifile = 0, ls0 = 0; ifile < nfile; ifile++) {
       printf("Reading data set %2d/%2d (%s)", ifile + 1, nfile, filenames[ifile]);
-      fseq = zopen(filenames[ifile], "r");
+      fseq = zfopen(filenames[ifile], "r");
       ReadSeq(NULL, fseq, 1, 0, 0);
       lgene0[ifile] = com.ls;  com.ls *= 3;
       for (i = 0; i < ns0; i++) if (strcmp(spname0[i], com.spname[i])) zerror("spname different");
@@ -6051,7 +6051,7 @@ void Get4foldSites(void)
    char file4[12] = "4fold.nuc", *mark4;
    FILE *f4;
 
-   f4 = zopen(file4, "w");
+   f4 = zfopen(file4, "w");
    if ((mark4 = (char*)malloc(com.ls * sizeof(char))) == NULL) zerror("oom mark");
    for (h = 0; h < com.ls; h++)  mark4[h] = 0;
 
@@ -6799,7 +6799,7 @@ void get_pclassM_iw_ACD(int iw[], double pclassM[], double para[][40], int n1d)
             if (k == 0)       iw[igrid*nclassM + k] = ip[2];                 /* class 0: w0 */
             else if (k == 1)  iw[igrid*nclassM + k] = n1d;                   /* class 1: w1=1 */
             else if (k == 2)  iw[igrid*nclassM + k] = n1d + 1 + ip[2] * n1d + ip[3]; /* class 2a model A: w0 & w2 */
-            else           iw[igrid*nclassM + k] = n1d + 1 + n1d*n1d + ip[3];   /* class 2b model A: w1=1 & w2 */
+            else              iw[igrid*nclassM + k] = n1d + 1 + n1d*n1d + ip[3];   /* class 2b model A: w1=1 & w2 */
             break;
          case(mC):
             if (k == 0)       iw[igrid*nclassM + k] = ip[2];     /* class 0: w0 */
@@ -6863,6 +6863,7 @@ int lfunNSsites_ACD(FILE* frst, double x[], int np)
    enum ModelsACD { mA, mC, mD };
    int modelACD = (com.model == 2 ? mA : (com.NSsites == 2 ? mC : mD));
    int dim, ngrid, igrid, ip[4 + NBTYPE], j, k, h, hp, it;
+   size_t sspace;
    int refsp = 0, ncatG0 = com.ncatG, lst = (com.readpattern ? com.npatt : com.ls);
    /* # of site classes under model and index for site class */
    int nclassM = (modelACD == mA ? 4 : 3), *iw, i;
@@ -6872,7 +6873,7 @@ int lfunNSsites_ACD(FILE* frst, double x[], int np)
    char timestr[32], paras[4 + NBTYPE][4] = { "p0","p1","w0","w2","w3","w4","w5","w6","w7" }, *sig, aa;
 
    if (modelACD == mA)  dim = 4;
-   else              dim = 3 + (modelACD == mD) + com.nbtype;
+   else                 dim = 3 + (modelACD == mD) + com.nbtype;
    printf("\nBEBing (dim = %d).  This may take many minutes.", dim);
 
    if (modelACD == mD) { /* "p0","p1","w0","w1","w2","w3"... */
@@ -6891,10 +6892,10 @@ int lfunNSsites_ACD(FILE* frst, double x[], int np)
       com.ncatG += n1d * 2;                 /* w0 & w1 */
    }
 
-   k = (n1d*n1d + com.npatt*nclassM + ngrid + ngrid*nclassM) * sizeof(double)
-      + ngrid*nclassM * sizeof(int);
-   if (noisy) printf("\nTrying to get %.1fM memory in lfunNSsites_ACD\n", k / 1000000.0);
-   if ((postp0p1 = (double*)malloc(k)) == NULL)
+   sspace = (n1d * n1d + com.npatt * nclassM + ngrid + ngrid * nclassM) * sizeof(double)
+      + ngrid * nclassM * sizeof(int);
+   if (noisy) printf("\nTrying to get %.1fM memory in lfunNSsites_ACD\n", sspace / 1000000.0);
+   if ((postp0p1 = (double*)malloc(sspace)) == NULL)
       zerror("oom in lfunNSsites_ACD");
    postSite = postp0p1 + n1d*n1d;
    lnfXs = postSite + com.npatt*nclassM;

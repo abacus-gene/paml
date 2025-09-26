@@ -4297,7 +4297,7 @@ void CladeSupport(FILE* fout, char treef[], int getSnames, char maintreef[], int
 
    /* Count trees and splits */
    printf("\nRead tree sample, count trees & splits \n");
-   ft = zopen(treef, "r");
+   ft = zfopen(treef, "r");
 
    if (getSnames)      /* species ordered as in first tree in file */
       GetNSfromTreeFile(ft, &com.ns, &k);
@@ -5732,7 +5732,7 @@ int BootstrapSeq(char* seqf)
    int iboot, nboot = com.bootstrap, h, is, ig, lg[NGENE] = { 0 }, j, start;
    int lsb = com.ls, n31 = 1, gap = 10, gpos[NGENE];
    int* sites = (int*)malloc(com.ls * sizeof(int)), * gmark = NULL;
-   FILE* fseq = (FILE*)zopen(seqf, "w");
+   FILE* fseq = (FILE*)zfopen(seqf, "w");
    enum { PAML = 0, PAUP };
    char* datatype = (char*)(com.seqtype == AAseq ? "protein" : "dna");
    char* paupstart = "paupstart", * paupblock = "paupblock", * paupend = "paupend";
@@ -8941,7 +8941,7 @@ int ReadTreeSeqs(FILE* fout)
    FILE* fseq, * ftree;
    int i, j, locus, clean0 = com.cleandata;
 
-   ftree = zopen(com.treef, "r");
+   ftree = zfopen(com.treef, "r");
    ReadMainTree(ftree, &stree);
    /* process fossil calibration info 
      (((A1 , B1) '#1 B(0.1,0.3)', (A2 , B2) #1), C ) 'B(0.9, 1.1)';  
@@ -8956,7 +8956,7 @@ int ReadTreeSeqs(FILE* fout)
    /* read sequences at each locus, construct gene tree by pruning stree */
    data.ngene = com.ndata;
    com.ndata = 1;
-   fseq = zopen(com.seqf, "r");
+   fseq = zfopen(com.seqf, "r");
    if ((gnodes = (struct TREEN**)malloc(sizeof(struct TREEN*) * data.ngene)) == NULL)
       zerror("oom");
 
@@ -9040,7 +9040,7 @@ int ReadTreeSeqs(FILE* fout)
 
 int GenerateGtrees(FILE* fout, FILE* fseq, char *treesfilename)
 {
-   FILE* ftrees = zopen(treesfilename, "w");
+   FILE* ftrees = zfopen(treesfilename, "w");
    int locus, s=stree.nspecies, i;
 
    for (locus = 0; locus < com.ndata; locus++) {
@@ -9782,8 +9782,8 @@ int AdHocRateSmoothing(FILE* fout, double x[NS * 3], double xb[NS * 3][2], doubl
    double mbrate[20], Rj[20], r, minr, maxr, beta, * pnu = &nu_AHRS, nu, mr[NGENE];
    int i, j, k, k0, locus, nbrate[20], maxnbrate = 20;
    char timestr[32];
-   FILE* fBV = zopen("in.BV", "w");
-   FILE* fdist = zopen("RateDist.txt", "w");
+   FILE* fBV = zfopen("in.BV", "w");
+   FILE* fdist = zfopen("RateDist.txt", "w");
    FILE* finStep1 = fopen("in.ClockStep1", "r"),
       * finStep2 = fopen("in.ClockStep2", "r");
 

@@ -1140,7 +1140,7 @@ void strcase(char *str, int direction)
 }
 
 
-FILE* zopen(char* filename, char* mode)
+FILE* zfopen(char* filename, char* mode)
 {
    FILE* fp;
 
@@ -1503,14 +1503,15 @@ double PjumpOptimum = 0.30; /* this is the optimum for the Bactrian move. */
 int ResetStepLengths(FILE *fout, double Pjump[], double steps[], int nsteps)
 {
    /* this abjusts the MCMC proposal step lengths, using equation 9 in
-      Yang, Z. & Rodríguez, C. E. 2013 Searching for efficient Markov chain Monte Carlo proposal kernels. Proc. Natl .Acad. Sci. U.S.A. 110, 19307–19312.
+      Yang, Z. & Rodríguez, C. E. 2013 Searching for efficient Markov chain Monte Carlo proposal kernels. 
+      Proc. Natl .Acad. Sci. U.S.A. 110, 19307–19312.
       PjumpOptimum = 0.3 is also from that paper.
    */
    int j, verybadstep = 0;
    double maxstep = 99;  /* max step length */
 
    if (noisy >= 3) {
-      printf("\n(nsteps = %d)\nCurrent Pjump:    ", nsteps);
+      printf("\n(nsteps = %d)\nCurrent Pjump: ", nsteps);
       for (j = 0; j < nsteps; j++)
          printf(" %8.5f", Pjump[j]);
       printf("\nCurrent steps: ");
@@ -1593,29 +1594,19 @@ double rndNormal(void)
    return (u*s);  /* (v*s) is the other N(0,1) variate, wasted. */
 }
 
-
-int rndNp(double x[], int n, int p, double mx[], double vx[], int isvroot)
+int rndNp(double x[], int n, int p, double mx[], double cholesky[])
 {
-   /* This returns n samples from p-variate normal N_p(mu, v).
+   /* This returns n samples from p-variate normal N_p(mx, V).
       x[n*p]: n rows, each row having p variables.
-      if isvroot == 1: vx[] has the square root of var[].  otherwise we generate the cholesky L.
+      Input: n, p, cholesky[p*p], space[p].
+      Output: x[]
    */
-   int ir, i, j, k;
-   double* L, * z, u, v, s;
-
-   k = isvroot ? p : p * (1 + p);
-   if ((z = (double*)malloc(k * sizeof(double))) == NULL) zerror("error rndNp");
-
-   if (isvroot)
-      L = vx;
-   else {
-      L = z + p;
-      CholeskyDecomp(vx, p, L);
-      //matout(F0, L, p, p);
-   }
+   int ir, i, j;
+   double* z, u, v, s;
 
    for (ir = 0; ir < n; ir++) {
-      for (j = 0; j < p; ) {
+      z = x + ir * p;
+      for (i = 0; i < p; ) {
          /* generate a pair of N(0,1) variates: u, v. */
          for (; ;) {
             u = 2 * rndu() - 1;
@@ -1624,26 +1615,21 @@ int rndNp(double x[], int n, int p, double mx[], double vx[], int isvroot)
             if (s > 0 && s < 1) break;
          }
          s = sqrt(-2 * log(s) / s);
-         z[j++] = u * s;
-         if (j < n - 1)
-            z[j++] = v * s;
+         z[i++] = u * s;
+         if (i < p - 1)
+            z[i++] = v * s;
       }
-      //printf("\bi=%d ", ir + 1);
-      //matout2(F0, z, 1, p, 16, 9);
-
-      //matby(L, z, x + ir * p, p, p, 1);
-      //matout2(F0, x + ir * p, 1, p, 16, 9);
-
-      for (i = 0; i < p; i++) {
+      /* matout2(stdout, x + ir * p, 1, p, 16, 9); */
+      for (i = p - 1; i >= 0; i--) {
          for (j = 0, s = mx[i]; j <= i; j++)
-            s += L[i * p + j] * z[j];
-         x[ir * p + i] = s;
+            s += cholesky[i * p + j] * z[j];
+         z[i] = s;
       }
-      // matout2(F0, x + ir * p, 1, p, 16, 9);
+      /* matout2(stdout, x + ir * p, 1, p, 16, 9); */
    }
-   free(z);
-   return 0;
+   return (0);
 }
+
 int rndBinomial(int n, double p)
 {
 /* This may be too slow when n is large.
@@ -1654,7 +1640,6 @@ int rndBinomial(int n, double p)
       if (rndu() < p) x++;
    return (x);
 }
-
 
 double rndBactrian(void)
 {
@@ -3314,7 +3299,7 @@ double Quantile(double(*cdf)(double x, double par[]),
 int GaussLegendreRule(const double **x, const double **w, int npoints)
 {
    /* This returns the Gauss-Legendre nodes and weights in x[] and w[].
-      npoints = 10, 20, 32, 64, 128, 256, 512, 1024
+      npoints = 4, 8, 16, 32, 64, 128, 256, 512, 1024
    */
    int status = 0;
    static const double x4[] = { 0.3399810435848562648026658, 0.8611363115940525752239465 };
@@ -4788,7 +4773,7 @@ int matout2(FILE * fout, double x[], int n, int m, int wid, int deci)
    fprintf(fout, "\n");
    for (i = 0; i < n; i++) {
       for (j = 0; j < m; j++)
-         fprintf(fout, " %*.*g", wid - 1, deci, x[i*m + j]);
+         fprintf(fout, " %*.*f", wid - 1, deci, x[i*m + j]);
       fprintf(fout, "\n");
    }
    return (0);
@@ -5581,7 +5566,7 @@ int density1d(FILE* fout, double y[], int n, int nbin, double minx,
          }
       }
       if (!adaptive) fprintf(fout, "%.6f\t%.6f\t%.6f\n", xt, fobs[k], fE);
-      else          fprintf(fout, "%.6f\t%.6f\t%.6f\t%.6f\n", xt, fobs[k], fE, fEA);
+      else           fprintf(fout, "%.6f\t%.6f\t%.6f\t%.6f\n", xt, fobs[k], fE, fEA);
    }
    return(0);
 }
@@ -5801,7 +5786,7 @@ int DescriptiveStatistics(FILE* fout, char infile[], int nbin, int propternary, 
      The kernel function is Epanechnikov.  For 2-D smoothing, Fukunaga's transform is used
      (p.77 in B.W. Silverman 1986).
   */
-  FILE* fin = zopen(infile, "r");
+  FILE* fin = zfopen(infile, "r");
   int  n, p, i, j, k, jj, kk;
   char* fmt = " %9.6f", * fmt1 = " %9.1f", timestr[32];
   double* data, * x, * mean, * median, * minx, * maxx, * x005, * x995, * x025, * x975, * xHPD025, * xHPD975, * var;

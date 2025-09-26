@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
    starttimer();
    GetOptions(ctlf);
 
-   fout = zopen(com.outf, "w");
+   fout = zfopen(com.outf, "w");
    fprintf(fout, "MCMCTREE (%s) %s\n", pamlVerStr, com.seqf);
 
    ReadTreeSeqs(fout);
@@ -926,7 +926,7 @@ int ReadBlengthGH(char infile[])
 
       This also frees up memory for sequences.
    */
-   FILE* fBGH = zopen(infile, "r");
+   FILE* fBGH = zfopen(infile, "r");
    char line[100];
    int locus, i, j, nb, son1, son2, leftsingle;
    double dbu[NBRANCH], dbu2[NBRANCH], u, cJC = (com.ncode - 1.0) / com.ncode, sin2u, cos2u;
@@ -1078,7 +1078,7 @@ int GenerateBlengthGH(char infile[])
       This mimics Jeff Thorne's estbranches program.
    */
    FILE *fseq, *ftree, *fctl;
-   FILE *fBGH = zopen(infile, "w");
+   FILE *fBGH = zfopen(infile, "w");
    char tmpseqf[32], tmptreef[32], ctlf[32], outf[32], line[10000];
    int i, locus;
 
@@ -1089,9 +1089,9 @@ int GenerateBlengthGH(char infile[])
       sprintf(tmptreef, "tmp%04d.trees", locus + 1);
       sprintf(ctlf, "tmp%04d.ctl", locus + 1);
       sprintf(outf, "tmp%04d.out", locus + 1);
-      fseq = zopen(tmpseqf, "w");
-      ftree = zopen(tmptreef, "w");
-      fctl = zopen(ctlf, "w");
+      fseq = zfopen(tmpseqf, "w");
+      ftree = zfopen(tmptreef, "w");
+      fctl = zfopen(ctlf, "w");
 
       UseLocus(locus, 0, 0, 1);
       com.cleandata = data.cleandata[locus];
@@ -1152,7 +1152,7 @@ int GetOptions(char *ctlf)
         "BDparas", "kappa_gamma", "alpha_gamma", "rgene_gamma", "sigma2_gamma", 
         "print", "burnin", "sampfreq", "nsample", "finetune" };
    double t = 1, *eps = mcmc.steplength;
-   FILE  *fctl = zopen(ctlf, "r");
+   FILE  *fctl = zfopen(ctlf, "r");
 
    data.rgeneprior = 0;  /* default rate prior is gamma-Dirichlet. */
    data.transform = transform0;
@@ -1497,7 +1497,7 @@ double Infinitesites(FILE *fout)
    double y, ynew, yb[2], sumold, sumnew, *gD, naccept[5] = { 0 }, Pjump[5] = { 0 };
    double *x, *mx, *FixedDs, *b, maxt0, tson[2], lnL, lnLnew, lnacceptance, c, lnc;
    char *FidedDf[2] = { "FixedDsClock1.txt", "FixedDsClock23.txt" };
-   FILE *fin = zopen(FidedDf[com.clock > 1], "r"), *fmcmc = zopen(com.mcmcf, "w");
+   FILE *fin = zfopen(FidedDf[com.clock > 1], "r"), *fmcmc = zfopen(com.mcmcf, "w");
 
    if (BFbeta != 1) zerror("BFbeta should not be used for Infinitesites?");
    com.model = 0;  com.alpha = 0;
@@ -3942,7 +3942,7 @@ int UpdatePFossilErrors(double steplength, char *accept)
 
 int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[])
 {
-   FILE *fin = zopen(infile, "r"), *fFigTree;
+   FILE *fin = zfopen(infile, "r"), *fFigTree;
    char timestr[32], FigTreef[96] = "FigTree.tre";
    double *dat, *x, *mean, *median, *minx, *maxx, *x005, *x995, *x025, *x975, *xHPD025, *xHPD975, *var;
    double *y, *Tint, tmp[2], rho1;
@@ -4145,7 +4145,7 @@ int MCMC(FILE* fout)
    mx = x + com.np;
 
    if (mcmc.print > 0)
-      fmcmc = zopen(com.mcmcf, "w");
+      fmcmc = zfopen(com.mcmcf, "w");
    collectx(fmcmc, x);
    if (!com.fix_kappa && !com.fix_alpha && data.ngene == 2) { nxpr[0] = 6; nxpr[1] = 4; }
 
