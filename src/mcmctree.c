@@ -86,6 +86,9 @@ int mixingCladeStretch(double *lnL, double steplength, char *accept);
 int UpdatePFossilErrors(double steplength, char *accept);
 int getPfossilerr(double postEFossil[], double nround);
 int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[]);
+/* 260120-SAC: Add function declarations for new feature to combine MCMC files */
+int comparenames(const void *a, const void *b);
+int CombineMCMCFiles_CommandLine(int argc, char *argv[]);
 
 struct CommonInfo {
    char *z[NS], *spname[NS];
@@ -237,6 +240,11 @@ int main(int argc, char *argv[])
    com.ncode = 4;      com.clock = 1;
 
    printf("MCMCTREE in %s\n", pamlVerStr);
+   /* 260120-SAC: Conditional statement that will call fun to combine MCMC files */
+   if (argc > 2 && strcmp(argv[1], "--combine") == 0) {
+      CombineMCMCFiles_CommandLine(argc, argv);
+      exit(0);
+   }
    if (argc > 2 && !strcmp(argv[argc - 1], "--stdout-no-buf"))
       setvbuf(stdout, NULL, _IONBF, 0);
    if (argc > 1)
@@ -317,6 +325,263 @@ int main(int argc, char *argv[])
    exit(0);
 }
 
+/* 260120-SAC: Adding new functionality for MCMCtree.
+      Combinining multiple MCMC files obtained from independent
+      runs into a unique MCMC file for subsequent analyses.
+      The first function "comparenames" checks that file names
+      are ordered alphabetically and numerically.
+      The second function "CombineMCMCFiles_CommandLine" will
+      parse the MCMC files (using "comparenames" when sorting
+      file names with qsort) and combine them into a unique file
+      with the first column (number of iterations) going from
+      1 to N to avoid incompatibility issues when loaded into
+      graphilca programs for MCMC diagnostics. 
+*/
+int comparenames(const void *a, const void *b)
+{
+   /* Natural sort comparison for filenames with numbers
+      Compares strings but treats embedded numbers numerically.
+      E.g.: file1.txt < file2.txt < file10.txt < file21.txt
+   */
+   const char *s1 = *(const char**)a;
+   const char *s2 = *(const char**)b;
+   
+   while (*s1 && *s2) {
+      /* If both characters are digits, compare as numbers */
+      if (isdigit(*s1) && isdigit(*s2)) {
+         long n1 = 0, n2 = 0;
+         /* Extract complete numbers */
+         while (isdigit(*s1)) {
+            n1 = n1 * 10 + (*s1 - '0');
+            s1++;
+         }
+         while (isdigit(*s2)) {
+            n2 = n2 * 10 + (*s2 - '0');
+            s2++;
+         }
+         /* Compare numbers */
+         if (n1 != n2)
+            return (n1 < n2) ? -1 : 1;
+      }
+      /* Otherwise compare characters normally */
+      else {
+         if (*s1 != *s2)
+            return (*s1 - *s2);
+         s1++;
+         s2++;
+      }
+   }
+   
+   /* One string ended - shorter comes first */
+   return (*s1 - *s2);
+}
+
+int CombineMCMCFiles_CommandLine(int argc, char *argv[])
+{
+   /* This combines all MCMC files (*.txt) in a directory
+      into a single file with sequential iteration numbers
+      from 1 to N.
+      
+      Usage: 
+        mcmctree --combine <directory>
+      
+      Output: mcmc_combined/mcmc_combined.txt
+   */
+   FILE *fin, *fout;
+   char line[10000], outfile[1024];
+   char cmdstr[2048], listfile[1024], fullpath[1024];
+   int nfiles, i, j, linenum, headerWritten;
+   char *tab_pos, *p;
+   char **filelist;
+   int maxfiles;
+   
+   /* Initialize variables */
+   nfiles = 0;
+   linenum = 0;
+   headerWritten = 0;
+   maxfiles = 1000;
+   
+   if (argc != 3) {
+      printf("Usage: mcmctree --combine <directory>\n");
+      printf("\nExamples: if <directory> was mcmc_files...\n");
+      printf("  mcmctree --combine mcmc_files\n");
+      printf("  mcmctree --combine ../results/mcmc_files\n");
+      printf("  mcmctree --combine /usr/phylo/dating/results/mcmc_files\n");
+      printf("\nCombines all MCMC files (*.txt) in a given directory.\n");
+      printf("Output: mcmc_combined/mcmc_combined.txt\n");
+      return 1;
+   }
+   
+   /* Allocate memory for file list */
+   filelist = (char**)malloc(maxfiles * sizeof(char*));
+   if (filelist == NULL) {
+      printf("Error: Memory allocation failed\n");
+      return 1;
+   }
+   for (i = 0; i < maxfiles; i++) {
+      filelist[i] = (char*)malloc(1024 * sizeof(char));
+      if (filelist[i] == NULL) {
+         printf("Error: Memory allocation failed\n");
+         return 1;
+      }
+   }
+   
+   printf("\nScanning directory: ");
+   for (p = argv[2]; *p; p++) putchar(*p == '\\' ? '/' : *p);
+   printf("\n");
+   
+   /* Create temporary file list */
+   strcpy(listfile, "mcmc_filelist_tmp.txt");
+   
+   /* Try Windows command first - remove error redirection */
+   strcpy(cmdstr, "dir /b ");
+   strcat(cmdstr, argv[2]);
+   strcat(cmdstr, "\\*.txt > ");
+   strcat(cmdstr, listfile);
+   strcat(cmdstr, " 2>nul");  /* Windows error redirect */
+   
+   system(cmdstr);
+   fin = zfopen(listfile, "r");
+   if (fin != NULL && fgets(line, 512, fin) != NULL) {
+      fclose(fin);
+   } else {
+      if (fin != NULL) fclose(fin);
+      /* Try Unix command - remove error redirection */
+      strcpy(cmdstr, "ls -1 ");
+      strcat(cmdstr, argv[2]);
+      strcat(cmdstr, "/*.txt > ");
+      strcat(cmdstr, listfile);
+      strcat(cmdstr, " 2>/dev/null");  /* Unix error redirect */
+      system(cmdstr);
+   }
+   
+   /* Read the file list */
+   fin = zfopen(listfile, "r");
+   if (fin == NULL) {
+      printf("Error: Cannot scan directory ");
+      for (p = argv[2]; *p; p++) putchar(*p == '\\' ? '/' : *p);
+      printf("\nMake sure the directory exists and contains .txt files\n");
+      remove(listfile);
+      for (i = 0; i < maxfiles; i++) free(filelist[i]);
+      free(filelist);
+      return 1;
+   }
+   
+   /* Read file names from list */
+   while (fgets(line, 1024, fin) != NULL && nfiles < maxfiles) {
+      line[strcspn(line, "\r\n")] = 0;
+      if (strlen(line) == 0) continue;
+      
+      /* Build full path - use forward slashes for portability */
+      if (strchr(line, '/') != NULL || strchr(line, '\\') != NULL) {
+         strcpy(fullpath, line);
+      } else {
+         strcpy(fullpath, argv[2]);
+         strcat(fullpath, "/");
+         strcat(fullpath, line);
+      }
+      strcpy(filelist[nfiles], fullpath);
+      nfiles++;
+   }
+   
+   fclose(fin);
+   remove(listfile);
+   
+   if (nfiles == 0) {
+      printf("Error: No .txt files found in directory ");
+      for (p = argv[2]; *p; p++) putchar(*p == '\\' ? '/' : *p);
+      printf("\n");
+      for (i = 0; i < maxfiles; i++) free(filelist[i]);
+      free(filelist);
+      return 1;
+   }
+   
+   /* Sort files naturally (1, 2, 3, 10, 21 instead of 1, 10, 2, 21, 3) */
+   qsort(filelist, nfiles, sizeof(char*), comparenames);
+   
+   printf("Found %d files to combine:\n", nfiles);
+   for (i = 0; i < nfiles; i++) {
+      printf("  %d. ", i + 1);
+      for (p = filelist[i]; *p; p++) putchar(*p == '\\' ? '/' : *p);
+      printf("\n");
+   }
+   
+   /* Create output directory - remove error redirection */
+   system("mkdir mcmc_combined 2>nul");          /* Windows - suppress error */
+   system("mkdir -p mcmc_combined 2>/dev/null"); /* Unix - suppress error */
+   /* Clean up any accidentally created files from cross-platform commands */
+   (void)remove("nul"); /* Unix artifact from Windows-style redirection */
+   (void)remove("-p");  /* Windows artifact from Unix mkdir -p */
+   
+   /* Use forward slashes - works on both Windows and Unix */
+   strcpy(outfile, "mcmc_combined/mcmc_combined.txt");
+   
+   printf("\nOutput directory: mcmc_combined/\n");
+   printf("Output file: %s\n\n", outfile);
+   
+   /* Open output file */
+   fout = zfopen(outfile, "w");
+   if (fout == NULL) {
+      printf("Error: Cannot create output file %s\n", outfile);
+      printf("Trying to create directory manually...\n");
+      system("md mcmc_combined");
+      system("mkdir mcmc_combined");
+      fout = zfopen(outfile, "w");
+      if (fout == NULL) {
+         printf("Still cannot create file. Check permissions.\n");
+         for (i = 0; i < maxfiles; i++) free(filelist[i]);
+         free(filelist);
+         return 1;
+      }
+   }
+   
+   /* Process each input file */
+   for (i = 0; i < nfiles; i++) {
+      printf("\rProcessing file %d/%d: ", i + 1, nfiles);
+      for (p = filelist[i]; *p; p++) putchar(*p == '\\' ? '/' : *p);
+      fflush(stdout);
+      
+      fin = zfopen(filelist[i], "r");
+      if (fin == NULL) {
+         printf("\nWarning: Cannot open ");
+         for (p = filelist[i]; *p; p++) putchar(*p == '\\' ? '/' : *p);
+         printf(", skipping...\n");
+         continue;
+      }
+      
+      /* Handle header line */
+      if (fgets(line, 10000, fin) != NULL) {
+         if (!headerWritten) {
+            fputs(line, fout);
+            headerWritten = 1;
+         }
+      }
+      
+      /* Read and renumber data lines */
+      while (fgets(line, 10000, fin) != NULL) {
+         tab_pos = strchr(line, '\t');
+         if (tab_pos != NULL) {
+            linenum++;
+            fprintf(fout, "%d%s", linenum, tab_pos);
+         }
+      }
+      
+      fclose(fin);
+   }
+   
+   fclose(fout);
+   
+   printf("\n\nSuccessfully combined %d samples from %d files\n", linenum, nfiles);
+   printf("Output written to: %s\n", outfile);
+   printf("Iteration numbers: 1 to %d\n\n", linenum);
+   
+   /* Free memory */
+   for (i = 0; i < maxfiles; i++) 
+      free(filelist[i]);
+   free(filelist);
+   
+   return 0;
+}
 
 int GetMem(void)
 {
