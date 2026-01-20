@@ -1,4 +1,4 @@
-PRGS =  baseml codeml basemlg mcmctree pamp evolver yn00 chi2
+PRGS =  baseml codeml basemlg mcmctree pamp evolver yn00 chi2 ds
 CC = gcc
 CFLAGS = -O3 -Wall -Wno-unused-variable -Wno-unused-result
 
@@ -23,6 +23,8 @@ yn00: yn00.o tools.o paml.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ yn00.o tools.o $(LIBS)
 chi2: chi2.o
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ chi2.c $(LIBS)
+ds: ds.o tools.o paml.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ ds.o tools.o $(LIBS)
 
 tools.o : paml.h tools.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -c tools.c
@@ -40,6 +42,8 @@ pamp.o : paml.h pamp.c treesub.c treespace.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -c pamp.c
 yn00.o : paml.h yn00.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -c yn00.c
+ds.o : paml.h ds.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -c ds.c
 
 clean :
 	-rm *.o $(PRGS)

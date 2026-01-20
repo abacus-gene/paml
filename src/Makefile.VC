@@ -1,4 +1,4 @@
-PRGS =  baseml basemlg codeml evolver mcmctree pamp yn00 chi2
+PRGS =  baseml basemlg codeml evolver mcmctree pamp yn00 chi2 ds
 CC = cl
 CFLAGS =  -Ox -W3 -D_CRT_SECURE_NO_WARNINGS 
 
@@ -24,7 +24,8 @@ yn00 : yn00.obj tools.obj
   $(CC) $(CFLAGS) yn00.obj tools.obj $(LIBS)
 chi2 : chi2.c
   $(CC) $(CFLAGS) chi2.c $(LIBS)
-
+ds : ds.obj tools.obj
+  $(CC) $(CFLAGS) ds.obj tools.obj $(LIBS)
 
 tools.obj : paml.h tools.c
   $(CC) $(CFLAGS) -c tools.c
@@ -42,6 +43,8 @@ pamp.obj : paml.h pamp.c treesub.c treespace.c
   $(CC) $(CFLAGS) -c pamp.c
 yn00.obj : paml.h yn00.c 
   $(CC) $(CFLAGS) -c yn00.c 
+ds.obj : paml.h ds.c
+  $(CC) $(CFLAGS) -c ds.c
 
 clean :
-	-del *.obj baseml.exe basemlg.exe codeml.exe mcmctree.exe evolver.exe pamp.exe yn00.exe chi2.exe
+	-del *.obj baseml.exe basemlg.exe codeml.exe mcmctree.exe evolver.exe pamp.exe yn00.exe chi2.exe ds.exe infinitesites.exe
