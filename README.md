@@ -103,4 +103,4 @@ In the meantime, you can access the following sections, which are also detailed 
 
 ## Additional information
 
-Changes and bug fixes until v4.10.1 were documented in the file [doc/pamlHistory.txt](https://github.com/abacus-gene/paml/blob/master/doc/pamlHistory.txt). Changes in later versions have been documented for each release in [the `releases` section of this GitHub repository](https://github.com/abacus-gene/paml/releases).
+Changes in all version from PAML v4.10.0 have been documented for each release in [the `releases` section of this GitHub repository](https://github.com/abacus-gene/paml/releases). Changes and bug fixes prior to v4.10.0 can only be found in [doc/pamlHistory.txt](https://github.com/abacus-gene/paml/blob/master/doc/pamlHistory.txt).
