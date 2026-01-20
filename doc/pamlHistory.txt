@@ -8,6 +8,19 @@ discussion site
 https://groups.google.com/forum/#!forum/pamlsoftware.
 
 
+paml v4.10.10, 20 January 2026
+
+mcmctree.  Using BDparas to specify the multiplicative 
+(e.g., BDparas = 1 0 0.1 M) or the conditional construction
+(e.g., BDparas = 1 0 0.1 C) did not work in v4.10.9.
+This error is now fixed. In addition, now users can combine
+the samples collected in different MCMC files into a unique
+file using flag "--combine". E.g:
+
+mcmctree --combine <directory_with_MCMC_files>
+
+
+
 paml v4.10.8, 15 April 2025
 
 mcmctree.  The print=-1 option, which summarizes the MCMC sample
@@ -1192,8 +1205,8 @@ with the new M1a (NearlyNeutral), with d.f.  3.
 
 (1d) The empirical Bayes procedure for calculating posterior
 probabilities of site classes under the site models, branch-site
-models, and clade models are called naïve empirical Bayes (NEB).  They
-are naïve because they use the MLEs of parameters without accounting
+models, and clade models are called naï¿½ve empirical Bayes (NEB).  They
+are naï¿½ve because they use the MLEs of parameters without accounting
 for sampling errors in them.  This problem is now fixed using a
 procedure called Bayes empirical Bayes (BEB) (Yang, Wong, and Nielsen
 2005).  The BEB procedure is implemented for the site models M2a and
