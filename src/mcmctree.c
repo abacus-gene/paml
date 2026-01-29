@@ -86,6 +86,10 @@ int mixingCladeStretch(double *lnL, double steplength, char *accept);
 int UpdatePFossilErrors(double steplength, char *accept);
 int getPfossilerr(double postEFossil[], double nround);
 int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[]);
+/* 260120-SAC: Add function declarations for new feature to combine MCMC files */
+int comparenames(const void *a, const void *b);
+int CombineMCMCFiles_CommandLine(int argc, char *argv[]);
+int is_safe_dirname(const char *dirname);
 
 struct CommonInfo {
    char *z[NS], *spname[NS];
@@ -237,6 +241,11 @@ int main(int argc, char *argv[])
    com.ncode = 4;      com.clock = 1;
 
    printf("MCMCTREE in %s\n", pamlVerStr);
+   /* 260120-SAC: Conditional statement that will call fun to combine MCMC files */
+   if (argc > 2 && strcmp(argv[1], "--combine") == 0) {
+      CombineMCMCFiles_CommandLine(argc, argv);
+      exit(0);
+   }
    if (argc > 2 && !strcmp(argv[argc - 1], "--stdout-no-buf"))
       setvbuf(stdout, NULL, _IONBF, 0);
    if (argc > 1)
@@ -250,7 +259,7 @@ int main(int argc, char *argv[])
    starttimer();
    GetOptions(ctlf);
 
-   fout = zopen(com.outf, "w");
+   fout = zfopen(com.outf, "w");
    fprintf(fout, "MCMCTREE (%s) %s\n", pamlVerStr, com.seqf);
 
    ReadTreeSeqs(fout);
@@ -317,6 +326,347 @@ int main(int argc, char *argv[])
    exit(0);
 }
 
+/* 260120-SAC: Adding new functionality for MCMCtree.
+      Combinining multiple MCMC files obtained from independent
+      runs into a unique MCMC file for subsequent analyses.
+      The first function "comparenames" checks that file names
+      are ordered alphabetically and numerically.
+      The second function "CombineMCMCFiles_CommandLine" will
+      parse the MCMC files (using "comparenames" when sorting
+      file names with qsort) and combine them into a unique file
+      with the first column (number of iterations) going from
+      1 to N to avoid incompatibility issues when loaded into
+      graphilca programs for MCMC diagnostics. 
+*/
+int comparenames(const void *a, const void *b)
+{
+   /* Natural sort comparison for filenames with numbers
+      Compares strings but treats embedded numbers numerically.
+      E.g.: file1.txt < file2.txt < file10.txt < file21.txt
+   */
+   const char *s1 = *(const char**)a;
+   const char *s2 = *(const char**)b;
+   
+   while (*s1 && *s2) {
+      /* If both characters are digits, compare as numbers */
+      if (isdigit(*s1) && isdigit(*s2)) {
+         long n1 = 0, n2 = 0;
+         /* Extract complete numbers */
+         while (isdigit(*s1)) {
+            n1 = n1 * 10 + (*s1 - '0');
+            s1++;
+         }
+         while (isdigit(*s2)) {
+            n2 = n2 * 10 + (*s2 - '0');
+            s2++;
+         }
+         /* Compare numbers */
+         if (n1 != n2)
+            return (n1 < n2) ? -1 : 1;
+      }
+      /* Otherwise compare characters normally */
+      else {
+         if (*s1 != *s2)
+            return (*s1 - *s2);
+         s1++;
+         s2++;
+      }
+   }
+   
+   /* One string ended - shorter comes first */
+   return (*s1 - *s2);
+}
+
+int is_safe_dirname(const char *dirname) {
+   /* Check for dangerous shell characters
+      in case a user provides a "dangerous"
+      directory name when using 
+      `mcmctree --combine <dirname>`
+   */
+   const char *dangerous = ";|&$`<>(){}[]!*?'\"\\";
+   const char *p;
+   
+   for (p = dirname; *p; p++) {
+      if (strchr(dangerous, *p) != NULL) {
+         return 0;  /* Unsafe character found */
+      }
+   }
+   return 1;  /* Safe */
+}
+
+int CombineMCMCFiles_CommandLine(int argc, char *argv[])
+{
+   /* This combines all MCMC files (*.txt) in a directory
+      into a single file with sequential iteration numbers
+      from 1 to N.
+      
+      Usage: 
+        mcmctree --combine <directory>
+      
+      Output: mcmc_combined.txt
+   */
+   FILE *fin, *fout;
+   char line[10000], outfile[1024];
+   char cmdstr[2048], listfile[1024], fullpath[1024];
+   int nfiles, i, j, linenum;
+   char *tab_pos, *p;
+   char **filelist;
+   int maxfiles;
+   
+   /* Initialize variables */
+   nfiles = 0;
+   linenum = 0;
+   maxfiles = 1000;
+   
+   if (argc != 3) {
+      printf("Usage: mcmctree --combine <directory>\n");
+      printf("\nExamples: if <directory> was mcmc_files...\n");
+      printf("  mcmctree --combine mcmc_files\n");
+      printf("  mcmctree --combine ../results/mcmc_files\n");
+      printf("  mcmctree --combine /usr/phylo/dating/results/mcmc_files\n");
+      printf("\nCombines all MCMC files (*.txt) in a given directory.\n");
+      printf("Output: mcmc_combined.txt\n");
+      return 1;
+   }
+   
+   /* Validate directory name for safety */
+   if (!is_safe_dirname(argv[2])) {
+      printf("Error: Directory name contains unsafe characters.\n");
+      printf("Please use only alphanumeric characters, dots, hyphens, underscores, and slashes.\n");
+      printf("Unsafe directory name: %s\n", argv[2]);
+      return 1;
+   }
+
+   /* Allocate memory for file list */
+   filelist = (char**)malloc(maxfiles * sizeof(char*));
+   if (filelist == NULL) {
+      printf("Error: Memory allocation failed\n");
+      return 1;
+   }
+   for (i = 0; i < maxfiles; i++) {
+      filelist[i] = (char*)malloc(1024 * sizeof(char));
+      if (filelist[i] == NULL) {
+         printf("Error: Memory allocation failed\n");
+         /* Free any previously allocated memory
+            before exiting with failure status
+         */
+         for (j = 0; j < i; j++) {
+           free(filelist[j]);
+         }
+         free(filelist);
+         return 1;
+      }
+   }
+   
+   printf("\nScanning directory: ");
+   for (p = argv[2]; *p; p++) putchar(*p == '\\' ? '/' : *p);
+   printf("\n");
+   
+   /* Create temporary file list */
+   strcpy(listfile, "mcmc_filelist_tmp.txt");
+   
+   /* Try Windows command first - remove error redirection */
+   strcpy(cmdstr, "dir /b ");
+   strcat(cmdstr, argv[2]);
+   strcat(cmdstr, "\\*.txt > ");
+   strcat(cmdstr, listfile);
+   strcat(cmdstr, " 2>nul");  /* Windows error redirect */
+   
+   system(cmdstr);
+   fin = zfopen(listfile, "r");
+   if (fin != NULL && fgets(line, 512, fin) != NULL) {
+      fclose(fin);
+   } else {
+      if (fin != NULL) fclose(fin);
+      /* Try Unix command - remove error redirection */
+      strcpy(cmdstr, "ls -1 ");
+      strcat(cmdstr, argv[2]);
+      strcat(cmdstr, "/*.txt > ");
+      strcat(cmdstr, listfile);
+      strcat(cmdstr, " 2>/dev/null");  /* Unix error redirect */
+      system(cmdstr);
+   }
+   
+   /* Read the file list */
+   fin = zfopen(listfile, "r");
+   if (fin == NULL) {
+      printf("Error: Cannot scan directory ");
+      for (p = argv[2]; *p; p++) putchar(*p == '\\' ? '/' : *p);
+      printf("\nMake sure the directory exists and contains .txt files\n");
+      remove(listfile);
+      for (i = 0; i < maxfiles; i++) free(filelist[i]);
+      free(filelist);
+      return 1;
+   }
+   
+   /* Read file names from list */
+   while (fgets(line, 1024, fin) != NULL && nfiles < maxfiles) {
+      line[strcspn(line, "\r\n")] = 0;
+      if (strlen(line) == 0) continue;
+      
+      /* Build full path - use forward slashes for portability */
+      if (strchr(line, '/') != NULL || strchr(line, '\\') != NULL) {
+         strcpy(fullpath, line);
+      } else {
+         strcpy(fullpath, argv[2]);
+         strcat(fullpath, "/");
+         strcat(fullpath, line);
+      }
+      strcpy(filelist[nfiles], fullpath);
+      nfiles++;
+   }
+   
+   fclose(fin);
+   remove(listfile);
+
+   /* Clean up any accidentally created files from cross-platform commands */
+   (void)remove("nul");
+   (void)remove("-p");
+   
+   if (nfiles == 0) {
+      printf("Error: No .txt files found in directory ");
+      for (p = argv[2]; *p; p++) putchar(*p == '\\' ? '/' : *p);
+      printf("\n");
+      for (i = 0; i < maxfiles; i++) free(filelist[i]);
+      free(filelist);
+      return 1;
+   }
+   
+   /* Sort files naturally (1, 2, 3, 10, 21 instead of 1, 10, 2, 21, 3) */
+   qsort(filelist, nfiles, sizeof(char*), comparenames);
+   
+   printf("Found %d files to combine:\n", nfiles);
+   for (i = 0; i < nfiles; i++) {
+      printf("  %d. ", i + 1);
+      for (p = filelist[i]; *p; p++) putchar(*p == '\\' ? '/' : *p);
+      printf("\n");
+   }
+   printf("\n");
+
+   /* Output file in current directory - no subdirectory needed */
+   strcpy(outfile, "mcmc_combined.txt");
+   /* printf("Output file: %s\n\n", outfile); */
+   
+   /* Open output file */
+   fout = zfopen(outfile, "w");
+   if (fout == NULL) {
+      printf("Error: Cannot create output file %s\n", outfile);
+      printf("Make sure you have write permissions in the current directory.\n");
+      for (i = 0; i < maxfiles; i++) free(filelist[i]);
+      free(filelist);
+      return 1;
+   }
+   
+   /* Process each input file */
+   for (i = 0; i < nfiles; i++) {
+      int header_tabs = 0, line_tabs = 0;
+      int samples_in_file = 0, empty_skipped = 0, incomplete_skipped = 0;
+      char *p_count;
+      static int reference_header_tabs = -1;  /* Store header tab count from first file */
+      
+      printf("\rProcessing file %d/%d: ", i + 1, nfiles);
+      for (p = filelist[i]; *p; p++) putchar(*p == '\\' ? '/' : *p);
+      fflush(stdout);
+      
+      fin = zfopen(filelist[i], "r");
+      if (fin == NULL) {
+         printf("\nWarning: Cannot open ");
+         for (p = filelist[i]; *p; p++) putchar(*p == '\\' ? '/' : *p);
+         printf(", skipping...\n");
+         continue;
+      }
+      
+      /* Handle header line */
+      if (fgets(line, 10000, fin) != NULL) {
+         /* Count tabs in header */
+         header_tabs = 0;
+         for (p_count = line; *p_count; p_count++) {
+            if (*p_count == '\t') header_tabs++;
+         }
+         
+         /* First file: store reference header tab count and write header */
+         if (i == 0) {
+            reference_header_tabs = header_tabs;
+            fputs(line, fout);
+         }
+         /* Subsequent files: validate header matches first file */
+         else {
+            if (header_tabs != reference_header_tabs) {
+               printf("\n\nERROR: Header mismatch detected!\n");
+               printf("File 1 has %d columns (tabs=%d)\n", reference_header_tabs + 1, reference_header_tabs);
+               printf("File %d has %d columns (tabs=%d)\n", i + 1, header_tabs + 1, header_tabs);
+               printf("File %d: ", i + 1);
+               for (p = filelist[i]; *p; p++) putchar(*p == '\\' ? '/' : *p);
+               printf("\n\nAll files must have the same header structure.\n");
+               printf("Aborting combination process.\n\n");
+               
+               /* Clean up and exit */
+               fclose(fin);
+               fclose(fout);
+               remove(outfile);  /* Remove incomplete output file */
+               for (j = 0; j < maxfiles; j++) free(filelist[j]);
+               free(filelist);
+               return 1;
+            }
+         }
+      }
+      
+      /* Read and renumber data lines */
+      while (fgets(line, 10000, fin) != NULL) {
+         /* Skip empty lines */
+         if (strlen(line) <= 1 || line[0] == '\n' || line[0] == '\r') {
+            empty_skipped++;
+            continue;
+         }
+         
+         tab_pos = strchr(line, '\t');
+         if (tab_pos != NULL) {
+            /* Count tabs in this line */
+            line_tabs = 0;
+            for (p_count = line; *p_count; p_count++) {
+               if (*p_count == '\t') line_tabs++;
+            }
+            
+            /* Only write if tab count matches header (complete line) */
+            if (line_tabs == reference_header_tabs) {
+               linenum++;
+               samples_in_file++;
+               fprintf(fout, "%d%s", linenum, tab_pos);
+            }
+            else {
+               /* Incomplete line - skip it but don't leave content in 'line' */
+               incomplete_skipped++;
+               line[0] = '\0';  /* Clear the line buffer so we don't add newline for it */
+            }
+         }
+      }
+      
+      fclose(fin);
+
+      /* Ensure the file ended with a newline before moving to next file */
+      /* Only add newline if we actually wrote samples AND last line had content */
+      if (samples_in_file > 0 && strlen(line) > 0 && line[strlen(line) - 1] != '\n') {
+         fprintf(fout, "\n");
+      }
+    
+      /* Print summary for this file - always show all statistics */
+      printf("\n  Lines kept = %d", samples_in_file);
+      printf(" | Empty lines skipped = %d | Incomplete lines skipped = %d\n", empty_skipped, incomplete_skipped);
+   }
+   
+   fclose(fout);
+   
+   printf("\n\nSuccessfully combined %d lines from %d files\n", linenum, nfiles);
+   printf("Iteration numbers renumbered from 1 to %d\n", linenum);
+   printf("Output written to: %s\n\n", outfile);
+   
+   /* Free memory */
+   for (i = 0; i < maxfiles; i++) 
+      free(filelist[i]);
+   free(filelist);
+   
+   return 0;
+}
 
 int GetMem(void)
 {
@@ -926,7 +1276,7 @@ int ReadBlengthGH(char infile[])
 
       This also frees up memory for sequences.
    */
-   FILE* fBGH = zopen(infile, "r");
+   FILE* fBGH = zfopen(infile, "r");
    char line[100];
    int locus, i, j, nb, son1, son2, leftsingle;
    double dbu[NBRANCH], dbu2[NBRANCH], u, cJC = (com.ncode - 1.0) / com.ncode, sin2u, cos2u;
@@ -1078,7 +1428,7 @@ int GenerateBlengthGH(char infile[])
       This mimics Jeff Thorne's estbranches program.
    */
    FILE *fseq, *ftree, *fctl;
-   FILE *fBGH = zopen(infile, "w");
+   FILE *fBGH = zfopen(infile, "w");
    char tmpseqf[32], tmptreef[32], ctlf[32], outf[32], line[10000];
    int i, locus;
 
@@ -1089,9 +1439,9 @@ int GenerateBlengthGH(char infile[])
       sprintf(tmptreef, "tmp%04d.trees", locus + 1);
       sprintf(ctlf, "tmp%04d.ctl", locus + 1);
       sprintf(outf, "tmp%04d.out", locus + 1);
-      fseq = zopen(tmpseqf, "w");
-      ftree = zopen(tmptreef, "w");
-      fctl = zopen(ctlf, "w");
+      fseq = zfopen(tmpseqf, "w");
+      ftree = zfopen(tmptreef, "w");
+      fctl = zfopen(ctlf, "w");
 
       UseLocus(locus, 0, 0, 1);
       com.cleandata = data.cleandata[locus];
@@ -1152,7 +1502,7 @@ int GetOptions(char *ctlf)
         "BDparas", "kappa_gamma", "alpha_gamma", "rgene_gamma", "sigma2_gamma", 
         "print", "burnin", "sampfreq", "nsample", "finetune" };
    double t = 1, *eps = mcmc.steplength;
-   FILE  *fctl = zopen(ctlf, "r");
+   FILE  *fctl = zfopen(ctlf, "r");
 
    data.rgeneprior = 0;  /* default rate prior is gamma-Dirichlet. */
    data.transform = transform0;
@@ -1497,7 +1847,7 @@ double Infinitesites(FILE *fout)
    double y, ynew, yb[2], sumold, sumnew, *gD, naccept[5] = { 0 }, Pjump[5] = { 0 };
    double *x, *mx, *FixedDs, *b, maxt0, tson[2], lnL, lnLnew, lnacceptance, c, lnc;
    char *FidedDf[2] = { "FixedDsClock1.txt", "FixedDsClock23.txt" };
-   FILE *fin = zopen(FidedDf[com.clock > 1], "r"), *fmcmc = zopen(com.mcmcf, "w");
+   FILE *fin = zfopen(FidedDf[com.clock > 1], "r"), *fmcmc = zfopen(com.mcmcf, "w");
 
    if (BFbeta != 1) zerror("BFbeta should not be used for Infinitesites?");
    com.model = 0;  com.alpha = 0;
@@ -3942,7 +4292,7 @@ int UpdatePFossilErrors(double steplength, char *accept)
 
 int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[])
 {
-   FILE *fin = zopen(infile, "r"), *fFigTree;
+   FILE *fin = zfopen(infile, "r"), *fFigTree;
    char timestr[32], FigTreef[96] = "FigTree.tre";
    double *dat, *x, *mean, *median, *minx, *maxx, *x005, *x995, *x025, *x975, *xHPD025, *xHPD975, *var;
    double *y, *Tint, tmp[2], rho1;
@@ -4145,7 +4495,7 @@ int MCMC(FILE* fout)
    mx = x + com.np;
 
    if (mcmc.print > 0)
-      fmcmc = zopen(com.mcmcf, "w");
+      fmcmc = zfopen(com.mcmcf, "w");
    collectx(fmcmc, x);
    if (!com.fix_kappa && !com.fix_alpha && data.ngene == 2) { nxpr[0] = 6; nxpr[1] = 4; }
 

@@ -56,7 +56,7 @@ double reflect(double x, double a, double b);
 #define rndexp(mean) (-(mean)*log(rndu()))
 double rnduM0V1 (void);
 double rndNormal(void);
-int rndNp(double x[], int n, int p, double mx[], double vx[], int isvroot);
+int rndNp(double x[], int n, int p, double mx[], double cholesky[]);
 int rndBinomial(int n, double p);
 double rndBox(void);
 double rndAirplane(void);
@@ -207,7 +207,7 @@ void strcase (char *str, int direction);
 void zerror(const char* format, ...);
 int  indexing(double x[], int n, int index[], int descending, int space[]);
 int binarysearch (const void *key, const void *base, size_t n, size_t size, int(*compare)(const void *, const void *), int *found);
-FILE *zopen(char *filename, char *mode);
+FILE *zfopen(char *filename, char *mode);
 int  appendfile(FILE*fout, char*filename);
 
 int zero (double x[], int n);
@@ -389,6 +389,6 @@ enum PrintOptions { PrBranch = 1, PrNodeNum = 2, PrLabel = 4, PrNodeStr = 8, PrA
 
 #define PAML_RELEASE      0
 
-#define pamlVerStr "paml version 4.10.9, 7 May 2025"
+#define pamlVerStr "paml version 4.10.10, 29 Jan 2026"
 
 #endif

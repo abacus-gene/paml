@@ -110,7 +110,7 @@ int main(int argc, char* argv[])
    char* MCctlf = NULL, outf[512] = "evolver.out", treefile[512] = "mcmc.txt", maintreefile[512] = "\0";
    int i, option = -1, ntree = 1, rooted, BD = 0, gotoption = 0, pick1tree = 0;
    double birth = -1, death = -1, sample = -1, mut = -1, * space;
-   FILE* fout = zopen(outf, "w");
+   FILE* fout = zfopen(outf, "w");
 
    printf("EVOLVER in %s\n", pamlVerStr);
    com.alpha = 0; com.cleandata = 1; com.model = 0; com.NSsites = 0;
@@ -286,7 +286,7 @@ void LabelClades(FILE* fout)
    printf("Treat tree as unrooted (0 no, 1 yes)? ");
    scanf("%d", &unrooted);
 
-   ftree = zopen(treef, "r");
+   ftree = zfopen(treef, "r");
    fscanf(ftree, "%d%d", &com.ns, &j);
    if (com.ns <= 0) zerror("need ns in tree file");
    debug = (com.ns < 20);
@@ -406,7 +406,7 @@ void TreeDistanceDistribution(FILE* fout)
    puts("Tree file name?");
    scanf("%s", treef);
 
-   ftree = zopen(treef, "r");
+   ftree = zfopen(treef, "r");
    fscanf(ftree, "%d%d", &com.ns, &ntree);
    printf("%2d sequences %2d trees.\n", com.ns, ntree);
    i = (com.ns * 2 - 1) * sizeof(struct TREEN);
@@ -463,7 +463,7 @@ void TreeDistances(FILE* fout)
    puts("\nNumber of identical bi-partitions between trees.\nTree file name?");
    scanf("%s", treef);
 
-   ftree = zopen(treef, "r");
+   ftree = zfopen(treef, "r");
    fscanf(ftree, "%d%d", &com.ns, &ntree);
    printf("%2d sequences %2d trees.\n", com.ns, ntree);
    i = (com.ns * 2 - 1) * sizeof(struct TREEN);
@@ -668,7 +668,7 @@ int GetDaa(FILE* fout, double daa[])
    char aa3[4] = "";
    int i, j, n = 20;
 
-   fdaa = zopen(com.daafile, "r");
+   fdaa = zfopen(com.daafile, "r");
    printf("\nReading rate matrix from %s\n", com.daafile);
 
    for (i = 0; i < n; i++)  for (j = 0, daa[i * n + i] = 0; j < i; j++) {
@@ -841,15 +841,15 @@ void Simulate(char* ctlf)
    noisy = 1;
    printf("\nReading options from data file %s\n", ctlf);
    com.ncode = n = (com.seqtype == 0 ? 4 : (com.seqtype == 1 ? 64 : 20));
-   fin = (FILE*)zopen(ctlf, "r");
+   fin = (FILE*)zfopen(ctlf, "r");
    fscanf(fin, "%d", &format);
    fgets(line, lline, fin);
    printf("\nSimulated data will go into %s.\n", seqf[format]);
    if (format == 2) printf("%s, %s, & %s will be appended if existent.\n", paupstart, paupblock, paupend);
    if (com.seqtype == 1) {
       printf("translated aa sequences will go into %s.\n", aaf);
-      faa = (FILE*)zopen(aaf, "w");
-      fc12 = (FILE*)zopen(c12f, "w");
+      faa = (FILE*)zfopen(aaf, "w");
+      fc12 = (FILE*)zfopen(c12f, "w");
    }
    fscanf(fin, "%d", &i);
    fgets(line, lline, fin);
@@ -1083,10 +1083,10 @@ void Simulate(char* ctlf)
       exit(-1);
    }
 
-   fseq = zopen(seqf[format], "w");
+   fseq = zfopen(seqf[format], "w");
    if (format == 2 || format == 3) appendfile(fseq, paupstart);
 
-   fanc = (FILE*)zopen(ancf, "w");
+   fanc = (FILE*)zfopen(ancf, "w");
    if (fixtree) {
       fputs("\nAncestral sequences generated during simulation ", fanc);
       fprintf(fanc, "(check against %s)\n", seqf[format]);
@@ -1095,7 +1095,7 @@ void Simulate(char* ctlf)
       OutTreeB(fanc); fprintf(fanc, "\n");
    }
    if (com.alpha || com.NSsites) {
-      fsiteID = (FILE*)zopen(siteIDf, "w");
+      fsiteID = (FILE*)zfopen(siteIDf, "w");
       if (com.seqtype == 1)
          fprintf(fsiteID, "\nSite class IDs\n");
       else
@@ -1354,9 +1354,9 @@ void CladeMrBayesProbabilities(char treefile[])
    char* mbfiles[] = { "mb-1e-4.out", "mb-1e-1.out" };
 
    printf("tree file is %s\nmb output files:\n", treefile);
-   ftree = zopen(treefile, "r");
+   ftree = zfopen(treefile, "r");
    for (k = 0; k < nmbfiles; k++)
-      fmb[k] = zopen(mbfiles[k], "r");
+      fmb[k] = zfopen(mbfiles[k], "r");
    for (k = 0; k < nmbfiles; k++) printf("\t%s\n", mbfiles[k]);
 
    GetSpnamesFromMB(fmb[0], line, lline);  /* read species names from mb output */
