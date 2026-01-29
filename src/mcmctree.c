@@ -89,6 +89,7 @@ int DescriptiveStatisticsSimpleMCMCTREE(FILE *fout, char infile[]);
 /* 260120-SAC: Add function declarations for new feature to combine MCMC files */
 int comparenames(const void *a, const void *b);
 int CombineMCMCFiles_CommandLine(int argc, char *argv[]);
+int is_safe_dirname(const char *dirname);
 
 struct CommonInfo {
    char *z[NS], *spname[NS];
@@ -376,6 +377,23 @@ int comparenames(const void *a, const void *b)
    return (*s1 - *s2);
 }
 
+int is_safe_dirname(const char *dirname) {
+   /* Check for dangerous shell characters
+      in case a user provides a "dangerous"
+      directory name when using 
+      `mcmctree --combine <dirname>`
+   */
+   const char *dangerous = ";|&$`<>(){}[]!*?'\"\\";
+   const char *p;
+   
+   for (p = dirname; *p; p++) {
+      if (strchr(dangerous, *p) != NULL) {
+         return 0;  /* Unsafe character found */
+      }
+   }
+   return 1;  /* Safe */
+}
+
 int CombineMCMCFiles_CommandLine(int argc, char *argv[])
 {
    /* This combines all MCMC files (*.txt) in a directory
@@ -385,12 +403,12 @@ int CombineMCMCFiles_CommandLine(int argc, char *argv[])
       Usage: 
         mcmctree --combine <directory>
       
-      Output: mcmc_combined/mcmc_combined.txt
+      Output: mcmc_combined.txt
    */
    FILE *fin, *fout;
    char line[10000], outfile[1024];
    char cmdstr[2048], listfile[1024], fullpath[1024];
-   int nfiles, i, j, linenum, headerWritten;
+   int nfiles, i, j, linenum;
    char *tab_pos, *p;
    char **filelist;
    int maxfiles;
@@ -398,7 +416,6 @@ int CombineMCMCFiles_CommandLine(int argc, char *argv[])
    /* Initialize variables */
    nfiles = 0;
    linenum = 0;
-   headerWritten = 0;
    maxfiles = 1000;
    
    if (argc != 3) {
@@ -408,10 +425,18 @@ int CombineMCMCFiles_CommandLine(int argc, char *argv[])
       printf("  mcmctree --combine ../results/mcmc_files\n");
       printf("  mcmctree --combine /usr/phylo/dating/results/mcmc_files\n");
       printf("\nCombines all MCMC files (*.txt) in a given directory.\n");
-      printf("Output: mcmc_combined/mcmc_combined.txt\n");
+      printf("Output: mcmc_combined.txt\n");
       return 1;
    }
    
+   /* Validate directory name for safety */
+   if (!is_safe_dirname(argv[2])) {
+      printf("Error: Directory name contains unsafe characters.\n");
+      printf("Please use only alphanumeric characters, dots, hyphens, underscores, and slashes.\n");
+      printf("Unsafe directory name: %s\n", argv[2]);
+      return 1;
+   }
+
    /* Allocate memory for file list */
    filelist = (char**)malloc(maxfiles * sizeof(char*));
    if (filelist == NULL) {
@@ -422,6 +447,13 @@ int CombineMCMCFiles_CommandLine(int argc, char *argv[])
       filelist[i] = (char*)malloc(1024 * sizeof(char));
       if (filelist[i] == NULL) {
          printf("Error: Memory allocation failed\n");
+         /* Free any previously allocated memory
+            before exiting with failure status
+         */
+         for (j = 0; j < i; j++) {
+           free(filelist[j]);
+         }
+         free(filelist);
          return 1;
       }
    }
@@ -486,6 +518,10 @@ int CombineMCMCFiles_CommandLine(int argc, char *argv[])
    
    fclose(fin);
    remove(listfile);
+
+   /* Clean up any accidentally created files from cross-platform commands */
+   (void)remove("nul");
+   (void)remove("-p");
    
    if (nfiles == 0) {
       printf("Error: No .txt files found in directory ");
@@ -505,38 +541,29 @@ int CombineMCMCFiles_CommandLine(int argc, char *argv[])
       for (p = filelist[i]; *p; p++) putchar(*p == '\\' ? '/' : *p);
       printf("\n");
    }
-   
-   /* Create output directory - remove error redirection */
-   system("mkdir mcmc_combined 2>nul");          /* Windows - suppress error */
-   system("mkdir -p mcmc_combined 2>/dev/null"); /* Unix - suppress error */
-   /* Clean up any accidentally created files from cross-platform commands */
-   (void)remove("nul"); /* Unix artifact from Windows-style redirection */
-   (void)remove("-p");  /* Windows artifact from Unix mkdir -p */
-   
-   /* Use forward slashes - works on both Windows and Unix */
-   strcpy(outfile, "mcmc_combined/mcmc_combined.txt");
-   
-   printf("\nOutput directory: mcmc_combined/\n");
-   printf("Output file: %s\n\n", outfile);
+   printf("\n");
+
+   /* Output file in current directory - no subdirectory needed */
+   strcpy(outfile, "mcmc_combined.txt");
+   /* printf("Output file: %s\n\n", outfile); */
    
    /* Open output file */
    fout = zfopen(outfile, "w");
    if (fout == NULL) {
       printf("Error: Cannot create output file %s\n", outfile);
-      printf("Trying to create directory manually...\n");
-      system("md mcmc_combined");
-      system("mkdir mcmc_combined");
-      fout = zfopen(outfile, "w");
-      if (fout == NULL) {
-         printf("Still cannot create file. Check permissions.\n");
-         for (i = 0; i < maxfiles; i++) free(filelist[i]);
-         free(filelist);
-         return 1;
-      }
+      printf("Make sure you have write permissions in the current directory.\n");
+      for (i = 0; i < maxfiles; i++) free(filelist[i]);
+      free(filelist);
+      return 1;
    }
    
    /* Process each input file */
    for (i = 0; i < nfiles; i++) {
+      int header_tabs = 0, line_tabs = 0;
+      int samples_in_file = 0, empty_skipped = 0, incomplete_skipped = 0;
+      char *p_count;
+      static int reference_header_tabs = -1;  /* Store header tab count from first file */
+      
       printf("\rProcessing file %d/%d: ", i + 1, nfiles);
       for (p = filelist[i]; *p; p++) putchar(*p == '\\' ? '/' : *p);
       fflush(stdout);
@@ -551,29 +578,87 @@ int CombineMCMCFiles_CommandLine(int argc, char *argv[])
       
       /* Handle header line */
       if (fgets(line, 10000, fin) != NULL) {
-         if (!headerWritten) {
+         /* Count tabs in header */
+         header_tabs = 0;
+         for (p_count = line; *p_count; p_count++) {
+            if (*p_count == '\t') header_tabs++;
+         }
+         
+         /* First file: store reference header tab count and write header */
+         if (i == 0) {
+            reference_header_tabs = header_tabs;
             fputs(line, fout);
-            headerWritten = 1;
+         }
+         /* Subsequent files: validate header matches first file */
+         else {
+            if (header_tabs != reference_header_tabs) {
+               printf("\n\nERROR: Header mismatch detected!\n");
+               printf("File 1 has %d columns (tabs=%d)\n", reference_header_tabs + 1, reference_header_tabs);
+               printf("File %d has %d columns (tabs=%d)\n", i + 1, header_tabs + 1, header_tabs);
+               printf("File %d: ", i + 1);
+               for (p = filelist[i]; *p; p++) putchar(*p == '\\' ? '/' : *p);
+               printf("\n\nAll files must have the same header structure.\n");
+               printf("Aborting combination process.\n\n");
+               
+               /* Clean up and exit */
+               fclose(fin);
+               fclose(fout);
+               remove(outfile);  /* Remove incomplete output file */
+               for (j = 0; j < maxfiles; j++) free(filelist[j]);
+               free(filelist);
+               return 1;
+            }
          }
       }
       
       /* Read and renumber data lines */
       while (fgets(line, 10000, fin) != NULL) {
+         /* Skip empty lines */
+         if (strlen(line) <= 1 || line[0] == '\n' || line[0] == '\r') {
+            empty_skipped++;
+            continue;
+         }
+         
          tab_pos = strchr(line, '\t');
          if (tab_pos != NULL) {
-            linenum++;
-            fprintf(fout, "%d%s", linenum, tab_pos);
+            /* Count tabs in this line */
+            line_tabs = 0;
+            for (p_count = line; *p_count; p_count++) {
+               if (*p_count == '\t') line_tabs++;
+            }
+            
+            /* Only write if tab count matches header (complete line) */
+            if (line_tabs == reference_header_tabs) {
+               linenum++;
+               samples_in_file++;
+               fprintf(fout, "%d%s", linenum, tab_pos);
+            }
+            else {
+               /* Incomplete line - skip it but don't leave content in 'line' */
+               incomplete_skipped++;
+               line[0] = '\0';  /* Clear the line buffer so we don't add newline for it */
+            }
          }
       }
       
       fclose(fin);
+
+      /* Ensure the file ended with a newline before moving to next file */
+      /* Only add newline if we actually wrote samples AND last line had content */
+      if (samples_in_file > 0 && strlen(line) > 0 && line[strlen(line) - 1] != '\n') {
+         fprintf(fout, "\n");
+      }
+    
+      /* Print summary for this file - always show all statistics */
+      printf("\n  Lines kept = %d", samples_in_file);
+      printf(" | Empty lines skipped = %d | Incomplete lines skipped = %d\n", empty_skipped, incomplete_skipped);
    }
    
    fclose(fout);
    
-   printf("\n\nSuccessfully combined %d samples from %d files\n", linenum, nfiles);
-   printf("Output written to: %s\n", outfile);
-   printf("Iteration numbers: 1 to %d\n\n", linenum);
+   printf("\n\nSuccessfully combined %d lines from %d files\n", linenum, nfiles);
+   printf("Iteration numbers renumbered from 1 to %d\n", linenum);
+   printf("Output written to: %s\n\n", outfile);
    
    /* Free memory */
    for (i = 0; i < maxfiles; i++) 
