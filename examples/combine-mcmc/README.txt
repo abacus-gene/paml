@@ -26,54 +26,97 @@ mcmctree --combine /usr/phylo/dating/mcmc_results
 ```
 
 Please note that MCMCtree will sort your MCMC files alphanumerically,
-thus samples in files "mcmc_1.txt", "mcmc_21.txt", "mcmc_3.txt", and
-"mcmc_2.txt" would be concatenated in the following order:
+thus lines in files "mcmc_1.txt", "mcmc_21.txt", "mcmc_3.txt",
+and "mcmc_5.txt" would be concatenated in the following order:
 
-mcmc_1.txt | mcmc_2.txt | mcmc_3.txt | mcmc_21.txt
+mcmc_1.txt | mcmc_3.txt | mcmc_5.txt | mcmc_21.txt
 
-If successful, you will see a new directory called "mcmc_combined"
-with a text file (i.e., "mcmc_combined.txt") have been created.
-File "mcmc_combined.txt" will contain all samples from the individual
-MCMC files. The first column (number of iterations) will go from 1 to
-N (where N is the total number of lines in "mcmc_combined.txt") so that
-this file can be parsed without issues in other software to carry out
-MCMC diagnostics.
+If successful, you will see that a new text file called
+"mcmc_combined.txt" has been created, which will contain all valid
+lines kept from the individual MCMC files. The first column
+(number of iterations) will go from 1 to N (where N is the total
+number of lines in "mcmc_combined.txt") so that this file can be
+parsed without issues in other software to carry out MCMC diagnostics.
+
+> NOTE 1: If you have a combination of numbers and letters in your
+filenames (e.g., "12_mcmc_123.txt"), the first digit characters
+found in the filename before reaching a non-digit character will be
+used first to sort the filenames. If two filenames are equal until the
+second set of digit characters is read (e.g., "12_mcmc_123.txt" and
+"12_mcmc_345.txt"), the latter will then be used for sorting filenames
+accordingly.
+> NOTE 2: Blank lines in MCMC files and incomplete lines (e.g., the 
+last line of an MCMC file may not have been completely written out
+because of a wall time restriction on a server, power failure,
+etc.) will be skipped (i.e., they will not be added to 
+"mcmc_combined.txt"). Additional points to consider:
+  - File `to_combine/mcmc_3.txt` is an example of an MCMC file with
+    an incomplete line, which will be skipped.
+  - File `to_combine/mcmc_1.txt` is an example of an MCMC file without
+    a new line at the end of the file (e.g., modified by the user a 
+    posteriori). When parsing the next file, its first line will be
+    added to a new line in the combined text file.
+  - File `to_combine/mcmc_5.txt is an example of an MCMC file output
+    by MCMCtree when the program has not been interrupted and the user
+    has not modified it. The output MCMC file finishes with a new line
+    after the last line with the sampled values for the model parameters.
+  - File `to_combine/mcmc_21.txt` is an example of an MCMC file with
+    a blank line at the end of the file (e.g., manually added by the
+    user a posteriori). This blank line will be skipped.
+> NOTE 3: If you try to merge MCMC files with different headers
+(e.g., different datasets/analyses), the program will abort.
+For instance, you can copy `wrong_file/mcmc_4.txt` inside directory
+`to_combine` and run `mcmctree --combine to_combine`.
+The following error will be printed on the screen when the program
+is parsing file `mcmc_4.txt`:
+
+```
+ERROR: Header mismatch detected!
+File 1 has 221 columns (tabs=220)
+File 3 has 218 columns (tabs=217)
+File 3: to_combine/mcmc_4.txt
+
+All files must have the same header structure.
+Aborting combination process.
+```
 
 ==================================================================
 EXAMPLE 
 ==================================================================
-You can combine the samples in files "mcmc_1.txt", "mcmc_3.txt", 
-and "mcmc_21.txt" by running the following command from this
-directory:
+You can combine the lines in files "mcmc_1.txt", "mcmc_3.txt", 
+"mcmc_5.txt", and "mcmc_21.txt" by running the following command
+from this same directory:
 
 ```
 mcmctree --combine to_combine
 ```
 
-You will see the following screen output:
+You will see the following screen output if using PAML v4.10.10:
 
 ```
-MCMCTREE in paml version 4.10.10, 20 Jan 2026
+MCMCTREE in paml version 4.10.10, 27 Jan 2026
 
 Scanning directory: to_combine
-Found 3 files to combine:
+Found 4 files to combine:
   1. to_combine/mcmc_1.txt
   2. to_combine/mcmc_3.txt
-  3. to_combine/mcmc_21.txt
+  3. to_combine/mcmc_5.txt
+  4. to_combine/mcmc_21.txt
 
-Output directory: mcmc_combined/
-Output file: mcmc_combined/mcmc_combined.txt
+Processing file 1/4: to_combine/mcmc_1.txt
+  Lines kept = 8 | Empty lines skipped = 0 | Incomplete lines skipped = 0
+Processing file 2/4: to_combine/mcmc_3.txt
+  Lines kept = 7 | Empty lines skipped = 0 | Incomplete lines skipped = 1
+Processing file 3/4: to_combine/mcmc_5.txt
+  Lines kept = 8 | Empty lines skipped = 0 | Incomplete lines skipped = 0
+Processing file 4/4: to_combine/mcmc_21.txt
+  Lines kept = 8 | Empty lines skipped = 1 | Incomplete lines skipped = 0
 
-Processing file 3/3: to_combine/mcmc_21.txt
 
-Successfully combined 24 samples from 3 files
-Output written to: mcmc_combined/mcmc_combined.txt
-Iteration numbers: 1 to 24
+Successfully combined 31 lines from 4 files
+Iteration numbers renumbered from 1 to 31
+Output written to: mcmc_combined.txt
 ```
 
->NOTE: Line "Processing file 3/3: to_combine/mcmc_21.txt" 
-updates the counter and file name while files are being
-processed.
-
-You will then see a new directory called "mcmc_combined"
-with the combined MCMC files saved in file "mcmc_combined.txt".
+A new file called "mcmc_combined.txt" will be created with
+the lines that were kept from the individual MCMC files.
