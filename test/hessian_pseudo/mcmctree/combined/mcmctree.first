@@ -1,34 +1,0 @@
-517355
-/mnt/hd1/home/sishuo/project/asr-hessian/official/test/julia_bl/1/age-40/root/dating/LG+G/combined/mcmctree/combined/disabled_bin/codeml
-MCMCTREE in paml version 4.10.7, June 2023
-
-Reading options from mcmctree.ctl..
-finetune is deprecated now.
-
-Reading main tree.
-(((t19, ((t20, t7), t1)), ((t4, (((t16, t11), t6), t8)), t12)), (((t17, (t18, t13)), (t2, (((t10, t3), t14), t9))), (t15, t5)));
-   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0
-   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0
-   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0
-
-duplication dating:  0 node ages are mirrored
-
-Reading sequence data..  1 loci
-
-
-*** Locus 1 ***
-ns = 20  	ls = 300
-Reading sequences, sequential format..
-Reading seq # 1: t19       Reading seq # 2: t20       Reading seq # 3: t7       Reading seq # 4: t1       Reading seq # 5: t4       Reading seq # 6: t16       Reading seq # 7: t11       Reading seq # 8: t6       Reading seq # 9: t8       Reading seq #10: t12       Reading seq #11: t17       Reading seq #12: t18       Reading seq #13: t13       Reading seq #14: t2       Reading seq #15: t10       Reading seq #16: t3       Reading seq #17: t14       Reading seq #18: t9       Reading seq #19: t15       Reading seq #20: t5       
-Sequences read..
-Counting site patterns..  0:00
-Compressing,    275 patterns at    300 /    300 sites (100.0%),  0:00
-Collecting fpatt[] & pose[],    275 patterns at    300 /    300 sites (100.0%),  0:00
-Counting frequencies..
-275 patterns, clean
-
-
-
-*** Locus 1 ***
-running codeml tmp0001.ctl
-file rst2 not found!

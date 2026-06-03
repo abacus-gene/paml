@@ -275,6 +275,7 @@ int main(int argc, char *argv[])
    }
    else if (mcmc.usedata == 3) {
       GenerateBlengthGH("out.BV");  /* this is used so that in.BV is not overwritten */
+      exit(0);
    }
 
    /* Do we want RootAge constraint at the root if (com.clock==1)? */
@@ -405,7 +406,7 @@ int GetMem(void)
    /* setting up space and offset for MCMC steplengths (steplength) */
    int g1 = g + (data.rgeneprior == 1);
    mcmc.nsteplength = (s - 1);                   /* t (node ages)  */
-   mcmc.nsteplength += g1 + g1*(com.clock > 1) + g1*(com.clock > 1);    /* mu[] & sigma2[] & drift[] */
+   mcmc.nsteplength += g1 + g1*(com.clock > 1);    /* mu[] & sigma2[] */
    if (com.clock > 1)      mcmc.nsteplength += g*(s * 2 - 2);   /* branch rates */
    if (mcmc.usedata == 1)  mcmc.nsteplength += g*(!com.fix_kappa + !com.fix_alpha);   /* subst paras */
    mcmc.nsteplength += 1 + (data.pfossilerror[0] > 0);    /* mixing & fossilerror */
@@ -416,8 +417,8 @@ int GetMem(void)
    mcmc.Pjump = mcmc.steplength + mcmc.nsteplength;
    mcmc.accept = (char*)(mcmc.Pjump + mcmc.nsteplength);
    mcmc.steplengthOffset[0] = 0;                 /* t */
-   mcmc.steplengthOffset[1] = s - 1;             /* mu[] & sigma2[] & drift[] */
-   mcmc.steplengthOffset[2] = mcmc.steplengthOffset[1] + g1 + g1*(com.clock > 1) + g1*(com.clock > 1);              /* branch rates */
+   mcmc.steplengthOffset[1] = s - 1;             /* mu[] & sigma2[] */
+   mcmc.steplengthOffset[2] = mcmc.steplengthOffset[1] + g1 + g1*(com.clock > 1);              /* branch rates */
    mcmc.steplengthOffset[3] = mcmc.steplengthOffset[2] + (com.clock > 1)*g*(s * 2 - 2);        /* subst paras */
    mcmc.steplengthOffset[4] = mcmc.steplengthOffset[3] + (mcmc.usedata == 1)*g*(!com.fix_kappa + !com.fix_alpha);  /* mixing */
    mcmc.steplengthOffset[5] = mcmc.steplengthOffset[4] + 1;                                    /* fossilerror */
@@ -3342,29 +3343,15 @@ int UpdateParaRates(double *lnL, double steplength[], char accept[], double spac
             lnacceptance += lnLd;
          }
 
-if (data.rgeneprior == 0) {
-   if (ip == 2) {  /* drift prior: joint LogNormal-Dirichlet form from derivation */
-      double m = gD[0], sigma = gD[1], alpha = gD[2];
-      double ds = ynew - y;  /* = log(pnew) - log(pold) */
-      double logg = log((double)g);
-
-      if (sigma <= 0) zerror("drift_lnorm: sigma should be > 0");
-      if (alpha <= 0) zerror("drift_lnorm: alpha should be > 0");
-      if (sumold <= 0 || sumnew <= 0) zerror("sum drift <= 0");
-
-      lnacceptance +=
-         -g * alpha * log(sumnew / sumold)
-         + (alpha - 1) * ds
-         - (square(log(sumnew) - logg - m) - square(log(sumold) - logg - m))
-           / (2 * square(sigma));
-   }
-   else {
-      lnacceptance += (gD[0] - gD[2] * g)*log(sumnew / sumold)
-                   - gD[1] / g*(sumnew - sumold)
-                   + (gD[2] - 1)*(ynew - y);
-   }
-}
-
+         if (data.rgeneprior == 0)  /* gamma-dirichlet prior (dos reis et al. 2014, eq 5) */
+		if(ip == 2){
+			//lnacceptance += -(sumnew*sumnew - sumold*sumold) / (2*(gD[0]/pow(gD[1],2)));
+			lnacceptance += g*gD[2]*log(sumnew/sumold) 
+					+ (gD[2]-1)*(ynew-y) 
+					- (pow(sumnew-log(g),2)-pow(sumold-log(g),2))/(2*(gD[1]));
+		} else{
+		    lnacceptance += (gD[0] - gD[2] * g)*log(sumnew / sumold) - gD[1] / g*(sumnew - sumold) + (gD[2] - 1)*(ynew - y);
+		}
          else {                     /* conditional iid prior (Zhu et al. 2015 SB, p.279 eq. 8) */
             if (locus < g) {          /* mu_i & sigma2_i */
                a = gD[2];  b = gD[2] / para[g];
@@ -3510,7 +3497,7 @@ double lnpriorRates(void)
 		switch (com.clock) {
 			case 3: data.drift[locus] = 1; break;
 			case 31: data.drift[locus] = exp(data.sigma2[locus]/2); break;
-			case 32: break;
+			default: break;
 		}
 		//printf("%f\n", data.drift[locus]);
             rA = (inode == stree.root ? data.rgene[locus] : stree.nodes[inode].rates[locus]);
@@ -3535,7 +3522,7 @@ double lnpriorRatioRates(int locus, int inodeChanged, double rold)
       If inodeChanged is not tip, we sum over 2 terms.
    */
    double rnew = stree.nodes[inodeChanged].rates[locus], lnpRd = 0, a, b, z, znew;
-   double zz, rA, r1, r2, y1, y2, t, tA, t1, t2, Tinv[4], detT, drift;
+   double zz, rA, r1, r2, y1, y2, t, tA, t1, t2, Tinv[4], detT;
    int i, inode, ir, dad = -1, sons[2], OldNew;
 
    if (com.clock == 2 && data.priorrate == 0) {         /* clock2, LN rate prior */
@@ -3567,13 +3554,8 @@ double lnpriorRatioRates(int locus, int inodeChanged, double rold)
             rA = (inode == stree.root ? data.rgene[locus] : stree.nodes[inode].rates[locus]);
             r1 = stree.nodes[sons[0]].rates[locus];
             r2 = stree.nodes[sons[1]].rates[locus];
-            switch (com.clock) {
-            case 3:  drift = 1; break;
-            case 31: drift = exp(data.sigma2[locus] / 2); break;
-            default: drift = data.drift[locus]; break;  /* clock=32 */
-            }
-            y1 = log(r1 / rA) + (tA + t1)*(data.sigma2[locus] / 2 - log(drift));
-            y2 = log(r2 / rA) + (tA + t2)*(data.sigma2[locus] / 2 - log(drift));
+            y1 = log(r1 / rA) + (tA + t1)*data.sigma2[locus] / 2;
+            y2 = log(r2 / rA) + (tA + t2)*data.sigma2[locus] / 2;
             zz = (y1*y1*Tinv[0] + 2 * y1*y2*Tinv[1] + y2*y2*Tinv[3]);
             zz = zz / (2 * data.sigma2[locus]) + log(r1*r2);
             lnpRd -= (OldNew == 0 ? -1 : 1) * zz;

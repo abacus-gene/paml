@@ -1,1 +1,0 @@
-MCMCTREE (paml version 4.10.9, 7 May 2025) mc.txt

@@ -22,12 +22,12 @@
 
    rgene_gamma = 1 50 1
   sigma2_gamma = 1 10 1
-  drift_lnorm  = 0.2 10 1
+  drift_lnorm  = 0 0.1 1
 
       finetune = 1: .1 .1 .1 .1 .1 .1 * auto (0 or 1): times, musigma2, rates, mixing, paras, FossilErr
 
          print = 1
         burnin = 1000
-      sampfreq = 100
+      sampfreq = 50
        nsample = 1000
 
