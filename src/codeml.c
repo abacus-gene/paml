@@ -15,11 +15,16 @@
 */
 
 #include "paml.h"
+#ifdef ENABLE_CUDA
+#include "pmatcuda.h"
+#endif
 
 #define NS            5000
 #define NBRANCH       (NS*2 - 2)
 #define NNODE         (NS*2 - 1)
-#define MAXNSONS      3
+/* StarDecomposition (runmode = 2) gives the root com.ns sons, so sons[]
+   must hold a star, not just a trifurcation. baseml already uses 64. */
+#define MAXNSONS      64
 #define NGENE         2000
 #define LSPNAME       96
 #define NCODE         64
@@ -289,7 +294,13 @@ int main(int argc, char *argv[])
    mergeSeqs(frst);  exit(0);
    Ina();
    */
-   SetSeed(-1, 0);
+   /* codeml seeds from /dev/urandom (or the clock) on every run, so starting
+      values, iteration counts and the last digits of the estimates all vary
+      between identical runs. PAML_SEED pins it so two builds can be compared. */
+   {
+      const char *sd = getenv("PAML_SEED");
+      SetSeed(sd ? atoi(sd) : -1, 0);
+   }
 
 #if (DSDN_MC || DSDN_MC_SITES)
    SimulateData2s61();
@@ -1376,9 +1387,15 @@ void DetailOutput(FILE *fout, double x[], double var[])
             else if (com.model == NSbranchB) om = x[k + i];
             else if (com.model == NSbranch2) om = nodes[tree.branches[i][1]].omega;
 
-            if (com.model == 0 || (com.model == FromCodon0  && com.aaDist))
+            if (com.model == 0 || (com.model == FromCodon0  && com.aaDist)) {
+               /* These are the models with no branch types, so a tree here
+                  carries no branch labels and ReadTreeN leaves label at -1.
+                  Scaling by it walks com.pomega backwards off x. */
+               int ib = (int)nodes[tree.branches[i][1]].label;
+               if (ib < 0) ib = 0;
                com.pomega = x + com.ntime + com.nrgene + !com.fix_kappa + com.npi
-               + (int)nodes[tree.branches[i][1]].label*com.nOmegaType;
+               + ib*com.nOmegaType;
+            }
 
             mr = 0;
             eigenQcodon(2, t, &S, &dS, &dN, NULL, NULL, NULL, &mr, com.pkappa, om, PMat); /* PMat destroyed! */
@@ -3226,6 +3243,7 @@ int SelectionCoefficients(FILE* fout, double kappa[], double ppi[], double omega
 }
 
 
+
 int eigenQcodon(int mode, double blength, double *S, double *dS, double *dN,
    double Root[], double U[], double V[], double *meanrate, double kappa[], double omega, double Q[])
 {
@@ -3523,10 +3541,482 @@ int Qcodon2aa(double Qc[], double pic[], double Qaa[], double piaa[])
 }
 
 
+#ifdef ENABLE_CUDA
+
+/* Batched P(t) and a device-resident ConditionalPNode.
+ *
+ * GetPMatBranch computes one 61x61 P(t) per branch and ConditionalPNode
+ * consumes it immediately, which is too little work to cover a kernel launch
+ * (0.2x at batch 1). Within one site class SetPSiteClass fixes U/V/Root, so
+ * every branch shares them and only t differs; computing all of them in one
+ * call reaches 7x at the natural batch of nbranch*ncatG.
+ *
+ * Returning P to the host then costs more than computing it: 29.8 kB per
+ * 227 kflop. The resident path avoids that by keeping P and conP on the device
+ * and running the traversal there, so only the root block comes back. It also
+ * moves the traversal's own GEMM, which is the larger cost on big trees:
+ * npatt*n*n per internal node against n*n*n per branch for P(t).
+ *
+ * Both paths need every branch to share U/V/Root, i.e. com.model == 0. The
+ * branch and branch-site models point U/V/Root at per-branch tables in
+ * GetPMatBranch, so they keep the C path.
+ */
+static double *pcache = NULL;      /* [nnode][n*n], indexed by node */
+static char *pcache_ok = NULL;     /* branch has a cached P(t) */
+static double *pcache_E = NULL;    /* host expm1 values */
+static int *pcache_slot = NULL;    /* batch slot -> node */
+static double *pcache_max = NULL;  /* NodeScale maxima, [NnodeScale][npatt] */
+static ConPWork *work = NULL;      /* all (parent, son) pairs, grouped */
+static size_t *work_dst = NULL;    /* interior node offsets */
+static size_t *work_sdst = NULL;   /* scaled node offsets */
+static int *work_slot = NULL;      /* scale slot per scaled node */
+static int pcache_n = 0, pcache_nnode = 0, pcache_npatt = 0, pcache_nscale = -1;
+
+/* Set while the device holds conP for the current traversal. */
+static int conp_resident = 0;
+/* Set while the device's conP is newer than com.conP. Any host path that
+   reads interior conP must sync first; see ConditionalPNode. */
+static int conp_dirty = 0;
+static int tips_uploaded = 0;
+static int *lvl = NULL;
+static unsigned long long topo_sig;
+
+void PMatCudaFreeCache(void)
+{
+   free(pcache_ok); free(pcache_slot);
+   PMatCudaHostFree(work); PMatCudaHostFree(work_dst);
+   PMatCudaHostFree(work_sdst); PMatCudaHostFree(work_slot);
+   PMatCudaHostFree(pcache);
+   PMatCudaHostFree(pcache_E);
+   PMatCudaHostFree(pcache_max);
+   pcache = pcache_E = pcache_max = NULL;
+   pcache_ok = NULL; pcache_slot = NULL;
+   work = NULL; work_dst = NULL; work_sdst = NULL; work_slot = NULL;
+   topo_sig = 0;
+   pcache_n = pcache_nnode = pcache_npatt = 0;
+   pcache_nscale = -1;
+   tips_uploaded = 0;
+}
+
+/* Non-zero when every node the traversal touches keeps its conP inside
+   com.conP, which is what lets the device mirror index by the host's own
+   offset. Interior nodes are assigned in InitConditionalPNode; a node below
+   com.ns with sons (a sampled ancestor) is not, so the resident path declines.
+   com.oldconP marks subtrees the caller intends to reuse, which would leave the
+   device holding values it never computed, so that declines too. */
+static int PMatCudaTreeOK(void)
+{
+   int i;
+   size_t nel = com.sconP / sizeof(double);
+
+   if (nel == 0) return 0;
+   for (i = 0; i < tree.nnode; i++) {
+      if (com.oldconP[i]) return 0;
+      if (nodes[i].nson > 0) {
+         if (i < com.ns) return 0;
+         if (nodes[i].conP < com.conP ||
+             (size_t)(nodes[i].conP - com.conP) + (size_t)com.ncode * com.npatt > nel)
+            return 0;
+      }
+   }
+   return 1;
+}
+
+/* Returns 1 if the batch was computed. `resident` leaves P on the device. */
+static int PMatCudaFillCache(double x[], int igene, int resident)
+{
+   int n = com.ncode, i, k, nb = 0;
+   double t;
+
+   if (getenv("PAML_NO_CUDA")) return 0;      /* runtime kill switch, for A/B */
+   if (!PMatCudaAvailable()) return 0;
+   /* Codon branch and branch-site models point U/V/Root at per-branch tables
+      in GetPMatBranch. Every such case is guarded there by CODONseq; the
+      amino acid models keep the global U/V/Root from eigenQaa. */
+   if (com.seqtype == CODONseq && com.model != 0) return 0;
+   if (com.seqtype == AAseq && com.model == Poisson) return 0;
+   if (com.clock >= 5 || com.clock) return 0; /* GetBranchRate path */
+   if (U == NULL || V == NULL || Root == NULL) return 0;
+
+   if (pcache_n != n || pcache_nnode != tree.nnode ||
+       pcache_npatt != com.npatt || pcache_nscale != com.NnodeScale) {
+      PMatCudaFreeCache();
+      /* pcache and pcache_E cross the bus, so they are page-locked; a pageable
+         copy stages through a driver bounce buffer, which is most of the
+         per-call cost at this batch size. */
+      pcache      = (double*)PMatCudaHostAlloc((size_t)tree.nnode * n * n * sizeof(double));
+      pcache_E    = (double*)PMatCudaHostAlloc((size_t)tree.nnode * n * sizeof(double));
+      pcache_max  = (double*)PMatCudaHostAlloc(
+                       (size_t)(com.NnodeScale ? com.NnodeScale : 1) * com.npatt * sizeof(double));
+      pcache_ok   = (char*)malloc((size_t)tree.nnode);
+      pcache_slot = (int*)malloc((size_t)tree.nnode * sizeof(int));
+      /* these cross the bus every traversal, so page-lock them: a staged copy
+         out of pageable memory costs ~15 us regardless of size */
+      work        = (ConPWork*)PMatCudaHostAlloc((size_t)tree.nnode * sizeof(ConPWork));
+      work_dst    = (size_t*)PMatCudaHostAlloc((size_t)tree.nnode * sizeof(size_t));
+      work_sdst   = (size_t*)PMatCudaHostAlloc((size_t)tree.nnode * sizeof(size_t));
+      work_slot   = (int*)PMatCudaHostAlloc((size_t)tree.nnode * sizeof(int));
+      if (!pcache || !pcache_E || !pcache_max || !pcache_ok || !pcache_slot ||
+          !work || !work_dst || !work_sdst || !work_slot) {
+         PMatCudaFreeCache();
+         return 0;
+      }
+      pcache_n = n; pcache_nnode = tree.nnode; pcache_npatt = com.npatt;
+      pcache_nscale = com.NnodeScale;
+   }
+   memset(pcache_ok, 0, (size_t)tree.nnode);
+
+   for (i = 0; i < tree.nnode; i++) {
+      if (i == tree.root) continue;
+      t = nodes[i].branch * _rateSite;
+      t *= com.rgene[igene];
+      if (t < -0.01) printf("\nt = %.5f in PMatUVRoot", t);
+      /* expm1 on the host: CUDA's differs in the last bit, and it is n calls
+         against n^3 for the product. t below PMatUVRoot's own cutoff takes
+         expm1 = 0, for which the kernel returns exactly the identity that
+         PMatUVRoot returns there. */
+      for (k = 0; k < n; k++)
+         pcache_E[(size_t)nb * n + k] = (t < 1e-100 ? 0.0 : expm1(t * Root[k]));
+      pcache_slot[nb] = i;
+      pcache_ok[i] = 1;
+      nb++;
+   }
+   if (nb == 0) return 0;
+
+   if (PMatUVRootBatchCudaSlot(pcache, pcache_E, U, V, pcache_slot, n, nb,
+                               0, 0, resident) != 0) {
+      memset(pcache_ok, 0, (size_t)tree.nnode);
+      return 0;
+   }
+   return 1;
+}
+
+/* Read by GetPMatBranch in treesub.c. */
+int pmat_cache_live = 0;
+double *pmat_cache_base = NULL;
+char *pmat_cache_flag = NULL;
+int pmat_cache_n = 0;
+
+/* Height of each node: 0 at a tip, 1 + max over sons otherwise. Nodes of equal
+   height have no dependence on each other, so they issue together.
+ *
+ * The grouping depends only on the topology, which is fixed while the
+ * optimizer runs, so it is built once and reused; each traversal only refills
+ * the conP offsets, which move when fx_r shifts the per-site-class pointers. */
+static int lvl_max = 0;
+static int *grp_start = NULL, *grp_count = NULL, *grp_lvl = NULL, n_grp = 0;
+static int *sgrp_start = NULL, *sgrp_count = NULL, *sgrp_lvl = NULL, n_sgrp = 0;
+static int *fold_par = NULL, *fold_son = NULL, n_fold = 0;
+static int *scale_node = NULL, *scale_k = NULL, n_scale = 0;
+
+/* The grouping depends on the topology, and codeml changes it under us:
+   a .trees file may hold several trees, and ReRootTree rewrites father and
+   sons in place. Both keep tree.nnode, so the node count cannot be the key.
+   FNV-1a over the structure is O(nnode) per traversal and catches any of
+   it. Bit 0 is reserved so a valid signature is never 0. */
+static unsigned long long PMatCudaTopoSig(void)
+{
+   unsigned long long h = 1469598103934665603ULL;
+   int i, j;
+
+#define MIX(v) do { h ^= (unsigned long long)(int)(v); \
+                    h *= 1099511628211ULL; } while (0)
+   MIX(tree.nnode); MIX(tree.root); MIX(com.ns); MIX(com.NnodeScale);
+   for (i = 0; i < tree.nnode; i++) {
+      MIX(nodes[i].nson);
+      MIX(com.NnodeScale ? com.nodeScale[i] : 0);
+      for (j = 0; j < nodes[i].nson; j++) MIX(nodes[i].sons[j]);
+   }
+#undef MIX
+   return h | 1;
+}
+
+static int SetNodeLevel(int inode)
+{
+   int i, h = 0, sh;
+   for (i = 0; i < nodes[inode].nson; i++) {
+      sh = SetNodeLevel(nodes[inode].sons[i]);
+      if (sh + 1 > h) h = sh + 1;
+   }
+   lvl[inode] = h;
+   if (h > lvl_max) lvl_max = h;
+   return h;
+}
+
+/* Groups the traversal's work by height and son slot. Within a group every
+   parent is distinct, so the folds cannot race; the groups run in order, which
+   is ConditionalPNode's son order. */
+static int PMatCudaBuildTopology(void)
+{
+   int i, L, sn, k, j, nw, cap = tree.nnode * 4;
+   unsigned long long sig = PMatCudaTopoSig();
+
+   if (topo_sig == sig) return 0;
+
+   free(lvl); free(grp_start); free(grp_count); free(grp_lvl);
+   free(sgrp_start); free(sgrp_count); free(sgrp_lvl);
+   free(fold_par); free(fold_son); free(scale_node); free(scale_k);
+   lvl = (int*)malloc((size_t)tree.nnode * sizeof(int));
+   grp_start = (int*)malloc((size_t)cap * sizeof(int));
+   grp_count = (int*)malloc((size_t)cap * sizeof(int));
+   grp_lvl = (int*)malloc((size_t)cap * sizeof(int));
+   sgrp_start = (int*)malloc((size_t)cap * sizeof(int));
+   sgrp_count = (int*)malloc((size_t)cap * sizeof(int));
+   sgrp_lvl = (int*)malloc((size_t)cap * sizeof(int));
+   fold_par = (int*)malloc((size_t)tree.nnode * sizeof(int));
+   fold_son = (int*)malloc((size_t)tree.nnode * sizeof(int));
+   scale_node = (int*)malloc((size_t)tree.nnode * sizeof(int));
+   scale_k = (int*)malloc((size_t)tree.nnode * sizeof(int));
+   if (!lvl || !grp_start || !grp_count || !grp_lvl || !sgrp_start ||
+       !sgrp_count || !sgrp_lvl || !fold_par || !fold_son || !scale_node ||
+       !scale_k) {
+      topo_sig = 0;
+      return -1;
+   }
+
+   lvl_max = 0;
+   SetNodeLevel(tree.root);
+
+   n_fold = 0; n_grp = 0; n_scale = 0; n_sgrp = 0;
+   for (L = 1; L <= lvl_max; L++) {
+      for (sn = 0; ; sn++) {
+         nw = 0;
+         for (i = 0; i < tree.nnode; i++) {
+            if (nodes[i].nson <= sn || lvl[i] != L) continue;
+            fold_par[n_fold + nw] = i;
+            fold_son[n_fold + nw] = nodes[i].sons[sn];
+            nw++;
+         }
+         if (nw == 0) break;
+         grp_start[n_grp] = n_fold; grp_count[n_grp] = nw;
+         grp_lvl[n_grp] = L; n_grp++;
+         n_fold += nw;
+      }
+      if (!com.NnodeScale) continue;
+      nw = 0;
+      for (i = 0; i < tree.nnode; i++) {
+         if (lvl[i] != L || !com.nodeScale[i]) continue;
+         for (j = 0, k = 0; j < tree.nnode; j++)   /* k-th node for scaling */
+            if (j == i) break;
+            else if (com.nodeScale[j]) k++;
+         scale_node[n_scale + nw] = i;
+         scale_k[n_scale + nw] = k;
+         nw++;
+      }
+      if (nw == 0) continue;
+      sgrp_start[n_sgrp] = n_scale; sgrp_count[n_sgrp] = nw;
+      sgrp_lvl[n_sgrp] = L; n_sgrp++;
+      n_scale += nw;
+   }
+   topo_sig = sig;
+   return 0;
+}
+
+/* Issues the same work ConditionalPNode does, a height at a time.
+ *
+ * ConditionalPNode walks post-order and folds each son into its parent the
+ * moment it is ready. The order that matters for the result is only: a node's
+ * sons before the node, and a node's sons in index order, since each fold is a
+ * read-modify-write of the parent. Both hold here. Setting every parent to 1 up
+ * front is safe for the same reason: nothing reads a block before its own folds
+ * begin.
+ *
+ * Every accumulation keeps PAML's order, so the result is bit-identical; see
+ * the kernels in pmatcuda.cu. */
+static int ConditionalPNodeCuda(int inode, int igene, double x[])
+{
+   int n = com.ncode, i, h, g, nset = 0;
+   int pos0 = com.posG[igene], pos1 = com.posG[igene + 1];
+
+   if (PMatCudaBuildTopology()) return -1;
+
+   for (i = 0; i < tree.nnode; i++)
+      if (nodes[i].nson > 0)
+         work_dst[nset++] = (size_t)(nodes[i].conP - com.conP);
+   for (i = 0; i < n_fold; i++) {
+      int ison = fold_son[i];
+      work[i].dst = (size_t)(nodes[fold_par[i]].conP - com.conP);
+      work[i].pslot = ison;
+      if (nodes[ison].nson < 1) { work[i].tip = ison; work[i].src = 0; }
+      else { work[i].tip = -1;
+             work[i].src = (size_t)(nodes[ison].conP - com.conP); }
+   }
+   for (i = 0; i < n_scale; i++) {
+      work_sdst[i] = (size_t)(nodes[scale_node[i]].conP - com.conP);
+      work_slot[i] = scale_k[i];
+   }
+
+   if (ConPCudaUploadDst(work_dst, nset) ||
+       ConPCudaUploadWork(work, n_fold) ||
+       ConPCudaUploadScale(work_sdst, work_slot, n_scale))
+      return -1;
+
+   ConPCudaSetFrom(0, nset, n, pos0, pos1, 1.0);   /* every interior node to 1 */
+   for (g = 0, i = 0; g < n_grp; g++) {
+      ConPCudaFoldFrom(grp_start[g], grp_count[g], n, pos0, pos1, com.npatt,
+                       com.cleandata);
+      if (g + 1 < n_grp && grp_lvl[g + 1] == grp_lvl[g]) continue;
+      /* this height is complete: scale it before the next height reads it,
+         which is where ConditionalPNode calls NodeScale */
+      while (i < n_sgrp && sgrp_lvl[i] == grp_lvl[g]) {
+         ConPCudaScaleFrom(sgrp_start[i], sgrp_count[i], n, pos0, pos1,
+                           com.npatt);
+         i++;
+      }
+   }
+
+   /* One fetch for every scaled node, at the end: each is a synchronization. */
+   if (com.NnodeScale) {
+      if (ConPCudaFetchScale(pcache_max, com.NnodeScale, com.npatt)) return -1;
+      for (i = 0; i < n_scale; i++) {
+         int k = scale_k[i];
+         for (h = pos0; h < pos1; h++)
+            com.nodeScaleF[(size_t)k * com.npatt + h] =
+               (pcache_max[(size_t)k * com.npatt + h] < 1e-300
+                  ? -800 : log(pcache_max[(size_t)k * com.npatt + h]));
+      }
+   }
+   return 0;
+}
+
+/* com.conP is authoritative again. Costs one copy of the whole mirror, made
+   only when a host path needs interior conP, not per traversal. */
+void PMatCudaSyncConP(void)
+{
+   if (!conp_dirty) return;
+   conp_dirty = 0;
+   if (ConPCudaSyncToHost(com.conP, com.sconP))
+      zerror("conP sync from device failed");
+}
+
+/* Runs the traversal on the device. Returns 0 if it did, so the caller skips
+   ConditionalPNode; non-zero leaves the C path to redo it. */
+int ConditionalPNodeCudaTraversal(int inode, int igene, double x[])
+{
+   size_t off;
+
+   if (!conp_resident) return -1;
+   if (ConditionalPNodeCuda(inode, igene, x) || ConPCudaCheck()) {
+      /* A partly written mirror cannot be trusted, and neither can com.conP,
+         which the device has been writing instead of the host. Recover the
+         mirror so the C path has somewhere consistent to start from. */
+      conp_dirty = 1;
+      PMatCudaSyncConP();
+      conp_resident = 0;
+      return -1;
+   }
+   conp_dirty = 1;
+
+#ifdef VERIFY_CONP
+   /* Run the C traversal over the same inputs and compare every conP element
+      and every scale factor. Identical output files show the two agree at the
+      optimum; this shows they agree at every call, which is the claim. */
+   {
+      static double *ref = NULL, *refF = NULL;
+      static size_t refsz = 0, refFsz = 0;
+      static long long nchk = 0, nbad = 0, ncall = 0;
+      size_t nel = com.sconP / sizeof(double), nF;
+      size_t i, k;
+
+      nF = (size_t)com.NnodeScale * com.npatt;
+      if (refsz < nel) { free(ref); ref = (double*)malloc(nel * sizeof(double)); refsz = nel; }
+      if (refFsz < nF) { free(refF); refF = (double*)malloc((nF ? nF : 1) * sizeof(double)); refFsz = nF; }
+      if (!ref || (nF && !refF)) zerror("oom in VERIFY_CONP");
+
+      if (ConPCudaSyncToHost(ref, com.sconP)) zerror("VERIFY_CONP sync");
+      for (i = 0; i < nF; i++) refF[i] = com.nodeScaleF[i];
+
+      conp_dirty = 0;             /* keep the C path from restoring the mirror */
+      ConditionalPNode(inode, igene, x);
+
+      for (k = com.ns; k < (size_t)tree.nnode; k++) {
+         size_t o = (size_t)(nodes[k].conP - com.conP);
+         for (i = (size_t)com.posG[igene] * com.ncode;
+              i < (size_t)com.posG[igene + 1] * com.ncode; i++, nchk++)
+            if (memcmp(&ref[o + i], &nodes[k].conP[i], sizeof(double)) != 0) {
+               if (nbad++ < 4)
+                  printf("\nVERIFY_CONP node %d elem %zu: gpu %.17g cpu %.17g",
+                         (int)k, i, ref[o + i], nodes[k].conP[i]);
+            }
+      }
+      for (i = 0; i < nF; i++, nchk++)
+         if (memcmp(&refF[i], &com.nodeScaleF[i], sizeof(double)) != 0)
+            if (nbad++ < 4)
+               printf("\nVERIFY_CONP scaleF %zu: gpu %.17g cpu %.17g",
+                      i, refF[i], com.nodeScaleF[i]);
+
+      if ((++ncall % 2000) == 0 || nbad)
+         printf("\nVERIFY_CONP: %lld traversals, %lld doubles, %lld differ",
+                ncall, nchk, nbad);
+      return 0;                   /* com.conP already holds the C result */
+   }
+#endif
+
+   /* Only the root block is read on the host, by fx_r and lfun. */
+   off = (size_t)(nodes[tree.root].conP - com.conP);
+   if (ConPCudaFetch(nodes[tree.root].conP, off, (size_t)com.npatt * com.ncode)) {
+      PMatCudaSyncConP();
+      conp_resident = 0;
+      return -1;
+   }
+   return 0;
+}
+
+/* Called before a traversal. Leaves pmat_cache_live 0 if the batch could not
+   be built, in which case GetPMatBranch keeps the C path. */
+void PMatCudaBeginTraversal(double x[], int igene)
+{
+   int resident;
+
+   pmat_cache_live = 0;
+   conp_resident = 0;
+
+   /* Same restriction as PMatCudaFillCache: only the codon branch and
+      branch-site models fail to share U/V/Root. */
+   resident = !getenv("PAML_NO_CUDA") && PMatCudaAvailable() &&
+              !(com.seqtype == CODONseq && com.model != 0) && !com.clock &&
+              !(com.seqtype == AAseq && com.model == Poisson) &&
+              com.conP != NULL && com.sconP > 0 && PMatCudaTreeOK() &&
+              ConPCudaResize(com.sconP, tree.nnode, com.ns, com.npatt,
+                             com.ncode, com.NnodeScale) == 0;
+   if (resident && !tips_uploaded) {
+      if (ConPCudaUploadTips((const char *const *)com.z, com.ns, com.npatt,
+                             nChara, (const char *)CharaMap) == 0)
+         tips_uploaded = 1;
+      else
+         resident = 0;
+   }
+   /* The C path is about to read com.conP, so it must be current. */
+   if (!resident) PMatCudaSyncConP();
+
+   if (!PMatCudaFillCache(x, igene, resident)) {
+      PMatCudaSyncConP();
+      return;
+   }
+   pmat_cache_base = pcache;
+   pmat_cache_flag = pcache_ok;
+   pmat_cache_n = com.ncode;
+   pmat_cache_live = !resident;   /* resident keeps P on the device */
+   conp_resident = resident;
+}
+
+void PMatCudaEndTraversal(void)
+{
+   pmat_cache_live = 0;
+   conp_resident = 0;
+}
+
+#endif  /* ENABLE_CUDA */
+
 int ConditionalPNode(int inode, int igene, double x[])
 {
    int n = com.ncode, i, j, k, h, ison, pos0 = com.posG[igene], pos1 = com.posG[igene + 1];
    double t;
+
+#ifdef ENABLE_CUDA
+   /* This reads sons' conP, which the device may have computed. */
+   { extern void PMatCudaSyncConP(void); PMatCudaSyncConP(); }
+#endif
 
    for (i = 0; i < nodes[inode].nson; i++)
       if (nodes[nodes[inode].sons[i]].nson > 0 && !com.oldconP[nodes[inode].sons[i]])

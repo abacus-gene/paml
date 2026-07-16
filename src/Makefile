@@ -4,14 +4,28 @@ CFLAGS = -O3 -Wall -Wno-unused-variable -Wno-unused-result
 
 LIBS = -lm
 
+# Optional CUDA backend for codeml, off unless asked for:
+#   make codeml CUDA=1 GPU_ARCH=sm_86
+# Every other program, and codeml without CUDA=1, builds exactly as before.
+# -fmad=false is required rather than preferred: FMA contraction changes the
+# rounding of the multiply-accumulate and the results stop matching the C.
+ifdef CUDA
+NVCC ?= nvcc
+GPU_ARCH ?= sm_86
+CUDA_HOME ?= /usr/local/cuda
+CUDA_CFLAGS = -DENABLE_CUDA
+CUDA_OBJS = pmatcuda.o
+CUDA_LIBS = -L$(CUDA_HOME)/lib64 -lcudart_static -lpthread -ldl -lrt
+endif
+
 all : $(PRGS)
 
 baseml : baseml.o tools.o treesub.c treespace.c paml.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ baseml.o tools.o $(LIBS)
 basemlg: basemlg.o tools.o treesub.c treespace.c paml.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ basemlg.o tools.o $(LIBS)
-codeml: codeml.o tools.o treesub.c treespace.c paml.h
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ codeml.o tools.o $(LIBS)
+codeml: codeml.o tools.o $(CUDA_OBJS) treesub.c treespace.c paml.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ codeml.o tools.o $(CUDA_OBJS) $(CUDA_LIBS) $(LIBS)
 evolver: evolver.o tools.o treesub.c treespace.c paml.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ evolver.o tools.o $(LIBS)
 pamp: pamp.o tools.o treesub.c treespace.c paml.h
@@ -33,7 +47,10 @@ baseml.o : paml.h baseml.c treesub.c treespace.c
 basemlg.o : paml.h basemlg.c treesub.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -c basemlg.c
 codeml.o : paml.h codeml.c treesub.c treespace.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -c codeml.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(CUDA_CFLAGS) $(LDFLAGS) -c codeml.c
+
+pmatcuda.o : pmatcuda.cu pmatcuda.h
+	$(NVCC) -O2 -arch=$(GPU_ARCH) -fmad=false -c pmatcuda.cu -o $@
 evolver.o : evolver.c treesub.c treespace.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -c evolver.c
 mcmctree.o : paml.h mcmctree.c treesub.c treespace.c

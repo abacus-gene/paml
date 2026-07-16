@@ -5174,7 +5174,11 @@ int MultipleGenes(FILE* fout, FILE* ftree, FILE* fpair[], double space[])
     in baseml and codeml.
     */
    int ig = 0, j, ngene0, npatt0, lgene0[NGENE] = { 0 }, posG0[NGENE + 1] = {0};
-   int nb = ((com.seqtype == 1 && !com.cleandata) ? 3 : 1);
+   /* One byte per pattern. EncodeSeqs collapses codons to a single code
+      whether or not the data are clean, giving each ambiguous codon its own
+      entry in CODONs[], and reallocs com.z[] to com.npatt; a stride of 3 for
+      unclean codon data walks off the end of it. */
+   int nb = 1;
 
    if (com.ndata > 1) zerror("multiple data sets & multiple genes?");
 
@@ -7585,6 +7589,22 @@ int GetPMatBranch(double Pt[], double x[], double t, int inode)
       PMatJC69like(Pt, t, com.ncode);
    else {
       t *= Qfactor;
+#ifdef ENABLE_CUDA
+      /* PMatCudaBeginTraversal batches every branch of this traversal into one
+         kernel call; take the result rather than recompute it here. */
+      {
+         extern int pmat_cache_live, pmat_cache_n;
+         extern double *pmat_cache_base;
+         extern char *pmat_cache_flag;
+         if (pmat_cache_live && pmat_cache_flag[inode]) {
+            double *cached = pmat_cache_base +
+                             (size_t)inode * pmat_cache_n * pmat_cache_n;
+            memcpy(Pt, cached,
+                   (size_t)pmat_cache_n * pmat_cache_n * sizeof(double));
+            return(0);
+         }
+      }
+#endif
       PMatUVRoot(Pt, t, com.ncode, U, V, Root);
    }
 
@@ -7721,7 +7741,20 @@ int fx_r(double x[], int np)
                nodes[i].conP += (size_t)(tree.nnode - com.ns) * com.ncode * com.npatt;
          }
          SetPSiteClass(ir, x);
+#ifdef ENABLE_CUDA
+         { extern void PMatCudaBeginTraversal(double*, int);
+           extern int ConditionalPNodeCudaTraversal(int, int, double*);
+           extern void PMatCudaEndTraversal(void);
+           PMatCudaBeginTraversal(x, ig);
+           /* The device runs the whole traversal when it holds conP;
+              otherwise it declined and the C path does it. */
+           if (ConditionalPNodeCudaTraversal(tree.root, ig, x))
+              ConditionalPNode(tree.root, ig, x);
+           PMatCudaEndTraversal();
+         }
+#else
          ConditionalPNode(tree.root, ig, x);
+#endif
 
          for (h = com.posG[ig]; h < com.posG[ig + 1]; h++) {
             if (com.fpatt[h] <= 0 && com.print >= 0) continue;
@@ -7773,7 +7806,20 @@ double lfun(double x[], int np)
    for (ig = 0; ig < com.ngene; ig++) {
       if (com.Mgene > 1)
          SetPGene(ig, 1, 1, 0, x);
+#ifdef ENABLE_CUDA
+      { extern void PMatCudaBeginTraversal(double*, int);
+        extern int ConditionalPNodeCudaTraversal(int, int, double*);
+        extern void PMatCudaEndTraversal(void);
+        PMatCudaBeginTraversal(x, ig);
+        /* The device runs the whole traversal when it holds conP;
+           otherwise it declined and the C path does it. */
+        if (ConditionalPNodeCudaTraversal(tree.root, ig, x))
+           ConditionalPNode(tree.root, ig, x);
+        PMatCudaEndTraversal();
+      }
+#else
       ConditionalPNode(tree.root, ig, x);
+#endif
 
       for (h = com.posG[ig]; h < com.posG[ig + 1]; h++) {
          if (com.fpatt[h] <= 0 && com.print >= 0) continue;
@@ -9095,17 +9141,18 @@ int GenerateGtree_locus(int locus, int ns, int allocate_gnodes)
    com.ns = ns;
    NodeToBranch();
 
-#if(MCMCTREE)
+   /* Not MCMCTREE-only. baseml and codeml reach here under clock = 5 and 6,
+      through DatingHeteroData and ReadTreeSeqs. GetMemBC then indexes
+      gnodes[locus], and the AHRS rate smoothing reads stree.nodes[ipop].age
+      for each tip, so both halves are needed outside mcmctree. */
    for (i = 0; i < stree.nnode; i++)
       if (newnodeNO[i] != -1) nodes[newnodeNO[i]].ipop = i;
-   /* printGtree(0);  */
    if (allocate_gnodes) {
       gnodes[locus] = (struct TREEN*)malloc((ns * 2 - 1) * sizeof(struct TREEN));
       if (gnodes[locus] == NULL) zerror("oom gtree");
       memcpy(gnodes[locus], nodes, (ns * 2 - 1) * sizeof(struct TREEN));
       data.root[locus] = tree.root;
    }
-#endif
    free(newnodeNO);
    return(0);
 }
